@@ -1,121 +1,83 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+/**
+ * App — root component. Holds all state via useAppState, renders the AppShell,
+ * active screen, project creation modal, and toast.
+ */
+import { useAppState } from "./hooks/useAppState.js";
+import { AppShell } from "./components/layout/AppShell.jsx";
+import { Toast } from "./components/layout/Toast.jsx";
+import { NewProjectModal } from "./components/projects/NewProjectModal.jsx";
+import { InputDetailDrawer } from "./components/inputs/InputDetailDrawer.jsx";
+import { ClusterDetailDrawer } from "./components/clusters/ClusterDetailDrawer.jsx";
+import Dashboard from "./components/screens/Dashboard.jsx";
+import Inbox from "./components/screens/Inbox.jsx";
+import ProjectDetail from "./components/screens/ProjectDetail.jsx";
+import Clustering from "./components/screens/Clustering.jsx";
+import ScenarioCanvas from "./components/screens/ScenarioCanvas.jsx";
+import NarrativeCanvas from "./components/screens/NarrativeCanvas.jsx";
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+function ActiveScreen({ appState }) {
+  switch (appState.activeScreen) {
+    case "dashboard":  return <Dashboard     appState={appState} />;
+    case "inbox":      return <Inbox         appState={appState} />;
+    case "projects":   return <Dashboard     appState={appState} />;  // projects list = dashboard
+    case "project":    return <ProjectDetail appState={appState} />;
+    case "clustering": return <Clustering    appState={appState} />;
+    case "scenarios":  return <ScenarioCanvas appState={appState} />;
+    case "narrative":  return <NarrativeCanvas appState={appState} />;
+    default:           return <Inbox         appState={appState} />;
+  }
 }
 
-export default App
+export default function App() {
+  const appState = useAppState();
+  const { inputDetailId, clusterDetailId, closeInputDetail, closeClusterDetail, updateInput, updateCluster, assignInputToCluster, removeInputFromCluster, inputs, clusters, projects } = appState;
+
+  const handleCreateProject = (fields) => {
+    const newProject = appState.addProject(fields);
+    appState.closeProjectModal();
+    appState.openProject(newProject.id);
+    appState.showToast(`"${newProject.name}" created`);
+  };
+
+  return (
+    <div style={{
+      height: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
+      fontSize: 14,
+      color: "#111111",
+      WebkitFontSmoothing: "antialiased",
+    }}>
+      <AppShell appState={appState}>
+        <ActiveScreen appState={appState} />
+      </AppShell>
+
+      <NewProjectModal
+        open={appState.projectModalOpen}
+        onClose={appState.closeProjectModal}
+        onSave={handleCreateProject}
+      />
+
+      <Toast toast={appState.toast} />
+
+      <InputDetailDrawer
+        inputId={inputDetailId}
+        inputs={inputs}
+        projects={projects}
+        onClose={closeInputDetail}
+        onSave={(id, fields) => { updateInput(id, fields); appState.showToast("Input updated"); closeInputDetail(); }}
+      />
+
+      <ClusterDetailDrawer
+        clusterId={clusterDetailId}
+        clusters={clusters}
+        inputs={inputs}
+        onClose={closeClusterDetail}
+        onSave={(id, fields) => { updateCluster(id, fields); appState.showToast("Cluster updated"); closeClusterDetail(); }}
+        onRemoveInput={(inputId, clusterId) => { removeInputFromCluster(inputId, clusterId); appState.showToast("Input removed from cluster"); }}
+        onAssignInput={(inputId, clusterId) => { assignInputToCluster(inputId, clusterId); appState.showToast("Input added to cluster"); }}
+      />
+    </div>
+  );
+}

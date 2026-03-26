@@ -1,0 +1,38 @@
+/**
+ * AppShell — sidebar + main content area wrapper.
+ * Passes active project context to Sidebar for in-project navigation display.
+ * @param {{ appState: object, children: React.ReactNode, scroll?: boolean }} props
+ */
+import { Sidebar } from "./Sidebar.jsx";
+
+export function AppShell({ appState, children, scroll = true }) {
+  const { activeScreen, setActiveScreen, user, inputs, clusters, projects, activeProjectId, openProjectModal } = appState;
+
+  const activeProject = projects.find((p) => p.id === activeProjectId) || null;
+  const clusterCount = activeProjectId
+    ? clusters.filter((cl) => cl.project_id === activeProjectId).length
+    : 0;
+
+  return (
+    <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
+      <Sidebar
+        activeScreen={activeScreen}
+        setActiveScreen={setActiveScreen}
+        user={user}
+        inputCount={inputs.length}
+        projectCount={projects.length}
+        activeProject={activeProject}
+        openProjectModal={openProjectModal}
+        clusterCount={clusterCount}
+      />
+      <div style={{
+        flex: 1,
+        overflowY: scroll ? "auto" : "hidden",
+        overflowX: "hidden",
+        minWidth: 0,
+      }}>
+        {children}
+      </div>
+    </div>
+  );
+}
