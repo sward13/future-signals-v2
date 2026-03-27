@@ -49,7 +49,7 @@ export default function App() {
       color: "#111111",
       WebkitFontSmoothing: "antialiased",
     }}>
-      <AppShell appState={appState}>
+      <AppShell appState={appState} scroll={appState.activeScreen !== "scenarios"}>
         <ActiveScreen appState={appState} />
       </AppShell>
 

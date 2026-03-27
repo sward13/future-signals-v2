@@ -6,11 +6,14 @@
 import { Sidebar } from "./Sidebar.jsx";
 
 export function AppShell({ appState, children, scroll = true }) {
-  const { activeScreen, setActiveScreen, user, inputs, clusters, projects, activeProjectId, openProjectModal } = appState;
+  const { activeScreen, setActiveScreen, user, inputs, clusters, scenarios, projects, activeProjectId, openProjectModal } = appState;
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
   const clusterCount = activeProjectId
     ? clusters.filter((cl) => cl.project_id === activeProjectId).length
+    : 0;
+  const scenarioCount = activeProjectId
+    ? scenarios.filter((s) => s.project_id === activeProjectId).length
     : 0;
 
   return (
@@ -24,6 +27,7 @@ export function AppShell({ appState, children, scroll = true }) {
         activeProject={activeProject}
         openProjectModal={openProjectModal}
         clusterCount={clusterCount}
+        scenarioCount={scenarioCount}
       />
       <div style={{
         flex: 1,

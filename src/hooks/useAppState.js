@@ -9,6 +9,16 @@ function uuid() {
   return Math.random().toString(36).slice(2, 10) + "-" + Date.now().toString(36);
 }
 
+function seedConnections(scenarios) {
+  const conns = [];
+  for (const sc of scenarios) {
+    for (const clusterId of (sc.cluster_ids || [])) {
+      conns.push({ id: `conn-${sc.id}-${clusterId}`, clusterId, scenarioId: sc.id, relationshipType: "Drives" });
+    }
+  }
+  return conns;
+}
+
 export function useAppState() {
   const [user] = useState({
     name: "Sam",
@@ -20,7 +30,11 @@ export function useAppState() {
 
   const [inputs, setInputs] = useState(DEFAULT_SEEDED_INPUTS);
   const [clusters, setClusters] = useState(SAMPLE_CLUSTERS);
-  const [scenarios] = useState(SAMPLE_SCENARIOS);
+  const [scenarios, setScenarios] = useState(SAMPLE_SCENARIOS);
+  const [nodePositions, setNodePositions] = useState({});
+  const [connections, setConnections] = useState(() => seedConnections(SAMPLE_SCENARIOS));
+  const connectionsRef = useRef(connections);
+  connectionsRef.current = connections;
   const [projects, setProjects] = useState(SAMPLE_PROJECTS);
   const [activeProjectId, setActiveProjectId] = useState(null);
   const [activeScreen, setActiveScreen] = useState("inbox");
@@ -161,6 +175,68 @@ export function useAppState() {
     );
   }, []);
 
+  const addScenario = useCallback((fields) => {
+    const newScenario = {
+      id: uuid(),
+      name: fields.name,
+      archetype: fields.archetype || "Continuation",
+      horizon: fields.horizon || "H2",
+      narrative: fields.narrative || "",
+      cluster_ids: fields.cluster_ids || [],
+      project_id: fields.project_id || null,
+      created_at: new Date().toISOString().slice(0, 10),
+    };
+    setScenarios((prev) => [...prev, newScenario]);
+    return newScenario;
+  }, []);
+
+  const updateScenario = useCallback((id, fields) => {
+    setScenarios((prev) => prev.map((s) => s.id === id ? { ...s, ...fields } : s));
+  }, []);
+
+  const updateNodePosition = useCallback((nodeId, pos) => {
+    setNodePositions((prev) => ({ ...prev, [nodeId]: pos }));
+  }, []);
+
+  const addConnection = useCallback((fields) => {
+    const exists = connectionsRef.current.some(
+      (c) => c.clusterId === fields.clusterId && c.scenarioId === fields.scenarioId
+    );
+    if (exists) return null;
+    const newConn = {
+      id: uuid(),
+      clusterId: fields.clusterId,
+      scenarioId: fields.scenarioId,
+      relationshipType: fields.relationshipType || "Drives",
+    };
+    setConnections((prev) => [...prev, newConn]);
+    setScenarios((prev) =>
+      prev.map((s) =>
+        s.id === fields.scenarioId && !s.cluster_ids.includes(fields.clusterId)
+          ? { ...s, cluster_ids: [...s.cluster_ids, fields.clusterId] }
+          : s
+      )
+    );
+    return newConn;
+  }, []);
+
+  const updateConnection = useCallback((id, fields) => {
+    setConnections((prev) => prev.map((c) => (c.id === id ? { ...c, ...fields } : c)));
+  }, []);
+
+  const removeConnection = useCallback((id) => {
+    const conn = connectionsRef.current.find((c) => c.id === id);
+    if (!conn) return;
+    setConnections((prev) => prev.filter((c) => c.id !== id));
+    setScenarios((prev) =>
+      prev.map((s) =>
+        s.id === conn.scenarioId
+          ? { ...s, cluster_ids: s.cluster_ids.filter((cid) => cid !== conn.clusterId) }
+          : s
+      )
+    );
+  }, []);
+
   const saveInputsToProject = useCallback((ids, projectId) => {
     const idSet = new Set(ids);
     setInputs((prev) =>
@@ -173,6 +249,8 @@ export function useAppState() {
     inputs,
     clusters,
     scenarios,
+    nodePositions,
+    connections,
     projects,
     activeProjectId,
     activeScreen,
@@ -202,6 +280,12 @@ export function useAppState() {
     dismissInput,
     saveInputToProject,
     saveInputsToProject,
+    addScenario,
+    updateScenario,
+    updateNodePosition,
+    addConnection,
+    updateConnection,
+    removeConnection,
     showToast,
   };
 }

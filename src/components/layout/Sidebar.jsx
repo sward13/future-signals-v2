@@ -16,13 +16,14 @@ const WORKSPACE_ITEMS = [
   { icon: "◆", label: "Systems",    screen: "scenarios" },
 ];
 
-export function Sidebar({ activeScreen, setActiveScreen, user, inputCount = 0, projectCount = 0, activeProject = null, openProjectModal, clusterCount = 0 }) {
+export function Sidebar({ activeScreen, setActiveScreen, user, inputCount = 0, projectCount = 0, activeProject = null, openProjectModal, clusterCount = 0, scenarioCount = 0 }) {
   const inProject = activeScreen === "project" && activeProject;
 
   const counts = {
     inbox: inputCount || null,
     projects: projectCount || null,
     clustering: clusterCount || null,
+    scenarios: scenarioCount || null,
   };
 
   const NavButton = ({ icon, label, screen, isActive, count, indented = false }) => (
