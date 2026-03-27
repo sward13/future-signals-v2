@@ -7,6 +7,8 @@
 import { useState, useRef, useEffect } from "react";
 import { c, btnP, btnSm, btnSec, btnG, inp, ta, fl, fh } from "../../styles/tokens.js";
 import { SubtypeTag, HorizTag, ArchTag } from "../shared/Tag.jsx";
+import { ProjectPicker } from "../shared/ProjectPicker.jsx";
+import { ScenarioDrawer } from "../scenarios/ScenarioDrawer.jsx";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -20,18 +22,6 @@ const COL_HEADERS = [
   { h: "H3", label: "H3 · Long-term",   col: c.amber700, bg: c.amber50,  border: c.amberBorder },
 ];
 
-const ARCHETYPES = [
-  { key: "Continuation",   desc: "Trends extend; the future broadly resembles the present." },
-  { key: "Collapse",       desc: "A critical system breaks down; discontinuity is sharp." },
-  { key: "Constraint",     desc: "Growth hits hard limits; forced adaptation without collapse." },
-  { key: "Transformation", desc: "Fundamental structural shift opens new possibilities." },
-];
-
-const HORIZON_COLORS = {
-  H1: { col: c.green700, bg: c.green50,  border: c.greenBorder },
-  H2: { col: c.blue700,  bg: c.blue50,   border: c.blueBorder  },
-  H3: { col: c.amber700, bg: c.amber50,  border: c.amberBorder },
-};
 
 const REL_TYPES = ["Drives", "Enables", "Accelerates", "Constrains", "Feedback Loop"];
 
@@ -47,10 +37,10 @@ const REL_COLORS = {
 
 export default function ScenarioCanvas({ appState }) {
   const {
-    activeProjectId, clusters, scenarios, inputs, projects, connections,
+    activeProjectId, setActiveProjectId, clusters, scenarios, inputs, projects, connections,
     nodePositions, updateNodePosition, addScenario, updateScenario,
     addConnection, updateConnection, removeConnection,
-    openClusterDetail, setActiveScreen, showToast,
+    openClusterDetail, setActiveScreen, openProjectModal, showToast,
   } = appState;
 
   const project       = projects.find((p) => p.id === activeProjectId) || null;
@@ -245,6 +235,22 @@ export default function ScenarioCanvas({ appState }) {
 
   const isEmpty = projClusters.length === 0;
 
+  // ── No active project: show picker ───────────────────────────────────────
+  if (!project) {
+    return (
+      <ProjectPicker
+        heading="Systems"
+        description="Select a project to map its clusters into scenarios."
+        projects={projects}
+        inputs={inputs}
+        clusters={clusters}
+        scenarios={scenarios}
+        onSelect={(id) => setActiveProjectId(id)}
+        onNewProject={openProjectModal}
+      />
+    );
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div style={{ display: "flex", height: "100%", overflow: "hidden", background: c.bg }}>
@@ -293,11 +299,7 @@ export default function ScenarioCanvas({ appState }) {
               </button>
             ))}
           </div>
-          <button
-            onClick={() => setDrawerOpen(true)}
-            disabled={isEmpty}
-            style={{ ...btnSm, opacity: isEmpty ? 0.4 : 1, cursor: isEmpty ? "default" : "pointer" }}
-          >
+          <button onClick={() => setDrawerOpen(true)} style={btnSm}>
             + Add scenario
           </button>
         </div>
@@ -545,7 +547,7 @@ export default function ScenarioCanvas({ appState }) {
 
       {/* ── Add Scenario Drawer ───────────────────────────────────────── */}
       {drawerOpen && (
-        <AddScenarioDrawer
+        <ScenarioDrawer
           projectClusters={projClusters}
           onClose={() => setDrawerOpen(false)}
           onSave={handleAddScenario}
@@ -1155,167 +1157,3 @@ function EmptyCanvas({ onGoClustering }) {
   );
 }
 
-// ── Add Scenario Drawer ───────────────────────────────────────────────────────
-
-function AddScenarioDrawer({ projectClusters, onClose, onSave }) {
-  const [name,       setName]       = useState("");
-  const [archetype,  setArchetype]  = useState("Continuation");
-  const [horizon,    setHorizon]    = useState("H2");
-  const [clusterIds, setClusterIds] = useState([]);
-  const [narrative,  setNarrative]  = useState("");
-
-  const toggleCluster = (id) =>
-    setClusterIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
-
-  return (
-    <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.28)", zIndex: 300 }} />
-      <div style={{
-        position: "fixed", top: 0, right: 0, bottom: 0, width: 380,
-        background: c.white, borderLeft: `1px solid ${c.border}`,
-        zIndex: 301, display: "flex", flexDirection: "column",
-        boxShadow: "-8px 0 32px rgba(0,0,0,0.1)",
-        animation: "drawerSlideIn 0.25s ease",
-      }}>
-        {/* Header */}
-        <div style={{ padding: "18px 22px 14px", borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ flex: 1, fontSize: 16, fontWeight: 500, color: c.ink }}>New Scenario</div>
-            <button onClick={onClose} style={{ ...btnG, padding: "4px 8px", fontSize: 16 }}>×</button>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "18px 22px" }}>
-          {/* Name */}
-          <div style={{ marginBottom: 18 }}>
-            <label style={fl}>Name <span style={{ color: c.red800 }}>*</span></label>
-            <input
-              style={inp} autoFocus
-              placeholder="e.g. The Governance Chasm"
-              value={name} onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-
-          {/* Archetype */}
-          <div style={{ marginBottom: 18 }}>
-            <label style={fl}>Archetype</label>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
-              {ARCHETYPES.map(({ key, desc }) => {
-                const isSel = archetype === key;
-                return (
-                  <button key={key} onClick={() => setArchetype(key)} style={{
-                    padding: "10px 11px", borderRadius: 8, textAlign: "left",
-                    border: `1.5px solid ${isSel ? c.ink : c.border}`,
-                    background: isSel ? c.ink : c.white,
-                    cursor: "pointer", fontFamily: "inherit",
-                  }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: isSel ? c.white : c.ink, marginBottom: 3 }}>{key}</div>
-                    <div style={{ fontSize: 10, color: isSel ? "rgba(255,255,255,0.6)" : c.hint, lineHeight: 1.4 }}>{desc}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Horizon */}
-          <div style={{ marginBottom: 18 }}>
-            <label style={fl}>Horizon</label>
-            <div style={{ display: "flex", gap: 7 }}>
-              {["H1", "H2", "H3"].map((h) => {
-                const hc = HORIZON_COLORS[h];
-                const isSel = horizon === h;
-                return (
-                  <button key={h} onClick={() => setHorizon(h)} style={{
-                    padding: "6px 18px", borderRadius: 20,
-                    border: `1.5px solid ${isSel ? hc.col : c.border}`,
-                    background: isSel ? hc.bg : "transparent",
-                    color: isSel ? hc.col : c.muted,
-                    fontSize: 12, fontWeight: isSel ? 600 : 400,
-                    cursor: "pointer", fontFamily: "inherit",
-                  }}>{h}</button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Link clusters */}
-          {projectClusters.length > 0 && (
-            <div style={{ marginBottom: 18 }}>
-              <label style={fl}>Link clusters</label>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                {projectClusters.map((cl) => {
-                  const checked = clusterIds.includes(cl.id);
-                  return (
-                    <button key={cl.id} onClick={() => toggleCluster(cl.id)} style={{
-                      display: "flex", alignItems: "center", gap: 9,
-                      padding: "7px 10px", borderRadius: 6,
-                      border: `1px solid ${checked ? c.borderMid : c.border}`,
-                      background: checked ? "rgba(0,0,0,0.02)" : c.white,
-                      cursor: "pointer", fontFamily: "inherit", textAlign: "left",
-                    }}>
-                      <SmallCheckbox checked={checked} />
-                      <span style={{ flex: 1, fontSize: 11, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {cl.name}
-                      </span>
-                      <SubtypeTag sub={cl.subtype} />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Narrative seed */}
-          <div>
-            <label style={fl}>
-              Narrative seed{" "}
-              <span style={{ fontSize: 10, color: c.hint, fontWeight: 400, fontStyle: "italic" }}>(optional)</span>
-            </label>
-            <textarea
-              style={{ ...ta, minHeight: 80 }}
-              placeholder="A brief opening framing for this scenario…"
-              value={narrative} onChange={(e) => setNarrative(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div style={{ padding: "12px 22px", borderTop: `1px solid ${c.border}`, display: "flex", gap: 9, flexShrink: 0 }}>
-          <button onClick={onClose} style={btnSec}>Cancel</button>
-          <button
-            onClick={() => { if (name.trim()) onSave({ name: name.trim(), archetype, horizon, cluster_ids: clusterIds, narrative }); }}
-            disabled={!name.trim()}
-            style={{ ...btnP, flex: 1, opacity: name.trim() ? 1 : 0.35, cursor: name.trim() ? "pointer" : "default" }}
-          >
-            Create scenario
-          </button>
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes drawerSlideIn {
-          from { transform: translateX(100%); opacity: 0; }
-          to   { transform: translateX(0);    opacity: 1; }
-        }
-      `}</style>
-    </>
-  );
-}
-
-function SmallCheckbox({ checked }) {
-  return (
-    <div style={{
-      width: 15, height: 15, borderRadius: 3, flexShrink: 0,
-      border: `1.5px solid ${checked ? c.ink : c.borderMid}`,
-      background: checked ? c.ink : c.white,
-      display: "flex", alignItems: "center", justifyContent: "center",
-    }}>
-      {checked && (
-        <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-          <path d="M1 3L3 5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )}
-    </div>
-  );
-}

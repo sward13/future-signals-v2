@@ -1,14 +1,17 @@
 /**
  * Clustering screen — three-tab interface for grouping project inputs into clusters.
  * Tabs: Inputs | AI Suggestions | Clusters
- * Requires an active project; shows an empty state otherwise.
+ * Shows a project picker when no project is active.
+ * Inputs tab supports multi-select with bulk assign-to-cluster action bar.
  * @param {{ appState: object }} props
  */
 import { useState, useEffect, useRef } from "react";
 import { c, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { StrengthDot, HorizTag, SubtypeTag, Tag } from "../shared/Tag.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
+import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ClusterDrawer } from "../clusters/ClusterDrawer.jsx";
+import { InputDrawer } from "../inputs/InputDrawer.jsx";
 
 // ─── Likelihood tag ────────────────────────────────────────────────────────────
 
@@ -96,8 +99,6 @@ const CONFIDENCE_LEVELS = [88, 74, 63];
 
 function generateSuggestions(projectInputs) {
   if (projectInputs.length < 2) return [];
-
-  // Group inputs by each STEEPLED tag they carry
   const groups = {};
   for (const inp of projectInputs) {
     for (const tag of (inp.steepled || [])) {
@@ -105,7 +106,6 @@ function generateSuggestions(projectInputs) {
       if (!groups[tag].some((i) => i.id === inp.id)) groups[tag].push(inp);
     }
   }
-
   return Object.entries(groups)
     .filter(([, inps]) => inps.length >= 2)
     .slice(0, 3)
@@ -122,12 +122,11 @@ function generateSuggestions(projectInputs) {
     });
 }
 
-// ─── Assign picker popover ─────────────────────────────────────────────────────
+// ─── Cluster assign popover ────────────────────────────────────────────────────
 
 function AssignPicker({ clusters, onAssign, onNewCluster, onClose }) {
   return (
     <>
-      {/* Invisible overlay to catch outside clicks */}
       <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
       <div style={{
         position: "absolute", top: "100%", right: 0, marginTop: 4,
@@ -176,33 +175,76 @@ function AssignPicker({ clusters, onAssign, onNewCluster, onClose }) {
   );
 }
 
+// ─── Inline checkbox ──────────────────────────────────────────────────────────
+
+function RowCheckbox({ checked, visible }) {
+  return (
+    <div style={{
+      width: 15, height: 15, borderRadius: 3, flexShrink: 0,
+      border: `1.5px solid ${checked ? c.ink : visible ? c.borderMid : "rgba(0,0,0,0.12)"}`,
+      background: checked ? c.ink : "transparent",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      transition: "border-color 0.15s, background 0.15s",
+      pointerEvents: "none",
+    }}>
+      {checked && (
+        <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+          <path d="M1 3L3 5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </div>
+  );
+}
+
 // ─── Input card (Inputs tab) ───────────────────────────────────────────────────
 
-function ClusteringInputCard({ input, clusters, assignedCluster, onAssign, onNewCluster, onOpenDetail }) {
+function ClusteringInputCard({ input, clusters, assignedCluster, onAssign, onNewCluster, onOpenDetail, selected, onToggleSelect, anySelected }) {
   const [pickerOpen, setPickerOpen] = useState(false);
-
+  const [hovered, setHovered] = useState(false);
   const SUBTYPE_ICONS = { signal: "◎", issue: "▲", projection: "◆", plan: "◉", obstacle: "▲", source: "◻" };
 
   return (
     <div
-      onClick={onOpenDetail}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
-        background: c.white, border: `1px solid ${c.border}`,
+        background: c.white,
+        border: `1px solid ${selected ? c.borderMid : c.border}`,
         borderRadius: 10, padding: "14px 16px",
-        cursor: "pointer",
+        transition: "border-color 0.1s",
       }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+        {/* Checkbox */}
+        <div
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(input.id); }}
+          style={{ paddingTop: 2, flexShrink: 0, cursor: "pointer" }}
+        >
+          <RowCheckbox checked={selected} visible={anySelected || hovered} />
+        </div>
+
+        {/* Subtype icon */}
         <span style={{ fontSize: 11, color: c.hint, marginTop: 2, flexShrink: 0 }}>
           {SUBTYPE_ICONS[input.subtype] || "◎"}
         </span>
+
+        {/* Content */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 4 }}>{input.name}</div>
+          {/* Title — click toggles selection */}
+          <div
+            onClick={(e) => { e.stopPropagation(); onToggleSelect(input.id); }}
+            style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 4, cursor: "pointer" }}
+          >
+            {input.name}
+          </div>
           {input.description && (
-            <div style={{
-              fontSize: 11, color: c.muted, lineHeight: 1.5, marginBottom: 8,
-              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-            }}>
+            <div
+              onClick={onOpenDetail}
+              style={{
+                fontSize: 11, color: c.muted, lineHeight: 1.5, marginBottom: 8, cursor: "pointer",
+                display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+              }}
+            >
               {input.description}
             </div>
           )}
@@ -222,28 +264,32 @@ function ClusteringInputCard({ input, clusters, assignedCluster, onAssign, onNew
             </div>
           )}
         </div>
-        <div style={{ position: "relative", flexShrink: 0 }}>
-          <button
-            onClick={(e) => { e.stopPropagation(); setPickerOpen((s) => !s); }}
-            style={{
-              ...btnSm,
-              background: assignedCluster ? c.surfaceAlt : c.ink,
-              color: assignedCluster ? c.muted : c.white,
-              border: assignedCluster ? `1px solid ${c.border}` : "none",
-              fontSize: 11, whiteSpace: "nowrap",
-            }}
-          >
-            {assignedCluster ? "Reassign →" : "Assign to cluster →"}
-          </button>
-          {pickerOpen && (
-            <AssignPicker
-              clusters={clusters}
-              onAssign={(cl) => { onAssign(input.id, cl); setPickerOpen(false); }}
-              onNewCluster={() => { setPickerOpen(false); onNewCluster(); }}
-              onClose={() => setPickerOpen(false)}
-            />
-          )}
-        </div>
+
+        {/* Per-card assign button — hidden when in bulk-select mode */}
+        {!anySelected && (
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setPickerOpen((s) => !s); }}
+              style={{
+                ...btnSm,
+                background: assignedCluster ? c.surfaceAlt : c.ink,
+                color: assignedCluster ? c.muted : c.white,
+                border: assignedCluster ? `1px solid ${c.border}` : "none",
+                fontSize: 11, whiteSpace: "nowrap",
+              }}
+            >
+              {assignedCluster ? "Reassign →" : "Assign to cluster →"}
+            </button>
+            {pickerOpen && (
+              <AssignPicker
+                clusters={clusters}
+                onAssign={(cl) => { onAssign(input.id, cl); setPickerOpen(false); }}
+                onNewCluster={() => { setPickerOpen(false); onNewCluster(); }}
+                onClose={() => setPickerOpen(false)}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -274,7 +320,6 @@ function SuggestionCard({ suggestion, inputs, onAccept, onDismiss }) {
       background: c.white, border: `1px solid ${c.border}`,
       borderRadius: 12, overflow: "hidden",
     }}>
-      {/* Card header */}
       <div style={{
         padding: "14px 18px", borderBottom: `1px solid ${c.border}`,
         display: "flex", alignItems: "center", gap: 10,
@@ -310,16 +355,12 @@ function SuggestionCard({ suggestion, inputs, onAccept, onDismiss }) {
           </div>
         </div>
       </div>
-
-      {/* Explanation */}
       <div style={{ padding: "14px 18px", borderBottom: `1px solid ${c.border}` }}>
         <div style={{ fontSize: 11, color: c.hint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
           Why these inputs belong together
         </div>
         <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.65 }}>{suggestion.explanation}</div>
       </div>
-
-      {/* Input list */}
       <div style={{ padding: "12px 18px", borderBottom: `1px solid ${c.border}` }}>
         <div style={{ fontSize: 11, color: c.hint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
           Inputs grouped ({sugInputs.length})
@@ -337,25 +378,14 @@ function SuggestionCard({ suggestion, inputs, onAccept, onDismiss }) {
           )}
         </div>
       </div>
-
-      {/* Actions */}
       <div style={{ padding: "12px 18px", display: "flex", gap: 8 }}>
-        <button
-          onClick={() => onAccept({ ...suggestion, name })}
-          style={{ ...btnSm, fontSize: 11 }}
-        >
+        <button onClick={() => onAccept({ ...suggestion, name })} style={{ ...btnSm, fontSize: 11 }}>
           Accept as cluster
         </button>
-        <button
-          onClick={() => setEditingName(true)}
-          style={{ ...btnSec, padding: "6px 14px", fontSize: 11 }}
-        >
+        <button onClick={() => setEditingName(true)} style={{ ...btnSec, padding: "6px 14px", fontSize: 11 }}>
           Edit name
         </button>
-        <button
-          onClick={onDismiss}
-          style={{ ...btnG, fontSize: 11, marginLeft: "auto" }}
-        >
+        <button onClick={onDismiss} style={{ ...btnG, fontSize: 11, marginLeft: "auto" }}>
           Dismiss
         </button>
       </div>
@@ -363,24 +393,19 @@ function SuggestionCard({ suggestion, inputs, onAccept, onDismiss }) {
   );
 }
 
-// ─── Cluster card (click to open detail drawer) ───────────────────────────────
+// ─── Cluster card ──────────────────────────────────────────────────────────────
 
 function ClusterCard({ cluster, inputs, onClick }) {
   const clusterInputs = inputs.filter((inp) => cluster.input_ids?.includes(inp.id));
-
   return (
     <div
       onClick={onClick}
       style={{
         background: c.white, border: `1px solid ${c.border}`,
-        borderRadius: 11, overflow: "hidden", transition: "border-color 0.15s",
-        cursor: "pointer",
+        borderRadius: 11, overflow: "hidden", cursor: "pointer",
       }}
     >
-      <div style={{
-        padding: "14px 18px",
-        display: "flex", alignItems: "flex-start", gap: 10,
-      }}>
+      <div style={{ padding: "14px 18px", display: "flex", alignItems: "flex-start", gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 7, marginBottom: 6 }}>
             <span style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>{cluster.name}</span>
@@ -410,23 +435,28 @@ function ClusterCard({ cluster, inputs, onClick }) {
 
 export default function Clustering({ appState }) {
   const {
-    activeProjectId, projects, inputs, clusters,
-    addCluster, assignInputToCluster, removeInputFromCluster,
+    activeProjectId, setActiveProjectId, projects, inputs, clusters,
+    addCluster, addInput,
+    assignInputToCluster,
     showToast, setActiveScreen, openProjectModal,
-    openInputDetail, openClusterDetail,
+    openInputDetail, openClusterDetail, scenarios,
   } = appState;
 
-  const [activeTab, setActiveTab] = useState("inputs");
-  const [newClusterDrawerOpen, setNewClusterDrawerOpen] = useState(false);
+  const [activeTab,             setActiveTab]             = useState("inputs");
+  const [newClusterDrawerOpen,  setNewClusterDrawerOpen]  = useState(false);
+  const [inputDrawerOpen,       setInputDrawerOpen]       = useState(false);
+  const [selectedInputIds,      setSelectedInputIds]      = useState([]);
+  const [assignPickerOpen,      setAssignPickerOpen]      = useState(false);
+  const [preselectedForCluster, setPreselectedForCluster] = useState([]);
 
-  const project = activeProjectId ? projects.find((p) => p.id === activeProjectId) : null;
-  const projectInputs = project ? inputs.filter((i) => i.project_id === project.id) : [];
+  const project         = activeProjectId ? projects.find((p) => p.id === activeProjectId) : null;
+  const projectInputs   = project ? inputs.filter((i)  => i.project_id  === project.id) : [];
   const projectClusters = project ? clusters.filter((cl) => cl.project_id === project.id) : [];
 
   // AI suggestions: regenerate when project changes
-  const [suggestions, setSuggestions] = useState([]);
+  const [suggestions,  setSuggestions]  = useState([]);
   const [dismissedIds, setDismissedIds] = useState(new Set());
-  const [acceptedIds, setAcceptedIds] = useState(new Set());
+  const [acceptedIds,  setAcceptedIds]  = useState(new Set());
 
   useEffect(() => {
     setSuggestions(generateSuggestions(projectInputs));
@@ -435,17 +465,45 @@ export default function Clustering({ appState }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeProjectId]);
 
+  // Clear selection when switching away from inputs tab
+  useEffect(() => {
+    if (activeTab !== "inputs") setSelectedInputIds([]);
+  }, [activeTab]);
+
   const visibleSuggestions = suggestions.filter(
     (s) => !dismissedIds.has(s.id) && !acceptedIds.has(s.id)
   );
 
-  // Find which cluster an input is assigned to
   const getInputCluster = (inputId) =>
     projectClusters.find((cl) => cl.input_ids?.includes(inputId)) || null;
 
+  // Single-input assign (per-card button)
   const handleAssignInput = (inputId, cluster) => {
     assignInputToCluster(inputId, cluster.id);
     showToast(`Input assigned to "${cluster.name}"`);
+  };
+
+  // Bulk assign selected inputs to a cluster
+  const handleBulkAssign = (cluster) => {
+    selectedInputIds.forEach((id) => assignInputToCluster(id, cluster.id));
+    const n = selectedInputIds.length;
+    showToast(`${n} input${n !== 1 ? "s" : ""} assigned to "${cluster.name}"`);
+    setSelectedInputIds([]);
+    setAssignPickerOpen(false);
+  };
+
+  // Open new cluster drawer with selected inputs pre-checked
+  const handleNewClusterFromSelection = () => {
+    setPreselectedForCluster([...selectedInputIds]);
+    setSelectedInputIds([]);
+    setAssignPickerOpen(false);
+    setNewClusterDrawerOpen(true);
+  };
+
+  const toggleSelectInput = (id) => {
+    setSelectedInputIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   };
 
   const handleAcceptSuggestion = (sug) => {
@@ -463,35 +521,41 @@ export default function Clustering({ appState }) {
     setActiveTab("clusters");
   };
 
-  const handleDismissSuggestion = (sugId) => {
-    setDismissedIds((prev) => new Set([...prev, sugId]));
+  const handleCreateCluster = (fields) => {
+    addCluster({ ...fields, project_id: project.id });
+    setNewClusterDrawerOpen(false);
+    setPreselectedForCluster([]);
+    const n = (fields.input_ids || []).length;
+    showToast(n > 0 ? `Cluster created with ${n} input${n !== 1 ? "s" : ""}` : "Cluster created — no inputs linked yet");
   };
 
-  const handleCreateCluster = (fields) => {
-    const newCluster = addCluster({ ...fields, project_id: project.id });
-    setNewClusterDrawerOpen(false);
-    showToast(`Cluster "${newCluster.name}" created`);
+  const handleAddInput = (fields) => {
+    addInput({ ...fields, project_id: project.id });
+    showToast("Input added to project");
+    setInputDrawerOpen(false);
   };
 
   const tabs = [
-    { id: "inputs",      label: "Inputs",         count: projectInputs.length },
-    { id: "suggestions", label: "AI Suggestions",  count: visibleSuggestions.length || null },
-    { id: "clusters",    label: "Clusters",        count: projectClusters.length },
+    { id: "inputs",      label: "Inputs",        count: projectInputs.length },
+    { id: "suggestions", label: "AI Suggestions", count: visibleSuggestions.length || null },
+    { id: "clusters",    label: "Clusters",       count: projectClusters.length },
   ];
 
-  // ── No active project ──────────────────────────────────────────────
+  const anySelected = selectedInputIds.length > 0;
+
+  // ── No active project: show picker ────────────────────────────────
   if (!project) {
     return (
-      <div style={{ padding: "28px 32px", background: c.bg, minHeight: "100%" }}>
-        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 24 }}>Clustering</div>
-        <EmptyState
-          icon="◈"
-          title="No project selected"
-          body="Open a project to start clustering its inputs into themes and drivers."
-          ctaLabel="Go to Projects"
-          onCta={() => setActiveScreen("projects")}
-        />
-      </div>
+      <ProjectPicker
+        heading="Clustering"
+        description="Select a project to cluster its inputs into themes and drivers."
+        projects={projects}
+        inputs={inputs}
+        clusters={clusters}
+        scenarios={scenarios}
+        onSelect={(id) => setActiveProjectId(id)}
+        onNewProject={openProjectModal}
+      />
     );
   }
 
@@ -499,7 +563,7 @@ export default function Clustering({ appState }) {
     <>
       <div style={{ padding: "24px 32px", background: c.bg, minHeight: "100%", overflowY: "auto" }}>
 
-        {/* ── Header ──────────────────────────────────────────── */}
+        {/* ── Header ────────────────────────────────────────── */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
           <div>
             <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
@@ -507,11 +571,9 @@ export default function Clustering({ appState }) {
             </div>
             <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Clustering</div>
           </div>
-          {activeTab === "clusters" && (
-            <button onClick={() => setNewClusterDrawerOpen(true)} style={btnP}>
-              + New cluster
-            </button>
-          )}
+          <button onClick={() => setNewClusterDrawerOpen(true)} style={btnP}>
+            + New cluster
+          </button>
         </div>
 
         {/* Context strip */}
@@ -519,19 +581,72 @@ export default function Clustering({ appState }) {
           {projectInputs.length} inputs · {projectClusters.length} clusters
         </div>
 
-        {/* ── Tabs ────────────────────────────────────────────── */}
+        {/* ── Tabs ──────────────────────────────────────────── */}
         <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
-        {/* ── Inputs tab ──────────────────────────────────────── */}
+        {/* ── Inputs tab ────────────────────────────────────── */}
         {activeTab === "inputs" && (
           <>
+            {/* Tab header */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              marginBottom: 14,
+            }}>
+              <div style={{ fontSize: 12, color: c.muted }}>
+                {projectInputs.length > 0
+                  ? `${projectInputs.length} input${projectInputs.length !== 1 ? "s" : ""} in this project`
+                  : "No inputs yet"}
+              </div>
+              <button onClick={() => setInputDrawerOpen(true)} style={{ ...btnSm, fontSize: 11 }}>
+                + Add input
+              </button>
+            </div>
+
+            {/* Bulk selection action bar */}
+            {anySelected && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "10px 14px",
+                background: c.white,
+                border: `1px solid ${c.borderMid}`,
+                borderRadius: 9, marginBottom: 12,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+              }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: c.ink, flex: 1 }}>
+                  {selectedInputIds.length} input{selectedInputIds.length !== 1 ? "s" : ""} selected
+                </span>
+                <div style={{ position: "relative" }}>
+                  <button
+                    onClick={() => setAssignPickerOpen((s) => !s)}
+                    style={{ ...btnSm, fontSize: 11 }}
+                  >
+                    Assign to cluster →
+                  </button>
+                  {assignPickerOpen && (
+                    <AssignPicker
+                      clusters={projectClusters}
+                      onAssign={handleBulkAssign}
+                      onNewCluster={handleNewClusterFromSelection}
+                      onClose={() => setAssignPickerOpen(false)}
+                    />
+                  )}
+                </div>
+                <button
+                  onClick={() => setSelectedInputIds([])}
+                  style={{ ...btnG, fontSize: 11, color: c.muted }}
+                >
+                  Clear selection
+                </button>
+              </div>
+            )}
+
             {projectInputs.length === 0 ? (
               <EmptyState
                 icon="◎"
                 title="No inputs in this project"
-                body="Add inputs to this project before clustering them."
-                ctaLabel="Open project"
-                onCta={() => setActiveScreen("project")}
+                body="Create a new input directly, or head to the Inbox to pull in existing signals."
+                ctaLabel="+ Add input"
+                onCta={() => setInputDrawerOpen(true)}
               />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -544,6 +659,9 @@ export default function Clustering({ appState }) {
                     onAssign={handleAssignInput}
                     onNewCluster={() => setNewClusterDrawerOpen(true)}
                     onOpenDetail={() => openInputDetail(inp.id)}
+                    selected={selectedInputIds.includes(inp.id)}
+                    onToggleSelect={toggleSelectInput}
+                    anySelected={anySelected}
                   />
                 ))}
               </div>
@@ -551,7 +669,7 @@ export default function Clustering({ appState }) {
           </>
         )}
 
-        {/* ── AI Suggestions tab ──────────────────────────────── */}
+        {/* ── AI Suggestions tab ────────────────────────────── */}
         {activeTab === "suggestions" && (
           <>
             {projectInputs.length < 2 ? (
@@ -559,8 +677,8 @@ export default function Clustering({ appState }) {
                 icon="◈"
                 title="Not enough inputs"
                 body="Add at least 2 inputs to this project to generate cluster suggestions."
-                ctaLabel="Open project"
-                onCta={() => setActiveScreen("project")}
+                ctaLabel="+ Add input"
+                onCta={() => { setActiveTab("inputs"); setInputDrawerOpen(true); }}
               />
             ) : visibleSuggestions.length === 0 ? (
               <EmptyState
@@ -584,7 +702,7 @@ export default function Clustering({ appState }) {
                       suggestion={sug}
                       inputs={projectInputs}
                       onAccept={handleAcceptSuggestion}
-                      onDismiss={() => handleDismissSuggestion(sug.id)}
+                      onDismiss={() => setDismissedIds((prev) => new Set([...prev, sug.id]))}
                     />
                   ))}
                 </div>
@@ -593,7 +711,7 @@ export default function Clustering({ appState }) {
           </>
         )}
 
-        {/* ── Clusters tab ────────────────────────────────────── */}
+        {/* ── Clusters tab ──────────────────────────────────── */}
         {activeTab === "clusters" && (
           <>
             {projectClusters.length === 0 ? (
@@ -626,9 +744,19 @@ export default function Clustering({ appState }) {
 
       <ClusterDrawer
         open={newClusterDrawerOpen}
-        onClose={() => setNewClusterDrawerOpen(false)}
+        onClose={() => { setNewClusterDrawerOpen(false); setPreselectedForCluster([]); }}
         onSave={handleCreateCluster}
         projectId={project.id}
+        projectInputs={projectInputs}
+        preselectedInputIds={preselectedForCluster}
+      />
+
+      <InputDrawer
+        open={inputDrawerOpen}
+        onClose={() => setInputDrawerOpen(false)}
+        onSave={handleAddInput}
+        projects={projects}
+        defaultProjectId={project.id}
       />
     </>
   );

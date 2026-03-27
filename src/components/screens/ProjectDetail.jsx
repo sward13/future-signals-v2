@@ -8,6 +8,8 @@ import { StrengthDot, HorizTag, SubtypeTag } from "../shared/Tag.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { AddFromInboxModal } from "../inputs/AddFromInboxModal.jsx";
+import { ClusterDrawer } from "../clusters/ClusterDrawer.jsx";
+import { ScenarioDrawer } from "../scenarios/ScenarioDrawer.jsx";
 
 // ─── Read-only horizon bar ─────────────────────────────────────────────────────
 
@@ -104,7 +106,7 @@ function InputCard({ input, onClick }) {
 
 // ─── Right-column summary card ─────────────────────────────────────────────────
 
-function SummaryCard({ icon, title, count, countLabel, emptyBody, ctaLabel, onCta, children }) {
+function SummaryCard({ icon, title, count, countLabel, emptyBody, ctaLabel, onCta, addButton, children }) {
   return (
     <div style={{
       background: c.white,
@@ -116,24 +118,25 @@ function SummaryCard({ icon, title, count, countLabel, emptyBody, ctaLabel, onCt
       <div style={{
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between",
-        padding: "12px 16px",
+        gap: 8,
+        padding: "11px 16px",
         borderBottom: count > 0 ? `1px solid ${c.border}` : "none",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, flex: 1, minWidth: 0 }}>
           <span style={{ fontSize: 12, color: c.hint }}>{icon}</span>
           <span style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{title}</span>
+          <span style={{
+            fontSize: 10,
+            padding: "2px 7px",
+            borderRadius: 8,
+            background: count > 0 ? c.ink : "rgba(0,0,0,0.06)",
+            color: count > 0 ? c.white : c.hint,
+            fontWeight: 500,
+          }}>
+            {count} {countLabel}
+          </span>
         </div>
-        <span style={{
-          fontSize: 10,
-          padding: "2px 7px",
-          borderRadius: 8,
-          background: count > 0 ? c.ink : "rgba(0,0,0,0.06)",
-          color: count > 0 ? c.white : c.hint,
-          fontWeight: 500,
-        }}>
-          {count} {countLabel}
-        </span>
+        {addButton}
       </div>
       {count > 0 ? (
         <div style={{ padding: "10px 14px" }}>
@@ -166,10 +169,13 @@ export default function ProjectDetail({ appState }) {
     activeProjectId, projects, inputs, clusters, scenarios,
     addInput, saveInputsToProject, showToast, setActiveScreen,
     openInputDetail, openClusterDetail,
+    addCluster, addScenario, addConnection,
   } = appState;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [inboxModalOpen, setInboxModalOpen] = useState(false);
+  const [clusterDrawerOpen, setClusterDrawerOpen] = useState(false);
+  const [scenarioDrawerOpen, setScenarioDrawerOpen] = useState(false);
 
   const project = projects.find((p) => p.id === activeProjectId);
 
@@ -200,6 +206,23 @@ export default function ProjectDetail({ appState }) {
     saveInputsToProject(ids, project.id);
     setInboxModalOpen(false);
     showToast(`${ids.length} input${ids.length !== 1 ? "s" : ""} added to "${project.name}"`);
+  };
+
+  const handleCreateCluster = (fields) => {
+    addCluster({ ...fields, project_id: project.id });
+    const n = (fields.input_ids || []).length;
+    showToast(n > 0 ? `Cluster created with ${n} input${n !== 1 ? "s" : ""}` : "Cluster created — no inputs linked yet");
+    setClusterDrawerOpen(false);
+  };
+
+  const handleCreateScenario = (fields) => {
+    const linkedClusterIds = fields.cluster_ids || [];
+    const newScenario = addScenario({ ...fields, project_id: project.id });
+    if (newScenario) {
+      linkedClusterIds.forEach((cid) => addConnection({ clusterId: cid, scenarioId: newScenario.id, relationshipType: "Drives" }));
+    }
+    showToast("Scenario added to Systems");
+    setScenarioDrawerOpen(false);
   };
 
   return (
@@ -367,6 +390,14 @@ export default function ProjectDetail({ appState }) {
               }
               ctaLabel={projectInputs.length >= 3 ? "Go to Clustering →" : undefined}
               onCta={() => setActiveScreen("clustering")}
+              addButton={
+                <button
+                  onClick={() => setClusterDrawerOpen(true)}
+                  style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                >
+                  + New cluster
+                </button>
+              }
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                 {projectClusters.map((cl) => (
@@ -396,6 +427,14 @@ export default function ProjectDetail({ appState }) {
               emptyBody="Systems are built from clusters. Complete your clustering step first."
               ctaLabel={projectClusters.length > 0 ? "Go to Systems →" : undefined}
               onCta={() => setActiveScreen("scenarios")}
+              addButton={
+                <button
+                  onClick={() => setScenarioDrawerOpen(true)}
+                  style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                >
+                  + Add scenario
+                </button>
+              }
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                 {projectScenarios.map((s) => (
@@ -469,6 +508,24 @@ export default function ProjectDetail({ appState }) {
         projectName={project.name}
         onCreateNew={() => { setInboxModalOpen(false); setDrawerOpen(true); }}
       />
+
+      {/* Cluster drawer */}
+      <ClusterDrawer
+        open={clusterDrawerOpen}
+        onClose={() => setClusterDrawerOpen(false)}
+        onSave={handleCreateCluster}
+        projectId={project.id}
+        projectInputs={projectInputs}
+      />
+
+      {/* Scenario drawer */}
+      {scenarioDrawerOpen && (
+        <ScenarioDrawer
+          projectClusters={projectClusters}
+          onClose={() => setScenarioDrawerOpen(false)}
+          onSave={handleCreateScenario}
+        />
+      )}
     </>
   );
 }

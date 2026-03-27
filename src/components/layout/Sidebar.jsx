@@ -17,7 +17,7 @@ const WORKSPACE_ITEMS = [
 ];
 
 export function Sidebar({ activeScreen, setActiveScreen, user, inputCount = 0, projectCount = 0, activeProject = null, openProjectModal, clusterCount = 0, scenarioCount = 0 }) {
-  const inProject = activeScreen === "project" && activeProject;
+  const inProject = !!activeProject;
 
   const counts = {
     inbox: inputCount || null,

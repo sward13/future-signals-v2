@@ -1,10 +1,11 @@
 /**
  * ClusterDrawer — slide-over drawer for creating a new cluster.
- * Fields: name (required), subtype (3-card selector), horizon (pill), likelihood (pill), description.
- * @param {{ open: boolean, onClose: () => void, onSave: (fields: object) => void, projectId: string }} props
+ * Fields: name (required), subtype (3-card selector), horizon (pill), likelihood (pill), description, linked inputs.
+ * @param {{ open: boolean, onClose: () => void, onSave: (fields: object) => void, projectId: string, projectInputs: object[] }} props
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { c, inp, ta, btnP, btnSec, btnG, fl, fh, badg } from "../../styles/tokens.js";
+import { StrengthDot, HorizTag, SubtypeTag } from "../shared/Tag.jsx";
 
 const SUBTYPES = [
   { id: "Trend",   label: "Trend",   desc: "A directional shift gaining momentum." },
@@ -23,17 +24,27 @@ const HORIZON_COLORS = {
   H3: [c.amber700, c.amber50, c.amberBorder],
 };
 
-export function ClusterDrawer({ open, onClose, onSave, projectId }) {
+export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs = [], preselectedInputIds = [] }) {
   const [fields, setFields] = useState(EMPTY);
   const [nameError, setNameError] = useState(false);
+  const [selectedInputIds, setSelectedInputIds] = useState([]);
 
-  const reset = () => { setFields(EMPTY); setNameError(false); };
+  // Sync pre-selected IDs whenever the drawer is opened
+  useEffect(() => {
+    if (open) setSelectedInputIds([...preselectedInputIds]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const reset = () => { setFields(EMPTY); setNameError(false); setSelectedInputIds([]); };
   const handleClose = () => { reset(); onClose(); };
   const set = (key, val) => setFields((f) => ({ ...f, [key]: val }));
 
+  const toggleInput = (id) =>
+    setSelectedInputIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+
   const handleSave = () => {
     if (!fields.name.trim()) { setNameError(true); return; }
-    onSave({ ...fields, name: fields.name.trim(), project_id: projectId });
+    onSave({ ...fields, name: fields.name.trim(), project_id: projectId, input_ids: selectedInputIds });
     reset();
   };
 
@@ -164,7 +175,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId }) {
           </div>
 
           {/* Description */}
-          <div style={{ marginBottom: 8 }}>
+          <div style={{ marginBottom: 18 }}>
             <div style={fl}>Description <span style={{ ...badg, marginLeft: 2 }}>optional</span></div>
             <div style={fh}>What does this cluster represent? What drives it?</div>
             <textarea
@@ -174,6 +185,85 @@ export function ClusterDrawer({ open, onClose, onSave, projectId }) {
               onChange={(e) => set("description", e.target.value)}
               placeholder="e.g. Diverging national frameworks create compliance complexity across jurisdictions…"
             />
+          </div>
+
+          {/* Link inputs */}
+          <div style={{ marginBottom: 8 }}>
+            <div style={fl}>Link inputs <span style={{ ...badg, marginLeft: 2 }}>optional</span></div>
+            <div style={fh}>Select the inputs that belong to this cluster.</div>
+
+            {projectInputs.length === 0 ? (
+              <div style={{
+                padding: "12px 14px",
+                background: c.surfaceAlt,
+                border: `1px solid ${c.border}`,
+                borderRadius: 8,
+                fontSize: 12,
+                color: c.muted,
+              }}>
+                No inputs in this project yet — add some first.
+              </div>
+            ) : (
+              <div style={{
+                border: `1px solid ${c.border}`,
+                borderRadius: 8,
+                overflow: "hidden",
+              }}>
+                {projectInputs.map((input, idx) => {
+                  const checked = selectedInputIds.includes(input.id);
+                  return (
+                    <div
+                      key={input.id}
+                      onClick={() => toggleInput(input.id)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "9px 12px",
+                        cursor: "pointer",
+                        background: checked ? "rgba(0,0,0,0.02)" : c.white,
+                        borderTop: idx > 0 ? `1px solid ${c.border}` : "none",
+                        transition: "background 0.1s",
+                      }}
+                    >
+                      {/* Checkbox */}
+                      <div style={{
+                        width: 15, height: 15, borderRadius: 3, flexShrink: 0,
+                        border: `1.5px solid ${checked ? c.ink : c.borderMid}`,
+                        background: checked ? c.ink : c.white,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        {checked && (
+                          <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                            <path d="M1 3L3 5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </div>
+                      {/* Title */}
+                      <span style={{
+                        flex: 1, fontSize: 12, color: c.ink, fontWeight: checked ? 500 : 400,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
+                        {input.name}
+                      </span>
+                      {/* Tags */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+                        {input.subtype && <SubtypeTag sub={input.subtype} />}
+                        {input.strength && <StrengthDot str={input.strength} />}
+                        {input.horizon && <HorizTag h={input.horizon} />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Counter */}
+            <div style={{ fontSize: 11, color: c.muted, marginTop: 8 }}>
+              {selectedInputIds.length > 0
+                ? `${selectedInputIds.length} input${selectedInputIds.length !== 1 ? "s" : ""} selected`
+                : "No inputs linked yet"}
+            </div>
           </div>
         </div>
 
