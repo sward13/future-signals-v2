@@ -1,699 +1,201 @@
 /**
- * ScenarioCanvas — Systems screen. Three-panel layout: cluster/scenario library
- * left, interactive canvas or table view centre, inspector right.
- * Features: connection mode, relationship types, zoom, panel collapse, table view.
+ * ScenarioCanvas — Relationship Canvas screen.
+ * Left sidebar: cluster library + legend. Centre: draggable, pannable, zoomable canvas
+ * with SVG relationship lines. Right: inspector panel. Toggle to table view.
  * @param {{ appState: object }} props
  */
-import { useState, useRef, useEffect } from "react";
-import { c, btnP, btnSm, btnSec, btnG, inp, ta, fl, fh } from "../../styles/tokens.js";
-import { SubtypeTag, HorizTag, ArchTag } from "../shared/Tag.jsx";
-import { ProjectPicker } from "../shared/ProjectPicker.jsx";
-import { ScenarioDrawer } from "../scenarios/ScenarioDrawer.jsx";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { c, ta, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 
-// ── Constants ────────────────────────────────────────────────────────────────
+const NODE_W = 156;
+const NODE_H = 68;
 
-const NODE_W          = 176;
-const CLUSTER_NODE_H  = 58;
-const SCENARIO_NODE_H = 70;
-
-const COL_HEADERS = [
-  { h: "H1", label: "H1 · Near-term",   col: c.green700, bg: c.green50,  border: c.greenBorder },
-  { h: "H2", label: "H2 · Medium-term", col: c.blue700,  bg: c.blue50,   border: c.blueBorder  },
-  { h: "H3", label: "H3 · Long-term",   col: c.amber700, bg: c.amber50,  border: c.amberBorder },
+const REL_TYPES = [
+  { id: "Drives",        color: "#185FA5", dash: false, desc: "One cluster directly propels another" },
+  { id: "Enables",       color: "#3B6D11", dash: false, desc: "Creates conditions for another to occur" },
+  { id: "Accelerates",   color: "#0F766E", dash: false, desc: "Speeds up the pace of another cluster" },
+  { id: "Inhibits",      color: "#854F0B", dash: false, desc: "Slows down or weakens another cluster" },
+  { id: "Blocks",        color: "#791F1F", dash: false, desc: "Actively prevents or stops another cluster" },
+  { id: "Feedback Loop", color: "#B45309", dash: true,  desc: "Mutually reinforcing or dampening cycle" },
+  { id: "Displaces",     color: "#4B1010", dash: false, desc: "Replaces or supersedes another cluster" },
 ];
 
-
-const REL_TYPES = ["Drives", "Enables", "Accelerates", "Constrains", "Feedback Loop"];
-
-const REL_COLORS = {
-  Drives:           { col: c.green700, bg: c.green50,  border: c.greenBorder, stroke: c.green700 },
-  Enables:          { col: c.green700, bg: c.green50,  border: c.greenBorder, stroke: c.green700 },
-  Accelerates:      { col: c.green700, bg: c.green50,  border: c.greenBorder, stroke: c.green700 },
-  Constrains:       { col: c.red800,   bg: c.red50,    border: c.redBorder,   stroke: c.red800   },
-  "Feedback Loop":  { col: c.amber700, bg: c.amber50,  border: c.amberBorder, stroke: c.amber700 },
+const SUBTYPE_STYLE = {
+  Trend:   { col: c.violet700, bg: c.violet50,  border: c.violetBorder },
+  Driver:  { col: c.blue700,   bg: c.blue50,    border: c.blueBorder   },
+  Tension: { col: c.amber700,  bg: c.amber50,   border: c.amberBorder  },
 };
 
-// ── Main component ─────────────────────────────────────────────────────────
+const LEFT_BORDER_COLOR = {
+  Trend:   c.violetBorder,
+  Driver:  c.blueBorder,
+  Tension: c.amberBorder,
+};
 
-export default function ScenarioCanvas({ appState }) {
-  const {
-    activeProjectId, setActiveProjectId, clusters, scenarios, inputs, projects, connections,
-    nodePositions, updateNodePosition, addScenario, updateScenario,
-    addConnection, updateConnection, removeConnection,
-    openClusterDetail, setActiveScreen, openProjectModal, showToast,
-  } = appState;
-
-  const project       = projects.find((p) => p.id === activeProjectId) || null;
-  const projClusters  = clusters.filter((cl) => cl.project_id === activeProjectId);
-  const projScenarios = scenarios.filter((s)  => s.project_id  === activeProjectId);
-  const projConns     = connections.filter((c) => {
-    const sc = scenarios.find((s) => s.id === c.scenarioId);
-    return sc?.project_id === activeProjectId;
+/** Compute SVG line segments with perpendicular offsets for parallel relationships. */
+function computeLineSegments(relationships, canvasNodes) {
+  const pairGroups = {};
+  relationships.forEach((rel) => {
+    const key = [rel.fromClusterId, rel.toClusterId].sort().join("||");
+    if (!pairGroups[key]) pairGroups[key] = [];
+    pairGroups[key].push(rel);
   });
 
-  // ── Component state ──────────────────────────────────────────────────────
-  const [selectedId,       setSelectedId]       = useState(null);   // "cl-<id>" | "sc-<id>" | "conn-<id>"
-  const [connectingFromId, setConnectingFromId] = useState(null);   // cluster entity id
-  const [view,             setView]             = useState("canvas"); // "canvas" | "table"
-  const [zoom,             setZoom]             = useState(1);
-  const [leftCollapsed,    setLeftCollapsed]    = useState(false);
-  const [rightCollapsed,   setRightCollapsed]   = useState(false);
-  const [pendingEnd,       setPendingEnd]       = useState({ x: 0, y: 0 });
-  const [canvasWidth,      setCanvasWidth]      = useState(640);
-  const [drawerOpen,       setDrawerOpen]       = useState(false);
+  return relationships.map((rel) => {
+    const fromNode = canvasNodes.find((n) => n.clusterId === rel.fromClusterId);
+    const toNode   = canvasNodes.find((n) => n.clusterId === rel.toClusterId);
+    if (!fromNode || !toNode) return null;
 
-  // ── Refs ─────────────────────────────────────────────────────────────────
-  const canvasRef        = useRef(null);
-  const dragStateRef     = useRef(null);
-  const didDragRef       = useRef(false);
-  const nodesRef         = useRef([]);
-  const updPosRef        = useRef(updateNodePosition);
-  const zoomRef          = useRef(zoom);
-  const connectingRef    = useRef(connectingFromId);
-  const selectedRef      = useRef(selectedId);
+    const cx1 = fromNode.x + NODE_W / 2;
+    const cy1 = fromNode.y + NODE_H / 2;
+    const cx2 = toNode.x   + NODE_W / 2;
+    const cy2 = toNode.y   + NODE_H / 2;
 
-  updPosRef.current   = updateNodePosition;
-  zoomRef.current     = zoom;
-  connectingRef.current = connectingFromId;
-  selectedRef.current   = selectedId;
+    const key   = [rel.fromClusterId, rel.toClusterId].sort().join("||");
+    const group = pairGroups[key];
+    const idx   = group.indexOf(rel);
+    const total = group.length;
 
-  // ── Column x-positions ───────────────────────────────────────────────────
-  const colW = canvasWidth / 3;
-  const colX = {
-    H1: Math.max(0, Math.round(colW * 0 + (colW - NODE_W) / 2)),
-    H2: Math.max(0, Math.round(colW * 1 + (colW - NODE_W) / 2)),
-    H3: Math.max(0, Math.round(colW * 2 + (colW - NODE_W) / 2)),
-  };
+    const dx  = cx2 - cx1;
+    const dy  = cy2 - cy1;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const nx  = -dy / len;
+    const ny  =  dx / len;
+    const offset = (idx - (total - 1) / 2) * 10;
 
-  // ── Node computation ──────────────────────────────────────────────────────
-  const colIdxCl = { H1: 0, H2: 0, H3: 0 };
-  const colIdxSc = { H1: 0, H2: 0, H3: 0 };
-
-  const clusterNodes = projClusters.map((cl) => {
-    const h = cl.horizon || "H1";
-    const idx = colIdxCl[h] ?? 0;
-    colIdxCl[h] = idx + 1;
-    const nodeId = `cl-${cl.id}`;
-    const pos = nodePositions[nodeId] ?? { x: colX[h] ?? 0, y: 56 + idx * 84 };
-    return { id: nodeId, type: "cluster", entity: cl, pos };
-  });
-
-  const scenarioNodes = projScenarios.map((sc) => {
-    const h = sc.horizon || "H2";
-    const idx = colIdxSc[h] ?? 0;
-    colIdxSc[h] = idx + 1;
-    const clsInCol = colIdxCl[h] || 0;
-    const nodeId = `sc-${sc.id}`;
-    const pos = nodePositions[nodeId] ?? { x: colX[h] ?? 0, y: 56 + (clsInCol + idx) * 84 + 24 };
-    return { id: nodeId, type: "scenario", entity: sc, pos };
-  });
-
-  const allNodes = [...clusterNodes, ...scenarioNodes];
-  nodesRef.current = allNodes;
-
-  const selectedNode = selectedId ? allNodes.find((n) => n.id === selectedId) : null;
-  const selectedConn = selectedId?.startsWith("conn-")
-    ? projConns.find((c) => c.id === selectedId.slice(5))
-    : null;
-
-  const sourceClNode = connectingFromId
-    ? clusterNodes.find((n) => n.entity.id === connectingFromId)
-    : null;
-
-  // ── Effects ───────────────────────────────────────────────────────────────
-
-  // Measure canvas width
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    const ro = new ResizeObserver(([e]) => setCanvasWidth(e.contentRect.width));
-    ro.observe(canvasRef.current);
-    return () => ro.disconnect();
-  }, []);
-
-  // Drag: window mousemove + mouseup
-  useEffect(() => {
-    const onMove = (e) => {
-      if (!dragStateRef.current) return;
-      const dx = (e.clientX - dragStateRef.current.startX) / zoomRef.current;
-      const dy = (e.clientY - dragStateRef.current.startY) / zoomRef.current;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDragRef.current = true;
-      if (didDragRef.current) {
-        updPosRef.current(dragStateRef.current.nodeId, {
-          x: Math.max(0, dragStateRef.current.origX + dx),
-          y: Math.max(36, dragStateRef.current.origY + dy),
-        });
-      }
+    return {
+      rel,
+      x1: cx1 + nx * offset,
+      y1: cy1 + ny * offset,
+      x2: cx2 + nx * offset,
+      y2: cy2 + ny * offset,
     };
-    const onUp = () => { dragStateRef.current = null; };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup",   onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup",   onUp);
-    };
-  }, []);
+  }).filter(Boolean);
+}
 
-  // Escape key to cancel connection mode or deselect
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key !== "Escape") return;
-      if (connectingRef.current) setConnectingFromId(null);
-      else if (selectedRef.current) setSelectedId(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+/** Relationship type/evidence/confidence form modal. */
+function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
+  const [relType,    setRelType]    = useState(initial?.type       || "Drives");
+  const [evidence,   setEvidence]   = useState(initial?.evidence   || "");
+  const [confidence, setConfidence] = useState(initial?.confidence || "Medium");
 
-  // Ctrl+scroll / pinch-to-zoom
-  useEffect(() => {
-    const el = canvasRef.current;
-    if (!el) return;
-    const onWheel = (e) => {
-      if (!e.ctrlKey) return;
-      e.preventDefault();
-      const delta = -e.deltaY * 0.004;
-      setZoom((prev) => Math.max(0.4, Math.min(2.0, prev + delta)));
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, []);
-
-  // ── Event handlers ────────────────────────────────────────────────────────
-
-  const handleCanvasClick = () => {
-    if (connectingFromId) { setConnectingFromId(null); return; }
-    setSelectedId(null);
-  };
-
-  const handleMouseMove = (e) => {
-    if (!connectingFromId || !canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    setPendingEnd({
-      x: (e.clientX - rect.left) / zoomRef.current,
-      y: (e.clientY - rect.top)  / zoomRef.current,
-    });
-  };
-
-  const handleNodeMouseDown = (e, nodeId) => {
-    e.stopPropagation();
-    const node = nodesRef.current.find((n) => n.id === nodeId);
-    if (!node) return;
-    didDragRef.current = false;
-    dragStateRef.current = { nodeId, startX: e.clientX, startY: e.clientY, origX: node.pos.x, origY: node.pos.y };
-  };
-
-  const handleNodeClick = (e, nodeId) => {
-    e.stopPropagation();
-    if (didDragRef.current) return;
-    setSelectedId((prev) => (prev === nodeId ? null : nodeId));
-  };
-
-  const handleConnectClick = (e, clusterId) => {
-    e.stopPropagation();
-    setConnectingFromId((prev) => (prev === clusterId ? null : clusterId));
-    setSelectedId(null);
-  };
-
-  const handleScenarioConnectTarget = (e, scenarioId) => {
-    e.stopPropagation();
-    if (!connectingFromId) return;
-    const result = addConnection({ clusterId: connectingFromId, scenarioId, relationshipType: "Drives" });
-    if (!result) showToast("Connection already exists", "error");
-    setConnectingFromId(null);
-  };
-
-  const handleAddScenario = (fields) => {
-    const sc = addScenario({ ...fields, project_id: activeProjectId });
-    // Create connection records for linked clusters
-    for (const clusterId of (fields.cluster_ids || [])) {
-      addConnection({ clusterId, scenarioId: sc.id, relationshipType: "Drives" });
-    }
-    setDrawerOpen(false);
-    showToast(`"${sc.name}" created`);
-    setSelectedId(`sc-${sc.id}`);
-  };
-
-  const isEmpty = projClusters.length === 0;
-
-  // ── No active project: show picker ───────────────────────────────────────
-  if (!project) {
-    return (
-      <ProjectPicker
-        heading="Systems"
-        description="Select a project to map its clusters into scenarios."
-        projects={projects}
-        inputs={inputs}
-        clusters={clusters}
-        scenarios={scenarios}
-        onSelect={(id) => setActiveProjectId(id)}
-        onNewProject={openProjectModal}
-      />
-    );
-  }
-
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: "flex", height: "100%", overflow: "hidden", background: c.bg }}>
-
-      {/* ── Left panel ────────────────────────────────────────────────── */}
-      <LeftPanel
-        collapsed={leftCollapsed}
-        onToggle={() => setLeftCollapsed((v) => !v)}
-        clusters={projClusters}
-        scenarios={projScenarios}
-        selectedId={selectedId}
-        onSelectNode={setSelectedId}
-        onAddScenario={() => setDrawerOpen(true)}
-        noClusters={isEmpty}
-        onGoClustering={() => setActiveScreen("clustering")}
+    <>
+      <div
+        onClick={onClose}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 500 }}
       />
-
-      {/* ── Centre column ─────────────────────────────────────────────── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
-
-        {/* Toolbar */}
-        <div style={{
-          padding: "10px 18px",
-          borderBottom: `1px solid ${c.border}`,
-          display: "flex", alignItems: "center", gap: 10,
-          flexShrink: 0, background: c.white,
-        }}>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 15, fontWeight: 500, color: c.ink }}>Systems</span>
-            {project && <span style={{ fontSize: 11, color: c.muted }}>{project.name}</span>}
+      <div style={{
+        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+        width: 492, background: c.white, borderRadius: 12, zIndex: 501,
+        border: `1px solid ${c.border}`, boxShadow: "0 8px 40px rgba(0,0,0,0.14)",
+        display: "flex", flexDirection: "column", maxHeight: "90vh", overflow: "hidden",
+      }}>
+        {/* Header */}
+        <div style={{ padding: "18px 22px 14px", borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 4 }}>
+            Define relationship
           </div>
-          {/* View toggle */}
-          <div style={{ display: "flex", borderRadius: 7, border: `1px solid ${c.borderMid}`, overflow: "hidden" }}>
-            {["canvas", "table"].map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                style={{
-                  padding: "5px 13px", border: "none", cursor: "pointer",
-                  fontFamily: "inherit", fontSize: 11, fontWeight: view === v ? 500 : 400,
-                  background: view === v ? c.ink : "transparent",
-                  color: view === v ? c.white : c.muted,
-                }}
-              >
-                {v.charAt(0).toUpperCase() + v.slice(1)}
-              </button>
-            ))}
+          <div style={{ fontSize: 15, fontWeight: 500, color: c.ink }}>
+            <span style={{ color: c.muted }}>{fromCluster?.name}</span>
+            <span style={{ color: c.hint, margin: "0 10px" }}>→</span>
+            <span>{toCluster?.name}</span>
           </div>
-          <button onClick={() => setDrawerOpen(true)} style={btnSm}>
-            + Add scenario
-          </button>
         </div>
 
-        {/* Canvas or Table */}
-        {view === "canvas" ? (
-          <div
-            ref={canvasRef}
-            onClick={handleCanvasClick}
-            onMouseMove={handleMouseMove}
-            style={{
-              flex: 1, position: "relative", overflow: "hidden",
-              background: c.canvas,
-              backgroundImage: "radial-gradient(circle, rgba(0,0,0,0.13) 1px, transparent 1px)",
-              backgroundSize: "22px 22px",
-              userSelect: "none",
-              cursor: connectingFromId ? "crosshair" : "default",
-            }}
-          >
-            {isEmpty ? (
-              <EmptyCanvas onGoClustering={() => setActiveScreen("clustering")} />
-            ) : (
-              <>
-                {/* Scaled canvas content */}
-                <div style={{
-                  position: "absolute", top: 0, left: 0,
-                  width: "100%", height: "100%",
-                  transform: `scale(${zoom})`,
-                  transformOrigin: "0 0",
-                }}>
-                  {/* Column separators */}
-                  {[1, 2].map((i) => (
-                    <div key={i} style={{
-                      position: "absolute", top: 0, bottom: 0,
-                      left: `${(100 / 3) * i}%`, width: 1,
-                      background: c.border, pointerEvents: "none",
-                    }} />
-                  ))}
-
-                  {/* Column headers */}
-                  {COL_HEADERS.map(({ h, label, col, bg, border }, i) => (
-                    <div key={h} style={{
-                      position: "absolute", top: 10,
-                      left: `${(100 / 3) * i}%`, width: `${100 / 3}%`,
-                      display: "flex", justifyContent: "center",
-                      pointerEvents: "none",
-                    }}>
-                      <span style={{
-                        fontSize: 10, fontWeight: 500, padding: "2px 9px",
-                        borderRadius: 10, background: bg, color: col, border: `1px solid ${border}`,
-                      }}>{label}</span>
-                    </div>
-                  ))}
-
-                  {/* SVG: connection lines + pending line */}
-                  <svg style={{
-                    position: "absolute", top: 0, left: 0,
-                    width: "100%", height: "100%",
-                    overflow: "visible", pointerEvents: "none",
-                  }}>
-                    {projConns.map((conn) => {
-                      const clN = clusterNodes.find((n) => n.entity.id === conn.clusterId);
-                      const scN = scenarioNodes.find((n) => n.entity.id === conn.scenarioId);
-                      if (!clN || !scN) return null;
-                      const isSel = selectedId === `conn-${conn.id}`;
-                      const rc = REL_COLORS[conn.relationshipType] || REL_COLORS.Drives;
-                      return (
-                        <line
-                          key={conn.id}
-                          x1={clN.pos.x + NODE_W / 2} y1={clN.pos.y + CLUSTER_NODE_H / 2}
-                          x2={scN.pos.x + NODE_W / 2} y2={scN.pos.y + SCENARIO_NODE_H / 2}
-                          stroke={rc.stroke}
-                          strokeWidth={isSel ? 2.5 : 1.5}
-                          strokeOpacity={isSel ? 1 : 0.55}
-                        />
-                      );
-                    })}
-                    {/* Pending connection line */}
-                    {connectingFromId && sourceClNode && (
-                      <line
-                        x1={sourceClNode.pos.x + NODE_W / 2}
-                        y1={sourceClNode.pos.y + CLUSTER_NODE_H / 2}
-                        x2={pendingEnd.x} y2={pendingEnd.y}
-                        stroke={c.green700} strokeWidth={1.5} strokeDasharray="6,4"
-                      />
-                    )}
-                  </svg>
-
-                  {/* Connection midpoint labels */}
-                  {projConns.map((conn) => {
-                    const clN = clusterNodes.find((n) => n.entity.id === conn.clusterId);
-                    const scN = scenarioNodes.find((n) => n.entity.id === conn.scenarioId);
-                    if (!clN || !scN) return null;
-                    const mx = (clN.pos.x + NODE_W / 2 + scN.pos.x + NODE_W / 2) / 2;
-                    const my = (clN.pos.y + CLUSTER_NODE_H / 2 + scN.pos.y + SCENARIO_NODE_H / 2) / 2;
-                    const isSel = selectedId === `conn-${conn.id}`;
-                    const rc = REL_COLORS[conn.relationshipType] || REL_COLORS.Drives;
-                    return (
-                      <div
-                        key={conn.id}
-                        onClick={(e) => { e.stopPropagation(); setSelectedId(isSel ? null : `conn-${conn.id}`); }}
-                        style={{
-                          position: "absolute", left: mx, top: my,
-                          transform: "translate(-50%, -50%)",
-                          display: "flex", alignItems: "center", gap: 4,
-                          cursor: "pointer", zIndex: 5,
-                        }}
-                      >
-                        <span style={{
-                          fontSize: 9, fontWeight: 500, padding: "2px 7px",
-                          borderRadius: 8, background: rc.bg, color: rc.col,
-                          border: `1px solid ${rc.border}`,
-                          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                          whiteSpace: "nowrap",
-                          outline: isSel ? `2px solid ${rc.col}` : "none",
-                          outlineOffset: 1,
-                        }}>
-                          {conn.relationshipType}
-                        </span>
-                        {isSel && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); removeConnection(conn.id); setSelectedId(null); }}
-                            style={{
-                              width: 16, height: 16, borderRadius: "50%",
-                              background: c.red800, color: c.white,
-                              border: "none", cursor: "pointer",
-                              fontSize: 10, fontFamily: "inherit",
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                            }}
-                          >
-                            ×
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {/* Cluster nodes */}
-                  {clusterNodes.map((n) => (
-                    <ClusterNode
-                      key={n.id}
-                      cluster={n.entity}
-                      pos={n.pos}
-                      selected={selectedId === n.id}
-                      isConnectingSource={connectingFromId === n.entity.id}
-                      isConnecting={connectingFromId !== null}
-                      onMouseDown={(e) => handleNodeMouseDown(e, n.id)}
-                      onClick={(e) => handleNodeClick(e, n.id)}
-                      onConnect={(e) => handleConnectClick(e, n.entity.id)}
-                    />
-                  ))}
-
-                  {/* Scenario nodes */}
-                  {scenarioNodes.map((n) => (
-                    <ScenarioNode
-                      key={n.id}
-                      scenario={n.entity}
-                      pos={n.pos}
-                      selected={selectedId === n.id}
-                      isConnecting={connectingFromId !== null}
-                      onMouseDown={(e) => handleNodeMouseDown(e, n.id)}
-                      onClick={(e) => handleNodeClick(e, n.id)}
-                      onConnectTarget={(e) => handleScenarioConnectTarget(e, n.entity.id)}
-                    />
-                  ))}
-                </div>
-
-                {/* Zoom controls — outside scaled content, fixed in canvas corner */}
-                <div style={{
-                  position: "absolute", bottom: 16, right: 16, zIndex: 10,
-                  display: "flex", alignItems: "center", gap: 2,
-                  background: c.white, borderRadius: 8,
-                  border: `1px solid ${c.borderMid}`,
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                  overflow: "hidden",
-                }}>
-                  <ZoomBtn onClick={() => setZoom((z) => Math.max(0.4, +(z - 0.1).toFixed(2)))} label="−" />
-                  <span
-                    onDoubleClick={() => setZoom(1)}
-                    title="Double-click to reset"
+        {/* Body */}
+        <div style={{ padding: "16px 22px", overflowY: "auto" }}>
+          {/* Type cards */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={fl}>Relationship type</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+              {REL_TYPES.map(({ id, color, dash, desc }) => {
+                const on = relType === id;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => setRelType(id)}
                     style={{
-                      fontSize: 11, fontWeight: 500, color: c.muted,
-                      padding: "5px 8px", minWidth: 44, textAlign: "center",
-                      cursor: "default", userSelect: "none",
-                      borderLeft: `1px solid ${c.border}`, borderRight: `1px solid ${c.border}`,
+                      padding: "9px 12px", borderRadius: 8, textAlign: "left",
+                      border: `1.5px solid ${on ? color : c.border}`,
+                      background: on ? "rgba(0,0,0,0.015)" : c.white,
+                      cursor: "pointer", fontFamily: "inherit",
                     }}
                   >
-                    {Math.round(zoom * 100)}%
-                  </span>
-                  <ZoomBtn onClick={() => setZoom((z) => Math.min(2.0, +(z + 0.1).toFixed(2)))} label="+" />
-                </div>
-
-                {/* Connection mode banner */}
-                {connectingFromId && (
-                  <div style={{
-                    position: "absolute", top: 12, left: "50%",
-                    transform: "translateX(-50%)",
-                    zIndex: 10,
-                    padding: "6px 14px", borderRadius: 20,
-                    background: c.green700, color: c.white,
-                    fontSize: 11, fontWeight: 500,
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                    display: "flex", alignItems: "center", gap: 10,
-                  }}>
-                    Click a scenario node to connect — Esc to cancel
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setConnectingFromId(null); }}
-                      style={{ background: "none", border: "none", color: "rgba(255,255,255,0.8)", cursor: "pointer", fontSize: 14, padding: 0 }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        ) : (
-          <TableArea
-            clusters={projClusters}
-            scenarios={projScenarios}
-            connections={projConns}
-            inputs={inputs}
-            onEditCluster={openClusterDetail}
-            onEditScenario={(sc) => { setView("canvas"); setSelectedId(`sc-${sc.id}`); }}
-            onUpdateCluster={(id, fields) => { appState.updateCluster(id, fields); showToast("Cluster updated"); }}
-          />
-        )}
-      </div>
-
-      {/* ── Right inspector ───────────────────────────────────────────── */}
-      <InspectorPanel
-        collapsed={rightCollapsed}
-        onToggle={() => setRightCollapsed((v) => !v)}
-        selectedNode={selectedNode}
-        selectedConn={selectedConn}
-        clusters={projClusters}
-        scenarios={projScenarios}
-        inputs={inputs}
-        onEditCluster={(id) => openClusterDetail(id)}
-        onEditScenario={() => showToast("Scenario editing coming soon")}
-        onOpenNarrative={() => setActiveScreen("narrative")}
-        onUpdateRelType={(id, type) => updateConnection(id, { relationshipType: type })}
-        onDeleteConn={(id) => { removeConnection(id); setSelectedId(null); }}
-      />
-
-      {/* ── Add Scenario Drawer ───────────────────────────────────────── */}
-      {drawerOpen && (
-        <ScenarioDrawer
-          projectClusters={projClusters}
-          onClose={() => setDrawerOpen(false)}
-          onSave={handleAddScenario}
-        />
-      )}
-    </div>
-  );
-}
-
-// ── Zoom button ───────────────────────────────────────────────────────────────
-
-function ZoomBtn({ onClick, label }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        width: 30, height: 28, border: "none", background: "transparent",
-        color: c.muted, fontSize: 15, cursor: "pointer",
-        fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
-// ── Left panel ────────────────────────────────────────────────────────────────
-
-function LeftPanel({ collapsed, onToggle, clusters, scenarios, selectedId, onSelectNode, onAddScenario, noClusters, onGoClustering }) {
-  if (collapsed) {
-    return (
-      <div style={{
-        width: 40, flexShrink: 0, borderRight: `1px solid ${c.border}`,
-        background: c.surfaceAlt, display: "flex", flexDirection: "column",
-        alignItems: "center", paddingTop: 10,
-      }}>
-        <button onClick={onToggle} title="Expand panel" style={{
-          ...btnG, padding: "5px 6px", fontSize: 13, color: c.muted,
-        }}>›</button>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{
-      width: 220, flexShrink: 0, borderRight: `1px solid ${c.border}`,
-      background: c.surfaceAlt, display: "flex", flexDirection: "column",
-      overflow: "hidden",
-    }}>
-      {/* Clusters header */}
-      <div style={{ padding: "12px 14px 8px", borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
-          <div style={{ flex: 1, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, fontWeight: 500 }}>
-            Clusters
-          </div>
-          <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "2px 4px", fontSize: 13, color: c.hint }}>‹</button>
-        </div>
-        {noClusters ? (
-          <div style={{ fontSize: 11, color: c.hint, lineHeight: 1.5 }}>
-            No clusters yet.{" "}
-            <button onClick={onGoClustering} style={{ ...btnG, padding: 0, fontSize: 11, color: c.muted, textDecoration: "underline" }}>
-              Go to Clustering →
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {clusters.map((cl) => {
-              const nodeId = `cl-${cl.id}`;
-              const isSel = selectedId === nodeId;
-              return (
-                <button key={cl.id} onClick={() => onSelectNode(isSel ? null : nodeId)} style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "5px 8px", borderRadius: 5, width: "100%", textAlign: "left",
-                  border: `1px solid ${isSel ? c.borderMid : "transparent"}`,
-                  background: isSel ? c.white : "transparent",
-                  cursor: "pointer", fontFamily: "inherit",
-                }}>
-                  <span style={{ fontSize: 11, fontWeight: 500, color: c.ink, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {cl.name}
-                  </span>
-                  <SubtypeTag sub={cl.subtype} />
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Scenarios section */}
-      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "10px 14px 6px", flexShrink: 0 }}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, fontWeight: 500 }}>
-            Scenarios
-          </div>
-        </div>
-        <div style={{ flex: 1, overflowY: "auto", padding: "0 14px" }}>
-          {scenarios.length === 0 ? (
-            <div style={{ fontSize: 11, color: c.hint }}>No scenarios yet.</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {scenarios.map((sc) => {
-                const nodeId = `sc-${sc.id}`;
-                const isSel = selectedId === nodeId;
-                return (
-                  <button key={sc.id} onClick={() => onSelectNode(isSel ? null : nodeId)} style={{
-                    display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4,
-                    padding: "7px 9px", borderRadius: 6, width: "100%", textAlign: "left",
-                    background: isSel ? c.ink : "rgba(0,0,0,0.06)",
-                    border: "none", cursor: "pointer", fontFamily: "inherit",
-                  }}>
-                    <span style={{ fontSize: 11, fontWeight: 500, color: isSel ? c.white : c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
-                      {sc.name}
-                    </span>
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                      <ArchTag arch={sc.archetype} />
-                      <HorizTag h={sc.horizon} />
+                    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
+                      <div style={{
+                        width: 22, height: 2.5, borderRadius: 2, flexShrink: 0,
+                        background: dash
+                          ? `repeating-linear-gradient(to right, ${color} 0, ${color} 4px, transparent 4px, transparent 8px)`
+                          : color,
+                      }} />
+                      <span style={{ fontSize: 12, fontWeight: 500, color: on ? c.ink : c.muted }}>{id}</span>
                     </div>
+                    <div style={{ fontSize: 10, color: c.hint, lineHeight: 1.4 }}>{desc}</div>
                   </button>
                 );
               })}
             </div>
-          )}
+          </div>
+
+          {/* Evidence */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ ...fl, gap: 5 }}>
+              Evidence
+              <span style={{ fontSize: 10, fontWeight: 400, color: c.hint }}>optional</span>
+            </div>
+            <textarea
+              style={{ ...ta, minHeight: 68 }}
+              value={evidence}
+              onChange={(e) => setEvidence(e.target.value)}
+              placeholder="What evidence supports this relationship?"
+            />
+          </div>
+
+          {/* Confidence */}
+          <div>
+            <div style={fl}>Confidence</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {["Low", "Medium", "High"].map((lv) => {
+                const on = confidence === lv;
+                return (
+                  <button
+                    key={lv}
+                    onClick={() => setConfidence(lv)}
+                    style={{
+                      padding: "6px 20px", borderRadius: 20,
+                      border: `1px solid ${on ? c.borderMid : c.border}`,
+                      background: on ? c.ink : c.white,
+                      color: on ? c.white : c.muted,
+                      fontSize: 12, fontWeight: on ? 500 : 400,
+                      cursor: "pointer", fontFamily: "inherit",
+                    }}
+                  >{lv}</button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: "12px 22px 18px", borderTop: `1px solid ${c.border}`,
+          display: "flex", gap: 8, justifyContent: "flex-end", flexShrink: 0,
+        }}>
+          <button onClick={onClose} style={btnSec}>Cancel</button>
+          <button onClick={() => onSave({ type: relType, evidence, confidence })} style={btnP}>
+            Save relationship
+          </button>
         </div>
       </div>
-
-      {/* Footer */}
-      <div style={{ padding: "10px 14px", borderTop: `1px solid ${c.border}`, flexShrink: 0 }}>
-        <button onClick={onAddScenario} disabled={noClusters} style={{
-          width: "100%", padding: "7px 10px", borderRadius: 6,
-          border: `1px dashed ${c.borderMid}`, background: "transparent",
-          color: noClusters ? c.hint : c.muted,
-          fontSize: 11, fontFamily: "inherit",
-          cursor: noClusters ? "default" : "pointer", textAlign: "left",
-        }}>
-          + Generate scenario
-        </button>
-      </div>
-    </div>
+    </>
   );
 }
 
-// ── Canvas nodes ──────────────────────────────────────────────────────────────
-
-function ClusterNode({ cluster, pos, selected, isConnectingSource, isConnecting, onMouseDown, onClick, onConnect }) {
+/** Draggable cluster node card on the canvas. */
+function ClusterNode({ node, cluster, selected, connectMode, isConnectSource, onClick, onRemove, onMouseDown }) {
   const [hovered, setHovered] = useState(false);
-  const showConnect = (hovered || selected) && !isConnecting;
+  const st = SUBTYPE_STYLE[cluster.subtype] || SUBTYPE_STYLE.Trend;
 
   return (
     <div
@@ -702,458 +204,864 @@ function ClusterNode({ cluster, pos, selected, isConnectingSource, isConnecting,
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        position: "absolute", left: pos.x, top: pos.y,
-        width: NODE_W, minHeight: CLUSTER_NODE_H,
-        background: isConnectingSource ? c.green50 : c.white,
-        borderRadius: 9,
-        border: `1.5px solid ${isConnectingSource ? c.green700 : selected ? c.ink : hovered ? c.borderMid : c.border}`,
-        boxShadow: selected ? "0 3px 14px rgba(0,0,0,0.12)" : hovered ? "0 2px 8px rgba(0,0,0,0.07)" : "0 1px 4px rgba(0,0,0,0.05)",
-        padding: "9px 10px 8px",
-        display: "flex", flexDirection: "column", gap: 5,
-        cursor: "grab",
-        transition: "border-color 0.1s, box-shadow 0.1s",
+        position: "absolute",
+        left: node.x,
+        top: node.y,
+        width: NODE_W,
+        userSelect: "none",
+        background: c.white,
+        border: `1.5px solid ${isConnectSource ? "#185FA5" : selected ? c.ink : hovered ? c.borderMid : c.border}`,
+        borderRadius: 10,
+        boxShadow: selected
+          ? "0 2px 12px rgba(0,0,0,0.13)"
+          : hovered ? "0 2px 8px rgba(0,0,0,0.09)" : "0 1px 4px rgba(0,0,0,0.05)",
+        cursor: connectMode ? "crosshair" : "grab",
+        overflow: "hidden",
+        transition: "border-color 0.12s, box-shadow 0.12s",
       }}
     >
-      <div style={{ fontSize: 11, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {cluster.name}
+      {/* Coloured left border strip */}
+      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: st.border }} />
+
+      <div style={{ padding: "10px 24px 10px 14px" }}>
+        <div style={{
+          fontSize: 9, fontWeight: 700, textTransform: "uppercase",
+          letterSpacing: "0.07em", color: st.col, marginBottom: 4,
+        }}>
+          {cluster.subtype}
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, lineHeight: 1.35 }}>
+          {cluster.name}
+        </div>
       </div>
-      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-        <SubtypeTag sub={cluster.subtype} />
-        <HorizTag h={cluster.horizon} />
-      </div>
-      {showConnect && (
-        <button
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={onConnect}
-          style={{
-            marginTop: 2, padding: "3px 8px", borderRadius: 5,
-            border: `1px solid ${c.greenBorder}`,
-            background: c.green50, color: c.green700,
-            fontSize: 9, fontWeight: 500, cursor: "pointer",
-            fontFamily: "inherit", alignSelf: "flex-start",
-          }}
-        >
-          Connect →
-        </button>
-      )}
+
+      {/* Remove button */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+        style={{
+          position: "absolute", top: 5, right: 5,
+          width: 17, height: 17, borderRadius: 4,
+          background: "transparent", border: "none",
+          color: c.hint, fontSize: 14, lineHeight: 1,
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          fontFamily: "inherit",
+        }}
+      >×</button>
     </div>
   );
 }
 
-function ScenarioNode({ scenario, pos, selected, isConnecting, onMouseDown, onClick, onConnectTarget }) {
-  const [hovered, setHovered] = useState(false);
-
-  const handleClick = (e) => {
-    e.stopPropagation();
-    if (isConnecting) { onConnectTarget(e); return; }
-    onClick(e);
-  };
+/** Left sidebar — cluster library with Add buttons and relationship legend. */
+function LeftSidebar({ clusters, canvasNodes, onAdd }) {
+  const nodeClusterIds = new Set(canvasNodes.map((n) => n.clusterId));
 
   return (
-    <div
-      onMouseDown={isConnecting ? undefined : onMouseDown}
-      onClick={handleClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        position: "absolute", left: pos.x, top: pos.y,
-        width: NODE_W, minHeight: SCENARIO_NODE_H,
-        background: selected ? c.ink : "rgba(17,17,17,0.88)",
-        borderRadius: 9,
-        border: `1.5px solid ${isConnecting ? c.green700 : selected ? "rgba(255,255,255,0.2)" : hovered ? "rgba(255,255,255,0.15)" : "transparent"}`,
-        boxShadow: selected ? "0 3px 14px rgba(0,0,0,0.22)" : isConnecting && hovered ? "0 0 0 3px rgba(59,109,17,0.3)" : hovered ? "0 2px 10px rgba(0,0,0,0.16)" : "0 1px 5px rgba(0,0,0,0.12)",
-        padding: "10px 10px",
-        display: "flex", flexDirection: "column", gap: 5,
-        cursor: isConnecting ? "crosshair" : "grab",
-        transition: "background 0.1s, box-shadow 0.1s",
-        outline: isConnecting && hovered ? `2px solid ${c.green700}` : "none",
-        outlineOffset: 2,
-      }}
-    >
-      <div style={{ fontSize: 11, fontWeight: 500, color: c.white, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {scenario.name}
-      </div>
-      <div style={{ display: "flex", gap: 4 }}>
-        <ArchTag arch={scenario.archetype} />
-        <HorizTag h={scenario.horizon} />
-      </div>
-    </div>
-  );
-}
-
-// ── Table view ────────────────────────────────────────────────────────────────
-
-function TableArea({ clusters, scenarios, connections, inputs, onEditCluster, onEditScenario, onUpdateCluster }) {
-  const [editingDescId, setEditingDescId] = useState(null);
-  const [descDraft, setDescDraft] = useState("");
-
-  const startEdit = (cl) => {
-    setEditingDescId(cl.id);
-    setDescDraft(cl.description || "");
-  };
-
-  const commitEdit = (id) => {
-    onUpdateCluster(id, { description: descDraft });
-    setEditingDescId(null);
-  };
-
-  const TH = ({ children, width }) => (
     <div style={{
-      width, flexShrink: 0, fontSize: 10, fontWeight: 600,
-      textTransform: "uppercase", letterSpacing: "0.07em",
-      color: c.hint, padding: "8px 10px",
+      width: 222, borderRight: `1px solid ${c.border}`,
+      background: c.white, display: "flex", flexDirection: "column", flexShrink: 0,
     }}>
-      {children}
-    </div>
-  );
-
-  const TD = ({ children, width, style: s }) => (
-    <div style={{ width, flexShrink: 0, padding: "8px 10px", fontSize: 12, color: c.ink, ...s }}>
-      {children}
-    </div>
-  );
-
-  return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
-
-      {/* Clusters table */}
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 12 }}>
-          Clusters <span style={{ fontSize: 11, color: c.hint, fontWeight: 400 }}>({clusters.length})</span>
+      {/* Header */}
+      <div style={{ padding: "13px 14px 10px", borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
+        <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint }}>
+          Clusters &nbsp;·&nbsp; {nodeClusterIds.size} on canvas
         </div>
+      </div>
+
+      {/* Cluster list */}
+      <div style={{ flex: 1, overflowY: "auto" }}>
         {clusters.length === 0 ? (
-          <div style={{ fontSize: 12, color: c.hint }}>No clusters for this project.</div>
-        ) : (
-          <div style={{ border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden", background: c.white }}>
-            {/* Header */}
-            <div style={{ display: "flex", borderBottom: `1px solid ${c.border}`, background: c.surfaceAlt }}>
-              <TH width={200}>Name</TH>
-              <TH width={90}>Subtype</TH>
-              <TH width={70}>Horizon</TH>
-              <TH width={100}>Likelihood</TH>
-              <TH width={60}>Inputs</TH>
-              <TH width="100%">Description</TH>
-            </div>
-            {clusters.map((cl, i) => {
-              const inputCount = inputs.filter((inp) => (cl.input_ids || []).includes(inp.id)).length;
-              return (
-                <div
-                  key={cl.id}
-                  style={{
-                    display: "flex", alignItems: "flex-start",
-                    borderBottom: i < clusters.length - 1 ? `1px solid ${c.border}` : "none",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => onEditCluster(cl.id)}
-                >
-                  <TD width={200}><span style={{ fontWeight: 500 }}>{cl.name}</span></TD>
-                  <TD width={90}><SubtypeTag sub={cl.subtype} /></TD>
-                  <TD width={70}><HorizTag h={cl.horizon} /></TD>
-                  <TD width={100} style={{ color: c.muted }}>{cl.likelihood || "—"}</TD>
-                  <TD width={60} style={{ color: c.muted }}>{inputCount}</TD>
-                  <TD width="100%" style={{ color: c.muted }}>
-                    {editingDescId === cl.id ? (
-                      <textarea
-                        autoFocus
-                        value={descDraft}
-                        onChange={(e) => setDescDraft(e.target.value)}
-                        onBlur={() => commitEdit(cl.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          ...ta, minHeight: 56, fontSize: 11,
-                          padding: "6px 8px", borderRadius: 5,
-                        }}
-                      />
-                    ) : (
-                      <span
-                        onClick={(e) => { e.stopPropagation(); startEdit(cl); }}
-                        style={{
-                          display: "block", minHeight: 20,
-                          borderRadius: 4, padding: "2px 4px",
-                          border: `1px solid transparent`,
-                          cursor: "text",
-                          color: cl.description ? c.muted : c.hint,
-                          fontStyle: cl.description ? "normal" : "italic",
-                        }}
-                        title="Click to edit"
-                      >
-                        {cl.description || "Click to add description…"}
-                      </span>
-                    )}
-                  </TD>
-                </div>
-              );
-            })}
+          <div style={{ padding: "16px 14px", fontSize: 11, color: c.hint, lineHeight: 1.5 }}>
+            No clusters in this project yet. Create some in the Clustering screen first.
           </div>
+        ) : (
+          clusters.map((cl) => {
+            const added = nodeClusterIds.has(cl.id);
+            const st    = SUBTYPE_STYLE[cl.subtype]    || SUBTYPE_STYLE.Trend;
+            const lb    = LEFT_BORDER_COLOR[cl.subtype] || c.border;
+
+            return (
+              <div
+                key={cl.id}
+                style={{
+                  padding: "9px 12px 9px 14px",
+                  borderBottom: `1px solid ${c.border}`,
+                  borderLeft: `3px solid ${lb}`,
+                  display: "flex", alignItems: "flex-start", gap: 8,
+                  background: added ? "rgba(0,0,0,0.015)" : c.white,
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 9, fontWeight: 700, textTransform: "uppercase",
+                    color: st.col, marginBottom: 2, letterSpacing: "0.05em",
+                  }}>
+                    {cl.subtype}
+                  </div>
+                  <div style={{
+                    fontSize: 11, fontWeight: 500, color: c.ink, lineHeight: 1.35,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {cl.name}
+                  </div>
+                </div>
+                <button
+                  onClick={() => !added && onAdd(cl)}
+                  style={{
+                    fontSize: 10, padding: "3px 8px", borderRadius: 5, flexShrink: 0, marginTop: 1,
+                    border: `1px solid ${added ? c.border : c.borderMid}`,
+                    background: added ? c.surfaceAlt : c.white,
+                    color: added ? c.hint : c.muted,
+                    cursor: added ? "default" : "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >{added ? "Added" : "+ Add"}</button>
+              </div>
+            );
+          })
         )}
       </div>
 
-      {/* Scenarios table */}
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 12 }}>
-          Scenarios <span style={{ fontSize: 11, color: c.hint, fontWeight: 400 }}>({scenarios.length})</span>
-        </div>
-        {scenarios.length === 0 ? (
-          <div style={{ fontSize: 12, color: c.hint }}>No scenarios for this project yet.</div>
-        ) : (
-          <div style={{ border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden", background: c.white }}>
-            <div style={{ display: "flex", borderBottom: `1px solid ${c.border}`, background: c.surfaceAlt }}>
-              <TH width={200}>Name</TH>
-              <TH width={130}>Archetype</TH>
-              <TH width={70}>Horizon</TH>
-              <TH width={220}>Linked clusters</TH>
-              <TH width="100%">Narrative</TH>
+      {/* Relationship legend */}
+      <div style={{ padding: "12px 14px", borderTop: `1px solid ${c.border}`, flexShrink: 0 }}>
+        <div style={{
+          fontSize: 9, textTransform: "uppercase", letterSpacing: "0.07em",
+          color: c.hint, marginBottom: 8,
+        }}>Legend</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {REL_TYPES.map(({ id, color, dash }) => (
+            <div key={id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{
+                width: 22, height: 2.5, borderRadius: 2, flexShrink: 0,
+                background: dash
+                  ? `repeating-linear-gradient(to right, ${color} 0, ${color} 4px, transparent 4px, transparent 8px)`
+                  : color,
+              }} />
+              <span style={{ fontSize: 10, color: c.muted }}>{id}</span>
             </div>
-            {scenarios.map((sc, i) => {
-              const linkedNames = connections
-                .filter((cn) => cn.scenarioId === sc.id)
-                .map((cn) => {
-                  const cl = clusters.find((cl) => cl.id === cn.clusterId);
-                  return cl?.name || cn.clusterId;
-                })
-                .join(", ");
-              return (
-                <div
-                  key={sc.id}
-                  onClick={() => onEditScenario(sc)}
-                  style={{
-                    display: "flex", alignItems: "flex-start", cursor: "pointer",
-                    borderBottom: i < scenarios.length - 1 ? `1px solid ${c.border}` : "none",
-                  }}
-                >
-                  <TD width={200}><span style={{ fontWeight: 500 }}>{sc.name}</span></TD>
-                  <TD width={130}><ArchTag arch={sc.archetype} /></TD>
-                  <TD width={70}><HorizTag h={sc.horizon} /></TD>
-                  <TD width={220} style={{ color: c.muted, fontSize: 11 }}>{linkedNames || "—"}</TD>
-                  <TD width="100%" style={{ color: c.hint, fontSize: 11 }}>
-                    {sc.narrative
-                      ? sc.narrative.slice(0, 120) + (sc.narrative.length > 120 ? "…" : "")
-                      : <span style={{ fontStyle: "italic" }}>No narrative yet</span>
-                    }
-                  </TD>
-                </div>
-              );
-            })}
-          </div>
-        )}
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-// ── Inspector panel ───────────────────────────────────────────────────────────
+/** Right inspector panel — empty state, cluster detail, or relationship detail. */
+function Inspector({ selectedItem, clusters, relationships, onEditRel, onDeleteRel, onClose }) {
+  const HORIZON_COLORS = {
+    H1: [c.green700, c.green50],
+    H2: [c.blue700,  c.blue50],
+    H3: [c.amber700, c.amber50],
+  };
 
-function InspectorPanel({ collapsed, onToggle, selectedNode, selectedConn, clusters, scenarios, inputs, onEditCluster, onEditScenario, onOpenNarrative, onUpdateRelType, onDeleteConn }) {
-  if (collapsed) {
+  const panelStyle = {
+    width: 254, borderLeft: `1px solid ${c.border}`,
+    display: "flex", flexDirection: "column", background: c.white, flexShrink: 0,
+  };
+
+  const headerStyle = {
+    padding: "14px 16px 11px", borderBottom: `1px solid ${c.border}`,
+    display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0,
+  };
+
+  if (!selectedItem) {
     return (
-      <div style={{
-        width: 40, flexShrink: 0, borderLeft: `1px solid ${c.border}`,
-        background: c.white, display: "flex", flexDirection: "column",
-        alignItems: "center", paddingTop: 10,
-      }}>
-        <button onClick={onToggle} title="Expand panel" style={{ ...btnG, padding: "5px 6px", fontSize: 13, color: c.muted }}>‹</button>
+      <div style={panelStyle}>
+        <div style={headerStyle}>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>Inspector</div>
+        </div>
+        <div style={{
+          flex: 1, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center",
+        }}>
+          <div style={{ fontSize: 12, color: c.hint, lineHeight: 1.6 }}>
+            Select a cluster or relationship to inspect its details.
+          </div>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div style={{
-      width: 260, flexShrink: 0, borderLeft: `1px solid ${c.border}`,
-      background: c.white, display: "flex", flexDirection: "column", overflow: "hidden",
-    }}>
-      <div style={{ padding: "12px 16px 10px", borderBottom: `1px solid ${c.border}`, flexShrink: 0, display: "flex", alignItems: "center" }}>
-        <div style={{ flex: 1, fontSize: 11, fontWeight: 500, color: c.muted, textTransform: "uppercase", letterSpacing: "0.07em" }}>
-          Inspector
+  if (selectedItem.type === "node") {
+    const cluster = clusters.find((cl) => cl.id === selectedItem.clusterId);
+    if (!cluster) return null;
+    const st = SUBTYPE_STYLE[cluster.subtype] || SUBTYPE_STYLE.Trend;
+    const [hcol, hbg] = HORIZON_COLORS[cluster.horizon] || [c.muted, c.surfaceAlt];
+
+    return (
+      <div style={panelStyle}>
+        <div style={headerStyle}>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>Cluster</div>
+          <button onClick={onClose} style={{ ...btnG, padding: "0 4px", color: c.hint, fontSize: 15 }}>×</button>
         </div>
-        <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "2px 4px", fontSize: 13, color: c.hint }}>›</button>
+        <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px" }}>
+          <div style={{
+            display: "inline-flex", alignItems: "center", padding: "2px 8px",
+            borderRadius: 5, background: st.bg, border: `1px solid ${st.border}`, marginBottom: 10,
+          }}>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: st.col }}>{cluster.subtype}</span>
+          </div>
+
+          <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.4, marginBottom: 10 }}>
+            {cluster.name}
+          </div>
+
+          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+            <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 10, background: hbg, color: hcol, fontWeight: 600 }}>
+              {cluster.horizon}
+            </span>
+            <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 10, background: c.surfaceAlt, color: c.muted }}>
+              {cluster.likelihood}
+            </span>
+          </div>
+
+          {cluster.description && (
+            <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.55, marginBottom: 12 }}>
+              {cluster.description}
+            </div>
+          )}
+
+          <div style={{ fontSize: 11, color: c.hint }}>
+            {cluster.input_ids?.length || 0} linked input{(cluster.input_ids?.length || 0) !== 1 ? "s" : ""}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedItem.type === "rel") {
+    const rel = relationships.find((r) => r.id === selectedItem.id);
+    if (!rel) return null;
+    const fromCl  = clusters.find((cl) => cl.id === rel.fromClusterId);
+    const toCl    = clusters.find((cl) => cl.id === rel.toClusterId);
+    const relType = REL_TYPES.find((r) => r.id === rel.type) || REL_TYPES[0];
+
+    return (
+      <div style={panelStyle}>
+        <div style={headerStyle}>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>Relationship</div>
+          <button onClick={onClose} style={{ ...btnG, padding: "0 4px", color: c.hint, fontSize: 15 }}>×</button>
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px" }}>
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>From</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{fromCl?.name}</div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
+            <div style={{
+              width: 20, height: 2.5, borderRadius: 2, flexShrink: 0,
+              background: relType.dash
+                ? `repeating-linear-gradient(to right, ${relType.color} 0, ${relType.color} 4px, transparent 4px, transparent 8px)`
+                : relType.color,
+            }} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: relType.color }}>{rel.type}</span>
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>To</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{toCl?.name}</div>
+          </div>
+
+          <div style={{ marginBottom: rel.evidence ? 12 : 16 }}>
+            <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>Confidence</div>
+            <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 10, background: c.surfaceAlt, color: c.muted }}>
+              {rel.confidence}
+            </span>
+          </div>
+
+          {rel.evidence && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>Evidence</div>
+              <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.55 }}>{rel.evidence}</div>
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 6 }}>
+            <button
+              onClick={() => onEditRel(rel.id)}
+              style={{ ...btnSec, fontSize: 11, padding: "6px 14px" }}
+            >Edit</button>
+            <button
+              onClick={() => onDeleteRel(rel.id)}
+              style={{
+                fontSize: 11, padding: "6px 14px", borderRadius: 7,
+                background: "transparent", border: `1px solid ${c.redBorder}`,
+                color: c.red800, cursor: "pointer", fontFamily: "inherit",
+              }}
+            >Delete</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+/** Full-width table view showing clusters and relationships. */
+function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRel, onDeleteRel }) {
+  const thStyle = {
+    padding: "8px 14px", fontSize: 10, fontWeight: 600,
+    textTransform: "uppercase", letterSpacing: "0.06em", color: c.hint,
+    background: c.surfaceAlt, borderBottom: `1px solid ${c.border}`,
+  };
+
+  return (
+    <div style={{ flex: 1, overflowY: "auto", padding: "22px 26px" }}>
+      {/* Clusters table */}
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 10 }}>
+          Clusters <span style={{ fontSize: 11, color: c.hint, fontWeight: 400 }}>({clusters.length})</span>
+        </div>
+        {clusters.length === 0 ? (
+          <div style={{ fontSize: 12, color: c.hint }}>No clusters in this project.</div>
+        ) : (
+          <div style={{ border: `1px solid ${c.border}`, borderRadius: 8, overflow: "hidden" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "2.5fr 1fr 1fr 1fr 60px" }}>
+              {["Name", "Subtype", "Horizon", "Likelihood", "Inputs"].map((h) => (
+                <div key={h} style={thStyle}>{h}</div>
+              ))}
+            </div>
+            {clusters.map((cl, idx) => {
+              const st       = SUBTYPE_STYLE[cl.subtype] || SUBTYPE_STYLE.Trend;
+              const onCanvas = canvasNodes.some((n) => n.clusterId === cl.id);
+              return (
+                <div
+                  key={cl.id}
+                  style={{
+                    display: "grid", gridTemplateColumns: "2.5fr 1fr 1fr 1fr 60px",
+                    borderTop: idx > 0 ? `1px solid ${c.border}` : "none",
+                    alignItems: "center",
+                  }}
+                >
+                  <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{cl.name}</span>
+                    {onCanvas && (
+                      <span style={{
+                        fontSize: 9, padding: "1px 5px", background: c.surfaceAlt,
+                        border: `1px solid ${c.border}`, borderRadius: 4, color: c.hint,
+                      }}>on canvas</span>
+                    )}
+                  </div>
+                  <div style={{ padding: "10px 14px" }}>
+                    <span style={{
+                      fontSize: 11, padding: "2px 8px", borderRadius: 4,
+                      background: st.bg, color: st.col, display: "inline-block",
+                    }}>{cl.subtype}</span>
+                  </div>
+                  <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.horizon}</div>
+                  <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.likelihood}</div>
+                  <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.input_ids?.length || 0}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
-        {selectedConn ? (
-          <ConnectionInspector
-            conn={selectedConn}
-            clusters={clusters}
-            scenarios={scenarios}
-            onUpdateRelType={onUpdateRelType}
-            onDelete={onDeleteConn}
-          />
-        ) : !selectedNode ? (
-          <EmptyInspector />
-        ) : selectedNode.type === "cluster" ? (
-          <ClusterInspector
-            cluster={selectedNode.entity}
-            inputs={inputs}
-            onEdit={() => onEditCluster(selectedNode.entity.id)}
-          />
+      {/* Relationships table */}
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 10 }}>
+          Relationships <span style={{ fontSize: 11, color: c.hint, fontWeight: 400 }}>({relationships.length})</span>
+        </div>
+        {relationships.length === 0 ? (
+          <div style={{ fontSize: 12, color: c.hint }}>
+            No relationships mapped yet. Switch to canvas view to add some.
+          </div>
         ) : (
-          <ScenarioInspector
-            scenario={selectedNode.entity}
-            clusters={clusters}
-            onEdit={onEditScenario}
-            onOpenNarrative={onOpenNarrative}
-          />
+          <div style={{ border: `1px solid ${c.border}`, borderRadius: 8, overflow: "hidden" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 2.5fr 1fr 90px" }}>
+              {["From", "Type", "To", "Evidence", "Confidence", ""].map((h, i) => (
+                <div key={i} style={thStyle}>{h}</div>
+              ))}
+            </div>
+            {relationships.map((rel, idx) => {
+              const fromCl = allClusters.find((cl) => cl.id === rel.fromClusterId);
+              const toCl   = allClusters.find((cl) => cl.id === rel.toClusterId);
+              const rt     = REL_TYPES.find((r) => r.id === rel.type) || REL_TYPES[0];
+              return (
+                <div
+                  key={rel.id}
+                  style={{
+                    display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 2.5fr 1fr 90px",
+                    borderTop: idx > 0 ? `1px solid ${c.border}` : "none",
+                    alignItems: "center",
+                  }}
+                >
+                  <div style={{ padding: "10px 14px", fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fromCl?.name}</div>
+                  <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{
+                      width: 16, height: 2.5, borderRadius: 2, flexShrink: 0,
+                      background: rt.dash
+                        ? `repeating-linear-gradient(to right, ${rt.color} 0, ${rt.color} 4px, transparent 4px, transparent 8px)`
+                        : rt.color,
+                    }} />
+                    <span style={{ fontSize: 11, color: rt.color, fontWeight: 500 }}>{rel.type}</span>
+                  </div>
+                  <div style={{ padding: "10px 14px", fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{toCl?.name}</div>
+                  <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rel.evidence || "—"}</div>
+                  <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{rel.confidence}</div>
+                  <div style={{ padding: "10px 14px", display: "flex", gap: 5 }}>
+                    <button
+                      onClick={() => onEditRel(rel.id)}
+                      style={{ ...btnG, fontSize: 10, padding: "3px 8px", border: `1px solid ${c.border}` }}
+                    >Edit</button>
+                    <button
+                      onClick={() => onDeleteRel(rel.id)}
+                      style={{ ...btnG, fontSize: 10, padding: "3px 8px", border: `1px solid ${c.redBorder}`, color: c.red800 }}
+                    >Del</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-function EmptyInspector() {
-  return (
-    <div style={{ textAlign: "center", paddingTop: 36 }}>
-      <div style={{ fontSize: 26, opacity: 0.1, marginBottom: 10 }}>◆</div>
-      <div style={{ fontSize: 12, color: c.hint, lineHeight: 1.65 }}>
-        Select a node or connection to inspect it.
-      </div>
-    </div>
-  );
-}
+/** Main Relationship Canvas screen. */
+export default function ScenarioCanvas({ appState }) {
+  const {
+    clusters, activeProjectId,
+    canvasNodes, relationships,
+    addCanvasNode, removeCanvasNode, updateCanvasNodePos,
+    addRelationship, updateRelationship, removeRelationship,
+    showToast,
+  } = appState;
 
-function ClusterInspector({ cluster, inputs, onEdit }) {
-  const inputCount = inputs.filter((i) => (cluster.input_ids || []).includes(i.id)).length;
+  const projectClusters = clusters.filter((cl) => cl.project_id === activeProjectId);
+  const projectNodes    = canvasNodes.filter((n) => n.projectId === activeProjectId);
+  const projectRels     = relationships.filter((r) => r.projectId === activeProjectId);
+
+  const [viewMode,      setViewMode]      = useState("canvas");
+  const [connectMode,   setConnectMode]   = useState(null);   // null | 'source' | 'target'
+  const [connectSource, setConnectSource] = useState(null);   // canvasNode id
+  const [relModalOpen,  setRelModalOpen]  = useState(false);
+  const [pendingRel,    setPendingRel]    = useState(null);   // { fromClusterId, toClusterId }
+  const [editingRelId,  setEditingRelId]  = useState(null);
+  const [selectedItem,  setSelectedItem]  = useState(null);
+  const [pan,  setPan]  = useState({ x: 60, y: 60 });
+  const [zoom, setZoom] = useState(1);
+
+  const canvasRef       = useRef(null);
+  const isPanningRef    = useRef(false);
+  const panStartRef     = useRef(null);
+  const dragRef         = useRef(null);
+  const dragOccurredRef = useRef(false);
+  const mouseDownPosRef = useRef(null);
+
+  const clampZoom = (z) => Math.min(Math.max(z, 0.25), 2.5);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === "Escape") {
+        setConnectMode(null);
+        setConnectSource(null);
+        setRelModalOpen(false);
+        setPendingRel(null);
+        setEditingRelId(null);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  const handleCanvasMouseDown = useCallback((e) => {
+    if (!e.target.dataset.canvasBg) return;
+    if (connectMode) return;
+    isPanningRef.current   = true;
+    panStartRef.current    = { mx: e.clientX, my: e.clientY, px: pan.x, py: pan.y };
+    mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+    dragOccurredRef.current = false;
+    e.preventDefault();
+  }, [pan, connectMode]);
+
+  const handleNodeMouseDown = useCallback((e, nodeId, nodeX, nodeY) => {
+    if (connectMode) return;
+    e.stopPropagation();
+    dragRef.current         = { nodeId, startMouseX: e.clientX, startMouseY: e.clientY, startNodeX: nodeX, startNodeY: nodeY };
+    mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+    dragOccurredRef.current = false;
+  }, [connectMode]);
+
+  const handleMouseMove = useCallback((e) => {
+    if (mouseDownPosRef.current) {
+      const dx = e.clientX - mouseDownPosRef.current.x;
+      const dy = e.clientY - mouseDownPosRef.current.y;
+      if (Math.sqrt(dx * dx + dy * dy) > 4) dragOccurredRef.current = true;
+    }
+    if (isPanningRef.current && panStartRef.current) {
+      const dx = e.clientX - panStartRef.current.mx;
+      const dy = e.clientY - panStartRef.current.my;
+      setPan({ x: panStartRef.current.px + dx, y: panStartRef.current.py + dy });
+    }
+    if (dragRef.current) {
+      const { nodeId, startMouseX, startMouseY, startNodeX, startNodeY } = dragRef.current;
+      const dx = (e.clientX - startMouseX) / zoom;
+      const dy = (e.clientY - startMouseY) / zoom;
+      updateCanvasNodePos(nodeId, { x: Math.max(0, startNodeX + dx), y: Math.max(0, startNodeY + dy) });
+    }
+  }, [zoom, updateCanvasNodePos]);
+
+  const handleMouseUp = useCallback(() => {
+    isPanningRef.current = false;
+    panStartRef.current  = null;
+    dragRef.current      = null;
+  }, []);
+
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    const delta = -e.deltaY * 0.0008;
+    setZoom((z) => clampZoom(z + delta));
+  }, []);
+
+  const handleNodeClick = useCallback((e, node) => {
+    e.stopPropagation();
+    if (dragOccurredRef.current) return;
+    if (connectMode === "source") {
+      setConnectSource(node.id);
+      setConnectMode("target");
+      return;
+    }
+    if (connectMode === "target") {
+      if (node.id === connectSource) return;
+      const srcNode = projectNodes.find((n) => n.id === connectSource);
+      if (!srcNode) return;
+      setPendingRel({ fromClusterId: srcNode.clusterId, toClusterId: node.clusterId });
+      setRelModalOpen(true);
+      setConnectMode(null);
+      setConnectSource(null);
+      return;
+    }
+    setSelectedItem({ type: "node", nodeId: node.id, clusterId: node.clusterId });
+  }, [connectMode, connectSource, projectNodes]);
+
+  const handleCanvasClick = useCallback(() => {
+    if (dragOccurredRef.current) return;
+    if (connectMode === "source") { setConnectMode(null); return; }
+    setSelectedItem(null);
+  }, [connectMode]);
+
+  const handleAddToCanvas = useCallback((cluster) => {
+    if (projectNodes.find((n) => n.clusterId === cluster.id)) return;
+    const placed = projectNodes.length;
+    addCanvasNode({
+      projectId: activeProjectId,
+      clusterId: cluster.id,
+      x: 120 + (placed % 4) * 210,
+      y: 100 + Math.floor(placed / 4) * 160,
+    });
+  }, [projectNodes, addCanvasNode, activeProjectId]);
+
+  const handleRemoveFromCanvas = useCallback((nodeId) => {
+    const node = projectNodes.find((n) => n.id === nodeId);
+    removeCanvasNode(nodeId);
+    if (node) {
+      projectRels
+        .filter((r) => r.fromClusterId === node.clusterId || r.toClusterId === node.clusterId)
+        .forEach((r) => removeRelationship(r.id));
+    }
+    if (selectedItem?.nodeId === nodeId) setSelectedItem(null);
+  }, [projectNodes, projectRels, removeCanvasNode, removeRelationship, selectedItem]);
+
+  const handleSaveRel = useCallback((fields) => {
+    if (editingRelId) {
+      updateRelationship(editingRelId, fields);
+      showToast("Relationship updated");
+    } else if (pendingRel) {
+      addRelationship({ ...pendingRel, projectId: activeProjectId, ...fields });
+      showToast("Relationship added");
+    }
+    setRelModalOpen(false);
+    setPendingRel(null);
+    setEditingRelId(null);
+  }, [editingRelId, pendingRel, activeProjectId, updateRelationship, addRelationship, showToast]);
+
+  const handleEditRel = useCallback((relId) => {
+    setEditingRelId(relId);
+    setRelModalOpen(true);
+  }, []);
+
+  const handleDeleteRel = useCallback((relId) => {
+    removeRelationship(relId);
+    showToast("Relationship removed");
+    setSelectedItem(null);
+  }, [removeRelationship, showToast]);
+
+  const closeModal = useCallback(() => {
+    setRelModalOpen(false);
+    setPendingRel(null);
+    setEditingRelId(null);
+  }, []);
+
+  const lineSegments = computeLineSegments(projectRels, projectNodes);
+
+  const editingRel  = editingRelId ? relationships.find((r) => r.id === editingRelId) : null;
+  const fromCluster = pendingRel
+    ? clusters.find((cl) => cl.id === pendingRel.fromClusterId)
+    : editingRel ? clusters.find((cl) => cl.id === editingRel.fromClusterId) : null;
+  const toCluster   = pendingRel
+    ? clusters.find((cl) => cl.id === pendingRel.toClusterId)
+    : editingRel ? clusters.find((cl) => cl.id === editingRel.toClusterId) : null;
+
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-        <SubtypeTag sub={cluster.subtype} />
-        <HorizTag h={cluster.horizon} />
-      </div>
-      <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, marginBottom: 8, lineHeight: 1.35 }}>{cluster.name}</div>
-      {cluster.likelihood && (
-        <div style={{ fontSize: 11, color: c.muted, marginBottom: 8 }}>
-          Likelihood: <strong>{cluster.likelihood}</strong>
-        </div>
-      )}
-      {cluster.description && (
-        <div style={{ fontSize: 11, color: c.muted, lineHeight: 1.65, marginBottom: 12 }}>{cluster.description}</div>
-      )}
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: c.bg }}>
+      {/* Top bar */}
       <div style={{
-        fontSize: 11, color: c.hint, padding: "5px 9px",
-        background: c.surfaceAlt, borderRadius: 6, marginBottom: 14,
-        border: `1px solid ${c.border}`,
+        padding: "14px 22px 12px", background: c.white,
+        borderBottom: `1px solid ${c.border}`, flexShrink: 0,
       }}>
-        {inputCount} input{inputCount !== 1 ? "s" : ""} linked
-      </div>
-      <button onClick={onEdit} style={{ ...btnSec, fontSize: 11, padding: "7px 12px" }}>
-        Edit cluster →
-      </button>
-    </div>
-  );
-}
-
-function ScenarioInspector({ scenario, clusters, onEdit, onOpenNarrative }) {
-  const linkedClusters = clusters.filter((cl) => (scenario.cluster_ids || []).includes(cl.id));
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-        <ArchTag arch={scenario.archetype} />
-        <HorizTag h={scenario.horizon} />
-      </div>
-      <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, marginBottom: 8, lineHeight: 1.35 }}>{scenario.name}</div>
-      {scenario.narrative && (
-        <div style={{
-          fontSize: 11, color: c.muted, lineHeight: 1.65, marginBottom: 12,
-          display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden",
-        }}>
-          {scenario.narrative}
+        <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.09em", color: c.hint, marginBottom: 2 }}>
+          System Map
         </div>
-      )}
-      {linkedClusters.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>
-            Linked clusters
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 19, fontWeight: 500, color: c.ink }}>Relationship Canvas</div>
+            <div style={{ fontSize: 11, color: c.muted, marginTop: 1 }}>
+              {projectNodes.length} cluster{projectNodes.length !== 1 ? "s" : ""} on canvas
+              &nbsp;·&nbsp;
+              {projectRels.length} relationship{projectRels.length !== 1 ? "s" : ""}
+            </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {linkedClusters.map((cl) => (
-              <div key={cl.id} style={{
-                display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: c.muted,
-                padding: "4px 8px", borderRadius: 5,
-                background: c.surfaceAlt, border: `1px solid ${c.border}`,
-              }}>
-                <SubtypeTag sub={cl.subtype} />
-                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cl.name}</span>
-              </div>
+          <div style={{ display: "flex", border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden" }}>
+            {["canvas", "table"].map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                style={{
+                  padding: "6px 16px",
+                  background: viewMode === mode ? c.ink : c.white,
+                  color: viewMode === mode ? c.white : c.muted,
+                  border: "none", fontSize: 11,
+                  fontWeight: viewMode === mode ? 500 : 400,
+                  cursor: "pointer", fontFamily: "inherit",
+                  textTransform: "capitalize",
+                }}
+              >{mode}</button>
             ))}
           </div>
         </div>
+      </div>
+
+      {viewMode === "table" ? (
+        <TableView
+          clusters={projectClusters}
+          relationships={projectRels}
+          canvasNodes={projectNodes}
+          allClusters={clusters}
+          onEditRel={handleEditRel}
+          onDeleteRel={handleDeleteRel}
+        />
+      ) : (
+        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          <LeftSidebar clusters={projectClusters} canvasNodes={projectNodes} onAdd={handleAddToCanvas} />
+
+          {/* Canvas area */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+            {/* Connection mode banner */}
+            {connectMode && (
+              <div style={{
+                position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)",
+                zIndex: 10, padding: "8px 18px", background: c.ink, color: c.white,
+                borderRadius: 20, fontSize: 12, fontWeight: 500,
+                display: "flex", alignItems: "center", gap: 12,
+                boxShadow: "0 2px 14px rgba(0,0,0,0.18)", whiteSpace: "nowrap",
+              }}>
+                {connectMode === "source"
+                  ? "Click a cluster to start the relationship"
+                  : "Now click the target cluster"}
+                <button
+                  onClick={() => { setConnectMode(null); setConnectSource(null); }}
+                  style={{
+                    background: "rgba(255,255,255,0.15)", border: "none",
+                    color: c.white, fontSize: 11, padding: "2px 10px",
+                    borderRadius: 4, cursor: "pointer", fontFamily: "inherit",
+                  }}
+                >Cancel</button>
+              </div>
+            )}
+
+            {/* Add relationship button */}
+            {!connectMode && projectNodes.length >= 2 && (
+              <div style={{ position: "absolute", top: 14, right: 14, zIndex: 10 }}>
+                <button onClick={() => setConnectMode("source")} style={{ ...btnSm, fontSize: 11 }}>
+                  + Add relationship
+                </button>
+              </div>
+            )}
+
+            {/* Canvas */}
+            <div
+              ref={canvasRef}
+              data-canvas-bg="1"
+              onMouseDown={handleCanvasMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onClick={handleCanvasClick}
+              onWheel={handleWheel}
+              style={{
+                flex: 1, overflow: "hidden", position: "relative",
+                cursor: connectMode ? "crosshair" : "default",
+                backgroundImage: "radial-gradient(circle, rgba(0,0,0,0.11) 1px, transparent 1px)",
+                backgroundSize: "24px 24px",
+                backgroundPosition: `${((pan.x % 24) + 24) % 24}px ${((pan.y % 24) + 24) % 24}px`,
+              }}
+            >
+              {/* World — pan + zoom applied here */}
+              <div
+                data-canvas-bg="1"
+                style={{
+                  position: "absolute", top: 0, left: 0,
+                  transformOrigin: "0 0",
+                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                }}
+              >
+                {/* SVG relationship lines */}
+                <svg
+                  style={{
+                    position: "absolute", top: 0, left: 0,
+                    width: 4000, height: 4000, overflow: "visible",
+                  }}
+                >
+                  <defs>
+                    {REL_TYPES.map((rt) => (
+                      <marker
+                        key={rt.id}
+                        id={`arr-${rt.id.replace(/ /g, "-")}`}
+                        markerWidth="7" markerHeight="7"
+                        refX="5" refY="3.5"
+                        orient="auto" markerUnits="strokeWidth"
+                      >
+                        <path d="M0,0.5 L0,6.5 L7,3.5 z" fill={rt.color} />
+                      </marker>
+                    ))}
+                  </defs>
+
+                  {lineSegments.map(({ rel, x1, y1, x2, y2 }) => {
+                    const rt         = REL_TYPES.find((r) => r.id === rel.type) || REL_TYPES[0];
+                    const isSelected = selectedItem?.type === "rel" && selectedItem.id === rel.id;
+                    const markerId   = `arr-${rt.id.replace(/ /g, "-")}`;
+                    return (
+                      <g key={rel.id}>
+                        {/* Wide invisible hit area for clicking */}
+                        <line
+                          x1={x1} y1={y1} x2={x2} y2={y2}
+                          stroke="transparent" strokeWidth={18}
+                          style={{ cursor: "pointer", pointerEvents: "stroke" }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedItem({ type: "rel", id: rel.id });
+                          }}
+                        />
+                        {/* Visible line */}
+                        <line
+                          x1={x1} y1={y1} x2={x2} y2={y2}
+                          stroke={rt.color}
+                          strokeWidth={isSelected ? 2.5 : 1.8}
+                          strokeDasharray={rt.dash ? "6,4" : undefined}
+                          markerEnd={`url(#${markerId})`}
+                          style={{ pointerEvents: "none" }}
+                        />
+                      </g>
+                    );
+                  })}
+                </svg>
+
+                {/* Cluster node cards */}
+                {projectNodes.map((node) => {
+                  const cluster = clusters.find((cl) => cl.id === node.clusterId);
+                  if (!cluster) return null;
+                  return (
+                    <ClusterNode
+                      key={node.id}
+                      node={node}
+                      cluster={cluster}
+                      selected={selectedItem?.type === "node" && selectedItem.nodeId === node.id}
+                      connectMode={!!connectMode}
+                      isConnectSource={connectSource === node.id}
+                      onClick={(e) => handleNodeClick(e, node)}
+                      onRemove={() => handleRemoveFromCanvas(node.id)}
+                      onMouseDown={(e) => handleNodeMouseDown(e, node.id, node.x, node.y)}
+                    />
+                  );
+                })}
+
+                {/* Empty canvas nudge */}
+                {projectNodes.length === 0 && (
+                  <div style={{
+                    position: "absolute", top: 160, left: 160,
+                    fontSize: 12, color: c.hint, pointerEvents: "none", lineHeight: 1.6,
+                  }}>
+                    Add clusters from the sidebar to begin mapping relationships.
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom hint + zoom controls */}
+              <div style={{
+                position: "absolute", bottom: 14, left: 0, right: 0,
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "0 16px", pointerEvents: "none",
+              }}>
+                <div style={{ fontSize: 10, color: c.hint }}>
+                  Drag to pan · Scroll to zoom · Use × to remove a cluster
+                </div>
+                <div style={{
+                  display: "flex", alignItems: "center",
+                  border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden",
+                  background: c.white, pointerEvents: "all",
+                }}>
+                  <button
+                    onClick={() => setZoom((z) => clampZoom(z - 0.1))}
+                    style={{ ...btnG, padding: "5px 11px", fontSize: 15, lineHeight: 1 }}
+                  >−</button>
+                  <div style={{
+                    padding: "5px 10px", fontSize: 11, color: c.muted,
+                    borderLeft: `1px solid ${c.border}`, borderRight: `1px solid ${c.border}`,
+                    minWidth: 48, textAlign: "center",
+                  }}>
+                    {Math.round(zoom * 100)}%
+                  </div>
+                  <button
+                    onClick={() => setZoom((z) => clampZoom(z + 0.1))}
+                    style={{ ...btnG, padding: "5px 11px", fontSize: 15, lineHeight: 1 }}
+                  >+</button>
+                  <button
+                    onClick={() => { setZoom(1); setPan({ x: 60, y: 60 }); }}
+                    style={{ ...btnG, padding: "5px 10px", fontSize: 10, borderLeft: `1px solid ${c.border}` }}
+                  >reset</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Inspector
+            selectedItem={selectedItem}
+            clusters={clusters}
+            relationships={projectRels}
+            onEditRel={handleEditRel}
+            onDeleteRel={handleDeleteRel}
+            onClose={() => setSelectedItem(null)}
+          />
+        </div>
       )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-        <button onClick={onOpenNarrative} style={{ ...btnP, fontSize: 11, padding: "8px 14px" }}>
-          Open narrative →
-        </button>
-        <button onClick={onEdit} style={{ ...btnSec, fontSize: 11, padding: "7px 12px" }}>
-          Edit scenario
-        </button>
-      </div>
+
+      {/* Relationship modal */}
+      {relModalOpen && (
+        <RelModal
+          fromCluster={fromCluster}
+          toCluster={toCluster}
+          initial={editingRel
+            ? { type: editingRel.type, evidence: editingRel.evidence, confidence: editingRel.confidence }
+            : undefined
+          }
+          onSave={handleSaveRel}
+          onClose={closeModal}
+        />
+      )}
     </div>
   );
 }
-
-function ConnectionInspector({ conn, clusters, scenarios, onUpdateRelType, onDelete }) {
-  const cluster  = clusters.find((cl) => cl.id === conn.clusterId);
-  const scenario = scenarios.find((s)  => s.id  === conn.scenarioId);
-
-  return (
-    <div>
-      <div style={{ ...fl, marginBottom: 12 }}>Connection</div>
-
-      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 3 }}>From cluster</div>
-      <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, marginBottom: 12,
-        padding: "5px 8px", borderRadius: 6, background: c.surfaceAlt, border: `1px solid ${c.border}` }}>
-        {cluster?.name || "Unknown"}
-      </div>
-
-      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 3 }}>To scenario</div>
-      <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, marginBottom: 16,
-        padding: "5px 8px", borderRadius: 6, background: "rgba(17,17,17,0.06)", border: `1px solid ${c.border}` }}>
-        {scenario?.name || "Unknown"}
-      </div>
-
-      <div style={{ ...fl, marginBottom: 8 }}>Relationship type</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 16 }}>
-        {REL_TYPES.map((type) => {
-          const isSel = conn.relationshipType === type;
-          const rc = REL_COLORS[type];
-          return (
-            <button key={type} onClick={() => onUpdateRelType(conn.id, type)} style={{
-              padding: "7px 10px", borderRadius: 7, textAlign: "left",
-              border: `1.5px solid ${isSel ? rc.col : c.border}`,
-              background: isSel ? rc.bg : "transparent",
-              color: isSel ? rc.col : c.muted,
-              fontSize: 12, fontWeight: isSel ? 600 : 400,
-              cursor: "pointer", fontFamily: "inherit",
-            }}>
-              {type}
-            </button>
-          );
-        })}
-      </div>
-
-      <button onClick={() => onDelete(conn.id)} style={{
-        ...btnSec, fontSize: 11, padding: "7px 12px",
-        color: c.red800, borderColor: c.redBorder,
-      }}>
-        Delete connection
-      </button>
-    </div>
-  );
-}
-
-// ── Empty canvas state ────────────────────────────────────────────────────────
-
-function EmptyCanvas({ onGoClustering }) {
-  return (
-    <div style={{
-      position: "absolute", inset: 0,
-      display: "flex", flexDirection: "column",
-      alignItems: "center", justifyContent: "center", textAlign: "center",
-    }}>
-      <div style={{ fontSize: 32, opacity: 0.1, marginBottom: 14 }}>◆</div>
-      <div style={{ fontSize: 14, fontWeight: 500, color: c.muted, marginBottom: 6 }}>No clusters yet</div>
-      <div style={{ fontSize: 12, color: c.hint, lineHeight: 1.65, maxWidth: 280, marginBottom: 20 }}>
-        Create clusters in the Clustering screen first, then return here to build scenarios.
-      </div>
-      <button onClick={onGoClustering} style={btnSm}>Go to Clustering →</button>
-    </div>
-  );
-}
-

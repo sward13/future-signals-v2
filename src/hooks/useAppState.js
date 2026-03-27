@@ -3,7 +3,7 @@
  * Returns state object and action dispatchers.
  */
 import { useState, useCallback, useRef } from "react";
-import { DEFAULT_SEEDED_INPUTS, SAMPLE_PROJECTS, SAMPLE_CLUSTERS, SAMPLE_SCENARIOS } from "../data/seeds.js";
+import { DEFAULT_SEEDED_INPUTS, SAMPLE_PROJECTS, SAMPLE_CLUSTERS, SAMPLE_SCENARIOS, SAMPLE_CANVAS_NODES, SAMPLE_RELATIONSHIPS } from "../data/seeds.js";
 
 function uuid() {
   return Math.random().toString(36).slice(2, 10) + "-" + Date.now().toString(36);
@@ -35,6 +35,8 @@ export function useAppState() {
   const [connections, setConnections] = useState(() => seedConnections(SAMPLE_SCENARIOS));
   const connectionsRef = useRef(connections);
   connectionsRef.current = connections;
+  const [canvasNodes, setCanvasNodes] = useState(SAMPLE_CANVAS_NODES);
+  const [relationships, setRelationships] = useState(SAMPLE_RELATIONSHIPS);
   const [projects, setProjects] = useState(SAMPLE_PROJECTS);
   const [activeProjectId, setActiveProjectId] = useState(null);
   const [activeScreen, setActiveScreen] = useState("inbox");
@@ -244,6 +246,53 @@ export function useAppState() {
     );
   }, []);
 
+  const addCanvasNode = useCallback((fields) => {
+    const node = {
+      id: uuid(),
+      projectId: fields.projectId,
+      clusterId: fields.clusterId,
+      x: fields.x ?? 120,
+      y: fields.y ?? 120,
+    };
+    setCanvasNodes((prev) => [...prev, node]);
+    return node;
+  }, []);
+
+  const removeCanvasNode = useCallback((nodeId) => {
+    setCanvasNodes((prev) => prev.filter((n) => n.id !== nodeId));
+  }, []);
+
+  const updateCanvasNodePos = useCallback((nodeId, pos) => {
+    setCanvasNodes((prev) =>
+      prev.map((n) => n.id === nodeId ? { ...n, x: pos.x, y: pos.y } : n)
+    );
+  }, []);
+
+  const addRelationship = useCallback((fields) => {
+    const rel = {
+      id: uuid(),
+      projectId: fields.projectId,
+      fromClusterId: fields.fromClusterId,
+      toClusterId: fields.toClusterId,
+      type: fields.type || "Drives",
+      evidence: fields.evidence || "",
+      confidence: fields.confidence || "Medium",
+      created_at: new Date().toISOString().slice(0, 10),
+    };
+    setRelationships((prev) => [...prev, rel]);
+    return rel;
+  }, []);
+
+  const updateRelationship = useCallback((id, fields) => {
+    setRelationships((prev) =>
+      prev.map((r) => r.id === id ? { ...r, ...fields } : r)
+    );
+  }, []);
+
+  const removeRelationship = useCallback((id) => {
+    setRelationships((prev) => prev.filter((r) => r.id !== id));
+  }, []);
+
   return {
     user,
     inputs,
@@ -286,6 +335,14 @@ export function useAppState() {
     addConnection,
     updateConnection,
     removeConnection,
+    canvasNodes,
+    relationships,
+    addCanvasNode,
+    removeCanvasNode,
+    updateCanvasNodePos,
+    addRelationship,
+    updateRelationship,
+    removeRelationship,
     showToast,
   };
 }

@@ -129,3 +129,21 @@ export const SAMPLE_CLUSTERS = [
 export const SAMPLE_SCENARIOS = [
   { id: "sc1", name: "The Governance Chasm", archetype: "Collapse", horizon: "H2", narrative: "Fragmented regulation and collapsing public trust create a two-speed world.", cluster_ids: ["cl1", "cl2"], project_id: "p1", created_at: "2026-02-10" },
 ];
+
+export const SAMPLE_CANVAS_NODES = [
+  { id: "cn1", projectId: "p1", clusterId: "cl1", x: 160, y: 130 },
+  { id: "cn2", projectId: "p1", clusterId: "cl2", x: 460, y: 270 },
+];
+
+export const SAMPLE_RELATIONSHIPS = [
+  {
+    id: "rel1",
+    projectId: "p1",
+    fromClusterId: "cl1",
+    toClusterId: "cl2",
+    type: "Drives",
+    evidence: "Regulatory complexity undermines public confidence in AI governance bodies.",
+    confidence: "High",
+    created_at: "2026-02-15",
+  },
+];
