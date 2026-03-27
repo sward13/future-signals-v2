@@ -6,7 +6,7 @@
 import { Sidebar } from "./Sidebar.jsx";
 
 export function AppShell({ appState, children, scroll = true }) {
-  const { activeScreen, setActiveScreen, user, inputs, clusters, scenarios, projects, activeProjectId, openProjectModal } = appState;
+  const { activeScreen, setActiveScreen, setActiveProjectId, user, inputs, clusters, scenarios, projects, activeProjectId, openProjectModal } = appState;
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
   const clusterCount = activeProjectId
@@ -16,11 +16,19 @@ export function AppShell({ appState, children, scroll = true }) {
     ? scenarios.filter((s) => s.project_id === activeProjectId).length
     : 0;
 
+  // Clear active project when navigating to workspace-level screens
+  const handleNavigation = (screen) => {
+    if (screen === "dashboard" || screen === "inbox" || screen === "projects") {
+      setActiveProjectId(null);
+    }
+    setActiveScreen(screen);
+  };
+
   return (
     <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
       <Sidebar
         activeScreen={activeScreen}
-        setActiveScreen={setActiveScreen}
+        setActiveScreen={handleNavigation}
         user={user}
         inputCount={inputs.length}
         projectCount={projects.length}

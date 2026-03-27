@@ -6,6 +6,7 @@
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import { c, ta, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
+import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 
 const NODE_W = 156;
 const NODE_H = 68;
@@ -624,13 +625,14 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
 /** Main Relationship Canvas screen. */
 export default function ScenarioCanvas({ appState }) {
   const {
-    clusters, activeProjectId,
+    clusters, inputs, scenarios, projects, activeProjectId, setActiveProjectId, openProjectModal,
     canvasNodes, relationships,
     addCanvasNode, removeCanvasNode, updateCanvasNodePos,
     addRelationship, updateRelationship, removeRelationship,
     showToast,
   } = appState;
 
+  const project         = projects.find((p) => p.id === activeProjectId) || null;
   const projectClusters = clusters.filter((cl) => cl.project_id === activeProjectId);
   const projectNodes    = canvasNodes.filter((n) => n.projectId === activeProjectId);
   const projectRels     = relationships.filter((r) => r.projectId === activeProjectId);
@@ -806,6 +808,22 @@ export default function ScenarioCanvas({ appState }) {
     ? clusters.find((cl) => cl.id === pendingRel.toClusterId)
     : editingRel ? clusters.find((cl) => cl.id === editingRel.toClusterId) : null;
 
+  // No active project — show picker
+  if (!project) {
+    return (
+      <ProjectPicker
+        heading="Select a project to work in"
+        description="The Relationship Canvas maps cluster-to-cluster dynamics for a specific project."
+        projects={projects}
+        inputs={inputs}
+        clusters={clusters}
+        scenarios={scenarios}
+        onSelect={(id) => setActiveProjectId(id)}
+        onNewProject={openProjectModal}
+      />
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: c.bg }}>
       {/* Top bar */}
@@ -813,8 +831,19 @@ export default function ScenarioCanvas({ appState }) {
         padding: "14px 22px 12px", background: c.white,
         borderBottom: `1px solid ${c.border}`, flexShrink: 0,
       }}>
-        <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.09em", color: c.hint, marginBottom: 2 }}>
-          System Map
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.09em", color: c.hint }}>
+            {project.name}
+          </div>
+          <button
+            onClick={() => setActiveProjectId(null)}
+            style={{
+              fontSize: 9, padding: "1px 6px", borderRadius: 4,
+              border: `1px solid ${c.border}`, background: "transparent",
+              color: c.hint, cursor: "pointer", fontFamily: "inherit",
+              letterSpacing: 0, textTransform: "none",
+            }}
+          >switch ↕</button>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>

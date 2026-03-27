@@ -547,8 +547,8 @@ export default function Clustering({ appState }) {
   if (!project) {
     return (
       <ProjectPicker
-        heading="Clustering"
-        description="Select a project to cluster its inputs into themes and drivers."
+        heading="Select a project to work in"
+        description="Choose a project to cluster its inputs into themes, trends, and drivers."
         projects={projects}
         inputs={inputs}
         clusters={clusters}
@@ -566,8 +566,19 @@ export default function Clustering({ appState }) {
         {/* ── Header ────────────────────────────────────────── */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
           <div>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
-              {project.name}
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
+              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint }}>
+                {project.name}
+              </div>
+              <button
+                onClick={() => setActiveProjectId(null)}
+                style={{
+                  fontSize: 9, padding: "1px 6px", borderRadius: 4,
+                  border: `1px solid ${c.border}`, background: "transparent",
+                  color: c.hint, cursor: "pointer", fontFamily: "inherit",
+                  letterSpacing: 0, textTransform: "none",
+                }}
+              >switch ↕</button>
             </div>
             <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Clustering</div>
           </div>
