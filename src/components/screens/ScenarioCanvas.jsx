@@ -253,8 +253,24 @@ function ClusterNode({ node, cluster, selected, connectMode, isConnectSource, on
 }
 
 /** Left sidebar — cluster library with Add buttons and relationship legend. */
-function LeftSidebar({ clusters, canvasNodes, onAdd }) {
+function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
   const nodeClusterIds = new Set(canvasNodes.map((n) => n.clusterId));
+
+  if (collapsed) {
+    return (
+      <div style={{
+        width: 40, borderRight: `1px solid ${c.border}`,
+        background: c.white, display: "flex", flexDirection: "column",
+        alignItems: "center", paddingTop: 10, flexShrink: 0,
+      }}>
+        <button
+          onClick={onToggle}
+          title="Expand panel"
+          style={{ ...btnG, padding: "5px 8px", fontSize: 13, color: c.hint }}
+        >›</button>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -262,10 +278,18 @@ function LeftSidebar({ clusters, canvasNodes, onAdd }) {
       background: c.white, display: "flex", flexDirection: "column", flexShrink: 0,
     }}>
       {/* Header */}
-      <div style={{ padding: "13px 14px 10px", borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
+      <div style={{
+        padding: "13px 14px 10px", borderBottom: `1px solid ${c.border}`, flexShrink: 0,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
         <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint }}>
           Clusters &nbsp;·&nbsp; {nodeClusterIds.size} on canvas
         </div>
+        <button
+          onClick={onToggle}
+          title="Collapse panel"
+          style={{ ...btnG, padding: "3px 6px", fontSize: 13, color: c.hint }}
+        >‹</button>
       </div>
 
       {/* Cluster list */}
@@ -347,12 +371,28 @@ function LeftSidebar({ clusters, canvasNodes, onAdd }) {
 }
 
 /** Right inspector panel — empty state, cluster detail, or relationship detail. */
-function Inspector({ selectedItem, clusters, relationships, onEditRel, onDeleteRel, onClose }) {
+function Inspector({ selectedItem, clusters, relationships, onEditRel, onDeleteRel, onClose, collapsed, onToggle }) {
   const HORIZON_COLORS = {
     H1: [c.green700, c.green50],
     H2: [c.blue700,  c.blue50],
     H3: [c.amber700, c.amber50],
   };
+
+  if (collapsed) {
+    return (
+      <div style={{
+        width: 40, borderLeft: `1px solid ${c.border}`,
+        background: c.white, display: "flex", flexDirection: "column",
+        alignItems: "center", paddingTop: 10, flexShrink: 0,
+      }}>
+        <button
+          onClick={onToggle}
+          title="Expand panel"
+          style={{ ...btnG, padding: "5px 8px", fontSize: 13, color: c.hint }}
+        >‹</button>
+      </div>
+    );
+  }
 
   const panelStyle = {
     width: 254, borderLeft: `1px solid ${c.border}`,
@@ -369,6 +409,7 @@ function Inspector({ selectedItem, clusters, relationships, onEditRel, onDeleteR
       <div style={panelStyle}>
         <div style={headerStyle}>
           <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>Inspector</div>
+          <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "3px 6px", fontSize: 13, color: c.hint }}>›</button>
         </div>
         <div style={{
           flex: 1, display: "flex", flexDirection: "column",
@@ -392,7 +433,10 @@ function Inspector({ selectedItem, clusters, relationships, onEditRel, onDeleteR
       <div style={panelStyle}>
         <div style={headerStyle}>
           <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>Cluster</div>
-          <button onClick={onClose} style={{ ...btnG, padding: "0 4px", color: c.hint, fontSize: 15 }}>×</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "0 5px", color: c.hint, fontSize: 13 }}>›</button>
+            <button onClick={onClose} style={{ ...btnG, padding: "0 4px", color: c.hint, fontSize: 15 }}>×</button>
+          </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px" }}>
           <div style={{
@@ -440,7 +484,10 @@ function Inspector({ selectedItem, clusters, relationships, onEditRel, onDeleteR
       <div style={panelStyle}>
         <div style={headerStyle}>
           <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>Relationship</div>
-          <button onClick={onClose} style={{ ...btnG, padding: "0 4px", color: c.hint, fontSize: 15 }}>×</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "0 5px", color: c.hint, fontSize: 13 }}>›</button>
+            <button onClick={onClose} style={{ ...btnG, padding: "0 4px", color: c.hint, fontSize: 15 }}>×</button>
+          </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px" }}>
           <div style={{ marginBottom: 10 }}>
@@ -638,6 +685,8 @@ export default function ScenarioCanvas({ appState }) {
   const projectRels     = relationships.filter((r) => r.projectId === activeProjectId);
 
   const [viewMode,      setViewMode]      = useState("canvas");
+  const [leftOpen,      setLeftOpen]      = useState(true);
+  const [rightOpen,     setRightOpen]     = useState(true);
   const [connectMode,   setConnectMode]   = useState(null);   // null | 'source' | 'target'
   const [connectSource, setConnectSource] = useState(null);   // canvasNode id
   const [relModalOpen,  setRelModalOpen]  = useState(false);
@@ -885,7 +934,13 @@ export default function ScenarioCanvas({ appState }) {
         />
       ) : (
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          <LeftSidebar clusters={projectClusters} canvasNodes={projectNodes} onAdd={handleAddToCanvas} />
+          <LeftSidebar
+            clusters={projectClusters}
+            canvasNodes={projectNodes}
+            onAdd={handleAddToCanvas}
+            collapsed={!leftOpen}
+            onToggle={() => setLeftOpen((o) => !o)}
+          />
 
           {/* Canvas area */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
@@ -1074,6 +1129,8 @@ export default function ScenarioCanvas({ appState }) {
             onEditRel={handleEditRel}
             onDeleteRel={handleDeleteRel}
             onClose={() => setSelectedItem(null)}
+            collapsed={!rightOpen}
+            onToggle={() => setRightOpen((o) => !o)}
           />
         </div>
       )}
