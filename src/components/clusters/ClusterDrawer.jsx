@@ -74,7 +74,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
             <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 2 }}>
               New cluster
             </div>
-            <div style={{ fontSize: 17, fontWeight: 500, color: c.ink }}>Create a cluster</div>
+            <div style={{ fontSize: 17, fontWeight: 500, color: c.ink }}>Build a cluster</div>
           </div>
           <button onClick={handleClose} style={{ ...btnG, fontSize: 16, padding: "2px 6px", color: c.muted }}>×</button>
         </div>
@@ -277,7 +277,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
             onClick={handleSave}
             style={{ ...btnP, opacity: fields.name.trim() ? 1 : 0.4 }}
           >
-            Create cluster
+            Build cluster
           </button>
         </div>
       </div>

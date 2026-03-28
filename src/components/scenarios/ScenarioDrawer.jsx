@@ -181,7 +181,7 @@ export function ScenarioDrawer({ projectClusters, onClose, onSave }) {
             disabled={!name.trim()}
             style={{ ...btnP, flex: 1, opacity: name.trim() ? 1 : 0.35, cursor: name.trim() ? "pointer" : "default" }}
           >
-            Create scenario
+            Map a system
           </button>
         </div>
       </div>

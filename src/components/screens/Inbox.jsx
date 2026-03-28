@@ -453,7 +453,7 @@ export default function Inbox({ appState }) {
             </div>
           </div>
           <button onClick={() => setDrawerOpen(true)} style={btnP}>
-            + New input
+            Add an input
           </button>
         </div>
 
@@ -486,8 +486,8 @@ export default function Inbox({ appState }) {
           <EmptyState
             icon="◎"
             title="No inputs yet"
-            body="Add your first signal — an article, observation, or data point that hints at change."
-            ctaLabel="+ New input"
+            body="No inputs yet — add one to get started."
+            ctaLabel="Add an input"
             onCta={() => setDrawerOpen(true)}
           />
         )}

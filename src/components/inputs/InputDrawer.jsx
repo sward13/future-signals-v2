@@ -649,7 +649,7 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
             onClick={handleSave}
             style={{ ...btnP, opacity: fields.title.trim() ? 1 : 0.4 }}
           >
-            Save {typeData.label.toLowerCase()}
+            Add input
           </button>
           <button onClick={handleClose} style={btnG}>Cancel</button>
           <span style={{ marginLeft: "auto", fontSize: 11, color: c.hint }}>

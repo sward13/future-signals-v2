@@ -280,7 +280,7 @@ export default function ProjectDetail({ appState }) {
             >
               Add from Inbox
             </button>
-            <button onClick={() => setDrawerOpen(true)} style={btnP}>+ Add input</button>
+            <button onClick={() => setDrawerOpen(true)} style={btnP}>Add an input</button>
           </div>
         </div>
 
@@ -341,10 +341,10 @@ export default function ProjectDetail({ appState }) {
                 <div style={{ fontSize: 26, opacity: 0.12, marginBottom: 10 }}>◎</div>
                 <div style={{ fontSize: 14, fontWeight: 500, color: c.muted, marginBottom: 5 }}>No inputs yet</div>
                 <div style={{ fontSize: 12, color: c.hint, lineHeight: 1.6, marginBottom: 18 }}>
-                  Add your first signal, issue, or projection to get started.
+                  No inputs yet — add one to get started.
                 </div>
                 <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                  <button onClick={() => setDrawerOpen(true)} style={btnP}>+ Add input</button>
+                  <button onClick={() => setDrawerOpen(true)} style={btnP}>Add an input</button>
                   <button onClick={() => setInboxModalOpen(true)} style={{ ...btnSec, fontSize: 13 }}>Add from Inbox</button>
                 </div>
               </div>
@@ -370,7 +370,7 @@ export default function ProjectDetail({ appState }) {
                     fontFamily: "inherit",
                   }}
                 >
-                  + Add another input
+                  Add an input
                 </button>
               </>
             )}
@@ -395,7 +395,7 @@ export default function ProjectDetail({ appState }) {
                   onClick={() => setClusterDrawerOpen(true)}
                   style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
                 >
-                  + New cluster
+                  Build a cluster
                 </button>
               }
             >
@@ -432,7 +432,7 @@ export default function ProjectDetail({ appState }) {
                   onClick={() => setScenarioDrawerOpen(true)}
                   style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
                 >
-                  + Add scenario
+                  Map a system
                 </button>
               }
             >

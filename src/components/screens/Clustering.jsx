@@ -168,7 +168,7 @@ function AssignPicker({ clusters, onAssign, onNewCluster, onClose }) {
             fontSize: 12, color: c.muted,
           }}
         >
-          <span style={{ fontSize: 14 }}>+</span> New cluster
+          <span style={{ fontSize: 14 }}>+</span> Build a cluster
         </button>
       </div>
     </>
@@ -583,7 +583,7 @@ export default function Clustering({ appState }) {
             <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Clustering</div>
           </div>
           <button onClick={() => setNewClusterDrawerOpen(true)} style={btnP}>
-            + New cluster
+            Build a cluster
           </button>
         </div>
 
@@ -609,7 +609,7 @@ export default function Clustering({ appState }) {
                   : "No inputs yet"}
               </div>
               <button onClick={() => setInputDrawerOpen(true)} style={{ ...btnSm, fontSize: 11 }}>
-                + Add input
+                Add an input
               </button>
             </div>
 
@@ -656,7 +656,7 @@ export default function Clustering({ appState }) {
                 icon="◎"
                 title="No inputs in this project"
                 body="Create a new input directly, or head to the Inbox to pull in existing signals."
-                ctaLabel="+ Add input"
+                ctaLabel="Add an input"
                 onCta={() => setInputDrawerOpen(true)}
               />
             ) : (
@@ -688,7 +688,7 @@ export default function Clustering({ appState }) {
                 icon="◈"
                 title="Not enough inputs"
                 body="Add at least 2 inputs to this project to generate cluster suggestions."
-                ctaLabel="+ Add input"
+                ctaLabel="Add an input"
                 onCta={() => { setActiveTab("inputs"); setInputDrawerOpen(true); }}
               />
             ) : visibleSuggestions.length === 0 ? (
@@ -732,7 +732,7 @@ export default function Clustering({ appState }) {
                 body={
                   projectInputs.length < 3
                     ? `Add at least 3 inputs before clustering. You have ${projectInputs.length} so far.`
-                    : "Create your first cluster manually or accept an AI suggestion."
+                    : "Build your first cluster manually or accept an AI suggestion."
                 }
                 ctaLabel={projectInputs.length >= 2 ? "View AI suggestions" : undefined}
                 onCta={() => setActiveTab("suggestions")}
