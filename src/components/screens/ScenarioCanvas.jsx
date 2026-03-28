@@ -370,8 +370,8 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
   );
 }
 
-/** Right inspector panel — empty state, cluster detail, or relationship detail. */
-function Inspector({ selectedItem, clusters, relationships, onEditRel, onDeleteRel, onClose, collapsed, onToggle }) {
+/** Right inspector panel — empty state, cluster detail, relationship detail, or scenario detail. */
+function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel, onDeleteRel, onClose, collapsed, onToggle }) {
   const HORIZON_COLORS = {
     H1: [c.green700, c.green50],
     H2: [c.blue700,  c.blue50],
@@ -543,6 +543,63 @@ function Inspector({ selectedItem, clusters, relationships, onEditRel, onDeleteR
     );
   }
 
+  if (selectedItem.type === "scenario") {
+    const scenario = (scenarios || []).find((s) => s.id === selectedItem.scenarioId);
+    if (!scenario) return null;
+    const ARCHETYPE_COLORS = {
+      Continuation:   { col: c.green700,  bg: c.green50  },
+      Collapse:       { col: c.red800,    bg: c.red50    },
+      Constraint:     { col: c.amber700,  bg: c.amber50  },
+      Transformation: { col: c.violet700, bg: c.violet50 },
+    };
+    const ac = ARCHETYPE_COLORS[scenario.archetype] || { col: c.muted, bg: c.surfaceAlt };
+    const [hcol, hbg] = HORIZON_COLORS[scenario.horizon] || [c.muted, c.surfaceAlt];
+
+    return (
+      <div style={panelStyle}>
+        <div style={headerStyle}>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>System</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "0 5px", color: c.hint, fontSize: 13 }}>›</button>
+            <button onClick={onClose} style={{ ...btnG, padding: "0 4px", color: c.hint, fontSize: 15 }}>×</button>
+          </div>
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px" }}>
+          <div style={{
+            display: "inline-flex", alignItems: "center", padding: "2px 8px",
+            borderRadius: 5, background: ac.bg, marginBottom: 10,
+          }}>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: ac.col }}>
+              {scenario.archetype}
+            </span>
+          </div>
+
+          <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.4, marginBottom: 10 }}>
+            {scenario.name}
+          </div>
+
+          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+            <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 10, background: hbg, color: hcol, fontWeight: 600 }}>
+              {scenario.horizon}
+            </span>
+          </div>
+
+          {scenario.narrative && (
+            <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.55, fontStyle: "italic" }}>
+              {scenario.narrative}
+            </div>
+          )}
+
+          {!scenario.narrative && (
+            <div style={{ fontSize: 11, color: c.hint, lineHeight: 1.55 }}>
+              No narrative seed yet. Add clusters to the canvas below to start mapping relationships.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return null;
 }
 
@@ -676,7 +733,7 @@ export default function ScenarioCanvas({ appState }) {
     canvasNodes, relationships,
     addCanvasNode, removeCanvasNode, updateCanvasNodePos,
     addRelationship, updateRelationship, removeRelationship,
-    showToast,
+    showToast, scenarioDetailId, closeScenarioDetail,
   } = appState;
 
   const project         = projects.find((p) => p.id === activeProjectId) || null;
@@ -718,6 +775,15 @@ export default function ScenarioCanvas({ appState }) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+
+  // Pre-select a scenario in the inspector when navigating from ProjectDetail
+  useEffect(() => {
+    if (scenarioDetailId) {
+      setSelectedItem({ type: "scenario", scenarioId: scenarioDetailId });
+      setRightOpen(true);
+      closeScenarioDetail();
+    }
+  }, [scenarioDetailId, closeScenarioDetail]);
 
   const handleCanvasMouseDown = useCallback((e) => {
     if (!e.target.dataset.canvasBg) return;
@@ -1125,6 +1191,7 @@ export default function ScenarioCanvas({ appState }) {
           <Inspector
             selectedItem={selectedItem}
             clusters={clusters}
+            scenarios={scenarios}
             relationships={projectRels}
             onEditRel={handleEditRel}
             onDeleteRel={handleDeleteRel}

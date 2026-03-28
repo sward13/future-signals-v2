@@ -5,13 +5,20 @@
  * Inputs tab supports multi-select with bulk assign-to-cluster action bar.
  * @param {{ appState: object }} props
  */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { c, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { StrengthDot, HorizTag, SubtypeTag, Tag } from "../shared/Tag.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ClusterDrawer } from "../clusters/ClusterDrawer.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
+
+// ─── Filter constants ──────────────────────────────────────────────────────────
+
+const STEEPLED_CATS = ["Social","Technological","Economic","Environmental","Political","Legal","Ethical","Demographic"];
+const STRENGTH_OPTS = ["Weak","Moderate","High"];
+const HORIZON_OPTS  = ["H1","H2","H3"];
+const EMPTY_FILTERS = { steepled: [], strength: [], horizon: [] };
 
 // ─── Likelihood tag ────────────────────────────────────────────────────────────
 
@@ -172,6 +179,96 @@ function AssignPicker({ clusters, onAssign, onNewCluster, onClose }) {
         </button>
       </div>
     </>
+  );
+}
+
+// ─── Filter pill ──────────────────────────────────────────────────────────────
+
+function FilterPill({ label, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: "3px 10px", borderRadius: 20, fontSize: 11,
+        cursor: "pointer", fontFamily: "inherit",
+        background: active ? c.ink : "transparent",
+        color: active ? c.white : c.muted,
+        border: `1px solid ${active ? c.ink : c.border}`,
+        transition: "all 0.1s",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+// ─── Input filter panel ────────────────────────────────────────────────────────
+
+function InputFilterPanel({ filters, onChange, assignedFilter, onAssignedFilterChange }) {
+  const toggle = (key, val) => {
+    const arr = filters[key];
+    onChange({ ...filters, [key]: arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val] });
+  };
+
+  const assignedOpts = [
+    { id: "all", label: "All" },
+    { id: "assigned", label: "Assigned" },
+    { id: "unassigned", label: "Unassigned" },
+  ];
+
+  return (
+    <div style={{
+      background: c.white, border: `1px solid ${c.border}`,
+      borderRadius: 10, padding: "14px 16px", marginBottom: 12,
+    }}>
+      {/* STEEPLED */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 7 }}>STEEPLED</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+          {STEEPLED_CATS.map((s) => (
+            <FilterPill key={s} label={s} active={filters.steepled.includes(s)} onClick={() => toggle("steepled", s)} />
+          ))}
+        </div>
+      </div>
+      {/* Strength + Horizon + Assigned side by side */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 7 }}>Strength</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+            {STRENGTH_OPTS.map((s) => (
+              <FilterPill key={s} label={s} active={filters.strength.includes(s)} onClick={() => toggle("strength", s)} />
+            ))}
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 7 }}>Horizon</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+            {HORIZON_OPTS.map((h) => (
+              <FilterPill key={h} label={h} active={filters.horizon.includes(h)} onClick={() => toggle("horizon", h)} />
+            ))}
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 7 }}>Cluster status</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+            {assignedOpts.map((o) => (
+              <FilterPill key={o.id} label={o.label} active={assignedFilter === o.id} onClick={() => onAssignedFilterChange(o.id)} />
+            ))}
+          </div>
+        </div>
+      </div>
+      {/* Clear all */}
+      {(filters.steepled.length || filters.strength.length || filters.horizon.length || assignedFilter !== "all") ? (
+        <div style={{ marginTop: 10, textAlign: "right" }}>
+          <button
+            onClick={() => { onChange(EMPTY_FILTERS); onAssignedFilterChange("all"); }}
+            style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            Clear all
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -448,10 +545,39 @@ export default function Clustering({ appState }) {
   const [selectedInputIds,      setSelectedInputIds]      = useState([]);
   const [assignPickerOpen,      setAssignPickerOpen]      = useState(false);
   const [preselectedForCluster, setPreselectedForCluster] = useState([]);
+  const [inputSearch,           setInputSearch]           = useState("");
+  const [inputFiltersOpen,      setInputFiltersOpen]      = useState(false);
+  const [inputFilters,          setInputFilters]          = useState(EMPTY_FILTERS);
+  const [assignedFilter,        setAssignedFilter]        = useState("all");
 
   const project         = activeProjectId ? projects.find((p) => p.id === activeProjectId) : null;
   const projectInputs   = project ? inputs.filter((i)  => i.project_id  === project.id) : [];
   const projectClusters = project ? clusters.filter((cl) => cl.project_id === project.id) : [];
+
+  const filteredInputs = useMemo(() => {
+    let list = projectInputs;
+    if (inputSearch.trim()) {
+      const q = inputSearch.toLowerCase();
+      list = list.filter((i) => i.name.toLowerCase().includes(q) || (i.description || "").toLowerCase().includes(q));
+    }
+    if (inputFilters.steepled.length) {
+      list = list.filter((i) => inputFilters.steepled.some((s) => (i.steepled || []).includes(s)));
+    }
+    if (inputFilters.strength.length) {
+      list = list.filter((i) => inputFilters.strength.includes(i.strength));
+    }
+    if (inputFilters.horizon.length) {
+      list = list.filter((i) => inputFilters.horizon.includes(i.horizon));
+    }
+    if (assignedFilter === "assigned") {
+      list = list.filter((i) => projectClusters.some((cl) => cl.input_ids?.includes(i.id)));
+    } else if (assignedFilter === "unassigned") {
+      list = list.filter((i) => !projectClusters.some((cl) => cl.input_ids?.includes(i.id)));
+    }
+    return list;
+  }, [projectInputs, inputSearch, inputFilters, assignedFilter, projectClusters]);
+
+  const activeFilterCount = inputFilters.steepled.length + inputFilters.strength.length + inputFilters.horizon.length + (assignedFilter !== "all" ? 1 : 0);
 
   // AI suggestions: regenerate when project changes
   const [suggestions,  setSuggestions]  = useState([]);
@@ -601,17 +727,77 @@ export default function Clustering({ appState }) {
             {/* Tab header */}
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
-              marginBottom: 14,
+              marginBottom: 10,
             }}>
               <div style={{ fontSize: 12, color: c.muted }}>
                 {projectInputs.length > 0
-                  ? `${projectInputs.length} input${projectInputs.length !== 1 ? "s" : ""} in this project`
+                  ? `${filteredInputs.length} of ${projectInputs.length} input${projectInputs.length !== 1 ? "s" : ""}`
                   : "No inputs yet"}
               </div>
               <button onClick={() => setInputDrawerOpen(true)} style={{ ...btnSm, fontSize: 11 }}>
                 Add an input
               </button>
             </div>
+
+            {/* Search + filter bar */}
+            {projectInputs.length > 0 && (
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <div style={{ position: "relative", flex: 1 }}>
+                  <input
+                    value={inputSearch}
+                    onChange={(e) => setInputSearch(e.target.value)}
+                    placeholder="Search inputs…"
+                    style={{
+                      width: "100%", padding: "8px 30px 8px 11px",
+                      border: `1px solid ${c.borderMid}`, borderRadius: 8,
+                      background: c.white, color: c.ink, fontSize: 13,
+                      fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+                    }}
+                  />
+                  {inputSearch && (
+                    <button
+                      onClick={() => setInputSearch("")}
+                      style={{
+                        position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+                        background: "none", border: "none", cursor: "pointer",
+                        fontSize: 14, color: c.hint, padding: 0, lineHeight: 1,
+                      }}
+                    >×</button>
+                  )}
+                </div>
+                <button
+                  onClick={() => setInputFiltersOpen((s) => !s)}
+                  style={{
+                    padding: "8px 14px", borderRadius: 8, fontSize: 12,
+                    cursor: "pointer", fontFamily: "inherit",
+                    background: inputFiltersOpen || activeFilterCount > 0 ? c.ink : "transparent",
+                    color: inputFiltersOpen || activeFilterCount > 0 ? c.white : c.muted,
+                    border: `1px solid ${inputFiltersOpen || activeFilterCount > 0 ? c.ink : c.borderMid}`,
+                    display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap",
+                  }}
+                >
+                  Filter
+                  {activeFilterCount > 0 && (
+                    <span style={{
+                      background: c.white, color: c.ink, borderRadius: 8,
+                      fontSize: 10, padding: "0px 5px", fontWeight: 600,
+                    }}>
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Filter panel */}
+            {inputFiltersOpen && (
+              <InputFilterPanel
+                filters={inputFilters}
+                onChange={setInputFilters}
+                assignedFilter={assignedFilter}
+                onAssignedFilterChange={setAssignedFilter}
+              />
+            )}
 
             {/* Bulk selection action bar */}
             {anySelected && (
@@ -659,9 +845,23 @@ export default function Clustering({ appState }) {
                 ctaLabel="Add an input"
                 onCta={() => setInputDrawerOpen(true)}
               />
+            ) : filteredInputs.length === 0 ? (
+              <div style={{
+                padding: "32px 24px", textAlign: "center",
+                background: c.white, border: `1px solid ${c.border}`,
+                borderRadius: 10,
+              }}>
+                <div style={{ fontSize: 13, color: c.muted, marginBottom: 8 }}>No inputs match your search or filters.</div>
+                <button
+                  onClick={() => { setInputSearch(""); setInputFilters(EMPTY_FILTERS); setAssignedFilter("all"); }}
+                  style={{ fontSize: 12, color: c.ink, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}
+                >
+                  Clear search and filters
+                </button>
+              </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {projectInputs.map((inp) => (
+                {filteredInputs.map((inp) => (
                   <ClusteringInputCard
                     key={inp.id}
                     input={inp}

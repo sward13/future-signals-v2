@@ -45,6 +45,7 @@ export function useAppState() {
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [inputDetailId, setInputDetailId] = useState(null);
   const [clusterDetailId, setClusterDetailId] = useState(null);
+  const [scenarioDetailId, setScenarioDetailId] = useState(null);
   const toastTimer = useRef(null);
 
   const showToast = useCallback((message, type = "success") => {
@@ -96,6 +97,10 @@ export function useAppState() {
     };
     setProjects((prev) => [newProject, ...prev]);
     return newProject;
+  }, []);
+
+  const updateProject = useCallback((id, fields) => {
+    setProjects((prev) => prev.map((p) => p.id === id ? { ...p, ...fields } : p));
   }, []);
 
   const addInput = useCallback((fields) => {
@@ -158,6 +163,8 @@ export function useAppState() {
   const closeInputDetail = useCallback(() => setInputDetailId(null), []);
   const openClusterDetail = useCallback((id) => setClusterDetailId(id), []);
   const closeClusterDetail = useCallback(() => setClusterDetailId(null), []);
+  const openScenarioDetail = useCallback((id) => setScenarioDetailId(id), []);
+  const closeScenarioDetail = useCallback(() => setScenarioDetailId(null), []);
 
   const updateInput = useCallback((id, fields) => {
     setInputs((prev) => prev.map((inp) => inp.id === id ? { ...inp, ...fields } : inp));
@@ -314,16 +321,20 @@ export function useAppState() {
     closeProjectModal,
     openProject,
     addProject,
+    updateProject,
     addInput,
     addCluster,
     assignInputToCluster,
     removeInputFromCluster,
     inputDetailId,
     clusterDetailId,
+    scenarioDetailId,
     openInputDetail,
     closeInputDetail,
     openClusterDetail,
     closeClusterDetail,
+    openScenarioDetail,
+    closeScenarioDetail,
     updateInput,
     updateCluster,
     dismissInput,

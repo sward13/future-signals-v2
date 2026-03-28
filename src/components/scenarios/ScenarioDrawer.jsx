@@ -1,11 +1,10 @@
 /**
- * ScenarioDrawer — slide-over drawer for creating a new scenario.
- * Shared between ScenarioCanvas and ProjectDetail.
- * @param {{ projectClusters: object[], onClose: () => void, onSave: (fields: object) => void }} props
+ * ScenarioDrawer — slide-over drawer for creating a new scenario/system.
+ * Clusters are linked from within the Relationship Canvas, not at creation time.
+ * @param {{ onClose: () => void, onSave: (fields: object) => void }} props
  */
 import { useState } from "react";
 import { c, btnP, btnSec, btnG, inp, ta, fl } from "../../styles/tokens.js";
-import { SubtypeTag } from "../shared/Tag.jsx";
 
 export const ARCHETYPES = [
   { key: "Continuation",   desc: "Trends extend; the future broadly resembles the present." },
@@ -20,36 +19,15 @@ export const HORIZON_COLORS = {
   H3: { col: c.amber700, bg: c.amber50,  border: c.amberBorder },
 };
 
-function SmallCheckbox({ checked }) {
-  return (
-    <div style={{
-      width: 15, height: 15, borderRadius: 3, flexShrink: 0,
-      border: `1.5px solid ${checked ? c.ink : c.borderMid}`,
-      background: checked ? c.ink : c.white,
-      display: "flex", alignItems: "center", justifyContent: "center",
-    }}>
-      {checked && (
-        <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-          <path d="M1 3L3 5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      )}
-    </div>
-  );
-}
-
-export function ScenarioDrawer({ projectClusters, onClose, onSave }) {
-  const [name,       setName]       = useState("");
-  const [archetype,  setArchetype]  = useState("Continuation");
-  const [horizon,    setHorizon]    = useState("H2");
-  const [clusterIds, setClusterIds] = useState([]);
-  const [narrative,  setNarrative]  = useState("");
-
-  const toggleCluster = (id) =>
-    setClusterIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+export function ScenarioDrawer({ onClose, onSave }) {
+  const [name,      setName]      = useState("");
+  const [archetype, setArchetype] = useState("Continuation");
+  const [horizon,   setHorizon]   = useState("H2");
+  const [narrative, setNarrative] = useState("");
 
   const handleSave = () => {
     if (!name.trim()) return;
-    onSave({ name: name.trim(), archetype, horizon, cluster_ids: clusterIds, narrative });
+    onSave({ name: name.trim(), archetype, horizon, cluster_ids: [], narrative });
   };
 
   return (
@@ -125,39 +103,6 @@ export function ScenarioDrawer({ projectClusters, onClose, onSave }) {
               })}
             </div>
           </div>
-
-          {/* Link clusters */}
-          {projectClusters.length > 0 && (
-            <div style={{ marginBottom: 18 }}>
-              <label style={fl}>Link clusters</label>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                {projectClusters.map((cl) => {
-                  const checked = clusterIds.includes(cl.id);
-                  return (
-                    <button key={cl.id} onClick={() => toggleCluster(cl.id)} style={{
-                      display: "flex", alignItems: "center", gap: 9,
-                      padding: "7px 10px", borderRadius: 6,
-                      border: `1px solid ${checked ? c.borderMid : c.border}`,
-                      background: checked ? "rgba(0,0,0,0.02)" : c.white,
-                      cursor: "pointer", fontFamily: "inherit", textAlign: "left",
-                    }}>
-                      <SmallCheckbox checked={checked} />
-                      <span style={{ flex: 1, fontSize: 11, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {cl.name}
-                      </span>
-                      <SubtypeTag sub={cl.subtype} />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {projectClusters.length === 0 && (
-            <div style={{ marginBottom: 18, padding: "10px 12px", borderRadius: 8, background: c.surfaceAlt, border: `1px solid ${c.border}` }}>
-              <div style={{ fontSize: 11, color: c.hint }}>No clusters yet. Create clusters first to link them to this scenario.</div>
-            </div>
-          )}
 
           {/* Narrative seed */}
           <div>

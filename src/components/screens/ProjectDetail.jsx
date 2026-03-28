@@ -10,6 +10,7 @@ import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { AddFromInboxModal } from "../inputs/AddFromInboxModal.jsx";
 import { ClusterDrawer } from "../clusters/ClusterDrawer.jsx";
 import { ScenarioDrawer } from "../scenarios/ScenarioDrawer.jsx";
+import { EditProjectDrawer } from "../projects/EditProjectDrawer.jsx";
 
 // ─── Read-only horizon bar ─────────────────────────────────────────────────────
 
@@ -168,14 +169,16 @@ export default function ProjectDetail({ appState }) {
   const {
     activeProjectId, projects, inputs, clusters, scenarios,
     addInput, saveInputsToProject, showToast, setActiveScreen,
-    openInputDetail, openClusterDetail,
-    addCluster, addScenario, addConnection,
+    openInputDetail, openClusterDetail, openScenarioDetail,
+    addCluster, addScenario, updateProject,
   } = appState;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [inboxModalOpen, setInboxModalOpen] = useState(false);
   const [clusterDrawerOpen, setClusterDrawerOpen] = useState(false);
   const [scenarioDrawerOpen, setScenarioDrawerOpen] = useState(false);
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+  const [editScrollTo, setEditScrollTo] = useState(null);
 
   const project = projects.find((p) => p.id === activeProjectId);
 
@@ -215,14 +218,25 @@ export default function ProjectDetail({ appState }) {
     setClusterDrawerOpen(false);
   };
 
+  const openEditDrawer = (scrollTo = null) => {
+    setEditScrollTo(scrollTo);
+    setEditDrawerOpen(true);
+  };
+
+  const handleUpdateProject = (fields) => {
+    updateProject(project.id, fields);
+    showToast("Project updated");
+    setEditDrawerOpen(false);
+  };
+
   const handleCreateScenario = (fields) => {
-    const linkedClusterIds = fields.cluster_ids || [];
     const newScenario = addScenario({ ...fields, project_id: project.id });
-    if (newScenario) {
-      linkedClusterIds.forEach((cid) => addConnection({ clusterId: cid, scenarioId: newScenario.id, relationshipType: "Drives" }));
-    }
-    showToast("Scenario added to Systems");
     setScenarioDrawerOpen(false);
+    if (newScenario) {
+      openScenarioDetail(newScenario.id);
+    }
+    setActiveScreen("scenarios");
+    showToast("System created — start mapping relationships");
   };
 
   return (
@@ -252,6 +266,18 @@ export default function ProjectDetail({ appState }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
               <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>{project.name}</div>
+              <button
+                onClick={() => openEditDrawer()}
+                title="Edit project"
+                style={{
+                  fontSize: 11, padding: "3px 9px", borderRadius: 6,
+                  background: "transparent", color: c.muted,
+                  border: `1px solid ${c.border}`,
+                  cursor: "pointer", fontFamily: "inherit",
+                }}
+              >
+                Edit project
+              </button>
               <span style={{
                 fontSize: 10, padding: "2px 8px", borderRadius: 8,
                 background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}`,
@@ -401,7 +427,7 @@ export default function ProjectDetail({ appState }) {
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                 {projectClusters.map((cl) => (
-                  <div key={cl.id} onClick={() => openClusterDetail(cl.id)} style={{
+                  <div key={cl.id} onClick={() => { setActiveScreen("clustering"); openClusterDetail(cl.id); }} style={{
                     padding: "9px 12px",
                     background: c.surfaceAlt,
                     border: `1px solid ${c.border}`,
@@ -438,12 +464,19 @@ export default function ProjectDetail({ appState }) {
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                 {projectScenarios.map((s) => (
-                  <div key={s.id} style={{
-                    padding: "9px 12px",
-                    background: c.surfaceAlt,
-                    border: `1px solid ${c.border}`,
-                    borderRadius: 8,
-                  }}>
+                  <div
+                    key={s.id}
+                    onClick={() => { openScenarioDetail(s.id); setActiveScreen("scenarios"); }}
+                    style={{
+                      padding: "9px 12px",
+                      background: c.surfaceAlt,
+                      border: `1px solid ${c.border}`,
+                      borderRadius: 8,
+                      cursor: "pointer",
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.borderColor = c.borderMid}
+                    onMouseLeave={(e) => e.currentTarget.style.borderColor = c.border}
+                  >
                     <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{s.name}</div>
                     {s.description && (
                       <div style={{ fontSize: 11, color: c.muted, marginTop: 3 }}>{s.description}</div>
@@ -454,38 +487,57 @@ export default function ProjectDetail({ appState }) {
             </SummaryCard>
 
             {/* Metadata strip */}
-            {(project.geo || project.unit || project.stakeholders) && (
-              <div style={{
+            <div
+              onClick={() => openEditDrawer()}
+              style={{
                 padding: "12px 14px",
                 background: c.white,
                 border: `1px solid ${c.border}`,
                 borderRadius: 10,
-              }}>
-                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 10 }}>
+                cursor: "pointer",
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = c.borderMid}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = c.border}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>
                   Project details
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {project.geo && (
-                    <div>
-                      <div style={{ fontSize: 10, color: c.hint, marginBottom: 1 }}>Geography</div>
-                      <div style={{ fontSize: 12, color: c.ink }}>{project.geo}</div>
-                    </div>
-                  )}
-                  {project.unit && (
-                    <div>
-                      <div style={{ fontSize: 10, color: c.hint, marginBottom: 1 }}>Unit of analysis</div>
-                      <div style={{ fontSize: 12, color: c.ink }}>{project.unit}</div>
-                    </div>
-                  )}
-                  {project.stakeholders && (
-                    <div>
-                      <div style={{ fontSize: 10, color: c.hint, marginBottom: 1 }}>Stakeholders</div>
-                      <div style={{ fontSize: 12, color: c.ink }}>{project.stakeholders}</div>
-                    </div>
-                  )}
-                </div>
+                <span style={{ fontSize: 10, color: c.hint }}>Edit ›</span>
               </div>
-            )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {project.geo ? (
+                  <div onClick={(e) => { e.stopPropagation(); openEditDrawer("geo"); }}>
+                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 1 }}>Geography</div>
+                    <div style={{ fontSize: 12, color: c.ink }}>{project.geo}</div>
+                  </div>
+                ) : (
+                  <div onClick={(e) => { e.stopPropagation(); openEditDrawer("geo"); }} style={{ fontSize: 11, color: c.hint, fontStyle: "italic" }}>
+                    + Add geography
+                  </div>
+                )}
+                {project.unit ? (
+                  <div onClick={(e) => { e.stopPropagation(); openEditDrawer("unit"); }}>
+                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 1 }}>Unit of analysis</div>
+                    <div style={{ fontSize: 12, color: c.ink }}>{project.unit}</div>
+                  </div>
+                ) : (
+                  <div onClick={(e) => { e.stopPropagation(); openEditDrawer("unit"); }} style={{ fontSize: 11, color: c.hint, fontStyle: "italic" }}>
+                    + Add unit of analysis
+                  </div>
+                )}
+                {project.stakeholders ? (
+                  <div onClick={(e) => { e.stopPropagation(); openEditDrawer("stakeholders"); }}>
+                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 1 }}>Stakeholders</div>
+                    <div style={{ fontSize: 12, color: c.ink }}>{project.stakeholders}</div>
+                  </div>
+                ) : (
+                  <div onClick={(e) => { e.stopPropagation(); openEditDrawer("stakeholders"); }} style={{ fontSize: 11, color: c.hint, fontStyle: "italic" }}>
+                    + Add stakeholders
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -521,9 +573,18 @@ export default function ProjectDetail({ appState }) {
       {/* Scenario drawer */}
       {scenarioDrawerOpen && (
         <ScenarioDrawer
-          projectClusters={projectClusters}
           onClose={() => setScenarioDrawerOpen(false)}
           onSave={handleCreateScenario}
+        />
+      )}
+
+      {/* Edit project drawer */}
+      {editDrawerOpen && (
+        <EditProjectDrawer
+          project={project}
+          onClose={() => setEditDrawerOpen(false)}
+          onSave={handleUpdateProject}
+          scrollTo={editScrollTo}
         />
       )}
     </>

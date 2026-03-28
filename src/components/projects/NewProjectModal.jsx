@@ -14,7 +14,7 @@ import { DOMAINS } from "../../data/seeds.js";
  * HorizonSlider — graphical drag-handle slider that sets H1/H2/H3 boundaries.
  * @param {{ startYear: number, endYear: number, h1Pct: number, h2Pct: number, onH1Change: fn, onH2Change: fn }} props
  */
-function HorizonSlider({ startYear, endYear, h1Pct, h2Pct, onH1Change, onH2Change }) {
+export function HorizonSlider({ startYear, endYear, h1Pct, h2Pct, onH1Change, onH2Change }) {
   const containerRef = useRef(null);
   const [dragging, setDragging] = useState(null); // null | 0 (h1 handle) | 1 (h2 handle)
 
@@ -219,7 +219,7 @@ function HorizonSlider({ startYear, endYear, h1Pct, h2Pct, onH1Change, onH2Chang
 
 // ─── Range year controls ───────────────────────────────────────────────────────
 
-function YearInput({ label, value, onChange, min, max }) {
+export function YearInput({ label, value, onChange, min, max }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
       <div style={{ fontSize: 10, color: c.hint }}>{label}</div>
@@ -251,7 +251,7 @@ function YearInput({ label, value, onChange, min, max }) {
 
 // ─── Mode selector ─────────────────────────────────────────────────────────────
 
-function ModeSelector({ value, onChange }) {
+export function ModeSelector({ value, onChange }) {
   const modes = [
     {
       id: "quick_scan",
