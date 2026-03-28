@@ -1,13 +1,13 @@
 /**
- * Inbox screen — shows all inputs (seeded + manually added).
- * Supports multi-select with bulk actions: add to project, assign to cluster, dismiss.
+ * Inbox screen — shows unassigned inputs (project_id === null).
+ * Supports multi-select with bulk actions: add to project, dismiss.
  * @param {{ appState: object }} props
  */
 import { useState } from "react";
 import { c, btnP, btnSm, btnSec, btnG } from "../../styles/tokens.js";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
-import { StrengthDot, HorizTag, SubtypeTag } from "../shared/Tag.jsx";
+import { StrengthDot, HorizTag } from "../shared/Tag.jsx";
 
 const FILTER_OPTIONS = ["All", "H1", "H2", "H3", "High", "Moderate", "Weak"];
 
@@ -81,58 +81,6 @@ function ProjectPickerPopover({ projects, onSelect, onClose, onCreateProject }) 
                   border: `1px solid ${p.mode === "deep_analysis" ? c.violetBorder : c.border}`,
                 }}>
                   {p.mode === "deep_analysis" ? "Deep" : "Quick"}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-        <div style={{ padding: "8px 14px", borderTop: `1px solid ${c.border}` }}>
-          <button onClick={onClose} style={{ fontSize: 11, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-            Cancel
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ─── Cluster picker popover ───────────────────────────────────────────────────
-
-function ClusterPickerPopover({ clusters, hasActiveProject, onAssign, onClose }) {
-  return (
-    <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
-      <div style={{
-        position: "absolute", top: "100%", left: 0, marginTop: 4,
-        background: c.white, border: `1px solid ${c.border}`,
-        borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
-        minWidth: 240, zIndex: 51, overflow: "hidden",
-      }}>
-        {!hasActiveProject ? (
-          <div style={{ padding: "14px 16px", fontSize: 12, color: c.hint }}>
-            Select a project first to see its clusters.
-          </div>
-        ) : clusters.length === 0 ? (
-          <div style={{ padding: "14px 16px", fontSize: 12, color: c.hint }}>
-            No clusters in this project yet.
-          </div>
-        ) : (
-          <div style={{ maxHeight: 220, overflowY: "auto" }}>
-            {clusters.map((cl) => (
-              <button
-                key={cl.id}
-                onClick={() => onAssign(cl)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  width: "100%", padding: "10px 14px",
-                  background: "transparent", border: "none",
-                  textAlign: "left", cursor: "pointer", fontFamily: "inherit",
-                  borderBottom: `1px solid ${c.border}`,
-                }}
-              >
-                <SubtypeTag sub={cl.subtype} />
-                <span style={{ fontSize: 12, color: c.ink, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {cl.name}
                 </span>
               </button>
             ))}
@@ -404,9 +352,8 @@ function ProjectPickerModal({ projects, onSelect, onClose, onCreateProject }) {
 
 export default function Inbox({ appState }) {
   const {
-    inputs, projects, clusters, activeProjectId,
+    inputs, projects,
     addInput, dismissInput, saveInputToProject, saveInputsToProject,
-    assignInputToCluster,
     openDrawer, showToast, openInputDetail, openProjectModal,
   } = appState;
 
@@ -416,15 +363,10 @@ export default function Inbox({ appState }) {
   const [savingInputId,   setSavingInputId]   = useState(null);
 
   // Multi-select state
-  const [selectedInputIds,   setSelectedInputIds]   = useState([]);
-  const [projectPickerOpen,  setProjectPickerOpen]  = useState(false);
-  const [clusterPickerOpen,  setClusterPickerOpen]  = useState(false);
+  const [selectedInputIds,  setSelectedInputIds]  = useState([]);
+  const [projectPickerOpen, setProjectPickerOpen] = useState(false);
 
   const anySelected = selectedInputIds.length > 0;
-
-  const activeClusters = activeProjectId
-    ? clusters.filter((cl) => cl.project_id === activeProjectId)
-    : [];
 
   const handleSave = (fields) => {
     addInput(fields);
@@ -450,7 +392,6 @@ export default function Inbox({ appState }) {
   const clearSelection = () => {
     setSelectedInputIds([]);
     setProjectPickerOpen(false);
-    setClusterPickerOpen(false);
   };
 
   // Bulk: add to project
@@ -458,14 +399,6 @@ export default function Inbox({ appState }) {
     saveInputsToProject(selectedInputIds, project.id);
     const n = selectedInputIds.length;
     showToast(`${n} input${n !== 1 ? "s" : ""} added to "${project.name}"`);
-    clearSelection();
-  };
-
-  // Bulk: assign to cluster
-  const handleBulkAssignToCluster = (cluster) => {
-    selectedInputIds.forEach((id) => assignInputToCluster(id, cluster.id));
-    const n = selectedInputIds.length;
-    showToast(`${n} input${n !== 1 ? "s" : ""} assigned to "${cluster.name}"`);
     clearSelection();
   };
 
@@ -477,8 +410,11 @@ export default function Inbox({ appState }) {
     clearSelection();
   };
 
+  // Inbox = inputs not yet assigned to a project
+  const inboxInputs = inputs.filter((inp) => inp.project_id === null);
+
   // Apply filter
-  const filteredInputs = inputs.filter((inp) => {
+  const filteredInputs = inboxInputs.filter((inp) => {
     if (filter === "All") return true;
     if (["H1", "H2", "H3"].includes(filter)) return inp.horizon === filter;
     if (["High", "Moderate", "Weak"].includes(filter)) return inp.strength === filter;
@@ -487,7 +423,7 @@ export default function Inbox({ appState }) {
 
   const seededInputs = filteredInputs.filter((inp) => inp.is_seeded);
   const manualInputs = filteredInputs.filter((inp) => !inp.is_seeded);
-  const totalCount   = inputs.length;
+  const totalCount   = inboxInputs.length;
 
   return (
     <>
@@ -522,7 +458,7 @@ export default function Inbox({ appState }) {
         </div>
 
         {/* Filter bar */}
-        {inputs.length > 0 && (
+        {inboxInputs.length > 0 && (
           <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
             {FILTER_OPTIONS.map((opt) => {
               const active = filter === opt;
@@ -546,7 +482,7 @@ export default function Inbox({ appState }) {
         )}
 
         {/* Empty state */}
-        {inputs.length === 0 && (
+        {inboxInputs.length === 0 && (
           <EmptyState
             icon="◎"
             title="No inputs yet"
@@ -572,7 +508,7 @@ export default function Inbox({ appState }) {
             {/* Add to project */}
             <div style={{ position: "relative" }}>
               <button
-                onClick={() => { setProjectPickerOpen((s) => !s); setClusterPickerOpen(false); }}
+                onClick={() => setProjectPickerOpen((s) => !s)}
                 style={{ ...btnSm, fontSize: 11 }}
               >
                 Add to project →
@@ -583,24 +519,6 @@ export default function Inbox({ appState }) {
                   onSelect={handleBulkAddToProject}
                   onClose={() => setProjectPickerOpen(false)}
                   onCreateProject={() => { clearSelection(); openProjectModal(); }}
-                />
-              )}
-            </div>
-
-            {/* Assign to cluster */}
-            <div style={{ position: "relative" }}>
-              <button
-                onClick={() => { setClusterPickerOpen((s) => !s); setProjectPickerOpen(false); }}
-                style={{ ...btnSec, fontSize: 11, padding: "6px 12px" }}
-              >
-                Assign to cluster →
-              </button>
-              {clusterPickerOpen && (
-                <ClusterPickerPopover
-                  clusters={activeClusters}
-                  hasActiveProject={!!activeProjectId}
-                  onAssign={handleBulkAssignToCluster}
-                  onClose={() => setClusterPickerOpen(false)}
                 />
               )}
             </div>
@@ -686,7 +604,7 @@ export default function Inbox({ appState }) {
         )}
 
         {/* No results after filter */}
-        {inputs.length > 0 && filteredInputs.length === 0 && (
+        {inboxInputs.length > 0 && filteredInputs.length === 0 && (
           <div style={{ textAlign: "center", padding: "32px 0", color: c.hint, fontSize: 13 }}>
             No inputs match this filter.{" "}
             <button onClick={() => setFilter("All")} style={{ color: c.blue700, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>

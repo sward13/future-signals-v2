@@ -1,7 +1,20 @@
 /**
- * Sidebar — primary navigation. When inside a project (activeScreen === 'project'),
- * shows the active project name below the logo and as a sub-row under Projects.
- * @param {{ activeScreen: string, setActiveScreen: (screen: string) => void, user: object, inputCount: number, projectCount: number, activeProject: object|null }} props
+ * Sidebar — primary navigation with two states:
+ *   Workspace level (no active project): Dashboard, Inbox, Projects only.
+ *   Project level (active project): same top nav + PROJECT section with
+ *     Inputs, Clustering, Systems scoped to that project.
+ * @param {{
+ *   activeScreen: string,
+ *   setActiveScreen: (screen: string) => void,
+ *   user: object,
+ *   inboxCount: number,
+ *   projectCount: number,
+ *   activeProject: object|null,
+ *   openProjectModal: () => void,
+ *   projectInputCount: number,
+ *   clusterCount: number,
+ *   scenarioCount: number,
+ * }} props
  */
 import { c } from "../../styles/tokens.js";
 
@@ -11,19 +24,35 @@ const NAV_ITEMS = [
   { icon: "◻", label: "Projects",  screen: "projects" },
 ];
 
-const WORKSPACE_ITEMS = [
+const PROJECT_ITEMS = [
+  { icon: "◎", label: "Inputs",     screen: "project" },
   { icon: "◈", label: "Clustering", screen: "clustering" },
   { icon: "◆", label: "Systems",    screen: "scenarios" },
 ];
 
-export function Sidebar({ activeScreen, setActiveScreen, user, inputCount = 0, projectCount = 0, activeProject = null, openProjectModal, clusterCount = 0, scenarioCount = 0 }) {
+export function Sidebar({
+  activeScreen,
+  setActiveScreen,
+  user,
+  inboxCount = 0,
+  projectCount = 0,
+  activeProject = null,
+  openProjectModal,
+  projectInputCount = 0,
+  clusterCount = 0,
+  scenarioCount = 0,
+}) {
   const inProject = !!activeProject;
 
-  const counts = {
-    inbox: inputCount || null,
+  const navCounts = {
+    inbox:    inboxCount   || null,
     projects: projectCount || null,
-    clustering: clusterCount || null,
-    scenarios: scenarioCount || null,
+  };
+
+  const projCounts = {
+    project:    projectInputCount || null,
+    clustering: clusterCount      || null,
+    scenarios:  scenarioCount     || null,
   };
 
   const NavButton = ({ icon, label, screen, isActive, count, indented = false }) => (
@@ -53,12 +82,7 @@ export function Sidebar({ activeScreen, setActiveScreen, user, inputCount = 0, p
       {indented && (
         <span style={{ fontSize: 9, width: 14, flexShrink: 0, color: c.hint }}>↳</span>
       )}
-      <span style={{
-        flex: 1,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-      }}>
+      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {label}
       </span>
       {count != null && !indented && (
@@ -75,13 +99,7 @@ export function Sidebar({ activeScreen, setActiveScreen, user, inputCount = 0, p
         </span>
       )}
       {indented && isActive && (
-        <span style={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          background: c.ink,
-          flexShrink: 0,
-        }} />
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.ink, flexShrink: 0 }} />
       )}
     </button>
   );
@@ -96,15 +114,11 @@ export function Sidebar({ activeScreen, setActiveScreen, user, inputCount = 0, p
       flexDirection: "column",
       height: "100%",
     }}>
-      {/* Logo */}
+      {/* Logo / context */}
       <div style={{ padding: "16px", borderBottom: `1px solid ${c.border}` }}>
         <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 7,
-          fontSize: 13,
-          fontWeight: 600,
-          color: c.ink,
+          display: "flex", alignItems: "center", gap: 7,
+          fontSize: 13, fontWeight: 600, color: c.ink,
         }}>
           <div style={{ width: 7, height: 7, borderRadius: "50%", background: c.ink }} />
           Future Signals
@@ -125,54 +139,54 @@ export function Sidebar({ activeScreen, setActiveScreen, user, inputCount = 0, p
 
       {/* Nav */}
       <div style={{ flex: 1, padding: "8px 0", overflowY: "auto" }}>
-        {NAV_ITEMS.map(({ icon, label, screen }) => {
-          // Projects parent is only active on the projects/dashboard list, NOT when inside a project
-          // (the indented sub-item carries the active state when inside a project)
-          const isActive = activeScreen === screen;
 
-          return (
-            <div key={screen}>
+        {/* Top-level workspace nav — always visible */}
+        {NAV_ITEMS.map(({ icon, label, screen }) => (
+          <div key={screen}>
+            <NavButton
+              icon={icon}
+              label={label}
+              screen={screen}
+              isActive={activeScreen === screen}
+              count={navCounts[screen]}
+            />
+            {/* Active project sub-row under Projects */}
+            {screen === "projects" && inProject && (
               <NavButton
+                icon="◻"
+                label={activeProject.name}
+                screen="project"
+                isActive={activeScreen === "project"}
+                indented
+              />
+            )}
+          </div>
+        ))}
+
+        {/* PROJECT section — only when a project is active */}
+        {inProject && (
+          <>
+            <div style={{
+              fontSize: 10,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: c.hint,
+              padding: "14px 16px 4px",
+            }}>
+              Project
+            </div>
+            {PROJECT_ITEMS.map(({ icon, label, screen }) => (
+              <NavButton
+                key={screen}
                 icon={icon}
                 label={label}
                 screen={screen}
-                isActive={isActive}
-                count={counts[screen]}
+                isActive={activeScreen === screen}
+                count={projCounts[screen]}
               />
-              {/* Project sub-row — shown under Projects when inside a project */}
-              {screen === "projects" && inProject && (
-                <NavButton
-                  icon="◻"
-                  label={activeProject.name}
-                  screen="project"
-                  isActive={activeScreen === "project"}
-                  indented
-                />
-              )}
-            </div>
-          );
-        })}
-
-        <div style={{
-          fontSize: 10,
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          color: c.hint,
-          padding: "14px 16px 4px",
-        }}>
-          Workspace
-        </div>
-
-        {WORKSPACE_ITEMS.map(({ icon, label, screen }) => (
-          <NavButton
-            key={screen}
-            icon={icon}
-            label={label}
-            screen={screen}
-            isActive={activeScreen === screen}
-            count={counts[screen]}
-          />
-        ))}
+            ))}
+          </>
+        )}
       </div>
 
       {/* New project button */}

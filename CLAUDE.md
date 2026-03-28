@@ -61,6 +61,19 @@ const badg  = { fontSize:10, padding:"1px 6px", borderRadius:4, background:"#f0f
 
 ---
 
+## Key product decision — Projects are mandatory
+
+**Projects are mandatory. Clusters and Systems only exist within a Project.**
+
+- The Inbox holds inputs that have not yet been assigned to a project (`project_id === null`). It is a workspace-level screen.
+- Clustering and Systems/Relationship Canvas are project-scoped screens. They only appear in the sidebar when a project is active.
+- The sidebar PROJECT section (label "PROJECT", items: Inputs / Clustering / Systems) is only visible when `activeProjectId` is set.
+- At workspace level (Dashboard, Inbox, no active project) the sidebar shows only: Dashboard, Inbox, Projects. No Clustering. No Systems.
+- Navigating to Dashboard or Inbox via the sidebar clears the active project context.
+- The Dashboard stats strip shows workspace-level counts only: Projects and Inputs in Inbox. Per-project cluster/system counts appear on each project card, not in the global strip.
+
+---
+
 ## App architecture — how the SPA must be structured
 
 ### State

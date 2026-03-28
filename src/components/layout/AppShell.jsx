@@ -8,13 +8,14 @@ import { Sidebar } from "./Sidebar.jsx";
 export function AppShell({ appState, children, scroll = true }) {
   const { activeScreen, setActiveScreen, setActiveProjectId, user, inputs, clusters, scenarios, projects, activeProjectId, openProjectModal } = appState;
 
-  const activeProject = projects.find((p) => p.id === activeProjectId) || null;
-  const clusterCount = activeProjectId
-    ? clusters.filter((cl) => cl.project_id === activeProjectId).length
-    : 0;
-  const scenarioCount = activeProjectId
-    ? scenarios.filter((s) => s.project_id === activeProjectId).length
-    : 0;
+  const activeProject      = projects.find((p) => p.id === activeProjectId) || null;
+  const inboxCount         = inputs.filter((i) => i.project_id === null).length;
+  const projectInputCount  = activeProjectId
+    ? inputs.filter((i) => i.project_id === activeProjectId).length : 0;
+  const clusterCount       = activeProjectId
+    ? clusters.filter((cl) => cl.project_id === activeProjectId).length : 0;
+  const scenarioCount      = activeProjectId
+    ? scenarios.filter((s) => s.project_id === activeProjectId).length : 0;
 
   // Clear active project when navigating to workspace-level screens
   const handleNavigation = (screen) => {
@@ -30,10 +31,11 @@ export function AppShell({ appState, children, scroll = true }) {
         activeScreen={activeScreen}
         setActiveScreen={handleNavigation}
         user={user}
-        inputCount={inputs.length}
+        inboxCount={inboxCount}
         projectCount={projects.length}
         activeProject={activeProject}
         openProjectModal={openProjectModal}
+        projectInputCount={projectInputCount}
         clusterCount={clusterCount}
         scenarioCount={scenarioCount}
       />

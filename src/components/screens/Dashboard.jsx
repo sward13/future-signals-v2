@@ -11,7 +11,8 @@ import { EmptyState } from "../shared/EmptyState.jsx";
 export default function Dashboard({ appState }) {
   const { inputs, clusters, scenarios, projects, setActiveScreen, openProjectModal, openProject } = appState;
 
-  const recentInputs = [...inputs]
+  const inboxCount  = inputs.filter((i) => i.project_id === null).length;
+  const recentInputs = [...inputs.filter((i) => i.project_id === null)]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 3);
 
@@ -36,15 +37,13 @@ export default function Dashboard({ appState }) {
       {/* Stats row */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
+        gridTemplateColumns: "repeat(2, 1fr)",
         gap: 10,
         marginBottom: 28,
       }}>
         {[
-          { label: "Projects",  value: projects.length,  sub: "active" },
-          { label: "Inputs",    value: inputs.length,    sub: "collected" },
-          { label: "Clusters",  value: clusters.length,  sub: "created" },
-          { label: "Systems",   value: scenarios.length, sub: "built" },
+          { label: "Projects",        value: projects.length, sub: "active" },
+          { label: "Inputs in Inbox", value: inboxCount,      sub: "unassigned" },
         ].map(({ label, value, sub }) => (
           <div key={label} style={{
             background: c.white,
