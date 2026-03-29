@@ -32,7 +32,6 @@ export function AppShell({ appState, children, scroll = true }) {
         setActiveScreen={handleNavigation}
         user={user}
         inboxCount={inboxCount}
-        projectCount={projects.length}
         activeProject={activeProject}
         openProjectModal={openProjectModal}
         projectInputCount={projectInputCount}

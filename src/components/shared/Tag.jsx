@@ -1,6 +1,6 @@
 /**
  * Tag and semantic tag variants used throughout the app.
- * Exports: Tag, StrengthDot, HorizTag, ArchTag, SubtypeTag
+ * Exports: Tag, StrengthDot, HorizTag, ArchTag, SubtypeTag, ConfidenceBadge
  */
 import { c } from "../../styles/tokens.js";
 
@@ -66,4 +66,16 @@ export function SubtypeTag({ sub }) {
   };
   const [col, bg, brd] = map[sub] || [c.hint, "transparent", c.border];
   return <Tag label={sub} color={col} bg={bg} border={brd} />;
+}
+
+/** @param {{ conf: string }} props — conf is 'High' | 'Medium' | 'Low' */
+export function ConfidenceBadge({ conf }) {
+  if (!conf) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
+  const map = {
+    High:   [c.green700, c.green50,  c.greenBorder],
+    Medium: [c.blue700,  c.blue50,   c.blueBorder],
+    Low:    [c.amber700, c.amber50,  c.amberBorder],
+  };
+  const [col, bg, brd] = map[conf] || [c.hint, "transparent", c.border];
+  return <Tag label={conf} color={col} bg={bg} border={brd} />;
 }

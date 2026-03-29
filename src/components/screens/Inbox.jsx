@@ -9,7 +9,7 @@ import { useState, useMemo } from "react";
 import { c, inp, btnP, btnSm, btnSec, btnG } from "../../styles/tokens.js";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
-import { StrengthDot, HorizTag } from "../shared/Tag.jsx";
+import { StrengthDot, HorizTag, ConfidenceBadge } from "../shared/Tag.jsx";
 
 const STEEPLED_CATS = ["Social","Technological","Economic","Environmental","Political","Legal","Ethical","Demographic"];
 const STEEPLED_ABB  = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
@@ -17,6 +17,15 @@ const STRENGTH_OPTS = ["Weak","Moderate","High"];
 const HORIZON_OPTS  = ["H1","H2","H3"];
 
 const EMPTY_FILTERS = { steepled: [], strength: [], horizon: [] };
+
+function formatDate(str) {
+  if (!str) return "—";
+  const d = new Date(str);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+// Column widths for list/table layout
+const COL = { curated: 32, strength: 90, confidence: 90, steepled: 120, horizon: 60, actions: 200 };
 
 // ─── Checkbox ────────────────────────────────────────────────────────────────
 
@@ -226,9 +235,31 @@ function ProjectPickerModal({ projects, onSelect, onClose, onCreateProject }) {
   );
 }
 
+// ─── List table header ────────────────────────────────────────────────────────
+
+function ListHeader() {
+  const cell = { fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, flexShrink: 0 };
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10,
+      padding: "0 14px", height: 30,
+      borderBottom: "0.5px solid rgba(0,0,0,0.09)",
+    }}>
+      <div style={{ width: 15, flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0, ...cell }}>Title</div>
+      <div style={{ width: COL.curated,     flexShrink: 0 }} />
+      <div style={{ width: COL.strength,    ...cell }}>Strength</div>
+      <div style={{ width: COL.confidence,  ...cell }}>Confidence</div>
+      <div style={{ width: COL.steepled,    ...cell }}>STEEPLED</div>
+      <div style={{ width: COL.horizon,     ...cell }}>Horizon</div>
+      <div style={{ width: COL.actions, flexShrink: 0 }} />
+    </div>
+  );
+}
+
 // ─── List row (flat single-row) ────────────────────────────────────────────────
 
-function ListRow({ input, isSeeded, savedProjectId, onSaveToProject, selected, onToggle, anySelected }) {
+function ListRow({ input, isSeeded, onSaveToProject, onOpen, selected, onToggle, anySelected }) {
   const [hovered, setHovered] = useState(false);
   const steepled = input.steepled || [];
   const visible2 = steepled.slice(0, 2);
@@ -238,11 +269,11 @@ function ListRow({ input, isSeeded, savedProjectId, onSaveToProject, selected, o
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onClick={() => onToggle(input.id)}
+      onClick={onOpen}
       style={{
         display: "flex", alignItems: "center", gap: 10,
         padding: "0 14px", height: 38,
-        background: selected ? c.surfaceAlt : c.white,
+        background: selected ? c.surfaceAlt : hovered ? "rgba(0,0,0,0.02)" : c.white,
         borderBottom: `1px solid ${c.border}`,
         cursor: "pointer",
         transition: "background 0.08s",
@@ -252,21 +283,33 @@ function ListRow({ input, isSeeded, savedProjectId, onSaveToProject, selected, o
         <RowCheckbox checked={selected} visible={anySelected || hovered} />
       </div>
 
-      <StrengthDot str={input.strength} />
-
       {/* Title */}
       <div style={{
         flex: 1, fontSize: 12, fontWeight: 500, color: c.ink,
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
       }}>
-        {isSeeded && (
-          <span style={{ fontSize: 9, color: c.hint, marginRight: 6, fontWeight: 400 }}>Curated</span>
-        )}
         {input.name}
       </div>
 
+      {/* Curated indicator */}
+      <div style={{ width: COL.curated, flexShrink: 0, textAlign: "center" }}>
+        {isSeeded && (
+          <span title="Surfaced by Future Signals" style={{ fontSize: 11, color: c.hint }}>✦</span>
+        )}
+      </div>
+
+      {/* Strength */}
+      <div style={{ width: COL.strength, flexShrink: 0 }}>
+        {input.strength ? <StrengthDot str={input.strength} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+      </div>
+
+      {/* Confidence */}
+      <div style={{ width: COL.confidence, flexShrink: 0 }}>
+        <ConfidenceBadge conf={input.source_confidence} />
+      </div>
+
       {/* STEEPLED (max 2 + overflow) */}
-      <div style={{ display: "flex", gap: 3, flexShrink: 0, alignItems: "center" }}>
+      <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
         {visible2.map((t) => (
           <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: "#f0f0ee", color: c.muted }}>
             {STEEPLED_ABB[t] || t}
@@ -277,32 +320,21 @@ function ListRow({ input, isSeeded, savedProjectId, onSaveToProject, selected, o
         )}
       </div>
 
-      <div style={{ flexShrink: 0 }}><HorizTag h={input.horizon} /></div>
-
-      <div style={{ fontSize: 10, color: c.hint, flexShrink: 0, minWidth: 72, textAlign: "right" }}>
-        {input.created_at}
+      {/* Horizon */}
+      <div style={{ width: COL.horizon, flexShrink: 0 }}>
+        {input.horizon ? <HorizTag h={input.horizon} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
       </div>
 
-      {/* Save action — seeded only, appears on hover */}
-      {isSeeded && !anySelected && (
-        <div style={{ flexShrink: 0, width: 52 }}>
-          {savedProjectId ? (
-            <span style={{ fontSize: 9, color: c.green700 }}>✓ Saved</span>
-          ) : hovered ? (
-            <button
-              onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }}
-              style={{
-                fontSize: 10, padding: "2px 8px", borderRadius: 5,
-                background: c.ink, color: c.white, border: "none",
-                cursor: "pointer", fontFamily: "inherit",
-              }}
-            >
-              Save →
-            </button>
-          ) : null}
-        </div>
-      )}
-      {!isSeeded && <div style={{ width: 52, flexShrink: 0 }} />}
+      {/* Date + Add to project */}
+      <div style={{ width: COL.actions, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 10, color: c.hint }}>{formatDate(input.created_at)}</span>
+        <button
+          onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }}
+          style={{ ...btnSm, fontSize: 10, padding: "3px 8px", whiteSpace: "nowrap" }}
+        >
+          Add to project →
+        </button>
+      </div>
     </div>
   );
 }
@@ -745,6 +777,7 @@ export default function Inbox({ appState }) {
             background: c.white, border: `1px solid ${c.border}`,
             borderRadius: 10, overflow: "hidden",
           }}>
+            <ListHeader />
             {filteredInputs.map((inp) => (
               <ListRow {...itemProps(inp)} />
             ))}

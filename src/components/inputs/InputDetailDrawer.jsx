@@ -4,25 +4,9 @@
  * @param {{ inputId: string|null, inputs: object[], projects: object[], onClose: () => void, onSave: (id, fields) => void }} props
  */
 import { useState, useEffect } from "react";
-import { c, inp, ta, btnP, btnSec, btnG, fl, fh } from "../../styles/tokens.js";
-import { STEEPLED } from "../../data/seeds.js";
+import { c, inp, ta, btnP, btnSec, btnG, fl } from "../../styles/tokens.js";
+import { INPUT_TYPES, ThreeCardSelector, SteepleSelector, HorizonSelector, TypeSwitcherChip } from "./InputFormFields.jsx";
 
-const INPUT_TYPES = [
-  { id: "signal",     label: "Signal",     icon: "◎", color: c.green700,  bg: c.green50,    border: c.greenBorder  },
-  { id: "issue",      label: "Issue",      icon: "▲", color: c.red800,    bg: c.red50,      border: c.redBorder    },
-  { id: "projection", label: "Projection", icon: "◆", color: c.blue700,   bg: c.blue50,     border: c.blueBorder   },
-  { id: "plan",       label: "Plan",       icon: "◉", color: c.violet700, bg: c.violet50,   border: c.violetBorder },
-  { id: "obstacle",   label: "Obstacle",   icon: "▲", color: c.amber700,  bg: c.amber50,    border: c.amberBorder  },
-  { id: "source",     label: "Source",     icon: "◻", color: c.muted,     bg: c.surfaceAlt, border: c.border       },
-];
-
-const STRENGTH_OPTIONS = [
-  { value: "High",     dotColor: c.green700  },
-  { value: "Moderate", dotColor: c.amber700  },
-  { value: "Weak",     dotColor: c.red800    },
-];
-
-const HORIZONS = ["H1", "H2", "H3"];
 const HORIZON_COLORS = {
   H1: [c.green700, c.green50, c.greenBorder],
   H2: [c.blue700,  c.blue50,  c.blueBorder],
@@ -43,6 +27,19 @@ function TypeChip({ typeId }) {
   );
 }
 
+// Strength card options — same config as Add panel
+const STRENGTH_CARD_OPTIONS = [
+  { value: "Weak",     title: "Weak",     desc: "Single source, early emergence",           dotColor: c.red800 },
+  { value: "Moderate", title: "Moderate", desc: "Multiple sources, visible in a community",  dotColor: c.amber700 },
+  { value: "High",     title: "High",     desc: "Widespread, data-backed, mainstream",       dotColor: c.green700 },
+];
+
+const CONFIDENCE_CARD_OPTIONS = [
+  { value: "Low",    title: "Low",    desc: "Blog, social media, or unverified source",       dotColor: c.red800 },
+  { value: "Medium", title: "Medium", desc: "Quality journalism or industry report",           dotColor: c.amber700 },
+  { value: "High",   title: "High",   desc: "Peer-reviewed research or official statistics",  dotColor: c.green700 },
+];
+
 export function InputDetailDrawer({ inputId, inputs, projects, onClose, onSave }) {
   const input = inputs.find((i) => i.id === inputId) || null;
 
@@ -59,7 +56,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, onClose, onSave }
         steepled:          input.steepled          || [],
         strength:          input.strength          || null,
         horizon:           input.horizon           || null,
-        source_confidence: input.source_confidence || "",
+        source_confidence: input.source_confidence || null,
         project_id:        input.project_id        || "",
       });
     }
@@ -81,7 +78,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, onClose, onSave }
       name: input.name || "", description: input.description || "",
       source_url: input.source_url || "", subtype: input.subtype || "signal",
       steepled: input.steepled || [], strength: input.strength || null,
-      horizon: input.horizon || null, source_confidence: input.source_confidence || "",
+      horizon: input.horizon || null, source_confidence: input.source_confidence || null,
       project_id: input.project_id || "",
     });
     setEditing(false);
@@ -131,32 +128,25 @@ export function InputDetailDrawer({ inputId, inputs, projects, onClose, onSave }
             )}
           </div>
 
-          {/* Subtype selector (edit only) */}
+          {/* Type switcher (edit only) — same chip+dropdown as Add panel */}
           {editing && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={fl}>Type</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {INPUT_TYPES.map((t) => {
-                  const on = fields.subtype === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => set("subtype", t.id)}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 5,
-                        fontSize: 11, padding: "4px 10px", borderRadius: 20,
-                        border: `1px solid ${on ? t.border : c.border}`,
-                        background: on ? t.bg : c.white,
-                        color: on ? t.color : c.muted,
-                        cursor: "pointer", fontFamily: "inherit", fontWeight: on ? 500 : 400,
-                      }}
-                    >
-                      {t.icon} {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <>
+              <TypeSwitcherChip selectedType={fields.subtype} onChange={(v) => set("subtype", v)} />
+              {/* Description banner for selected type */}
+              {(() => {
+                const t = INPUT_TYPES.find((x) => x.id === fields.subtype);
+                if (!t) return null;
+                return (
+                  <div style={{
+                    padding: "10px 14px", borderRadius: 8,
+                    background: t.bg, border: `1px solid ${t.border}`,
+                    fontSize: 12, color: t.color, lineHeight: 1.55, marginBottom: 22,
+                  }}>
+                    {t.description}
+                  </div>
+                );
+              })()}
+            </>
           )}
 
           {/* Description */}
@@ -194,26 +184,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, onClose, onSave }
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>STEEPLED</div>
             {editing ? (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
-                {STEEPLED.map((cat) => {
-                  const on = fields.steepled.includes(cat);
-                  return (
-                    <button
-                      key={cat}
-                      onClick={() => toggleSteeple(cat)}
-                      style={{
-                        padding: "5px 4px", borderRadius: 6, fontSize: 10,
-                        border: `1px solid ${on ? c.ink : c.border}`,
-                        background: on ? c.ink : c.white,
-                        color: on ? c.white : c.muted,
-                        cursor: "pointer", fontFamily: "inherit",
-                      }}
-                    >
-                      {cat}
-                    </button>
-                  );
-                })}
-              </div>
+              <SteepleSelector selected={fields.steepled} onToggle={toggleSteeple} />
             ) : (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                 {(input.steepled || []).length === 0 ? (
@@ -227,32 +198,16 @@ export function InputDetailDrawer({ inputId, inputs, projects, onClose, onSave }
             )}
           </div>
 
-          {/* Strength */}
+          {/* Signal strength */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Signal strength</div>
             {editing ? (
-              <div style={{ display: "flex", gap: 8 }}>
-                {STRENGTH_OPTIONS.map(({ value, dotColor }) => {
-                  const on = fields.strength === value;
-                  return (
-                    <button
-                      key={value}
-                      onClick={() => set("strength", on ? null : value)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 6,
-                        padding: "5px 14px", borderRadius: 20,
-                        border: `1px solid ${on ? c.ink : c.border}`,
-                        background: on ? "rgba(0,0,0,0.02)" : c.white,
-                        cursor: "pointer", fontFamily: "inherit", fontSize: 11,
-                        color: on ? c.ink : c.muted,
-                      }}
-                    >
-                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: on ? dotColor : c.hint, display: "inline-block" }} />
-                      {value}
-                    </button>
-                  );
-                })}
-              </div>
+              <ThreeCardSelector
+                label=""
+                selected={fields.strength}
+                onSelect={(v) => set("strength", v)}
+                options={STRENGTH_CARD_OPTIONS}
+              />
             ) : (
               <span style={{
                 fontSize: 11, padding: "2px 9px", borderRadius: 10,
@@ -265,32 +220,28 @@ export function InputDetailDrawer({ inputId, inputs, projects, onClose, onSave }
             )}
           </div>
 
+          {/* Source confidence */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Source confidence</div>
+            {editing ? (
+              <ThreeCardSelector
+                label=""
+                selected={fields.source_confidence}
+                onSelect={(v) => set("source_confidence", v)}
+                options={CONFIDENCE_CARD_OPTIONS}
+              />
+            ) : (
+              <span style={{ fontSize: 12, color: input.source_confidence ? c.ink : c.hint, fontStyle: input.source_confidence ? "normal" : "italic" }}>
+                {input.source_confidence || "Not set"}
+              </span>
+            )}
+          </div>
+
           {/* Horizon */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Horizon</div>
             {editing ? (
-              <div style={{ display: "flex", gap: 8 }}>
-                {HORIZONS.map((h) => {
-                  const on = fields.horizon === h;
-                  const [col, bg, brd] = HORIZON_COLORS[h];
-                  return (
-                    <button
-                      key={h}
-                      onClick={() => set("horizon", on ? null : h)}
-                      style={{
-                        padding: "5px 18px", borderRadius: 20,
-                        border: `1px solid ${on ? brd : c.border}`,
-                        background: on ? bg : c.white,
-                        color: on ? col : c.muted,
-                        fontSize: 12, fontWeight: on ? 600 : 400,
-                        cursor: "pointer", fontFamily: "inherit",
-                      }}
-                    >
-                      {h}
-                    </button>
-                  );
-                })}
-              </div>
+              <HorizonSelector selected={fields.horizon} onSelect={(v) => set("horizon", v)} />
             ) : (
               (() => {
                 const h = input.horizon;
@@ -301,18 +252,6 @@ export function InputDetailDrawer({ inputId, inputs, projects, onClose, onSave }
                   </span>
                 );
               })()
-            )}
-          </div>
-
-          {/* Source confidence */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Source confidence</div>
-            {editing ? (
-              <input style={inp} value={fields.source_confidence} onChange={(e) => set("source_confidence", e.target.value)} placeholder="e.g. High, peer-reviewed" />
-            ) : (
-              <span style={{ fontSize: 12, color: input.source_confidence ? c.ink : c.hint, fontStyle: input.source_confidence ? "normal" : "italic" }}>
-                {input.source_confidence || "Not set"}
-              </span>
             )}
           </div>
 

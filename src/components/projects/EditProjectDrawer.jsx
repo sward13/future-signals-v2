@@ -211,6 +211,7 @@ export function EditProjectDrawer({ project, onClose, onSave, scrollTo }) {
             </div>
             <div data-field="geo">
               <div style={fl}>Geographic scope</div>
+              <div style={fh}>Where does this research focus?</div>
               <input style={inp} type="text" value={geo} onChange={(e) => setGeo(e.target.value)} placeholder="e.g. North America, Global" />
             </div>
           </div>
@@ -218,6 +219,7 @@ export function EditProjectDrawer({ project, onClose, onSave, scrollTo }) {
           {/* Assumptions */}
           <div style={{ marginBottom: 14 }} data-field="assumptions">
             <div style={fl}>Key assumptions</div>
+            <div style={fh}>Foundational beliefs or conditions assumed to be true for the purposes of the project.</div>
             <textarea style={ta} rows={2} value={assumptions} onChange={(e) => setAssumptions(e.target.value)} placeholder="Conditions assumed true for this project." />
           </div>
 

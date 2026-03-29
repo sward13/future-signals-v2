@@ -8,7 +8,6 @@
  *   setActiveScreen: (screen: string) => void,
  *   user: object,
  *   inboxCount: number,
- *   projectCount: number,
  *   activeProject: object|null,
  *   openProjectModal: () => void,
  *   projectInputCount: number,
@@ -21,7 +20,6 @@ import { c } from "../../styles/tokens.js";
 const NAV_ITEMS = [
   { icon: "⌂", label: "Dashboard", screen: "dashboard" },
   { icon: "◎", label: "Inbox",     screen: "inbox" },
-  { icon: "◻", label: "Projects",  screen: "projects" },
 ];
 
 const PROJECT_ITEMS = [
@@ -35,7 +33,6 @@ export function Sidebar({
   setActiveScreen,
   user,
   inboxCount = 0,
-  projectCount = 0,
   activeProject = null,
   openProjectModal,
   projectInputCount = 0,
@@ -45,8 +42,7 @@ export function Sidebar({
   const inProject = !!activeProject;
 
   const navCounts = {
-    inbox:    inboxCount   || null,
-    projects: projectCount || null,
+    inbox: inboxCount || null,
   };
 
   const projCounts = {
@@ -142,25 +138,14 @@ export function Sidebar({
 
         {/* Top-level workspace nav — always visible */}
         {NAV_ITEMS.map(({ icon, label, screen }) => (
-          <div key={screen}>
-            <NavButton
-              icon={icon}
-              label={label}
-              screen={screen}
-              isActive={activeScreen === screen}
-              count={navCounts[screen]}
-            />
-            {/* Active project sub-row under Projects */}
-            {screen === "projects" && inProject && (
-              <NavButton
-                icon="◻"
-                label={activeProject.name}
-                screen="project"
-                isActive={activeScreen === "project"}
-                indented
-              />
-            )}
-          </div>
+          <NavButton
+            key={screen}
+            icon={icon}
+            label={label}
+            screen={screen}
+            isActive={activeScreen === screen}
+            count={navCounts[screen]}
+          />
         ))}
 
         {/* PROJECT section — only when a project is active */}
