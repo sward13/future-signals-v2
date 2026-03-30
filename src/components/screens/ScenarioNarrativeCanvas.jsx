@@ -5,7 +5,7 @@
  *       Watchlist (full-width bottom row)
  * @param {{ appState: object }} props
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { c, btnSec } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 
@@ -17,12 +17,44 @@ const SUBTYPE_COLORS = {
   Tension: { bg: c.amber50,  color: c.amber700, border: c.amberBorder },
 };
 
-const ARCHETYPE_COLORS = {
-  Continuation:   { bg: c.green50,  color: c.green700, border: c.greenBorder  },
-  Collapse:       { bg: c.red50,    color: c.red800,   border: c.redBorder    },
-  Constraint:     { bg: c.blue50,   color: c.blue700,  border: c.blueBorder   },
-  Transformation: { bg: c.amber50,  color: c.amber700, border: c.amberBorder  },
-};
+const ARCHETYPE_TYPES = [
+  {
+    id: "Continuation",
+    label: "Continuation",
+    icon: "◎",
+    category: "Gradual",
+    categoryColor: c.green700, categoryBg: c.green50, categoryBorder: c.greenBorder,
+    color: c.green700, bg: c.green50, border: c.greenBorder,
+    description: "The present trajectory extends with incremental shifts but no fundamental breaks.",
+  },
+  {
+    id: "Collapse",
+    label: "Collapse",
+    icon: "▼",
+    category: "Disruptive",
+    categoryColor: c.red800, categoryBg: c.red50, categoryBorder: c.redBorder,
+    color: c.red800, bg: c.red50, border: c.redBorder,
+    description: "A critical system fails or fractures, triggering cascading breakdown.",
+  },
+  {
+    id: "Constraint",
+    label: "Constraint",
+    icon: "◈",
+    category: "Structural",
+    categoryColor: c.amber700, categoryBg: c.amber50, categoryBorder: c.amberBorder,
+    color: c.amber700, bg: c.amber50, border: c.amberBorder,
+    description: "Growing limits — regulatory, resource, or social — reshape what's possible.",
+  },
+  {
+    id: "Transformation",
+    label: "Transformation",
+    icon: "◆",
+    category: "Disruptive",
+    categoryColor: c.violet700, categoryBg: c.violet50, categoryBorder: c.violetBorder,
+    color: c.violet700, bg: c.violet50, border: c.violetBorder,
+    description: "A fundamental reorganisation of the system creates a new equilibrium.",
+  },
+];
 
 // ─── Spatial cell definitions ─────────────────────────────────────────────────
 
@@ -122,6 +154,87 @@ function SignalChip({ label }) {
     }}>
       {label}
     </span>
+  );
+}
+
+// ─── Archetype switcher chip ───────────────────────────────────────────────────
+
+/** @param {{ selected: string|null, onChange: (id: string) => void }} props */
+function ArchetypeSwitcherChip({ selected, onChange }) {
+  const [open, setOpen] = useState(false);
+  const arch = ARCHETYPE_TYPES.find((a) => a.id === selected) || null;
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          padding: "3px 10px 3px 8px", borderRadius: 20,
+          border: `1px solid ${arch ? arch.border : c.borderMid}`,
+          background: arch ? arch.bg : c.surfaceAlt,
+          color: arch ? arch.color : c.muted,
+          fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
+          transition: "all .1s",
+        }}
+      >
+        <span style={{ fontSize: 10 }}>{arch ? arch.icon : "◇"}</span>
+        <span>{arch ? arch.label : "Set archetype"}</span>
+        <span style={{ fontSize: 8, opacity: 0.65, marginLeft: 1 }}>▾</span>
+      </button>
+
+      {open && (
+        <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 20 }} />
+      )}
+
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 21,
+          background: c.white, border: `1px solid ${c.borderMid}`,
+          borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,.12)",
+          minWidth: 320, overflow: "hidden",
+        }}>
+          {ARCHETYPE_TYPES.map((a) => {
+            const active = selected === a.id;
+            return (
+              <button
+                key={a.id}
+                onClick={() => { onChange(a.id); setOpen(false); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "10px 14px", width: "100%",
+                  background: active ? "rgba(0,0,0,0.03)" : "transparent",
+                  border: "none", borderBottom: `1px solid ${c.border}`,
+                  cursor: "pointer", textAlign: "left", fontFamily: "inherit",
+                }}
+              >
+                <span style={{
+                  width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                  background: a.bg, border: `1px solid ${a.border}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 12, color: a.color,
+                }}>
+                  {a.icon}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{a.label}</span>
+                    <span style={{
+                      fontSize: 9, padding: "1px 6px", borderRadius: 8,
+                      background: a.categoryBg, color: a.categoryColor, border: `1px solid ${a.categoryBorder}`,
+                    }}>
+                      {a.category}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: c.muted, lineHeight: 1.4, marginTop: 1 }}>{a.description}</div>
+                </div>
+                {active && <span style={{ fontSize: 11, color: c.ink, flexShrink: 0 }}>✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -266,7 +379,7 @@ function SpatialCell({ cell, content, onChange, selected, onSelect, seeds }) {
 export default function ScenarioNarrativeCanvas({ appState }) {
   const {
     activeProjectId, setActiveProjectId, projects, inputs, clusters, scenarios,
-    setActiveScreen, openProjectModal,
+    setActiveScreen, openProjectModal, updateScenario,
   } = appState;
 
   // Content keyed as `${scenarioId}_${cellId}` — persists across scenario switches
@@ -274,6 +387,11 @@ export default function ScenarioNarrativeCanvas({ appState }) {
   const [selected,         setSelected]         = useState(null);
   const [activeScenarioId, setActiveScenarioId] = useState(null);
   const [showExport,       setShowExport]       = useState(false);
+
+  // Inline title editing
+  const [titleEditing,  setTitleEditing]  = useState(false);
+  const [titleDraft,    setTitleDraft]    = useState("");
+  const titleInputRef = useRef(null);
 
   const project          = projects.find((p) => p.id === activeProjectId) || null;
   const projectScenarios = useMemo(
@@ -332,8 +450,32 @@ export default function ScenarioNarrativeCanvas({ appState }) {
   const setCont = (cellId) => (val) =>
     setContent((prev) => ({ ...prev, [getKey(cellId)]: val }));
 
-  const completedCount   = CELLS.filter((cell) => isComplete(getCont(cell.id))).length;
-  const archetypeStyle   = ARCHETYPE_COLORS[scenario?.archetype] || { bg: "#f0f0ee", color: c.muted, border: c.border };
+  const completedCount  = CELLS.filter((cell) => isComplete(getCont(cell.id))).length;
+
+  // Inline title edit handlers
+  const startEditTitle = () => {
+    setTitleDraft(scenario?.name || "");
+    setTitleEditing(true);
+    setTimeout(() => { titleInputRef.current?.select(); }, 0);
+  };
+  const commitTitle = () => {
+    const trimmed = titleDraft.trim();
+    if (trimmed && trimmed !== scenario?.name && scenario) {
+      updateScenario(scenario.id, { name: trimmed });
+    }
+    setTitleEditing(false);
+  };
+  const handleTitleKey = (e) => {
+    if (e.key === "Enter") { e.preventDefault(); commitTitle(); }
+    if (e.key === "Escape") setTitleEditing(false);
+  };
+
+  // Archetype selection handler
+  const handleArchetype = (archetype) => {
+    if (scenario && archetype !== scenario.archetype) {
+      updateScenario(scenario.id, { archetype });
+    }
+  };
 
   // ── No active project ──────────────────────────────────────────────────────
   if (!project) {
@@ -373,96 +515,129 @@ export default function ScenarioNarrativeCanvas({ appState }) {
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div style={{
-        padding: "8px 16px",
+        padding: "8px 16px 0",
         borderBottom: `0.5px solid ${c.border}`,
         background: c.surfaceAlt,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
         flexShrink: 0,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* Scenario name / switcher */}
-          {projectScenarios.length > 1 ? (
-            <div style={{ position: "relative" }}>
-              <select
-                value={scenario?.id || ""}
-                onChange={(e) => setActiveScenarioId(e.target.value)}
+        {/* Top row: title + right-side controls */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+
+            {/* Inline-editable scenario name */}
+            {titleEditing ? (
+              <input
+                ref={titleInputRef}
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onBlur={commitTitle}
+                onKeyDown={handleTitleKey}
                 style={{
                   fontSize: 13, fontWeight: 500, color: c.ink,
-                  background: "transparent", border: "none", cursor: "pointer",
-                  fontFamily: "inherit", outline: "none", appearance: "none",
-                  paddingRight: 16,
+                  background: "transparent",
+                  border: "none", borderBottom: `1px solid ${c.ink}`,
+                  outline: "none", fontFamily: "inherit",
+                  padding: "0 0 1px 0", minWidth: 120, maxWidth: 320,
                 }}
-              >
-                {projectScenarios.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-              <span style={{
-                fontSize: 9, position: "absolute", right: 0, top: "50%",
-                transform: "translateY(-50%)", color: c.hint, pointerEvents: "none",
-              }}>▾</span>
-            </div>
-          ) : (
-            <span style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>{scenario?.name}</span>
-          )}
+              />
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                {/* Editable title */}
+                <span
+                  onClick={startEditTitle}
+                  title="Click to rename"
+                  style={{
+                    fontSize: 13, fontWeight: 500, color: c.ink,
+                    cursor: "text",
+                    borderBottom: "1px solid transparent",
+                    transition: "border-color .15s",
+                    paddingBottom: 1,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderBottomColor = c.borderMid; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderBottomColor = "transparent"; }}
+                >
+                  {scenario?.name}
+                </span>
+                {/* Scenario switcher — only when multiple scenarios exist */}
+                {projectScenarios.length > 1 && (
+                  <div style={{ position: "relative" }}>
+                    <select
+                      value={scenario?.id || ""}
+                      onChange={(e) => setActiveScenarioId(e.target.value)}
+                      style={{
+                        fontSize: 10, color: c.muted, background: "transparent",
+                        border: "none", cursor: "pointer", fontFamily: "inherit",
+                        outline: "none", appearance: "none", paddingRight: 12,
+                      }}
+                    >
+                      {projectScenarios.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                    <span style={{
+                      fontSize: 8, position: "absolute", right: 0, top: "50%",
+                      transform: "translateY(-50%)", color: c.hint, pointerEvents: "none",
+                    }}>▾</span>
+                  </div>
+                )}
+              </div>
+            )}
 
-          {/* Archetype badge */}
-          {scenario?.archetype && (
-            <span style={{
-              fontSize: 10, padding: "2px 7px", borderRadius: 4,
-              background: archetypeStyle.bg, color: archetypeStyle.color,
-              border: `0.5px solid ${archetypeStyle.border}`,
-            }}>
-              {scenario.archetype}
-            </span>
-          )}
-
-          {/* Horizon label */}
-          {horizonLabel && (
-            <span style={{ fontSize: 10, color: c.hint }}>{horizonLabel}</span>
-          )}
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {/* Completion counter */}
-          <span style={{ fontSize: 10, color: c.hint }}>
-            {completedCount}/{CELLS.length}
-          </span>
-
-          {/* Export */}
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={() => setShowExport((e) => !e)}
-              style={{
-                padding: "5px 11px", borderRadius: 6, background: c.ink,
-                border: "none", color: c.white, fontSize: 11, fontWeight: 500,
-                cursor: "pointer", fontFamily: "inherit",
-              }}
-            >
-              ↓ Export
-            </button>
-            {showExport && (
-              <>
-                <div onClick={() => setShowExport(false)} style={{ position: "fixed", inset: 0, zIndex: 10 }} />
-                <div style={{
-                  position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 11,
-                  background: c.white, border: `0.5px solid ${c.borderMid}`,
-                  borderRadius: 7, padding: 8, minWidth: 130,
-                  boxShadow: "0 4px 16px rgba(0,0,0,.1)",
-                }}>
-                  {[["↓  Markdown", ".md"], ["↓  PDF", ".pdf"]].map(([label, ext]) => (
-                    <div key={ext} style={{
-                      padding: "7px 10px", borderRadius: 5, cursor: "pointer",
-                      fontSize: 11, color: c.muted, display: "flex", justifyContent: "space-between",
-                    }}>
-                      <span>{label}</span>
-                      <span style={{ color: c.hint }}>{ext}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
+            {/* Horizon label */}
+            {horizonLabel && (
+              <span style={{ fontSize: 10, color: c.hint, flexShrink: 0 }}>{horizonLabel}</span>
             )}
           </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+            {/* Completion counter */}
+            <span style={{ fontSize: 10, color: c.hint }}>
+              {completedCount}/{CELLS.length}
+            </span>
+
+            {/* Export */}
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => setShowExport((e) => !e)}
+                style={{
+                  padding: "5px 11px", borderRadius: 6, background: c.ink,
+                  border: "none", color: c.white, fontSize: 11, fontWeight: 500,
+                  cursor: "pointer", fontFamily: "inherit",
+                }}
+              >
+                ↓ Export
+              </button>
+              {showExport && (
+                <>
+                  <div onClick={() => setShowExport(false)} style={{ position: "fixed", inset: 0, zIndex: 10 }} />
+                  <div style={{
+                    position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 11,
+                    background: c.white, border: `0.5px solid ${c.borderMid}`,
+                    borderRadius: 7, padding: 8, minWidth: 130,
+                    boxShadow: "0 4px 16px rgba(0,0,0,.1)",
+                  }}>
+                    {[["↓  Markdown", ".md"], ["↓  PDF", ".pdf"]].map(([label, ext]) => (
+                      <div key={ext} style={{
+                        padding: "7px 10px", borderRadius: 5, cursor: "pointer",
+                        fontSize: 11, color: c.muted, display: "flex", justifyContent: "space-between",
+                      }}>
+                        <span>{label}</span>
+                        <span style={{ color: c.hint }}>{ext}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Archetype type-switcher */}
+        <div style={{ paddingBottom: 8 }}>
+          <ArchetypeSwitcherChip
+            selected={scenario?.archetype || null}
+            onChange={handleArchetype}
+          />
         </div>
       </div>
 
