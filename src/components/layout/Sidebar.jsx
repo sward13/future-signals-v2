@@ -23,9 +23,10 @@ const NAV_ITEMS = [
 ];
 
 const PROJECT_ITEMS = [
-  { icon: "◎", label: "Inputs",     screen: "project" },
-  { icon: "◈", label: "Clustering", screen: "clustering" },
-  { icon: "◆", label: "Systems",    screen: "scenarios" },
+  { icon: "◎", label: "Inputs",       screen: "project" },
+  { icon: "◈", label: "Clusters",     screen: "clustering" },
+  { icon: "◆", label: "System Map",   screen: "scenarios" },
+  { icon: "◇", label: "Scenarios",    screen: "scenario_canvas" },
 ];
 
 export function Sidebar({
@@ -38,6 +39,7 @@ export function Sidebar({
   projectInputCount = 0,
   clusterCount = 0,
   scenarioCount = 0,
+  hasRelationships = false,
 }) {
   const inProject = !!activeProject;
 
@@ -160,16 +162,41 @@ export function Sidebar({
             }}>
               Project
             </div>
-            {PROJECT_ITEMS.map(({ icon, label, screen }) => (
-              <NavButton
-                key={screen}
-                icon={icon}
-                label={label}
-                screen={screen}
-                isActive={activeScreen === screen}
-                count={projCounts[screen]}
-              />
-            ))}
+            {PROJECT_ITEMS.map(({ icon, label, screen }) => {
+              const disabled = screen === "scenario_canvas" && !hasRelationships;
+              if (disabled) {
+                return (
+                  <div
+                    key={screen}
+                    title="Build at least one system in the System Map to unlock Scenarios"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 16px",
+                      fontSize: 12,
+                      color: c.hint,
+                      fontWeight: 400,
+                      cursor: "default",
+                      userSelect: "none",
+                    }}
+                  >
+                    <span style={{ fontSize: 11, width: 14, flexShrink: 0 }}>{icon}</span>
+                    <span style={{ flex: 1 }}>{label}</span>
+                  </div>
+                );
+              }
+              return (
+                <NavButton
+                  key={screen}
+                  icon={icon}
+                  label={label}
+                  screen={screen}
+                  isActive={activeScreen === screen}
+                  count={projCounts[screen]}
+                />
+              );
+            })}
           </>
         )}
       </div>

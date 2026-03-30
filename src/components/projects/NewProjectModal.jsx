@@ -251,7 +251,7 @@ export function YearInput({ label, value, onChange, min, max }) {
 
 // ─── Mode selector ─────────────────────────────────────────────────────────────
 
-export function ModeSelector({ value, onChange }) {
+function _ModeSelector_removed({ value, onChange }) {
   const modes = [
     {
       id: "quick_scan",
@@ -304,7 +304,6 @@ export function NewProjectModal({ open, onClose, onSave }) {
   // ── Form fields ──────────────────────────────────────────────────────
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
-  const [mode, setMode] = useState("quick_scan");
   const [question, setQuestion] = useState("");
   const [nameError, setNameError] = useState(false);
   const [domainError, setDomainError] = useState(false);
@@ -322,7 +321,7 @@ export function NewProjectModal({ open, onClose, onSave }) {
   const [stakeholders, setStakeholders] = useState("");
 
   const resetForm = () => {
-    setName(""); setDomain(""); setMode("quick_scan"); setQuestion("");
+    setName(""); setDomain(""); setQuestion("");
     setNameError(false); setDomainError(false);
     setStartYear(CURRENT_YEAR); setEndYear(DEFAULT_END_YEAR);
     setH1Pct(0.22); setH2Pct(0.58);
@@ -344,7 +343,6 @@ export function NewProjectModal({ open, onClose, onSave }) {
     onSave({
       name: name.trim(),
       domain,
-      mode,
       question,
       h1_start: String(startYear),
       h1_end: h1End,
@@ -467,12 +465,6 @@ export function NewProjectModal({ open, onClose, onSave }) {
             {domainError && <div style={{ fontSize: 11, color: c.red800, marginTop: 4 }}>Domain is required.</div>}
           </div>
 
-          {/* ── Mode ──────────────────────────────────────────── */}
-          <div style={{ marginBottom: 18 }}>
-            <div style={fl}>Analysis mode</div>
-            <ModeSelector value={mode} onChange={setMode} />
-          </div>
-
           {/* ── Key question ──────────────────────────────────── */}
           <div style={{ marginBottom: 24 }}>
             <div style={fl}>Key question <span style={{ ...badg, marginLeft: 2 }}>optional</span></div>
@@ -514,16 +506,15 @@ export function NewProjectModal({ open, onClose, onSave }) {
             />
           </div>
 
-          {/* ── Methodology fields — visible only in Deep Analysis mode ── */}
-          {mode === "deep_analysis" && (
-            <div>
+          {/* ── Methodology fields ────────────────────────────────────── */}
+          <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 16 }}>
-                Methodology fields <div style={{ flex: 1, height: 1, background: c.border }} />
+                Methodology <div style={{ flex: 1, height: 1, background: c.border }} />
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
                 <div>
-                  <div style={fl}>Unit of analysis</div>
+                  <div style={fl}>Focus</div>
                   <div style={fh}>The specific thing being examined.</div>
                   <input style={inp} type="text" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="e.g. Global supply chains" />
                 </div>
@@ -546,7 +537,6 @@ export function NewProjectModal({ open, onClose, onSave }) {
                 <input style={inp} type="text" value={stakeholders} onChange={(e) => setStakeholders(e.target.value)} placeholder="e.g. Policy makers, researchers" />
               </div>
             </div>
-          )}
         </div>
 
         {/* Footer */}

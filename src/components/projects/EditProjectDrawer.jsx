@@ -6,7 +6,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { c, inp, ta, sel, btnP, btnSec, btnG, fl, fh } from "../../styles/tokens.js";
 import { DOMAINS } from "../../data/seeds.js";
-import { HorizonSlider, YearInput, ModeSelector } from "./NewProjectModal.jsx";
+import { HorizonSlider, YearInput } from "./NewProjectModal.jsx";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -30,7 +30,6 @@ export function EditProjectDrawer({ project, onClose, onSave, scrollTo }) {
 
   const [name,         setName]         = useState(project.name        || "");
   const [domain,       setDomain]       = useState(project.domain      || "");
-  const [mode,         setMode]         = useState(project.mode        || "quick_scan");
   const [question,     setQuestion]     = useState(project.question    || "");
   const [unit,         setUnit]         = useState(project.unit        || "");
   const [geo,          setGeo]          = useState(project.geo         || "");
@@ -70,7 +69,6 @@ export function EditProjectDrawer({ project, onClose, onSave, scrollTo }) {
     onSave({
       name: name.trim(),
       domain,
-      mode,
       question,
       unit,
       geo,
@@ -147,12 +145,6 @@ export function EditProjectDrawer({ project, onClose, onSave, scrollTo }) {
             </div>
           </div>
 
-          {/* Analysis mode */}
-          <div style={{ marginBottom: 18 }} data-field="mode">
-            <div style={fl}>Analysis mode</div>
-            <ModeSelector value={mode} onChange={setMode} />
-          </div>
-
           {/* Key question */}
           <div style={{ marginBottom: 18 }} data-field="question">
             <div style={fl}>Key question</div>
@@ -205,7 +197,7 @@ export function EditProjectDrawer({ project, onClose, onSave, scrollTo }) {
           {/* Unit + Geography */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
             <div data-field="unit">
-              <div style={fl}>Unit of analysis</div>
+              <div style={fl}>Focus</div>
               <div style={fh}>The specific thing being examined.</div>
               <input style={inp} type="text" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="e.g. Global supply chains" />
             </div>

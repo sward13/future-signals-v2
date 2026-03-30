@@ -74,11 +74,6 @@ function ProjectCard({ project, inputCount, clusterCount, scenarioCount, onClick
     scenarioCount === 0 ? "Map a system →" :
     "Open project →";
 
-  const modeStyle = project.mode === "deep_analysis"
-    ? { background: "#F0EBFA", color: "#5B3BA8" }
-    : { background: "#EAF3DE", color: "#3B6D11" };
-  const modeLabel = project.mode === "deep_analysis" ? "Deep analysis" : "Quick scan";
-
   const nodeColor  = (n) => n > 0 ? c.ink : "rgba(0,0,0,0.12)";
   const lineColor  = (n) => n > 0 ? c.ink : "rgba(0,0,0,0.10)";
   const labelColor = (n) => n > 0 ? c.muted : c.hint;
@@ -106,9 +101,6 @@ function ProjectCard({ project, inputCount, clusterCount, scenarioCount, onClick
         <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.3, minWidth: 0, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {project.name}
         </div>
-        <span style={{ ...modeStyle, fontSize: 10, padding: "2px 8px", borderRadius: 10, flexShrink: 0, whiteSpace: "nowrap" }}>
-          {modeLabel}
-        </span>
       </div>
 
       {/* Domain */}
@@ -152,7 +144,7 @@ function ProjectCard({ project, inputCount, clusterCount, scenarioCount, onClick
         {/* Systems node */}
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <div style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: nodeColor(scenarioCount) }} />
-          <span style={{ fontSize: 11, color: labelColor(scenarioCount), whiteSpace: "nowrap" }}>{scenarioCount} Systems</span>
+          <span style={{ fontSize: 11, color: labelColor(scenarioCount), whiteSpace: "nowrap" }}>{scenarioCount} System maps</span>
         </div>
       </div>
 
@@ -330,10 +322,9 @@ export default function Dashboard({ appState }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", height: 30, borderBottom: "0.5px solid rgba(0,0,0,0.09)" }}>
                   <div style={{ flex: 1, minWidth: 0, ...cell }}>Name</div>
                   <div style={{ width: 160, ...cell }}>Domain</div>
-                  <div style={{ width: 110, ...cell }}>Mode</div>
                   <div style={{ width: 80, textAlign: "right", ...cell }}>Inputs</div>
                   <div style={{ width: 80, textAlign: "right", ...cell }}>Clusters</div>
-                  <div style={{ width: 80, textAlign: "right", ...cell }}>Systems</div>
+                  <div style={{ width: 80, textAlign: "right", ...cell }}>System Map</div>
                   <div style={{ width: 32, ...cell }} />
                 </div>
               );
@@ -356,16 +347,6 @@ export default function Dashboard({ appState }) {
                   </div>
                   <div style={{ width: 160, flexShrink: 0, fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {p.domain || <span style={{ color: c.hint }}>—</span>}
-                  </div>
-                  <div style={{ width: 110, flexShrink: 0 }}>
-                    <span style={{
-                      fontSize: 10, padding: "1px 7px", borderRadius: 8,
-                      background: p.mode === "deep_analysis" ? c.violet50 : c.surfaceAlt,
-                      color: p.mode === "deep_analysis" ? c.violet700 : c.hint,
-                      border: `1px solid ${p.mode === "deep_analysis" ? c.violetBorder : c.border}`,
-                    }}>
-                      {p.mode === "deep_analysis" ? "Deep analysis" : "Quick scan"}
-                    </span>
                   </div>
                   <div style={{ width: 80, flexShrink: 0, textAlign: "right", fontSize: 11, color: c.muted }}>
                     {pInputs.length} <span style={{ color: c.hint }}>inputs</span>

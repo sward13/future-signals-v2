@@ -150,14 +150,6 @@ function ProjectPickerPopover({ projects, onSelect, onClose, onCreateProject }) 
                   <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
                   <div style={{ fontSize: 10, color: c.hint }}>{p.domain}</div>
                 </div>
-                <span style={{
-                  fontSize: 10, padding: "1px 7px", borderRadius: 8, flexShrink: 0,
-                  background: p.mode === "deep_analysis" ? c.violet50 : c.surfaceAlt,
-                  color: p.mode === "deep_analysis" ? c.violet700 : c.hint,
-                  border: `1px solid ${p.mode === "deep_analysis" ? c.violetBorder : c.border}`,
-                }}>
-                  {p.mode === "deep_analysis" ? "Deep" : "Quick"}
-                </span>
               </button>
             ))}
           </div>
@@ -212,15 +204,6 @@ function ProjectPickerModal({ projects, onSelect, onClose, onCreateProject }) {
                   <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{p.name}</div>
                   <div style={{ fontSize: 11, color: c.muted }}>{p.domain}</div>
                 </div>
-                <span style={{
-                  fontSize: 10, padding: "1px 7px", borderRadius: 8,
-                  background: p.mode === "deep_analysis" ? c.violet50 : c.surfaceAlt,
-                  color: p.mode === "deep_analysis" ? c.violet700 : c.hint,
-                  border: `1px solid ${p.mode === "deep_analysis" ? c.violetBorder : c.border}`,
-                  flexShrink: 0,
-                }}>
-                  {p.mode === "deep_analysis" ? "Deep" : "Quick"}
-                </span>
               </div>
             ))}
           </div>

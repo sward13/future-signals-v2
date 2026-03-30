@@ -456,14 +456,6 @@ export default function ProjectDetail({ appState }) {
               <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 8, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>
                 {project.domain}
               </span>
-              <span style={{
-                fontSize: 10, padding: "2px 8px", borderRadius: 8,
-                background: project.mode === "deep_analysis" ? c.violet50 : c.surfaceAlt,
-                color: project.mode === "deep_analysis" ? c.violet700 : c.muted,
-                border: `1px solid ${project.mode === "deep_analysis" ? c.violetBorder : c.border}`,
-              }}>
-                {project.mode === "deep_analysis" ? "Deep analysis" : "Quick scan"}
-              </span>
             </div>
             {project.question && (
               <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.6, fontStyle: "italic", marginTop: 4, maxWidth: 560 }}>
@@ -748,7 +740,7 @@ export default function ProjectDetail({ appState }) {
                   ? `Add at least 3 inputs before clustering. You have ${projectInputs.length} so far.`
                   : "Group your inputs into themes and drivers."
               }
-              ctaLabel={projectInputs.length >= 3 ? "Go to Clustering →" : undefined}
+              ctaLabel={projectInputs.length >= 3 ? "Go to Clusters →" : undefined}
               onCta={() => setActiveScreen("clustering")}
               addButton={
                 <button
@@ -784,11 +776,11 @@ export default function ProjectDetail({ appState }) {
 
             <SummaryCard
               icon="◆"
-              title="Systems"
+              title="System Map"
               count={projectScenarios.length}
               countLabel="built"
-              emptyBody="Systems are built from clusters. Complete your clustering step first."
-              ctaLabel={projectClusters.length > 0 ? "Go to Systems →" : undefined}
+              emptyBody="The System Map is built from clusters. Complete your clustering step first."
+              ctaLabel={projectClusters.length > 0 ? "Go to System Map →" : undefined}
               onCta={() => setActiveScreen("scenarios")}
               addButton={
                 <button
@@ -844,12 +836,12 @@ export default function ProjectDetail({ appState }) {
                 )}
                 {project.unit ? (
                   <div onClick={(e) => { e.stopPropagation(); openEditDrawer("unit"); }}>
-                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 1 }}>Unit of analysis</div>
+                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 1 }}>Focus</div>
                     <div style={{ fontSize: 12, color: c.ink }}>{project.unit}</div>
                   </div>
                 ) : (
                   <div onClick={(e) => { e.stopPropagation(); openEditDrawer("unit"); }} style={{ fontSize: 11, color: c.hint, fontStyle: "italic" }}>
-                    + Add unit of analysis
+                    + Add focus
                   </div>
                 )}
                 {project.stakeholders ? (

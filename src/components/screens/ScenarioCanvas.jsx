@@ -928,7 +928,7 @@ export default function ScenarioCanvas({ appState }) {
     return (
       <ProjectPicker
         heading="Select a project to work in"
-        description="The Relationship Canvas maps cluster-to-cluster dynamics for a specific project."
+        description="The System Map maps cluster-to-cluster dynamics for a specific project."
         projects={projects}
         inputs={inputs}
         clusters={clusters}
@@ -962,7 +962,7 @@ export default function ScenarioCanvas({ appState }) {
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <div style={{ fontSize: 19, fontWeight: 500, color: c.ink }}>Relationship Canvas</div>
+            <div style={{ fontSize: 19, fontWeight: 500, color: c.ink }}>System Map</div>
             <div style={{ fontSize: 11, color: c.muted, marginTop: 1 }}>
               {projectNodes.length} cluster{projectNodes.length !== 1 ? "s" : ""} on canvas
               &nbsp;·&nbsp;

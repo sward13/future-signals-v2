@@ -69,14 +69,6 @@ export function ProjectPicker({ heading, description, projects, inputs, clusters
                     )}
                   </div>
                 </div>
-                <span style={{
-                  fontSize: 10, padding: "2px 8px", borderRadius: 8, flexShrink: 0,
-                  background: p.mode === "deep_analysis" ? c.violet50 : c.surfaceAlt,
-                  color: p.mode === "deep_analysis" ? c.violet700 : c.muted,
-                  border: `1px solid ${p.mode === "deep_analysis" ? c.violetBorder : c.border}`,
-                }}>
-                  {p.mode === "deep_analysis" ? "Deep analysis" : "Quick scan"}
-                </span>
                 <span style={{ fontSize: 14, color: c.hint }}>›</span>
               </button>
             );
