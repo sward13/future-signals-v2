@@ -31,6 +31,7 @@ export function useAppState() {
   const [inputs, setInputs] = useState(DEFAULT_SEEDED_INPUTS);
   const [clusters, setClusters] = useState(SAMPLE_CLUSTERS);
   const [scenarios, setScenarios] = useState(SAMPLE_SCENARIOS);
+  const [analyses, setAnalyses] = useState([]);
   const [nodePositions, setNodePositions] = useState({});
   const [connections, setConnections] = useState(() => seedConnections(SAMPLE_SCENARIOS));
   const connectionsRef = useRef(connections);
@@ -203,6 +204,17 @@ export function useAppState() {
     setScenarios((prev) => prev.map((s) => s.id === id ? { ...s, ...fields } : s));
   }, []);
 
+  /** Create or update the single analysis record for a project. */
+  const upsertAnalysis = useCallback((projectId, fields) => {
+    setAnalyses((prev) => {
+      const exists = prev.some((a) => a.project_id === projectId);
+      if (exists) {
+        return prev.map((a) => a.project_id === projectId ? { ...a, ...fields } : a);
+      }
+      return [...prev, { id: uuid(), project_id: projectId, ...fields }];
+    });
+  }, []);
+
   const updateNodePosition = useCallback((nodeId, pos) => {
     setNodePositions((prev) => ({ ...prev, [nodeId]: pos }));
   }, []);
@@ -340,6 +352,8 @@ export function useAppState() {
     dismissInput,
     saveInputToProject,
     saveInputsToProject,
+    analyses,
+    upsertAnalysis,
     addScenario,
     updateScenario,
     updateNodePosition,

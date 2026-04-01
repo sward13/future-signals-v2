@@ -15,6 +15,7 @@ import Clustering from "./components/screens/Clustering.jsx";
 import ScenarioCanvas from "./components/screens/ScenarioCanvas.jsx";
 import NarrativeCanvas from "./components/screens/NarrativeCanvas.jsx";
 import ScenarioNarrativeCanvas from "./components/screens/ScenarioNarrativeCanvas.jsx";
+import SystemAnalysisCanvas from "./components/screens/SystemAnalysisCanvas.jsx";
 
 function ActiveScreen({ appState }) {
   switch (appState.activeScreen) {
@@ -26,6 +27,7 @@ function ActiveScreen({ appState }) {
     case "scenarios":         return <ScenarioCanvas          appState={appState} />;
     case "narrative":         return <NarrativeCanvas          appState={appState} />;
     case "scenario_canvas":   return <ScenarioNarrativeCanvas  appState={appState} />;
+    case "analysis":          return <SystemAnalysisCanvas      appState={appState} />;
     default:           return <Inbox         appState={appState} />;
   }
 }
@@ -51,7 +53,7 @@ export default function App() {
       color: "#111111",
       WebkitFontSmoothing: "antialiased",
     }}>
-      <AppShell appState={appState} scroll={appState.activeScreen !== "scenarios" && appState.activeScreen !== "scenario_canvas"}>
+      <AppShell appState={appState} scroll={!["scenarios", "scenario_canvas", "analysis"].includes(appState.activeScreen)}>
         <ActiveScreen appState={appState} />
       </AppShell>
 

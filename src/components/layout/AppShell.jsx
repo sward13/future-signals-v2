@@ -17,7 +17,7 @@ export function AppShell({ appState, children, scroll = true }) {
   const scenarioCount      = activeProjectId
     ? scenarios.filter((s) => s.project_id === activeProjectId).length : 0;
 
-  // Scenarios nav item unlocked once the project has ≥1 system built (same condition as "N built" badge)
+  // Analysis nav item unlocked once the project has ≥1 system built (same condition as "N built" badge)
   const hasRelationships = scenarioCount > 0;
 
   // Clear active project when navigating to workspace-level screens

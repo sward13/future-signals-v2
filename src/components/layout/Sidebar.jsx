@@ -26,7 +26,7 @@ const PROJECT_ITEMS = [
   { icon: "◎", label: "Inputs",       screen: "project" },
   { icon: "◈", label: "Clusters",     screen: "clustering" },
   { icon: "◆", label: "System Map",   screen: "scenarios" },
-  { icon: "◇", label: "Scenarios",    screen: "scenario_canvas" },
+  { icon: "◑", label: "Analysis",     screen: "analysis" },
 ];
 
 export function Sidebar({
@@ -163,7 +163,7 @@ export function Sidebar({
               Project
             </div>
             {PROJECT_ITEMS.map(({ icon, label, screen }) => {
-              const disabled = screen === "scenario_canvas" && !hasRelationships;
+              const disabled = screen === "analysis" && !hasRelationships;
               if (disabled) {
                 return (
                   <div

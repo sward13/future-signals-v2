@@ -27,13 +27,41 @@ const SUBTYPE_STYLE = {
   Tension: { col: c.amber700,  bg: c.amber50,   border: c.amberBorder  },
 };
 
+const HORIZON_COLORS = {
+  H1: [c.green700, c.green50, c.greenBorder],
+  H2: [c.blue700,  c.blue50,  c.blueBorder ],
+  H3: [c.amber700, c.amber50, c.amberBorder],
+};
+
 const LEFT_BORDER_COLOR = {
   Trend:   c.violetBorder,
   Driver:  c.blueBorder,
   Tension: c.amberBorder,
 };
 
-/** Compute SVG line segments with perpendicular offsets for parallel relationships. */
+/**
+ * Returns the cardinal edge midpoint nearest to the target, plus the unit exit
+ * direction perpendicular to that edge (the direction a line leaves the node face).
+ */
+function cardinalEdgePoint(node, towardX, towardY) {
+  const cx = node.x + NODE_W / 2;
+  const cy = node.y + NODE_H / 2;
+  const dx = towardX - cx;
+  const dy = towardY - cy;
+  if (Math.abs(dx) * NODE_H > Math.abs(dy) * NODE_W) {
+    return dx > 0
+      ? { x: node.x + NODE_W, y: cy, ex: 1,  ey: 0  }  // right edge → exits right
+      : { x: node.x,          y: cy, ex: -1, ey: 0  }; // left edge  → exits left
+  }
+  return dy > 0
+    ? { x: cx, y: node.y + NODE_H, ex: 0, ey: 1  }     // bottom edge → exits down
+    : { x: cx, y: node.y,          ex: 0, ey: -1 };    // top edge    → exits up
+}
+
+/**
+ * Compute line segments terminating at node edges with perpendicular offsets for
+ * parallel relationships. Exit directions are returned for cubic bezier control points.
+ */
 function computeLineSegments(relationships, canvasNodes) {
   const pairGroups = {};
   relationships.forEach((rel) => {
@@ -47,18 +75,21 @@ function computeLineSegments(relationships, canvasNodes) {
     const toNode   = canvasNodes.find((n) => n.clusterId === rel.toClusterId);
     if (!fromNode || !toNode) return null;
 
-    const cx1 = fromNode.x + NODE_W / 2;
-    const cy1 = fromNode.y + NODE_H / 2;
-    const cx2 = toNode.x   + NODE_W / 2;
-    const cy2 = toNode.y   + NODE_H / 2;
+    const fromCx = fromNode.x + NODE_W / 2;
+    const fromCy = fromNode.y + NODE_H / 2;
+    const toCx   = toNode.x   + NODE_W / 2;
+    const toCy   = toNode.y   + NODE_H / 2;
+
+    const ep1 = cardinalEdgePoint(fromNode, toCx, toCy);
+    const ep2 = cardinalEdgePoint(toNode, fromCx, fromCy);
 
     const key   = [rel.fromClusterId, rel.toClusterId].sort().join("||");
     const group = pairGroups[key];
     const idx   = group.indexOf(rel);
     const total = group.length;
 
-    const dx  = cx2 - cx1;
-    const dy  = cy2 - cy1;
+    const dx  = ep2.x - ep1.x;
+    const dy  = ep2.y - ep1.y;
     const len = Math.sqrt(dx * dx + dy * dy) || 1;
     const nx  = -dy / len;
     const ny  =  dx / len;
@@ -66,10 +97,13 @@ function computeLineSegments(relationships, canvasNodes) {
 
     return {
       rel,
-      x1: cx1 + nx * offset,
-      y1: cy1 + ny * offset,
-      x2: cx2 + nx * offset,
-      y2: cy2 + ny * offset,
+      x1: ep1.x + nx * offset,
+      y1: ep1.y + ny * offset,
+      x2: ep2.x + nx * offset,
+      y2: ep2.y + ny * offset,
+      // exit directions for bezier control points (unaffected by parallel offset)
+      ex1: ep1.ex, ey1: ep1.ey,
+      ex2: ep2.ex, ey2: ep2.ey,
     };
   }).filter(Boolean);
 }
@@ -224,12 +258,26 @@ function ClusterNode({ node, cluster, selected, connectMode, isConnectSource, on
       {/* Coloured left border strip */}
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: st.border }} />
 
-      <div style={{ padding: "10px 24px 10px 14px" }}>
-        <div style={{
-          fontSize: 9, fontWeight: 700, textTransform: "uppercase",
-          letterSpacing: "0.07em", color: st.col, marginBottom: 4,
-        }}>
-          {cluster.subtype}
+      <div style={{ padding: "8px 24px 9px 14px" }}>
+        {/* Type + horizon badges */}
+        <div style={{ display: "flex", gap: 4, alignItems: "center", marginBottom: 5 }}>
+          <span style={{
+            fontSize: 9, padding: "1px 6px", borderRadius: 4, fontWeight: 500,
+            background: st.bg, color: st.col, border: `0.5px solid ${st.border}`,
+          }}>
+            {cluster.subtype}
+          </span>
+          {cluster.horizon && HORIZON_COLORS[cluster.horizon] && (() => {
+            const [col, bg, brd] = HORIZON_COLORS[cluster.horizon];
+            return (
+              <span style={{
+                fontSize: 9, padding: "1px 6px", borderRadius: 4, fontWeight: 500,
+                background: bg, color: col, border: `0.5px solid ${brd}`,
+              }}>
+                {cluster.horizon}
+              </span>
+            );
+          })()}
         </div>
         <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, lineHeight: 1.35 }}>
           {cluster.name}
@@ -1076,44 +1124,103 @@ export default function ScenarioCanvas({ appState }) {
                     width: 4000, height: 4000, overflow: "visible",
                   }}
                 >
-                  <defs>
-                    {REL_TYPES.map((rt) => (
-                      <marker
-                        key={rt.id}
-                        id={`arr-${rt.id.replace(/ /g, "-")}`}
-                        markerWidth="7" markerHeight="7"
-                        refX="5" refY="3.5"
-                        orient="auto" markerUnits="strokeWidth"
-                      >
-                        <path d="M0,0.5 L0,6.5 L7,3.5 z" fill={rt.color} />
-                      </marker>
-                    ))}
-                  </defs>
-
-                  {lineSegments.map(({ rel, x1, y1, x2, y2 }) => {
+                  {lineSegments.map(({ rel, x1, y1, x2, y2, ex1, ey1, ex2, ey2 }) => {
                     const rt         = REL_TYPES.find((r) => r.id === rel.type) || REL_TYPES[0];
                     const isSelected = selectedItem?.type === "rel" && selectedItem.id === rel.id;
-                    const markerId   = `arr-${rt.id.replace(/ /g, "-")}`;
+
+                    // Per-relationship marker IDs — inline defs guarantee color always matches current type
+                    const endMarkerId   = `arr-end-${rel.id}`;
+                    const startMarkerId = `arr-start-${rel.id}`;
+
+                    // Cubic bezier S-curve: control points extend along each node's exit direction.
+                    // dist scales with separation so short lines stay gentle, long lines curve enough.
+                    const edgeDist = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+                    const dist = Math.min(edgeDist * 0.45, 120);
+                    const cp1x = x1 + ex1 * dist;
+                    const cp1y = y1 + ey1 * dist;
+                    const cp2x = x2 + ex2 * dist;
+                    const cp2y = y2 + ey2 * dist;
+
+                    // Label at t=0.5 on the cubic bezier
+                    const mx = 0.125*x1 + 0.375*cp1x + 0.375*cp2x + 0.125*x2;
+                    const my = 0.125*y1 + 0.375*cp1y + 0.375*cp2y + 0.125*y2;
+                    const labelW = Math.max(40, rt.id.length * 5.8 + 14);
+                    const labelH = 15;
+
+                    const pathD = `M ${x1} ${y1} C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${x2} ${y2}`;
+
                     return (
                       <g key={rel.id}>
-                        {/* Wide invisible hit area for clicking */}
-                        <line
-                          x1={x1} y1={y1} x2={x2} y2={y2}
-                          stroke="transparent" strokeWidth={18}
+                        {/* Inline markers — each relationship owns its defs so color is always in sync */}
+                        <defs>
+                          <marker
+                            id={endMarkerId}
+                            markerWidth="7" markerHeight="7"
+                            refX="5" refY="3.5"
+                            orient="auto" markerUnits="strokeWidth"
+                          >
+                            <path d="M0,0.5 L0,6.5 L7,3.5 z" fill={rt.color} />
+                          </marker>
+                          {rt.dash && (
+                            <marker
+                              id={startMarkerId}
+                              markerWidth="7" markerHeight="7"
+                              refX="5" refY="3.5"
+                              orient="auto-start-reverse" markerUnits="strokeWidth"
+                            >
+                              <path d="M0,0.5 L0,6.5 L7,3.5 z" fill={rt.color} />
+                            </marker>
+                          )}
+                        </defs>
+
+                        {/* Visible curved path */}
+                        <path
+                          d={pathD}
+                          fill="none"
+                          stroke={rt.color}
+                          strokeWidth={isSelected ? 2.5 : 1.8}
+                          strokeDasharray={rt.dash ? "6,4" : undefined}
+                          markerEnd={`url(#${endMarkerId})`}
+                          markerStart={rt.dash ? `url(#${startMarkerId})` : undefined}
+                          style={{ pointerEvents: "none" }}
+                        />
+
+                        {/* Midpoint label — background pill + text */}
+                        <g style={{ pointerEvents: "none" }}>
+                          <rect
+                            x={mx - labelW / 2} y={my - labelH / 2}
+                            width={labelW} height={labelH}
+                            rx={3}
+                            fill={c.white}
+                            stroke="rgba(0,0,0,0.09)"
+                            strokeWidth={0.5}
+                          />
+                          <text
+                            x={mx} y={my}
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            style={{
+                              fontSize: 9,
+                              fill: rt.color,
+                              fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
+                              fontWeight: 500,
+                            }}
+                          >
+                            {rt.id}
+                          </text>
+                        </g>
+
+                        {/* Wide invisible hit area — same curve, rendered last to capture clicks over label */}
+                        <path
+                          d={pathD}
+                          fill="none"
+                          stroke="transparent"
+                          strokeWidth={18}
                           style={{ cursor: "pointer", pointerEvents: "stroke" }}
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedItem({ type: "rel", id: rel.id });
                           }}
-                        />
-                        {/* Visible line */}
-                        <line
-                          x1={x1} y1={y1} x2={x2} y2={y2}
-                          stroke={rt.color}
-                          strokeWidth={isSelected ? 2.5 : 1.8}
-                          strokeDasharray={rt.dash ? "6,4" : undefined}
-                          markerEnd={`url(#${markerId})`}
-                          style={{ pointerEvents: "none" }}
                         />
                       </g>
                     );
