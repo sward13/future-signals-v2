@@ -191,7 +191,7 @@ const EMPTY_FIELDS = {
   metadata: {},
 };
 
-export function InputDrawer({ open, onClose, onSave, projects = [], defaultProjectId = "" }) {
+export function InputDrawer({ open, onClose, onSave, projects = [], defaultProjectId = "", zIndex = 100 }) {
   const [selectedType, setSelectedType] = useState("signal");
   const [fields, setFields] = useState(EMPTY_FIELDS);
   const [titleError, setTitleError] = useState(false);
@@ -261,7 +261,7 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
   };
 
   return (
-    <Drawer open={open} onClose={handleClose} title="New input" width={520}>
+    <Drawer open={open} onClose={handleClose} title="New input" width={520} zIndex={zIndex}>
       <div style={{ padding: "20px 24px 32px" }}>
 
         {/* ── Type chip + dropdown ─────────────────────────────────────── */}

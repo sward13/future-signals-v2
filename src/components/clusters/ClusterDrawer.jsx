@@ -6,6 +6,7 @@
 import { useState, useEffect } from "react";
 import { c, inp, ta, btnP, btnSec, btnG, fl, fh, badg } from "../../styles/tokens.js";
 import { StrengthDot, HorizTag, SubtypeTag } from "../shared/Tag.jsx";
+import { InputDrawer } from "../inputs/InputDrawer.jsx";
 
 const SUBTYPES = [
   { id: "Trend",   label: "Trend",   desc: "A directional shift gaining momentum." },
@@ -24,10 +25,11 @@ const HORIZON_COLORS = {
   H3: [c.amber700, c.amber50, c.amberBorder],
 };
 
-export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs = [], preselectedInputIds = [] }) {
+export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs = [], preselectedInputIds = [], onAddInput, projects = [] }) {
   const [fields, setFields] = useState(EMPTY);
   const [nameError, setNameError] = useState(false);
   const [selectedInputIds, setSelectedInputIds] = useState([]);
+  const [addInputLayerOpen, setAddInputLayerOpen] = useState(false);
 
   // Sync pre-selected IDs whenever the drawer is opened
   useEffect(() => {
@@ -201,7 +203,21 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
                 fontSize: 12,
                 color: c.muted,
               }}>
-                No inputs in this project yet — add some first.
+                No inputs in this project yet —{" "}
+                {onAddInput ? (
+                  <button
+                    onClick={() => setAddInputLayerOpen(true)}
+                    style={{
+                      background: "none", border: "none", padding: 0,
+                      fontSize: 12, color: c.ink, textDecoration: "underline",
+                      cursor: "pointer", fontFamily: "inherit",
+                    }}
+                  >
+                    add one now
+                  </button>
+                ) : (
+                  "add some first."
+                )}
               </div>
             ) : (
               <div style={{
@@ -281,6 +297,18 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
           </button>
         </div>
       </div>
+
+      {/* Layered input drawer — opens on top of cluster builder, returns user here on close */}
+      {onAddInput && (
+        <InputDrawer
+          open={addInputLayerOpen}
+          onClose={() => setAddInputLayerOpen(false)}
+          onSave={(fields) => { onAddInput(fields); setAddInputLayerOpen(false); }}
+          projects={projects}
+          defaultProjectId={projectId}
+          zIndex={400}
+        />
+      )}
     </>
   );
 }

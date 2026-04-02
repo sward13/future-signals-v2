@@ -40,7 +40,7 @@ export function useAppState() {
   const [relationships, setRelationships] = useState(SAMPLE_RELATIONSHIPS);
   const [projects, setProjects] = useState(SAMPLE_PROJECTS);
   const [activeProjectId, setActiveProjectId] = useState(null);
-  const [activeScreen, setActiveScreen] = useState("inbox");
+  const [activeScreen, setActiveScreen] = useState("dashboard");
   const [drawer, setDrawer] = useState(null);
   const [toast, setToast] = useState(null);
   const [projectModalOpen, setProjectModalOpen] = useState(false);
@@ -179,6 +179,36 @@ export function useAppState() {
     setInputs((prev) => prev.filter((inp) => inp.id !== id));
   }, []);
 
+  /** Delete an input and strip it from all cluster input_ids. */
+  const deleteInput = useCallback((id) => {
+    setInputs((prev) => prev.filter((inp) => inp.id !== id));
+    setClusters((prev) =>
+      prev.map((cl) => ({ ...cl, input_ids: cl.input_ids.filter((iid) => iid !== id) }))
+    );
+  }, []);
+
+  /** Delete a cluster and its junction rows. Inputs are preserved. */
+  const deleteCluster = useCallback((id) => {
+    setClusters((prev) => prev.filter((cl) => cl.id !== id));
+    setScenarios((prev) =>
+      prev.map((s) => ({ ...s, cluster_ids: s.cluster_ids.filter((cid) => cid !== id) }))
+    );
+    setConnections((prev) => prev.filter((c) => c.clusterId !== id));
+    setCanvasNodes((prev) => prev.filter((n) => n.clusterId !== id));
+    setRelationships((prev) => prev.filter((r) => r.fromClusterId !== id && r.toClusterId !== id));
+  }, []);
+
+  /** Delete all canvas nodes and relationships for a project (System Map reset). */
+  const deleteSystemMap = useCallback((projectId) => {
+    setCanvasNodes((prev) => prev.filter((n) => n.projectId !== projectId));
+    setRelationships((prev) => prev.filter((r) => r.projectId !== projectId));
+  }, []);
+
+  /** Delete the analysis record for a project. */
+  const deleteAnalysis = useCallback((projectId) => {
+    setAnalyses((prev) => prev.filter((a) => a.project_id !== projectId));
+  }, []);
+
   const saveInputToProject = useCallback((id, projectId) => {
     setInputs((prev) =>
       prev.map((inp) => (inp.id === id ? { ...inp, project_id: projectId } : inp))
@@ -312,6 +342,19 @@ export function useAppState() {
     setRelationships((prev) => prev.filter((r) => r.id !== id));
   }, []);
 
+  /** Delete a project and all its child records. */
+  const deleteProject = useCallback((id) => {
+    const scenarioIdSet = new Set(scenarios.filter((s) => s.project_id === id).map((s) => s.id));
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+    setInputs((prev) => prev.filter((inp) => inp.project_id !== id));
+    setClusters((prev) => prev.filter((cl) => cl.project_id !== id));
+    setScenarios((prev) => prev.filter((s) => s.project_id !== id));
+    setAnalyses((prev) => prev.filter((a) => a.project_id !== id));
+    setCanvasNodes((prev) => prev.filter((n) => n.projectId !== id));
+    setRelationships((prev) => prev.filter((r) => r.projectId !== id));
+    setConnections((prev) => prev.filter((c) => !scenarioIdSet.has(c.scenarioId)));
+  }, [scenarios]);
+
   return {
     user,
     inputs,
@@ -368,6 +411,11 @@ export function useAppState() {
     addRelationship,
     updateRelationship,
     removeRelationship,
+    deleteInput,
+    deleteCluster,
+    deleteSystemMap,
+    deleteAnalysis,
+    deleteProject,
     showToast,
   };
 }

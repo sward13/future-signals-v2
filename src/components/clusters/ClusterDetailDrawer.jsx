@@ -6,6 +6,7 @@
 import { useState, useEffect } from "react";
 import { c, inp, ta, btnP, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { SubtypeTag, HorizTag, Tag } from "../shared/Tag.jsx";
+import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 
 const SUBTYPES = ["Trend", "Driver", "Tension"];
 const HORIZONS  = ["H1", "H2", "H3"];
@@ -62,12 +63,13 @@ function AssignPicker({ availableInputs, onAssign, onClose }) {
   );
 }
 
-export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSave, onRemoveInput, onAssignInput }) {
+export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSave, onRemoveInput, onAssignInput, onDelete }) {
   const cluster = clusters.find((cl) => cl.id === clusterId) || null;
 
   const [editing, setEditing] = useState(false);
   const [fields, setFields] = useState({});
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (cluster) {
@@ -286,7 +288,26 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
             <button onClick={handleSave} style={btnP}>Save changes</button>
           </div>
         )}
+        {!editing && onDelete && (
+          <div style={{ padding: "12px 24px 18px", borderTop: `1px solid ${c.border}`, flexShrink: 0, display: "flex", justifyContent: "flex-end" }}>
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Delete cluster
+            </button>
+          </div>
+        )}
       </div>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title={`Delete "${cluster.name}"?`}
+          message="This will permanently delete the cluster. Inputs linked to it will not be deleted. This cannot be undone."
+          onConfirm={onDelete}
+          onClose={() => setConfirmDelete(false)}
+        />
+      )}
     </>
   );
 }

@@ -34,7 +34,7 @@ function ActiveScreen({ appState }) {
 
 export default function App() {
   const appState = useAppState();
-  const { inputDetailId, clusterDetailId, closeInputDetail, closeClusterDetail, updateInput, updateCluster, assignInputToCluster, removeInputFromCluster, inputs, clusters, projects } = appState;
+  const { inputDetailId, clusterDetailId, closeInputDetail, closeClusterDetail, updateInput, updateCluster, assignInputToCluster, removeInputFromCluster, deleteInput, deleteCluster, inputs, clusters, projects } = appState;
 
   const handleCreateProject = (fields) => {
     const newProject = appState.addProject(fields);
@@ -69,8 +69,10 @@ export default function App() {
         inputId={inputDetailId}
         inputs={inputs}
         projects={projects}
+        clusters={clusters}
         onClose={closeInputDetail}
         onSave={(id, fields) => { updateInput(id, fields); appState.showToast("Input updated"); closeInputDetail(); }}
+        onDelete={() => { deleteInput(inputDetailId); appState.showToast("Input deleted"); closeInputDetail(); }}
       />
 
       <ClusterDetailDrawer
@@ -81,6 +83,7 @@ export default function App() {
         onSave={(id, fields) => { updateCluster(id, fields); appState.showToast("Cluster updated"); closeClusterDetail(); }}
         onRemoveInput={(inputId, clusterId) => { removeInputFromCluster(inputId, clusterId); appState.showToast("Input removed from cluster"); }}
         onAssignInput={(inputId, clusterId) => { assignInputToCluster(inputId, clusterId); appState.showToast("Input added to cluster"); }}
+        onDelete={() => { deleteCluster(clusterDetailId); appState.showToast("Cluster deleted"); closeClusterDetail(); }}
       />
     </div>
   );

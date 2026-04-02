@@ -4,7 +4,7 @@
  */
 import { c } from "../../styles/tokens.js";
 
-export function Drawer({ open, onClose, title, children, width = 480 }) {
+export function Drawer({ open, onClose, title, children, width = 480, zIndex = 100 }) {
   if (!open) return null;
 
   return (
@@ -16,7 +16,7 @@ export function Drawer({ open, onClose, title, children, width = 480 }) {
           position: "fixed",
           inset: 0,
           background: "rgba(0,0,0,0.18)",
-          zIndex: 100,
+          zIndex,
         }}
       />
       {/* Panel */}
@@ -28,7 +28,7 @@ export function Drawer({ open, onClose, title, children, width = 480 }) {
         width,
         background: c.white,
         borderLeft: `1px solid ${c.border}`,
-        zIndex: 101,
+        zIndex: zIndex + 1,
         display: "flex",
         flexDirection: "column",
         animation: "drawerSlideIn 0.25s ease",

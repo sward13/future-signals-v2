@@ -6,6 +6,7 @@
 import { useState, useEffect } from "react";
 import { c, inp, ta, btnP, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { INPUT_TYPES, ThreeCardSelector, SteepleSelector, HorizonSelector, TypeSwitcherChip } from "./InputFormFields.jsx";
+import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 
 const HORIZON_COLORS = {
   H1: [c.green700, c.green50, c.greenBorder],
@@ -40,11 +41,12 @@ const CONFIDENCE_CARD_OPTIONS = [
   { value: "High",   title: "High",   desc: "Peer-reviewed research or official statistics",  dotColor: c.green700 },
 ];
 
-export function InputDetailDrawer({ inputId, inputs, projects, onClose, onSave }) {
+export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], onClose, onSave, onDelete }) {
   const input = inputs.find((i) => i.id === inputId) || null;
 
   const [editing, setEditing] = useState(false);
   const [fields, setFields] = useState({});
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (input) {
@@ -84,7 +86,8 @@ export function InputDetailDrawer({ inputId, inputs, projects, onClose, onSave }
     setEditing(false);
   };
 
-  const assignedProject = projects.find((p) => p.id === (fields.project_id || input.project_id));
+  const assignedProject  = projects.find((p) => p.id === (fields.project_id || input.project_id));
+  const assignedClusters = clusters.filter((cl) => (cl.input_ids || []).includes(input.id));
 
   return (
     <>
@@ -108,6 +111,14 @@ export function InputDetailDrawer({ inputId, inputs, projects, onClose, onSave }
           {!editing && (
             <button onClick={() => setEditing(true)} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
               Edit
+            </button>
+          )}
+          {onDelete && !editing && (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Delete
             </button>
           )}
           <button onClick={onClose} style={{ ...btnG, fontSize: 16, padding: "2px 6px", color: c.muted }}>×</button>
@@ -196,6 +207,22 @@ export function InputDetailDrawer({ inputId, inputs, projects, onClose, onSave }
                 )}
               </div>
             )}
+          </div>
+
+          {/* Cluster membership — read-only; managed in Clustering screen */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Cluster</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+              {assignedClusters.length === 0 ? (
+                <span style={{ fontSize: 12, color: c.hint, fontStyle: "italic" }}>Unassigned</span>
+              ) : (
+                assignedClusters.map((cl) => (
+                  <span key={cl.id} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 8, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>
+                    {cl.name}
+                  </span>
+                ))
+              )}
+            </div>
           </div>
 
           {/* Signal strength */}
@@ -291,6 +318,15 @@ export function InputDetailDrawer({ inputId, inputs, projects, onClose, onSave }
           </div>
         )}
       </div>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title={`Delete "${input.name}"?`}
+          message="This will permanently remove the input and unlink it from any clusters. This cannot be undone."
+          onConfirm={onDelete}
+          onClose={() => setConfirmDelete(false)}
+        />
+      )}
     </>
   );
 }

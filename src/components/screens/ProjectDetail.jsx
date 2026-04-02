@@ -271,9 +271,9 @@ function SummaryCard({ icon, title, count, countLabel, emptyBody, ctaLabel, onCt
 export default function ProjectDetail({ appState }) {
   const {
     activeProjectId, projects, inputs, clusters, scenarios,
-    addInput, saveInputsToProject, showToast, setActiveScreen,
+    addInput, saveInputsToProject, showToast, setActiveScreen, setActiveProjectId,
     openInputDetail, openClusterDetail, openScenarioDetail,
-    addCluster, addScenario, updateProject, assignInputToCluster,
+    addCluster, addScenario, updateProject, assignInputToCluster, deleteProject,
   } = appState;
 
   const [drawerOpen,        setDrawerOpen]        = useState(false);
@@ -318,9 +318,9 @@ export default function ProjectDetail({ appState }) {
   );
   const inboxInputs = inputs.filter((i) => i.project_id === null && !clusterInputIdSet.has(i.id));
 
-  // Determine assigned cluster for an input
-  const getInputCluster = (inputId) =>
-    projectClusters.find((cl) => cl.input_ids?.includes(inputId)) || null;
+  // Determine assigned cluster(s) for an input
+  const getInputCluster  = (inputId) => projectClusters.find((cl) => cl.input_ids?.includes(inputId)) || null;
+  const getInputClusters = (inputId) => projectClusters.filter((cl) => cl.input_ids?.includes(inputId));
 
   const unassigned = projectInputs.filter((i) => !getInputCluster(i.id));
   const inCluster  = projectInputs.filter((i) =>  getInputCluster(i.id));
@@ -401,6 +401,13 @@ export default function ProjectDetail({ appState }) {
     updateProject(project.id, fields);
     showToast("Project updated");
     setEditDrawerOpen(false);
+  };
+
+  const handleDeleteProject = () => {
+    deleteProject(project.id);
+    showToast("Project deleted");
+    setActiveProjectId(null);
+    setActiveScreen("dashboard");
   };
 
   const handleCreateScenario = (fields) => {
@@ -621,7 +628,7 @@ export default function ProjectDetail({ appState }) {
                     <div style={{ width: COL.confidence, ...cell }}>Confidence</div>
                     <div style={{ width: COL.steepled,   ...cell }}>STEEPLED</div>
                     <div style={{ width: COL.horizon,    ...cell }}>Horizon</div>
-                    <div style={{ width: COL.action, flexShrink: 0 }} />
+                    <div style={{ width: COL.action, flexShrink: 0, ...cell }}>Cluster</div>
                   </div>
 
                   {/* Data rows */}
@@ -641,7 +648,8 @@ export default function ProjectDetail({ appState }) {
                     const steepled = inp.steepled || [];
                     const vis2     = steepled.slice(0, 2);
                     const overflow = steepled.length - 2;
-                    const assignedCluster = getInputCluster(inp.id);
+                    const assignedCluster  = getInputCluster(inp.id);
+                    const assignedClusters = getInputClusters(inp.id);
                     const isSelected = selectedIds.has(inp.id);
                     return (
                       <div
@@ -696,13 +704,9 @@ export default function ProjectDetail({ appState }) {
                         <div style={{ width: COL.horizon, flexShrink: 0 }}>
                           {inp.horizon ? <HorizTag h={inp.horizon} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
                         </div>
-                        {/* Action */}
-                        <div style={{ width: COL.action, flexShrink: 0, textAlign: "right", position: "relative" }}>
-                          {assignedCluster ? (
-                            <span style={{ fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
-                              {assignedCluster.name}
-                            </span>
-                          ) : (
+                        {/* Cluster */}
+                        <div style={{ width: COL.action, flexShrink: 0, display: "flex", flexWrap: "wrap", gap: 3, alignItems: "center", position: "relative" }}>
+                          {assignedClusters.length === 0 ? (
                             <>
                               <button
                                 onClick={(e) => { e.stopPropagation(); setAssignPickerFor(assignPickerFor === inp.id ? null : inp.id); }}
@@ -718,6 +722,16 @@ export default function ProjectDetail({ appState }) {
                                 />
                               )}
                             </>
+                          ) : assignedClusters.length === 1 ? (
+                            <span style={{ fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {assignedClusters[0].name}
+                            </span>
+                          ) : (
+                            assignedClusters.map((cl) => (
+                              <span key={cl.id} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: "#f0f0ee", color: c.muted, whiteSpace: "nowrap" }}>
+                                {cl.name}
+                              </span>
+                            ))
                           )}
                         </div>
                       </div>
@@ -883,6 +897,8 @@ export default function ProjectDetail({ appState }) {
         onSave={handleCreateCluster}
         projectId={project.id}
         projectInputs={projectInputs}
+        onAddInput={(fields) => { addInput({ ...fields, project_id: project.id }); showToast("Input added"); }}
+        projects={projects}
       />
 
       {scenarioDrawerOpen && (
@@ -897,6 +913,7 @@ export default function ProjectDetail({ appState }) {
           project={project}
           onClose={() => setEditDrawerOpen(false)}
           onSave={handleUpdateProject}
+          onDelete={handleDeleteProject}
           scrollTo={editScrollTo}
         />
       )}

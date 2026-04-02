@@ -7,6 +7,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { c, inp, ta, sel, btnP, btnSec, btnG, fl, fh } from "../../styles/tokens.js";
 import { DOMAINS } from "../../data/seeds.js";
 import { HorizonSlider, YearInput } from "./NewProjectModal.jsx";
+import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -25,7 +26,7 @@ function parseHorizonState(project) {
   };
 }
 
-export function EditProjectDrawer({ project, onClose, onSave, scrollTo }) {
+export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo }) {
   const initial = parseHorizonState(project);
 
   const [name,         setName]         = useState(project.name        || "");
@@ -35,6 +36,7 @@ export function EditProjectDrawer({ project, onClose, onSave, scrollTo }) {
   const [geo,          setGeo]          = useState(project.geo         || "");
   const [assumptions,  setAssumptions]  = useState(project.assumptions || "");
   const [stakeholders, setStakeholders] = useState(project.stakeholders || "");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [startYear,    setStartYear]    = useState(initial.startYear);
   const [endYear,      setEndYear]      = useState(initial.endYear);
   const [h1Pct,        setH1Pct]        = useState(initial.h1Pct);
@@ -224,19 +226,44 @@ export function EditProjectDrawer({ project, onClose, onSave, scrollTo }) {
         </div>
 
         {/* Footer */}
-        <div style={{
-          padding: "14px 24px 18px", borderTop: `1px solid ${c.border}`,
-          display: "flex", gap: 8, flexShrink: 0,
-        }}>
-          <button onClick={onClose} style={btnSec}>Cancel</button>
-          <button
-            onClick={handleSave}
-            style={{ ...btnP, flex: 1, opacity: name.trim() ? 1 : 0.4 }}
-          >
-            Save
-          </button>
+        <div style={{ flexShrink: 0 }}>
+          <div style={{ padding: "14px 24px 18px", borderTop: `1px solid ${c.border}`, display: "flex", gap: 8 }}>
+            <button onClick={onClose} style={btnSec}>Cancel</button>
+            <button
+              onClick={handleSave}
+              style={{ ...btnP, flex: 1, opacity: name.trim() ? 1 : 0.4 }}
+            >
+              Save
+            </button>
+          </div>
+          {onDelete && (
+            <div style={{ padding: "0 24px 20px", borderTop: `1px solid ${c.border}` }}>
+              <div style={{ paddingTop: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontSize: 11, color: c.hint }}>Danger zone</div>
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  style={{
+                    fontSize: 11, padding: "4px 12px", borderRadius: 6,
+                    border: `1px solid ${c.redBorder}`, background: "transparent",
+                    color: c.red800, cursor: "pointer", fontFamily: "inherit",
+                  }}
+                >
+                  Delete project
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title={`Delete "${project.name}"?`}
+          message="This will permanently delete the project and all its inputs, clusters, and maps. This cannot be undone."
+          onConfirm={onDelete}
+          onClose={() => setConfirmDelete(false)}
+        />
+      )}
 
       <style>{`
         @keyframes drawerSlideIn {

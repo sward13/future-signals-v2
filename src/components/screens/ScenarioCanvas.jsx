@@ -7,6 +7,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { c, ta, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
+import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 
 const NODE_W = 156;
 const NODE_H = 68;
@@ -781,7 +782,7 @@ export default function ScenarioCanvas({ appState }) {
     canvasNodes, relationships,
     addCanvasNode, removeCanvasNode, updateCanvasNodePos,
     addRelationship, updateRelationship, removeRelationship,
-    showToast, scenarioDetailId, closeScenarioDetail,
+    deleteSystemMap, showToast, scenarioDetailId, closeScenarioDetail,
   } = appState;
 
   const project         = projects.find((p) => p.id === activeProjectId) || null;
@@ -789,7 +790,8 @@ export default function ScenarioCanvas({ appState }) {
   const projectNodes    = canvasNodes.filter((n) => n.projectId === activeProjectId);
   const projectRels     = relationships.filter((r) => r.projectId === activeProjectId);
 
-  const [viewMode,      setViewMode]      = useState("canvas");
+  const [viewMode,        setViewMode]        = useState("canvas");
+  const [confirmDeleteMap, setConfirmDeleteMap] = useState(false);
   const [leftOpen,      setLeftOpen]      = useState(true);
   const [rightOpen,     setRightOpen]     = useState(true);
   const [connectMode,   setConnectMode]   = useState(null);   // null | 'source' | 'target'
@@ -844,11 +846,12 @@ export default function ScenarioCanvas({ appState }) {
   }, [pan, connectMode]);
 
   const handleNodeMouseDown = useCallback((e, nodeId, nodeX, nodeY) => {
-    if (connectMode) return;
-    e.stopPropagation();
-    dragRef.current         = { nodeId, startMouseX: e.clientX, startMouseY: e.clientY, startNodeX: nodeX, startNodeY: nodeY };
+    // Always reset drag guard so handleNodeClick works correctly in connect mode too
     mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
     dragOccurredRef.current = false;
+    if (connectMode) return;
+    e.stopPropagation();
+    dragRef.current = { nodeId, startMouseX: e.clientX, startMouseY: e.clientY, startNodeX: nodeX, startNodeY: nodeY };
   }, [connectMode]);
 
   const handleMouseMove = useCallback((e) => {
@@ -1017,25 +1020,45 @@ export default function ScenarioCanvas({ appState }) {
               {projectRels.length} relationship{projectRels.length !== 1 ? "s" : ""}
             </div>
           </div>
-          <div style={{ display: "flex", border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden" }}>
-            {["canvas", "table"].map((mode) => (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {(projectNodes.length > 0 || projectRels.length > 0) && (
               <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                style={{
-                  padding: "6px 16px",
-                  background: viewMode === mode ? c.ink : c.white,
-                  color: viewMode === mode ? c.white : c.muted,
-                  border: "none", fontSize: 11,
-                  fontWeight: viewMode === mode ? 500 : 400,
-                  cursor: "pointer", fontFamily: "inherit",
-                  textTransform: "capitalize",
-                }}
-              >{mode}</button>
-            ))}
+                onClick={() => setConfirmDeleteMap(true)}
+                style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
+              >
+                Delete map
+              </button>
+            )}
+            <div style={{ display: "flex", border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden" }}>
+              {["canvas", "table"].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  style={{
+                    padding: "6px 16px",
+                    background: viewMode === mode ? c.ink : c.white,
+                    color: viewMode === mode ? c.white : c.muted,
+                    border: "none", fontSize: 11,
+                    fontWeight: viewMode === mode ? 500 : 400,
+                    cursor: "pointer", fontFamily: "inherit",
+                    textTransform: "capitalize",
+                  }}
+                >{mode}</button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
+
+      {confirmDeleteMap && (
+        <ConfirmDialog
+          title="Delete this System Map?"
+          message={`This will permanently remove all nodes and relationships from the System Map for "${project.name}". Clusters will not be deleted. This cannot be undone.`}
+          confirmLabel="Delete map"
+          onConfirm={() => { deleteSystemMap(activeProjectId); showToast("System map cleared"); setConfirmDeleteMap(false); }}
+          onClose={() => setConfirmDeleteMap(false)}
+        />
+      )}
 
       {viewMode === "table" ? (
         <TableView
@@ -1124,13 +1147,23 @@ export default function ScenarioCanvas({ appState }) {
                     width: 4000, height: 4000, overflow: "visible",
                   }}
                 >
+                  {/* Root-level defs — end markers only; start arrowheads drawn as explicit polygons */}
+                  <defs>
+                    {lineSegments.map(({ rel }) => {
+                      const rt = REL_TYPES.find((r) => r.id === rel.type) || REL_TYPES[0];
+                      return (
+                        <marker key={rel.id} id={`arr-end-${rel.id}`} markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                          <path d="M0,0.5 L0,6.5 L7,3.5 z" fill={rt.color} />
+                        </marker>
+                      );
+                    })}
+                  </defs>
+
                   {lineSegments.map(({ rel, x1, y1, x2, y2, ex1, ey1, ex2, ey2 }) => {
                     const rt         = REL_TYPES.find((r) => r.id === rel.type) || REL_TYPES[0];
                     const isSelected = selectedItem?.type === "rel" && selectedItem.id === rel.id;
 
-                    // Per-relationship marker IDs — inline defs guarantee color always matches current type
-                    const endMarkerId   = `arr-end-${rel.id}`;
-                    const startMarkerId = `arr-start-${rel.id}`;
+                    const endMarkerId = `arr-end-${rel.id}`;
 
                     // Cubic bezier S-curve: control points extend along each node's exit direction.
                     // dist scales with separation so short lines stay gentle, long lines curve enough.
@@ -1149,41 +1182,37 @@ export default function ScenarioCanvas({ appState }) {
 
                     const pathD = `M ${x1} ${y1} C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${x2} ${y2}`;
 
+                    // Feedback Loop start arrowhead — manual polygon mirrors the end marker geometry.
+                    // markerStart is unreliable across browsers; explicit polygon is guaranteed.
+                    // Geometry mirrors markerUnits="strokeWidth" at current strokeWidth:
+                    //   tip  = 2 sw units behind x1 (into node, occluded by node div)
+                    //   base = 5 sw units forward from x1
+                    //   half-width = 3 sw units perpendicular
+                    const sw = isSelected ? 2.5 : 1.8;
+                    const startPolygon = rt.dash ? (() => {
+                      const tipX  = x1 - ex1 * 2 * sw,  tipY  = y1 - ey1 * 2 * sw;
+                      const baseCX = x1 + ex1 * 5 * sw, baseCY = y1 + ey1 * 5 * sw;
+                      const b1x = baseCX - ey1 * 3 * sw, b1y = baseCY + ex1 * 3 * sw;
+                      const b2x = baseCX + ey1 * 3 * sw, b2y = baseCY - ex1 * 3 * sw;
+                      return `${tipX},${tipY} ${b1x},${b1y} ${b2x},${b2y}`;
+                    })() : null;
+
                     return (
                       <g key={rel.id}>
-                        {/* Inline markers — each relationship owns its defs so color is always in sync */}
-                        <defs>
-                          <marker
-                            id={endMarkerId}
-                            markerWidth="7" markerHeight="7"
-                            refX="5" refY="3.5"
-                            orient="auto" markerUnits="strokeWidth"
-                          >
-                            <path d="M0,0.5 L0,6.5 L7,3.5 z" fill={rt.color} />
-                          </marker>
-                          {rt.dash && (
-                            <marker
-                              id={startMarkerId}
-                              markerWidth="7" markerHeight="7"
-                              refX="5" refY="3.5"
-                              orient="auto-start-reverse" markerUnits="strokeWidth"
-                            >
-                              <path d="M0,0.5 L0,6.5 L7,3.5 z" fill={rt.color} />
-                            </marker>
-                          )}
-                        </defs>
-
                         {/* Visible curved path */}
                         <path
                           d={pathD}
                           fill="none"
                           stroke={rt.color}
-                          strokeWidth={isSelected ? 2.5 : 1.8}
+                          strokeWidth={sw}
                           strokeDasharray={rt.dash ? "6,4" : undefined}
                           markerEnd={`url(#${endMarkerId})`}
-                          markerStart={rt.dash ? `url(#${startMarkerId})` : undefined}
                           style={{ pointerEvents: "none" }}
                         />
+                        {/* Start arrowhead for Feedback Loop — drawn as polygon to bypass markerStart unreliability */}
+                        {startPolygon && (
+                          <polygon points={startPolygon} fill={rt.color} style={{ pointerEvents: "none" }} />
+                        )}
 
                         {/* Midpoint label — background pill + text */}
                         <g style={{ pointerEvents: "none" }}>

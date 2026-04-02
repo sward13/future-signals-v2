@@ -5,8 +5,9 @@
  * @param {{ appState: object }} props
  */
 import { useState } from "react";
-import { c, btnP, btnSec } from "../../styles/tokens.js";
+import { c, btnSec } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
+import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 
 // ─── Panel definitions ─────────────────────────────────────────────────────────
 
@@ -249,11 +250,12 @@ function AnalysisPanel({ panel, value, onChange, selected, onSelect, onAI }) {
 export default function SystemAnalysisCanvas({ appState }) {
   const {
     activeProjectId, setActiveProjectId, projects, inputs, clusters, scenarios,
-    openProjectModal, analyses, upsertAnalysis, showToast,
+    openProjectModal, analyses, upsertAnalysis, deleteAnalysis, showToast,
   } = appState;
 
-  const [selected,    setSelected]    = useState(null);
-  const [showExport,  setShowExport]  = useState(false);
+  const [selected,       setSelected]       = useState(null);
+  const [showExport,     setShowExport]     = useState(false);
+  const [confirmDelete,  setConfirmDelete]  = useState(false);
 
   const project  = projects.find((p) => p.id === activeProjectId) || null;
   const analysis = (analyses || []).find((a) => a.project_id === activeProjectId) || null;
@@ -273,16 +275,6 @@ export default function SystemAnalysisCanvas({ appState }) {
     showToast("AI generation coming soon");
   };
 
-  const handleGenerate = () => {
-    upsertAnalysis(project.id, {
-      key_dynamics: "",
-      description: "",
-      critical_uncertainties: [],
-      implications: "",
-      confidence: null,
-    });
-  };
-
   // ── No active project ────────────────────────────────────────────────────────
   if (!project) {
     return (
@@ -296,24 +288,6 @@ export default function SystemAnalysisCanvas({ appState }) {
         onSelect={(id) => setActiveProjectId(id)}
         onNewProject={openProjectModal}
       />
-    );
-  }
-
-  // ── Empty state ──────────────────────────────────────────────────────────────
-  if (!analysis) {
-    return (
-      <div style={{ padding: "36px 32px", background: c.bg, minHeight: "100%" }}>
-        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 6 }}>System Analysis</div>
-        <div style={{ fontSize: 11, color: c.hint, marginBottom: 20 }}>{project.name}</div>
-        <div style={{ maxWidth: 420 }}>
-          <div style={{ fontSize: 13, color: c.muted, lineHeight: 1.7, marginBottom: 24 }}>
-            No analysis yet. Generate an AI analysis from your system map, or start writing manually.
-          </div>
-          <button onClick={handleGenerate} style={{ ...btnP }}>
-            Generate analysis
-          </button>
-        </div>
-      </div>
     );
   }
 
@@ -333,6 +307,17 @@ export default function SystemAnalysisCanvas({ appState }) {
           <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>System Analysis</div>
           <div style={{ fontSize: 10, color: c.hint, marginTop: 1 }}>{project.name}</div>
         </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* Delete analysis */}
+        {analysis && (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
+          >
+            Delete
+          </button>
+        )}
 
         {/* Export */}
         <div style={{ position: "relative" }}>
@@ -368,7 +353,17 @@ export default function SystemAnalysisCanvas({ appState }) {
             </>
           )}
         </div>
+        </div>
       </div>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete this analysis?"
+          message={`This will permanently delete the System Analysis for "${project.name}". This cannot be undone.`}
+          onConfirm={() => { deleteAnalysis(activeProjectId); showToast("Analysis deleted"); setConfirmDelete(false); }}
+          onClose={() => setConfirmDelete(false)}
+        />
+      )}
 
       {/* ── Spatial grid ─────────────────────────────────────────────────── */}
       <div
