@@ -40,6 +40,7 @@ export function Sidebar({
   clusterCount = 0,
   scenarioCount = 0,
   hasRelationships = false,
+  onSignOut,
 }) {
   const inProject = !!activeProject;
 
@@ -225,9 +226,24 @@ export function Sidebar({
 
       {/* User footer */}
       <div style={{ padding: "10px 16px", borderTop: `1px solid ${c.border}` }}>
-        <div style={{ fontSize: 11, color: c.faint }}>{user?.email || "user@example.com"}</div>
-        <div style={{ fontSize: 10, color: c.hint, marginTop: 1 }}>
-          {user?.level === "advanced" ? "Advanced" : user?.level === "intermediate" ? "Intermediate" : "Beginner"} · Pro plan
+        <div style={{ fontSize: 11, color: c.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {user?.email || "user@example.com"}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 1 }}>
+          <div style={{ fontSize: 10, color: c.hint }}>
+            {user?.level === "advanced" ? "Advanced" : user?.level === "intermediate" ? "Intermediate" : "Beginner"} · Pro plan
+          </div>
+          {onSignOut && (
+            <button
+              onClick={onSignOut}
+              style={{
+                fontSize: 9, color: c.hint, background: "none", border: "none",
+                cursor: "pointer", fontFamily: "inherit", padding: 0,
+              }}
+            >
+              Sign out
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -2,9 +2,9 @@
 
 ## Project overview
 
-Future Signals v2 is a strategic foresight SPA built with React + Vite + Tailwind. It guides practitioners through a Signals → Clusters → Scenarios methodology. This is a pre-build prototype phase — we are building a navigable, stateful SPA prototype to validate UX before the real Supabase-backed build.
+Future Signals v2 is a strategic foresight SPA built with React + Vite. It guides practitioners through a Signals → Clusters → Scenarios methodology. The Vercel prototype phase is complete — we are now building the production app with Supabase (Postgres + pgvector + RLS) as the backend.
 
-**Stack:** React 18, Vite, React Flow (`@xyflow/react`), inline styles (no Tailwind yet in the prototype phase — we use the design token system below)
+**Stack:** React 18, Vite, React Flow (`@xyflow/react`), Supabase (auth + database + storage), Vercel (hosting), inline styles using the design token system below.
 
 **Key principle:** AI supports but does not replace practitioner thinking. The UI should feel like a professional tool, not a consumer app.
 
@@ -53,22 +53,28 @@ const badg  = { fontSize:10, padding:"1px 6px", borderRadius:4, background:"#f0f
 | Input | Signal (except in user-facing copy about the capture act) |
 | Cluster | Trend |
 | Project | Brief |
+| Focus | Unit of analysis |
 | Inbox | Collection |
+| System Map | Relationship Canvas, Scenario Canvas |
 | Add an input | Add a signal |
-| Systems | Scenarios (in all navigation, headings, labels, and empty states) |
 
-**Note on Systems / scenario:** The nav label, sidebar item, page headings, tab labels, stat cards, and empty states all read **Systems**. The underlying data entity and all internal variable/prop names remain `scenario` / `scenarios` — this is a label change only, not a data model rename. Do not rename variables, keys, file names, or component names.
+**Nav labels, headings, sidebar items, empty states, and stat cards always use the left-hand column.** Internal variable names, prop names, file names, and database column names use whatever is most stable — do not rename existing code constructs just to match display labels.
+
+**Cluster subtypes:** `Trend | Driver | Tension`
+**Scenario archetypes:** `Continuation | Collapse | Constraint | Transformation`
+**Input subtypes:** `Signal | Issue | Projection | Plan | Obstacle`
+**Signal Quality values:** `Emerging | Established | Confirmed`
 
 ---
 
 ## Key product decision — Projects are mandatory
 
-**Projects are mandatory. Clusters and Systems only exist within a Project.**
+**Projects are mandatory. Clusters and System Maps only exist within a Project.**
 
 - The Inbox holds inputs that have not yet been assigned to a project (`project_id === null`). It is a workspace-level screen.
-- Clustering and Systems/Relationship Canvas are project-scoped screens. They only appear in the sidebar when a project is active.
-- The sidebar PROJECT section (label "PROJECT", items: Inputs / Clustering / Systems) is only visible when `activeProjectId` is set.
-- At workspace level (Dashboard, Inbox, no active project) the sidebar shows only: Dashboard, Inbox, Projects. No Clustering. No Systems.
+- Clustering and System Map are project-scoped screens. They only appear in the sidebar when a project is active.
+- The sidebar PROJECT section (label "PROJECT", items: Inputs / Clustering / System Map) is only visible when `activeProjectId` is set.
+- At workspace level (Dashboard, Inbox, no active project) the sidebar shows only: Dashboard, Inbox, Projects. No Clustering. No System Map.
 - Navigating to Dashboard or Inbox via the sidebar clears the active project context.
 - The Dashboard stats strip shows workspace-level counts only: Projects and Inputs in Inbox. Per-project cluster/system counts appear on each project card, not in the global strip.
 
@@ -87,14 +93,14 @@ All app state lives in a single `useAppState` hook (or context) at the root leve
   scenarios: [],     // all scenarios
   projects: [],      // all projects
   activeProjectId: null,
-  activeScreen: 'dashboard',  // 'dashboard' | 'inbox' | 'project' | 'clustering' | 'canvas' | 'narrative'
+  activeScreen: 'dashboard',  // 'dashboard' | 'inbox' | 'project' | 'clustering' | 'canvas'
   drawer: null,      // null | { type: 'newInput' | 'newCluster' | 'inputDetail' | 'clusterDetail', data: {} }
   toast: null,       // null | { message, type: 'success' | 'error' }
 }
 ```
 
 ### Navigation
-The sidebar drives all navigation. Clicking a sidebar item calls `setActiveScreen()`. No URL routing needed in the prototype — just state.
+The sidebar drives all navigation. Clicking a sidebar item calls `setActiveScreen()`. No URL routing in v2 — navigation is state-driven via setActiveScreen().
 
 ### Drawers
 Input creation, cluster creation, and detail views all open as slide-over drawers from the right. Never navigate to a separate page for these. The drawer overlays the current content with a semi-transparent backdrop.
@@ -120,11 +126,10 @@ src/
       Toast.jsx           ← success/error notification
     screens/
       Dashboard.jsx
-      Inbox.jsx           ← PRIORITY — this is Pass 1's main deliverable
+      Inbox.jsx
       ProjectDetail.jsx
       Clustering.jsx
-      ScenarioCanvas.jsx
-      NarrativeCanvas.jsx
+      SystemMap.jsx
     inputs/
       InputCard.jsx       ← reusable input display card
       InputDrawer.jsx     ← new input / edit input form
@@ -133,7 +138,7 @@ src/
       ClusterCard.jsx
       ClusterDrawer.jsx
     shared/
-      Tag.jsx             ← StrengthDot, HorizTag, ArchTag, SubtypeTag
+      Tag.jsx             ← QualityDot, HorizTag, ArchTag, SubtypeTag
       EmptyState.jsx
   data/
     seeds.js              ← SEEDED_SIGNALS_POOL, DOMAIN_META, sample INPUTS/CLUSTERS/SCENARIOS/PROJECTS
@@ -148,7 +153,7 @@ src/
 When building UI, always:
 
 - **Commit to the established aesthetic** — warm off-white backgrounds (`#f5f4f0`), ink black (`#111111`), subtle borders. This is a refined minimal tool, not a consumer app.
-- **Typography** — use `-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif`. Avoid importing web fonts in the prototype.
+- **Typography** — use `-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif`. Avoid importing web fonts.
 - **Density** — information-dense but not cramped. 12–13px for body/labels, 10–11px for metadata, 18–22px for page headings.
 - **No generic AI aesthetics** — no purple gradients, no rounded pill everything, no card shadows on every element.
 - **Interactions** — hover states on all clickable elements, smooth drawer transitions (300ms ease), subtle border changes on focus.
@@ -156,60 +161,42 @@ When building UI, always:
 
 ---
 
-## Pass 1 scope — what to build first
+## What is deferred to v3
 
-**Goal:** Working navigation shell + Inbox + persistent state. Everything else is secondary.
+The following are explicitly out of scope for v2. Do not scaffold, stub, or reference these in v2 code:
 
-**Must work in Pass 1:**
-1. Sidebar with clickable nav items (Dashboard, Inbox, Projects)
-2. App state that persists across screen changes (navigate away and back — data stays)
-3. **Inbox screen** — shows seeded signals from onboarding domains + any manually added inputs; "Save to Project" and "Dismiss" actions work
-4. **"+ New Input" drawer** — opens from a button in the Inbox header, form fields per schema, saving adds the input to the inputs list and shows a toast
-5. **Dashboard screen** — simplified version showing stats and projects list; "+ New Project" button exists
-6. Toast notification component working for all save actions
+- Preferred Futures screen
+- Strategic Options screen
+- Scenario Narrative screen / Narrative Canvas
+- Real-time collaboration
+- Corpus ingestion
+- Explore / social layer
+- Slide deck generation (explicitly out of scope — not a deferral)
 
-**Out of scope for Pass 1:**
-- Onboarding flow (already exists in reference prototype, wire up later)
-- Clustering screen
-- Scenario canvas
-- Narrative canvas
-- Project creation modal (stub it — button exists but can show "coming soon")
+The Chrome extension is a separate surface and is handled independently of the main app build.
 
 ---
 
-## Reference files
+## Data model — entity schemas
 
-- `src/reference-prototype.jsx` — the previous single-file prototype. Mine this for: design tokens, sample data (SEEDED_SIGNALS_POOL, DOMAIN_META, INPUTS, CLUSTERS, SCENARIOS, PROJECTS), Tag components, SeededSignalCard, and onboarding flow code.
-- `prototype-v1-feedback.md` — feedback document summarising what to fix. Reference this when making design decisions.
+These are the canonical field definitions. Always use these exact field names in state, components, and Supabase columns.
 
----
-
-## Code quality rules
-
-- No `console.log` left in committed code
-- No hardcoded pixel values that aren't in the token system
-- Every component gets a JSDoc comment at the top describing its purpose and props
-- Prop types are not required in the prototype but all props should be named clearly
-- Prefer named exports for components, default export for screens
-
----
-
-## Data model — entity schemas for Pass 1
-
-These are the canonical field definitions. Always use these exact field names in state and components.
+All tables carry `workspace_id` and (where applicable) `project_id` as a dual-key structure. `workspace_id` is 1:1 with the user account in v2 — there is no team/org layer yet.
 
 ### Input
 ```js
 {
   id: string,              // uuid
+  workspace_id: string,    // uuid — always present
+  project_id: string|null, // null = lives in Inbox
   name: string,            // required
   description: string,     // optional
   source_url: string,      // optional
-  subtype: string,         // 'article' | 'report' | 'data' | 'observation' | 'other'
+  subtype: string,         // 'Signal' | 'Issue' | 'Projection' | 'Plan' | 'Obstacle'
   steepled: string[],      // subset of ['Social','Technological','Economic','Environmental','Political','Legal','Ethical','Demographic']
-  strength: string,        // 'Weak' | 'Moderate' | 'High' — user-assigned
+  signal_quality: string,  // 'Emerging' | 'Established' | 'Confirmed'
   horizon: string,         // 'H1' | 'H2' | 'H3'
-  project_id: string|null, // null = lives in Inbox
+  metadata: object,        // JSONB — subtype-specific fields
   created_at: string,      // ISO date
   is_seeded: boolean,      // true = came from onboarding cold-start pool
 }
@@ -219,12 +206,12 @@ These are the canonical field definitions. Always use these exact field names in
 ```js
 {
   id: string,
+  workspace_id: string,    // uuid — always present
   name: string,            // required
   domain: string,          // from DOMAINS list
   question: string,        // key inquiry question
-  unit: string,            // unit of analysis
+  focus: string,           // focus of analysis (formerly 'unit')
   geo: string,             // geographic scope
-  mode: string,            // 'quick_scan' | 'deep_analysis'
   h1_start: string, h1_end: string,  // e.g. '2025', '2028'
   h2_start: string, h2_end: string,
   h3_start: string, h3_end: string,
@@ -234,31 +221,32 @@ These are the canonical field definitions. Always use these exact field names in
 }
 ```
 
-### Cluster (stub for Pass 1 — full implementation in Pass 2)
+### Cluster
 ```js
 {
   id: string,
+  workspace_id: string,    // uuid — always present
+  project_id: string,
   name: string,
   subtype: string,         // 'Trend' | 'Driver' | 'Tension'
   horizon: string,         // 'H1' | 'H2' | 'H3'
   description: string,
-  project_id: string,
   input_ids: string[],     // inputs assigned to this cluster
   likelihood: string,      // 'Possible' | 'Plausible' | 'Probable'
   created_at: string,
 }
 ```
 
-### Scenario (stub only in Pass 1)
+### Scenario
 ```js
 {
   id: string,
+  workspace_id: string,    // uuid — always present
+  project_id: string,
   name: string,
   archetype: string,       // 'Continuation' | 'Collapse' | 'Constraint' | 'Transformation'
   horizon: string,
-  narrative: string,
   cluster_ids: string[],
-  project_id: string,
   created_at: string,
 }
 ```
@@ -279,11 +267,13 @@ const DOMAINS = [
 The full Product Requirements Document is at:
 **https://docs.google.com/document/d/1enQk44JVvjS4mCF-1gzIBVBPyvAXtoVr20HuddJdako**
 
-Key decisions already made that affect the prototype:
+Key decisions already made:
 - Cluster subtypes: **Trend, Driver, Tension** (Enabler was removed)
-- Scenario archetypes: **Continuation, Collapse, Constraint, Transformation** (not Growth/Discipline/Disarray)
+- Scenario archetypes: **Continuation, Collapse, Constraint, Transformation**
+- Signal Quality: **Emerging, Established, Confirmed** — a single field replacing the previous separate Signal Strength and Source Confidence fields
 - Inbox is the default container — `project_id: null` means "in Inbox"
 - Workspace is 1:1 with user account in v2 — no team/org layer yet
 - Real-time collaboration deferred to v3
+- Analysis mode (Quick Scan / Deep Analysis toggle) removed entirely — do not reference `mode` on Projects
 - Slide deck generation explicitly out of scope (not a deferral)
 - Chrome extension is a separate surface, not part of the main app build

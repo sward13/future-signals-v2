@@ -5,7 +5,7 @@
  */
 import { Sidebar } from "./Sidebar.jsx";
 
-export function AppShell({ appState, children, scroll = true }) {
+export function AppShell({ appState, children, scroll = true, onSignOut }) {
   const { activeScreen, setActiveScreen, setActiveProjectId, user, inputs, clusters, scenarios, projects, activeProjectId, openProjectModal } = appState;
 
   const activeProject      = projects.find((p) => p.id === activeProjectId) || null;
@@ -41,6 +41,7 @@ export function AppShell({ appState, children, scroll = true }) {
         clusterCount={clusterCount}
         scenarioCount={scenarioCount}
         hasRelationships={hasRelationships}
+        onSignOut={onSignOut}
       />
       <div style={{
         flex: 1,

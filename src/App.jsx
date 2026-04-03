@@ -1,8 +1,11 @@
 /**
- * App — root component. Holds all state via useAppState, renders the AppShell,
- * active screen, project creation modal, and toast.
+ * App — root component. Manages Supabase auth session, then holds all app state
+ * via useAppState, renders the AppShell, active screen, modals, and toast.
  */
+import { useState, useEffect } from "react";
+import { supabase } from "./lib/supabase.js";
 import { useAppState } from "./hooks/useAppState.js";
+import { AuthScreen } from "./components/auth/AuthScreen.jsx";
 import { AppShell } from "./components/layout/AppShell.jsx";
 import { Toast } from "./components/layout/Toast.jsx";
 import { NewProjectModal } from "./components/projects/NewProjectModal.jsx";
@@ -33,8 +36,50 @@ function ActiveScreen({ appState }) {
 }
 
 export default function App() {
-  const appState = useAppState();
+  // ── Auth layer ─────────────────────────────────────────────────────────────
+  // session === undefined: still resolving initial state (show nothing)
+  // session === null:      resolved, not signed in (show AuthScreen)
+  // session === object:    signed in
+  const [session,     setSession]     = useState(undefined);
+  const [workspaceId, setWorkspaceId] = useState(null);
+
+  useEffect(() => {
+    // Resolve the initial session synchronously (from local storage)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session ?? null);
+      if (session) fetchWorkspaceId(session.user.id);
+    });
+
+    // Subscribe to future auth changes (sign in, sign out, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session ?? null);
+      if (session) fetchWorkspaceId(session.user.id);
+      else setWorkspaceId(null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchWorkspaceId = async (userId) => {
+    const { data } = await supabase
+      .from("workspaces")
+      .select("id")
+      .eq("owner_id", userId)
+      .single();
+    if (data) setWorkspaceId(data.id);
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  // ── App state ──────────────────────────────────────────────────────────────
+  const appState = useAppState(workspaceId, session ?? null);
   const { inputDetailId, clusterDetailId, closeInputDetail, closeClusterDetail, updateInput, updateCluster, assignInputToCluster, removeInputFromCluster, deleteInput, deleteCluster, inputs, clusters, projects } = appState;
+
+  // ── Auth gates ─────────────────────────────────────────────────────────────
+  if (session === undefined) return null; // resolving — render nothing briefly
+  if (!session) return <AuthScreen />;    // not signed in
 
   const handleCreateProject = (fields) => {
     const newProject = appState.addProject(fields);
@@ -53,7 +98,7 @@ export default function App() {
       color: "#111111",
       WebkitFontSmoothing: "antialiased",
     }}>
-      <AppShell appState={appState} scroll={!["scenarios", "scenario_canvas", "analysis"].includes(appState.activeScreen)}>
+      <AppShell appState={appState} onSignOut={handleSignOut} scroll={!["scenarios", "scenario_canvas", "analysis"].includes(appState.activeScreen)}>
         <ActiveScreen appState={appState} />
       </AppShell>
 
