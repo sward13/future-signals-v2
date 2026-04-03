@@ -78,23 +78,31 @@ export function useAppState(workspaceId = null, session = null) {
     }
 
     const fetchProjects = async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("workspace_id", workspaceId)
-        .order("created_at", { ascending: false });
-      if (!error && data) setProjects(data);
-      else if (error) showToast("Failed to load projects", "error");
+      try {
+        const { data, error } = await supabase
+          .from("projects")
+          .select("*")
+          .eq("workspace_id", workspaceId)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        setProjects(data);
+      } catch {
+        showToast("Failed to load projects", "error");
+      }
     };
 
     const fetchInputs = async () => {
-      const { data, error } = await supabase
-        .from("inputs")
-        .select("*")
-        .eq("workspace_id", workspaceId)
-        .order("created_at", { ascending: false });
-      if (!error && data) setInputs(data);
-      else if (error) showToast("Failed to load inputs", "error");
+      try {
+        const { data, error } = await supabase
+          .from("inputs")
+          .select("*")
+          .eq("workspace_id", workspaceId)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        setInputs(data);
+      } catch {
+        showToast("Failed to load inputs", "error");
+      }
     };
 
     fetchProjects();
@@ -139,29 +147,48 @@ export function useAppState(workspaceId = null, session = null) {
       created_at:   now,
     };
 
-    // Optimistic local update
+    // Optimistic local update — returns synchronously so callers can use the id immediately
     setProjects((prev) => [newProject, ...prev]);
 
-    // Persist to Supabase (fire-and-forget)
+    // Persist then refetch to sync server state
     if (workspaceId) {
-      supabase.from("projects").insert(newProject).then(({ error }) => {
-        if (error) {
+      (async () => {
+        try {
+          const { error } = await supabase.from("projects").insert(newProject);
+          if (error) throw error;
+          // Refetch to confirm server state
+          const { data, error: fetchError } = await supabase
+            .from("projects")
+            .select("*")
+            .eq("workspace_id", workspaceId)
+            .order("created_at", { ascending: false });
+          if (fetchError) throw fetchError;
+          setProjects(data);
+        } catch {
           setProjects((prev) => prev.filter((p) => p.id !== id));
           showToast("Failed to save project", "error");
         }
-      });
+      })();
     }
 
-    return newProject; // return synchronously for callers that use the id
+    return newProject;
   }, [workspaceId, showToast]);
 
   const updateProject = useCallback((id, fields) => {
     setProjects((prev) => prev.map((p) => p.id === id ? { ...p, ...fields } : p));
     if (workspaceId) {
-      supabase.from("projects").update(fields).eq("id", id).eq("workspace_id", workspaceId)
-        .then(({ error }) => {
-          if (error) showToast("Failed to update project", "error");
-        });
+      (async () => {
+        try {
+          const { error } = await supabase
+            .from("projects")
+            .update(fields)
+            .eq("id", id)
+            .eq("workspace_id", workspaceId);
+          if (error) throw error;
+        } catch {
+          showToast("Failed to update project", "error");
+        }
+      })();
     }
   }, [workspaceId, showToast]);
 
@@ -460,14 +487,35 @@ export function useAppState(workspaceId = null, session = null) {
     setConnections((prev)   => prev.filter((c)   => !scenarioIdSet.has(c.scenarioId)));
 
     if (workspaceId) {
-      // Inputs first (FK to projects) then the project row
-      supabase.from("inputs").delete().eq("project_id", id).eq("workspace_id", workspaceId)
-        .then(() =>
-          supabase.from("projects").delete().eq("id", id).eq("workspace_id", workspaceId)
-        )
-        .then(({ error }) => {
-          if (error) showToast("Failed to delete project", "error");
-        });
+      (async () => {
+        try {
+          // Delete inputs first (FK constraint), then the project row
+          const { error: inputsError } = await supabase
+            .from("inputs")
+            .delete()
+            .eq("project_id", id)
+            .eq("workspace_id", workspaceId);
+          if (inputsError) throw inputsError;
+
+          const { error: projectError } = await supabase
+            .from("projects")
+            .delete()
+            .eq("id", id)
+            .eq("workspace_id", workspaceId);
+          if (projectError) throw projectError;
+
+          // Refetch to confirm server state
+          const { data, error: fetchError } = await supabase
+            .from("projects")
+            .select("*")
+            .eq("workspace_id", workspaceId)
+            .order("created_at", { ascending: false });
+          if (fetchError) throw fetchError;
+          setProjects(data);
+        } catch {
+          showToast("Failed to delete project", "error");
+        }
+      })();
     }
   }, [scenarios, workspaceId, showToast]);
 
