@@ -24,39 +24,39 @@ export function useAppState(workspaceId = null, session = null) {
   const authUser = session?.user ?? null;
   const user = {
     name: authUser?.user_metadata?.full_name
-       || authUser?.user_metadata?.name
-       || authUser?.email?.split("@")[0]
-       || "User",
-    email:   authUser?.email   || "",
-    level:   "advanced",
+      || authUser?.user_metadata?.name
+      || authUser?.email?.split("@")[0]
+      || "User",
+    email: authUser?.email || "",
+    level: "advanced",
     domains: [],
     purpose: "strategy",
   };
 
   // ── Core data (projects + inputs from Supabase; rest in-memory) ──────────
-  const [projects,  setProjects]  = useState([]);
-  const [inputs,    setInputs]    = useState([]);
-  const [clusters,  setClusters]  = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [inputs, setInputs] = useState([]);
+  const [clusters, setClusters] = useState([]);
   const [scenarios, setScenarios] = useState([]);
-  const [analyses,  setAnalyses]  = useState([]);
+  const [analyses, setAnalyses] = useState([]);
 
   // Canvas / system map (in-memory)
-  const [nodePositions,  setNodePositions]  = useState({});
-  const [connections,    setConnections]    = useState([]);
-  const [canvasNodes,    setCanvasNodes]    = useState([]);
-  const [relationships,  setRelationships]  = useState([]);
+  const [nodePositions, setNodePositions] = useState({});
+  const [connections, setConnections] = useState([]);
+  const [canvasNodes, setCanvasNodes] = useState([]);
+  const [relationships, setRelationships] = useState([]);
 
   const connectionsRef = useRef(connections);
   connectionsRef.current = connections;
 
   // ── UI state ─────────────────────────────────────────────────────────────
-  const [activeProjectId,  setActiveProjectId]  = useState(null);
-  const [activeScreen,     setActiveScreen]     = useState("dashboard");
-  const [drawer,           setDrawer]           = useState(null);
-  const [toast,            setToast]            = useState(null);
+  const [activeProjectId, setActiveProjectId] = useState(null);
+  const [activeScreen, setActiveScreen] = useState("dashboard");
+  const [drawer, setDrawer] = useState(null);
+  const [toast, setToast] = useState(null);
   const [projectModalOpen, setProjectModalOpen] = useState(false);
-  const [inputDetailId,    setInputDetailId]    = useState(null);
-  const [clusterDetailId,  setClusterDetailId]  = useState(null);
+  const [inputDetailId, setInputDetailId] = useState(null);
+  const [clusterDetailId, setClusterDetailId] = useState(null);
   const [scenarioDetailId, setScenarioDetailId] = useState(null);
 
   const toastTimer = useRef(null);
@@ -110,10 +110,10 @@ export function useAppState(workspaceId = null, session = null) {
   }, [workspaceId, showToast]);
 
   // ── Drawers / modal ───────────────────────────────────────────────────────
-  const openDrawer  = useCallback((type, data = {}) => setDrawer({ type, data }), []);
+  const openDrawer = useCallback((type, data = {}) => setDrawer({ type, data }), []);
   const closeDrawer = useCallback(() => setDrawer(null), []);
 
-  const openProjectModal  = useCallback(() => setProjectModalOpen(true), []);
+  const openProjectModal = useCallback(() => setProjectModalOpen(true), []);
   const closeProjectModal = useCallback(() => setProjectModalOpen(false), []);
 
   /** Navigate into a project — sets activeProjectId and switches screen. */
@@ -130,21 +130,20 @@ export function useAppState(workspaceId = null, session = null) {
     const newProject = {
       id,
       workspace_id: workspaceId,
-      name:         fields.name,
-      domain:       fields.domain       || "",
-      question:     fields.question     || "",
-      unit:         fields.unit         || "",
-      geo:          fields.geo          || "",
-      mode:         fields.mode         || "quick_scan",
-      h1_start:     fields.h1_start     || "",
-      h1_end:       fields.h1_end       || "",
-      h2_start:     fields.h2_start     || "",
-      h2_end:       fields.h2_end       || "",
-      h3_start:     fields.h3_start     || "",
-      h3_end:       fields.h3_end       || "",
-      assumptions:  fields.assumptions  || "",
+      name: fields.name,
+      domain: fields.domain || "",
+      question: fields.question || "",
+      geo: fields.geo || "",
+      focus: fields.focus || "",
+      h1_start: fields.h1_start || "",
+      h1_end: fields.h1_end || "",
+      h2_start: fields.h2_start || "",
+      h2_end: fields.h2_end || "",
+      h3_start: fields.h3_start || "",
+      h3_end: fields.h3_end || "",
+      assumptions: fields.assumptions || "",
       stakeholders: fields.stakeholders || "",
-      created_at:   now,
+      created_at: now,
     };
 
     // Optimistic local update — returns synchronously so callers can use the id immediately
@@ -199,32 +198,34 @@ export function useAppState(workspaceId = null, session = null) {
     const now = new Date().toISOString();
     const newInput = {
       id,
-      workspace_id:      workspaceId,
-      name:              fields.name,
-      description:       fields.description       || "",
-      source_url:        fields.source_url        || "",
-      subtype:           fields.subtype           || "signal",
-      steepled:          fields.steepled          || [],
-      strength:          fields.strength          || null,
-      horizon:           fields.horizon           || null,
-      project_id:        fields.project_id        || null,
-      is_seeded:         false,
-      source_confidence: fields.source_confidence || null,
-      metadata:          fields.metadata          || {},
-      created_at:        now,
+      workspace_id: workspaceId,
+      name: fields.name,
+      description: fields.description || "",
+      source_url: fields.source_url || "",
+      subtype: fields.subtype || "signal",
+      steepled: fields.steepled || [],
+      horizon: fields.horizon || null,
+      project_id: fields.project_id || null,
+      is_seeded: false,
+      signal_quality: fields.signal_quality || null,
+      metadata: fields.metadata || {},
+      created_at: now,
     };
 
     // Optimistic local update
     setInputs((prev) => [newInput, ...prev]);
 
-    // Persist to Supabase (fire-and-forget)
+    // Persist to Supabase
     if (workspaceId) {
-      supabase.from("inputs").insert(newInput).then(({ error }) => {
-        if (error) {
+      (async () => {
+        try {
+          const { error } = await supabase.from("inputs").insert(newInput);
+          if (error) throw error;
+        } catch {
           setInputs((prev) => prev.filter((i) => i.id !== id));
           showToast("Failed to save input", "error");
         }
-      });
+      })();
     }
 
     return newInput;
@@ -233,10 +234,18 @@ export function useAppState(workspaceId = null, session = null) {
   const updateInput = useCallback((id, fields) => {
     setInputs((prev) => prev.map((inp) => inp.id === id ? { ...inp, ...fields } : inp));
     if (workspaceId) {
-      supabase.from("inputs").update(fields).eq("id", id).eq("workspace_id", workspaceId)
-        .then(({ error }) => {
-          if (error) showToast("Failed to update input", "error");
-        });
+      (async () => {
+        try {
+          const { error } = await supabase
+            .from("inputs")
+            .update(fields)
+            .eq("id", id)
+            .eq("workspace_id", workspaceId);
+          if (error) throw error;
+        } catch {
+          showToast("Failed to update input", "error");
+        }
+      })();
     }
   }, [workspaceId, showToast]);
 
@@ -245,10 +254,18 @@ export function useAppState(workspaceId = null, session = null) {
       prev.map((inp) => inp.id === id ? { ...inp, project_id: projectId } : inp)
     );
     if (workspaceId) {
-      supabase.from("inputs").update({ project_id: projectId }).eq("id", id).eq("workspace_id", workspaceId)
-        .then(({ error }) => {
-          if (error) showToast("Failed to assign input", "error");
-        });
+      (async () => {
+        try {
+          const { error } = await supabase
+            .from("inputs")
+            .update({ project_id: projectId })
+            .eq("id", id)
+            .eq("workspace_id", workspaceId);
+          if (error) throw error;
+        } catch {
+          showToast("Failed to assign input", "error");
+        }
+      })();
     }
   }, [workspaceId, showToast]);
 
@@ -258,10 +275,18 @@ export function useAppState(workspaceId = null, session = null) {
       prev.map((inp) => idSet.has(inp.id) ? { ...inp, project_id: projectId } : inp)
     );
     if (workspaceId) {
-      supabase.from("inputs").update({ project_id: projectId }).in("id", ids).eq("workspace_id", workspaceId)
-        .then(({ error }) => {
-          if (error) showToast("Failed to assign inputs", "error");
-        });
+      (async () => {
+        try {
+          const { error } = await supabase
+            .from("inputs")
+            .update({ project_id: projectId })
+            .in("id", ids)
+            .eq("workspace_id", workspaceId);
+          if (error) throw error;
+        } catch {
+          showToast("Failed to assign inputs", "error");
+        }
+      })();
     }
   }, [workspaceId, showToast]);
 
@@ -276,10 +301,18 @@ export function useAppState(workspaceId = null, session = null) {
       prev.map((cl) => ({ ...cl, input_ids: cl.input_ids.filter((iid) => iid !== id) }))
     );
     if (workspaceId) {
-      supabase.from("inputs").delete().eq("id", id).eq("workspace_id", workspaceId)
-        .then(({ error }) => {
-          if (error) showToast("Failed to delete input", "error");
-        });
+      (async () => {
+        try {
+          const { error } = await supabase
+            .from("inputs")
+            .delete()
+            .eq("id", id)
+            .eq("workspace_id", workspaceId);
+          if (error) throw error;
+        } catch {
+          showToast("Failed to delete input", "error");
+        }
+      })();
     }
   }, [workspaceId, showToast]);
 
@@ -287,15 +320,15 @@ export function useAppState(workspaceId = null, session = null) {
 
   const addCluster = useCallback((fields) => {
     const newCluster = {
-      id:          newId(),
-      name:        fields.name,
-      subtype:     fields.subtype     || "Trend",
-      horizon:     fields.horizon     || "H1",
-      likelihood:  fields.likelihood  || "Possible",
+      id: newId(),
+      name: fields.name,
+      subtype: fields.subtype || "Trend",
+      horizon: fields.horizon || "H1",
+      likelihood: fields.likelihood || "Possible",
       description: fields.description || "",
-      project_id:  fields.project_id  || null,
-      input_ids:   fields.input_ids   || [],
-      created_at:  new Date().toISOString().slice(0, 10),
+      project_id: fields.project_id || null,
+      input_ids: fields.input_ids || [],
+      created_at: new Date().toISOString().slice(0, 10),
     };
     setClusters((prev) => [...prev, newCluster]);
     return newCluster;
@@ -340,14 +373,14 @@ export function useAppState(workspaceId = null, session = null) {
 
   const addScenario = useCallback((fields) => {
     const newScenario = {
-      id:          newId(),
-      name:        fields.name,
-      archetype:   fields.archetype  || "Continuation",
-      horizon:     fields.horizon    || "H2",
-      narrative:   fields.narrative  || "",
+      id: newId(),
+      name: fields.name,
+      archetype: fields.archetype || "Continuation",
+      horizon: fields.horizon || "H2",
+      narrative: fields.narrative || "",
       cluster_ids: fields.cluster_ids || [],
-      project_id:  fields.project_id  || null,
-      created_at:  new Date().toISOString().slice(0, 10),
+      project_id: fields.project_id || null,
+      created_at: new Date().toISOString().slice(0, 10),
     };
     setScenarios((prev) => [...prev, newScenario]);
     return newScenario;
@@ -387,9 +420,9 @@ export function useAppState(workspaceId = null, session = null) {
     );
     if (exists) return null;
     const newConn = {
-      id:               newId(),
-      clusterId:        fields.clusterId,
-      scenarioId:       fields.scenarioId,
+      id: newId(),
+      clusterId: fields.clusterId,
+      scenarioId: fields.scenarioId,
       relationshipType: fields.relationshipType || "Drives",
     };
     setConnections((prev) => [...prev, newConn]);
@@ -422,11 +455,11 @@ export function useAppState(workspaceId = null, session = null) {
 
   const addCanvasNode = useCallback((fields) => {
     const node = {
-      id:        newId(),
+      id: newId(),
       projectId: fields.projectId,
       clusterId: fields.clusterId,
-      x:         fields.x ?? 120,
-      y:         fields.y ?? 120,
+      x: fields.x ?? 120,
+      y: fields.y ?? 120,
     };
     setCanvasNodes((prev) => [...prev, node]);
     return node;
@@ -444,14 +477,14 @@ export function useAppState(workspaceId = null, session = null) {
 
   const addRelationship = useCallback((fields) => {
     const rel = {
-      id:            newId(),
-      projectId:     fields.projectId,
+      id: newId(),
+      projectId: fields.projectId,
       fromClusterId: fields.fromClusterId,
-      toClusterId:   fields.toClusterId,
-      type:          fields.type       || "Drives",
-      evidence:      fields.evidence   || "",
-      confidence:    fields.confidence || "Medium",
-      created_at:    new Date().toISOString().slice(0, 10),
+      toClusterId: fields.toClusterId,
+      type: fields.type || "Drives",
+      evidence: fields.evidence || "",
+      confidence: fields.confidence || "Medium",
+      created_at: new Date().toISOString().slice(0, 10),
     };
     setRelationships((prev) => [...prev, rel]);
     return rel;
@@ -469,22 +502,22 @@ export function useAppState(workspaceId = null, session = null) {
 
   /** Delete all canvas nodes and relationships for a project (System Map reset). */
   const deleteSystemMap = useCallback((projectId) => {
-    setCanvasNodes((prev)    => prev.filter((n) => n.projectId    !== projectId));
-    setRelationships((prev)  => prev.filter((r) => r.projectId    !== projectId));
+    setCanvasNodes((prev) => prev.filter((n) => n.projectId !== projectId));
+    setRelationships((prev) => prev.filter((r) => r.projectId !== projectId));
   }, []);
 
   // ── Delete project (cascade) ──────────────────────────────────────────────
 
   const deleteProject = useCallback((id) => {
     const scenarioIdSet = new Set(scenarios.filter((s) => s.project_id === id).map((s) => s.id));
-    setProjects((prev)      => prev.filter((p)   => p.id           !== id));
-    setInputs((prev)        => prev.filter((inp) => inp.project_id  !== id));
-    setClusters((prev)      => prev.filter((cl)  => cl.project_id   !== id));
-    setScenarios((prev)     => prev.filter((s)   => s.project_id    !== id));
-    setAnalyses((prev)      => prev.filter((a)   => a.project_id    !== id));
-    setCanvasNodes((prev)   => prev.filter((n)   => n.projectId     !== id));
-    setRelationships((prev) => prev.filter((r)   => r.projectId     !== id));
-    setConnections((prev)   => prev.filter((c)   => !scenarioIdSet.has(c.scenarioId)));
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+    setInputs((prev) => prev.filter((inp) => inp.project_id !== id));
+    setClusters((prev) => prev.filter((cl) => cl.project_id !== id));
+    setScenarios((prev) => prev.filter((s) => s.project_id !== id));
+    setAnalyses((prev) => prev.filter((a) => a.project_id !== id));
+    setCanvasNodes((prev) => prev.filter((n) => n.projectId !== id));
+    setRelationships((prev) => prev.filter((r) => r.projectId !== id));
+    setConnections((prev) => prev.filter((c) => !scenarioIdSet.has(c.scenarioId)));
 
     if (workspaceId) {
       (async () => {
@@ -520,12 +553,12 @@ export function useAppState(workspaceId = null, session = null) {
   }, [scenarios, workspaceId, showToast]);
 
   // ── Detail drawers ────────────────────────────────────────────────────────
-  const openInputDetail    = useCallback((id) => setInputDetailId(id),    []);
-  const closeInputDetail   = useCallback(() => setInputDetailId(null),    []);
-  const openClusterDetail  = useCallback((id) => setClusterDetailId(id),  []);
-  const closeClusterDetail = useCallback(() => setClusterDetailId(null),  []);
+  const openInputDetail = useCallback((id) => setInputDetailId(id), []);
+  const closeInputDetail = useCallback(() => setInputDetailId(null), []);
+  const openClusterDetail = useCallback((id) => setClusterDetailId(id), []);
+  const closeClusterDetail = useCallback(() => setClusterDetailId(null), []);
   const openScenarioDetail = useCallback((id) => setScenarioDetailId(id), []);
-  const closeScenarioDetail= useCallback(() => setScenarioDetailId(null), []);
+  const closeScenarioDetail = useCallback(() => setScenarioDetailId(null), []);
 
   // ── Return ────────────────────────────────────────────────────────────────
   return {
