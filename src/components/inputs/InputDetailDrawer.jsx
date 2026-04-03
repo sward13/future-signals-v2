@@ -28,18 +28,17 @@ function TypeChip({ typeId }) {
   );
 }
 
-// Strength card options — same config as Add panel
-const STRENGTH_CARD_OPTIONS = [
-  { value: "Weak",     title: "Weak",     desc: "Single source, early emergence",           dotColor: c.red800 },
-  { value: "Moderate", title: "Moderate", desc: "Multiple sources, visible in a community",  dotColor: c.amber700 },
-  { value: "High",     title: "High",     desc: "Widespread, data-backed, mainstream",       dotColor: c.green700 },
+const SIGNAL_QUALITY_OPTIONS = [
+  { value: "Emerging",    title: "Emerging",    desc: "Early or isolated indication, limited sourcing",        dotColor: c.amber700 },
+  { value: "Established", title: "Established", desc: "Multiple sources, visible pattern, credible reporting", dotColor: c.blue700 },
+  { value: "Confirmed",   title: "Confirmed",   desc: "Widespread evidence, data-backed, mainstream sources",  dotColor: c.green700 },
 ];
 
-const CONFIDENCE_CARD_OPTIONS = [
-  { value: "Low",    title: "Low",    desc: "Blog, social media, or unverified source",       dotColor: c.red800 },
-  { value: "Medium", title: "Medium", desc: "Quality journalism or industry report",           dotColor: c.amber700 },
-  { value: "High",   title: "High",   desc: "Peer-reviewed research or official statistics",  dotColor: c.green700 },
-];
+const QUALITY_COLORS = {
+  Emerging:    [c.amber700, c.amber50, c.amberBorder],
+  Established: [c.blue700,  c.blue50,  c.blueBorder],
+  Confirmed:   [c.green700, c.green50, c.greenBorder],
+};
 
 export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], onClose, onSave, onDelete }) {
   const input = inputs.find((i) => i.id === inputId) || null;
@@ -56,9 +55,8 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
         source_url:        input.source_url        || "",
         subtype:           input.subtype           || "signal",
         steepled:          input.steepled          || [],
-        strength:          input.strength          || null,
+        signal_quality:    input.signal_quality    || null,
         horizon:           input.horizon           || null,
-        source_confidence: input.source_confidence || null,
         project_id:        input.project_id        || "",
       });
     }
@@ -79,8 +77,8 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
     setFields({
       name: input.name || "", description: input.description || "",
       source_url: input.source_url || "", subtype: input.subtype || "signal",
-      steepled: input.steepled || [], strength: input.strength || null,
-      horizon: input.horizon || null, source_confidence: input.source_confidence || null,
+      steepled: input.steepled || [], signal_quality: input.signal_quality || null,
+      horizon: input.horizon || null,
       project_id: input.project_id || "",
     });
     setEditing(false);
@@ -225,43 +223,24 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
             </div>
           </div>
 
-          {/* Signal strength */}
+          {/* Signal quality */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Signal strength</div>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Signal quality</div>
             {editing ? (
               <ThreeCardSelector
                 label=""
-                selected={fields.strength}
-                onSelect={(v) => set("strength", v)}
-                options={STRENGTH_CARD_OPTIONS}
+                selected={fields.signal_quality}
+                onSelect={(v) => set("signal_quality", v)}
+                options={SIGNAL_QUALITY_OPTIONS}
               />
-            ) : (
-              <span style={{
-                fontSize: 11, padding: "2px 9px", borderRadius: 10,
-                background: input.strength === "High" ? c.green50 : input.strength === "Moderate" ? c.amber50 : input.strength === "Weak" ? c.red50 : c.surfaceAlt,
-                color: input.strength === "High" ? c.green700 : input.strength === "Moderate" ? c.amber700 : input.strength === "Weak" ? c.red800 : c.hint,
-                border: `1px solid ${input.strength === "High" ? c.greenBorder : input.strength === "Moderate" ? c.amberBorder : input.strength === "Weak" ? c.redBorder : c.border}`,
-              }}>
-                {input.strength || "Not set"}
-              </span>
-            )}
-          </div>
-
-          {/* Source confidence */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Source confidence</div>
-            {editing ? (
-              <ThreeCardSelector
-                label=""
-                selected={fields.source_confidence}
-                onSelect={(v) => set("source_confidence", v)}
-                options={CONFIDENCE_CARD_OPTIONS}
-              />
-            ) : (
-              <span style={{ fontSize: 12, color: input.source_confidence ? c.ink : c.hint, fontStyle: input.source_confidence ? "normal" : "italic" }}>
-                {input.source_confidence || "Not set"}
-              </span>
-            )}
+            ) : (() => {
+              const [col, bg, brd] = QUALITY_COLORS[input.signal_quality] || [c.hint, c.surfaceAlt, c.border];
+              return (
+                <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}` }}>
+                  {input.signal_quality || "Not set"}
+                </span>
+              );
+            })()}
           </div>
 
           {/* Horizon */}
