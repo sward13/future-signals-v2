@@ -4,7 +4,7 @@
  * Description + Critical Uncertainties (centre), Implications + Confidence (right).
  * @param {{ appState: object }} props
  */
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { c, btnSec } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
@@ -256,19 +256,38 @@ export default function SystemAnalysisCanvas({ appState }) {
   const [selected,       setSelected]       = useState(null);
   const [showExport,     setShowExport]     = useState(false);
   const [confirmDelete,  setConfirmDelete]  = useState(false);
+  const [localFields,    setLocalFields]    = useState({});
 
   const project  = projects.find((p) => p.id === activeProjectId) || null;
   const analysis = (analyses || []).find((a) => a.project_id === activeProjectId) || null;
 
-  const getValue = (panelId) => {
-    const panel = PANELS.find((p) => p.id === panelId);
-    if (!analysis) return getDefault(panel);
-    const val = analysis[panelId];
-    return val !== undefined ? val : getDefault(panel);
-  };
+  // Sync local fields from the saved analysis whenever the project or loaded record changes
+  useEffect(() => {
+    const init = {};
+    for (const panel of PANELS) {
+      init[panel.id] = analysis ? (analysis[panel.id] ?? getDefault(panel)) : getDefault(panel);
+    }
+    setLocalFields(init);
+  }, [activeProjectId, analysis?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const isDirty = useMemo(() => {
+    for (const panel of PANELS) {
+      const local = localFields[panel.id] ?? getDefault(panel);
+      const saved = analysis ? (analysis[panel.id] ?? getDefault(panel)) : getDefault(panel);
+      if (JSON.stringify(local) !== JSON.stringify(saved)) return true;
+    }
+    return false;
+  }, [localFields, analysis]);
+
+  const getValue = (panelId) => localFields[panelId] ?? getDefault(PANELS.find((p) => p.id === panelId));
 
   const setValue = (panelId) => (val) => {
-    upsertAnalysis(activeProjectId, { [panelId]: val });
+    setLocalFields((prev) => ({ ...prev, [panelId]: val }));
+  };
+
+  const handleSave = () => {
+    upsertAnalysis(activeProjectId, localFields);
+    showToast("Analysis saved");
   };
 
   const handleAI = () => {
@@ -318,6 +337,23 @@ export default function SystemAnalysisCanvas({ appState }) {
             Delete
           </button>
         )}
+
+        {/* Save */}
+        <button
+          onClick={handleSave}
+          disabled={!isDirty}
+          style={{
+            padding: "5px 13px", borderRadius: 6,
+            background: isDirty ? c.ink : "transparent",
+            border: `1px solid ${isDirty ? c.ink : c.border}`,
+            color: isDirty ? c.white : c.hint,
+            fontSize: 11, fontWeight: 500,
+            cursor: isDirty ? "pointer" : "default",
+            fontFamily: "inherit", transition: "all 0.15s",
+          }}
+        >
+          Save
+        </button>
 
         {/* Export */}
         <div style={{ position: "relative" }}>

@@ -9,14 +9,30 @@ import { useState, useMemo } from "react";
 import { c, inp, btnP, btnSm, btnSec, btnG } from "../../styles/tokens.js";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
-import { StrengthDot, HorizTag, ConfidenceBadge } from "../shared/Tag.jsx";
+import { HorizTag } from "../shared/Tag.jsx";
 
 const STEEPLED_CATS = ["Social","Technological","Economic","Environmental","Political","Legal","Ethical","Demographic"];
 const STEEPLED_ABB  = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
-const STRENGTH_OPTS = ["Weak","Moderate","High"];
+const QUALITY_OPTS  = ["Emerging","Established","Confirmed"];
 const HORIZON_OPTS  = ["H1","H2","H3"];
 
-const EMPTY_FILTERS = { steepled: [], strength: [], horizon: [] };
+const EMPTY_FILTERS = { steepled: [], quality: [], horizon: [] };
+
+const QUALITY_COLORS = {
+  Emerging:    [c.amber700, c.amber50, c.amberBorder],
+  Established: [c.blue700,  c.blue50,  c.blueBorder],
+  Confirmed:   [c.green700, c.green50, c.greenBorder],
+};
+
+function QualityPill({ value }) {
+  if (!value) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
+  const [col, bg, brd] = QUALITY_COLORS[value] || [c.hint, c.surfaceAlt, c.border];
+  return (
+    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 8, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap" }}>
+      {value}
+    </span>
+  );
+}
 
 function formatDate(str) {
   if (!str) return "—";
@@ -25,7 +41,7 @@ function formatDate(str) {
 }
 
 // Column widths for list/table layout
-const COL = { curated: 32, strength: 90, confidence: 90, steepled: 120, horizon: 60, actions: 200 };
+const COL = { curated: 32, quality: 100, steepled: 120, horizon: 60, actions: 200 };
 
 // ─── Checkbox ────────────────────────────────────────────────────────────────
 
@@ -89,10 +105,10 @@ function FilterPanel({ filters, onChange, onClear, activeCount }) {
       </div>
       <div style={{ display: "flex", gap: 28, alignItems: "flex-end", flexWrap: "wrap" }}>
         <div>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 7 }}>Strength</div>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 7 }}>Signal Quality</div>
           <div style={{ display: "flex", gap: 5 }}>
-            {STRENGTH_OPTS.map((s) => (
-              <FilterPill key={s} label={s} active={filters.strength.includes(s)} onClick={() => toggle("strength", s)} />
+            {QUALITY_OPTS.map((s) => (
+              <FilterPill key={s} label={s} active={filters.quality.includes(s)} onClick={() => toggle("quality", s)} />
             ))}
           </div>
         </div>
@@ -230,10 +246,9 @@ function ListHeader() {
     }}>
       <div style={{ width: 15, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, ...cell }}>Title</div>
-      <div style={{ width: COL.curated,     flexShrink: 0 }} />
-      <div style={{ width: COL.strength,    ...cell }}>Strength</div>
-      <div style={{ width: COL.confidence,  ...cell }}>Confidence</div>
-      <div style={{ width: COL.steepled,    ...cell }}>STEEPLED</div>
+      <div style={{ width: COL.curated,  flexShrink: 0 }} />
+      <div style={{ width: COL.quality,  ...cell }}>Quality</div>
+      <div style={{ width: COL.steepled, ...cell }}>STEEPLED</div>
       <div style={{ width: COL.horizon,     ...cell }}>Horizon</div>
       <div style={{ width: COL.actions, flexShrink: 0 }} />
     </div>
@@ -281,14 +296,9 @@ function ListRow({ input, isSeeded, onSaveToProject, onOpen, selected, onToggle,
         )}
       </div>
 
-      {/* Strength */}
-      <div style={{ width: COL.strength, flexShrink: 0 }}>
-        {input.strength ? <StrengthDot str={input.strength} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
-      </div>
-
-      {/* Confidence */}
-      <div style={{ width: COL.confidence, flexShrink: 0 }}>
-        <ConfidenceBadge conf={input.source_confidence} />
+      {/* Signal Quality */}
+      <div style={{ width: COL.quality, flexShrink: 0 }}>
+        <QualityPill value={input.signal_quality} />
       </div>
 
       {/* STEEPLED (max 2 + overflow) */}
@@ -340,13 +350,13 @@ function CompactCard({ input, isSeeded, projects, savedProjectId, onSaveToProjec
         cursor: "pointer", transition: "border-color 0.12s",
       }}
     >
-      {/* Top: checkbox + strength + date */}
+      {/* Top: checkbox + quality + date */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <div onClick={(e) => { e.stopPropagation(); onToggle(input.id); }} style={{ cursor: "pointer" }}>
             <RowCheckbox checked={selected} visible={anySelected || hovered} />
           </div>
-          <StrengthDot str={input.strength} />
+          <QualityPill value={input.signal_quality} />
           {isSeeded && <span style={{ fontSize: 9, color: c.amber700, background: c.amber50, padding: "1px 5px", borderRadius: 4 }}>Curated</span>}
         </div>
         <span style={{ fontSize: 10, color: c.hint }}>{input.created_at}</span>
@@ -437,7 +447,7 @@ function FullCard({ input, isSeeded, projects, savedProjectId, onSaveToProject, 
               </span>
             )
           }
-          <span style={{ marginLeft: "auto" }}><StrengthDot str={input.strength} /></span>
+          <span style={{ marginLeft: "auto" }}><QualityPill value={input.signal_quality} /></span>
         </div>
 
         <div
@@ -525,7 +535,7 @@ export default function Inbox({ appState }) {
     [inputs]
   );
 
-  const activeFilterCount = filters.steepled.length + filters.strength.length + filters.horizon.length;
+  const activeFilterCount = filters.steepled.length + filters.quality.length + filters.horizon.length;
 
   const filteredInputs = useMemo(() => {
     return inboxInputs.filter((inp) => {
@@ -536,8 +546,8 @@ export default function Inbox({ appState }) {
         if (!inTitle && !inDesc) return false;
       }
       if (filters.steepled.length > 0 && !filters.steepled.some((s) => (inp.steepled || []).includes(s))) return false;
-      if (filters.strength.length > 0 && !filters.strength.includes(inp.strength)) return false;
-      if (filters.horizon.length  > 0 && !filters.horizon.includes(inp.horizon))   return false;
+      if (filters.quality.length  > 0 && !filters.quality.includes(inp.signal_quality))                  return false;
+      if (filters.horizon.length  > 0 && !filters.horizon.includes(inp.horizon))                         return false;
       return true;
     });
   }, [inboxInputs, search, filters]);

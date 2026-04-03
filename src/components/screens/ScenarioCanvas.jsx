@@ -652,13 +652,40 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
   return null;
 }
 
+const EMPTY_DRAFT = { fromClusterId: "", toClusterId: "", type: "Drives", evidence: "", confidence: "Medium" };
+
 /** Full-width table view showing clusters and relationships. */
-function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRel, onDeleteRel }) {
+function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRel, onDeleteRel, onAddRel }) {
+  const [adding, setAdding] = useState(false);
+  const [draft,  setDraft]  = useState(EMPTY_DRAFT);
+
   const thStyle = {
     padding: "8px 14px", fontSize: 10, fontWeight: 600,
     textTransform: "uppercase", letterSpacing: "0.06em", color: c.hint,
     background: c.surfaceAlt, borderBottom: `1px solid ${c.border}`,
   };
+
+  const selStyle = {
+    width: "100%", padding: "5px 7px", border: `1px solid ${c.borderMid}`,
+    borderRadius: 6, background: c.white, color: c.ink, fontSize: 11,
+    fontFamily: "inherit", outline: "none", cursor: "pointer",
+  };
+
+  const canSave = draft.fromClusterId && draft.toClusterId && draft.fromClusterId !== draft.toClusterId;
+
+  const handleSave = () => {
+    onAddRel(draft);
+    setDraft(EMPTY_DRAFT);
+    setAdding(false);
+  };
+
+  const handleCancel = () => {
+    setDraft(EMPTY_DRAFT);
+    setAdding(false);
+  };
+
+  // Clusters on canvas = eligible for From/To
+  const canvasClusters = clusters.filter((cl) => canvasNodes.some((n) => n.clusterId === cl.id));
 
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "22px 26px" }}>
@@ -715,12 +742,23 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
 
       {/* Relationships table */}
       <div>
-        <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 10 }}>
-          Relationships <span style={{ fontSize: 11, color: c.hint, fontWeight: 400 }}>({relationships.length})</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>
+            Relationships <span style={{ fontSize: 11, color: c.hint, fontWeight: 400 }}>({relationships.length})</span>
+          </div>
+          {!adding && (
+            <button
+              onClick={() => setAdding(true)}
+              style={{ ...btnSec, fontSize: 11, padding: "4px 12px" }}
+            >
+              + Add relationship
+            </button>
+          )}
         </div>
-        {relationships.length === 0 ? (
+
+        {relationships.length === 0 && !adding ? (
           <div style={{ fontSize: 12, color: c.hint }}>
-            No relationships mapped yet. Switch to canvas view to add some.
+            No relationships mapped yet. Use the button above or switch to canvas view.
           </div>
         ) : (
           <div style={{ border: `1px solid ${c.border}`, borderRadius: 8, overflow: "hidden" }}>
@@ -768,6 +806,97 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
                 </div>
               );
             })}
+
+            {/* Inline new relationship row */}
+            {adding && (
+              <div style={{
+                display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 2.5fr 1fr 90px",
+                borderTop: `1px solid ${c.border}`, alignItems: "center",
+                background: c.surfaceAlt,
+              }}>
+                {/* From */}
+                <div style={{ padding: "8px 10px" }}>
+                  <select
+                    style={selStyle}
+                    value={draft.fromClusterId}
+                    onChange={(e) => setDraft((d) => ({ ...d, fromClusterId: e.target.value, toClusterId: d.toClusterId === e.target.value ? "" : d.toClusterId }))}
+                  >
+                    <option value="">From…</option>
+                    {canvasClusters.map((cl) => (
+                      <option key={cl.id} value={cl.id}>{cl.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* Type */}
+                <div style={{ padding: "8px 10px" }}>
+                  <select
+                    style={selStyle}
+                    value={draft.type}
+                    onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value }))}
+                  >
+                    {REL_TYPES.map((rt) => (
+                      <option key={rt.id} value={rt.id}>{rt.id}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* To */}
+                <div style={{ padding: "8px 10px" }}>
+                  <select
+                    style={selStyle}
+                    value={draft.toClusterId}
+                    onChange={(e) => setDraft((d) => ({ ...d, toClusterId: e.target.value }))}
+                  >
+                    <option value="">To…</option>
+                    {canvasClusters
+                      .filter((cl) => cl.id !== draft.fromClusterId)
+                      .map((cl) => (
+                        <option key={cl.id} value={cl.id}>{cl.name}</option>
+                      ))}
+                  </select>
+                </div>
+                {/* Evidence */}
+                <div style={{ padding: "8px 10px" }}>
+                  <input
+                    style={{ ...selStyle, cursor: "text" }}
+                    type="text"
+                    value={draft.evidence}
+                    onChange={(e) => setDraft((d) => ({ ...d, evidence: e.target.value }))}
+                    placeholder="Evidence (optional)"
+                  />
+                </div>
+                {/* Confidence */}
+                <div style={{ padding: "8px 10px" }}>
+                  <select
+                    style={selStyle}
+                    value={draft.confidence}
+                    onChange={(e) => setDraft((d) => ({ ...d, confidence: e.target.value }))}
+                  >
+                    {["Low", "Medium", "High"].map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* Save / Cancel */}
+                <div style={{ padding: "8px 10px", display: "flex", gap: 4 }}>
+                  <button
+                    onClick={handleSave}
+                    disabled={!canSave}
+                    style={{
+                      fontSize: 10, padding: "4px 8px", borderRadius: 5,
+                      background: canSave ? c.ink : c.surfaceAlt,
+                      border: `1px solid ${canSave ? c.ink : c.border}`,
+                      color: canSave ? c.white : c.hint,
+                      cursor: canSave ? "pointer" : "default",
+                      fontFamily: "inherit", fontWeight: 500,
+                    }}
+                  >Save</button>
+                  <button
+                    onClick={handleCancel}
+                    style={{ ...btnG, fontSize: 10, padding: "4px 8px", border: `1px solid ${c.border}` }}
+                  >Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1068,6 +1197,7 @@ export default function ScenarioCanvas({ appState }) {
           allClusters={clusters}
           onEditRel={handleEditRel}
           onDeleteRel={handleDeleteRel}
+          onAddRel={(draft) => addRelationship({ ...draft, projectId: activeProjectId })}
         />
       ) : (
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>

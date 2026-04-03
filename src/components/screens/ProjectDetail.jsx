@@ -5,7 +5,7 @@
 import { useState, useRef } from "react";
 import { c, inp, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { STEEPLED } from "../../data/seeds.js";
-import { StrengthDot, HorizTag, SubtypeTag, ConfidenceBadge } from "../shared/Tag.jsx";
+import { HorizTag, SubtypeTag } from "../shared/Tag.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { AddFromInboxModal } from "../inputs/AddFromInboxModal.jsx";
@@ -14,7 +14,23 @@ import { ScenarioDrawer } from "../scenarios/ScenarioDrawer.jsx";
 import { EditProjectDrawer } from "../projects/EditProjectDrawer.jsx";
 
 const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
-const COL = { check: 28, type: 80, strength: 80, confidence: 80, steepled: 100, horizon: 55, action: 160 };
+const COL = { check: 28, type: 80, quality: 100, steepled: 100, horizon: 55, action: 160 };
+
+const QUALITY_COLORS = {
+  Emerging:    [c.amber700, c.amber50, c.amberBorder],
+  Established: [c.blue700,  c.blue50,  c.blueBorder],
+  Confirmed:   [c.green700, c.green50, c.greenBorder],
+};
+
+function QualityPill({ value }) {
+  if (!value) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
+  const [col, bg, brd] = QUALITY_COLORS[value] || [c.hint, c.surfaceAlt, c.border];
+  return (
+    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 8, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap" }}>
+      {value}
+    </span>
+  );
+}
 const INPUT_TYPE_OPTS = ["signal","issue","projection","plan","obstacle","source"];
 
 // ─── Read-only horizon bar ─────────────────────────────────────────────────────
@@ -623,10 +639,9 @@ export default function ProjectDetail({ appState }) {
                       />
                     </div>
                     <div style={{ flex: 1, minWidth: 0, ...cell }}>Title</div>
-                    <div style={{ width: COL.type,       ...cell }}>Type</div>
-                    <div style={{ width: COL.strength,   ...cell }}>Strength</div>
-                    <div style={{ width: COL.confidence, ...cell }}>Confidence</div>
-                    <div style={{ width: COL.steepled,   ...cell }}>STEEPLED</div>
+                    <div style={{ width: COL.type,    ...cell }}>Type</div>
+                    <div style={{ width: COL.quality, ...cell }}>Quality</div>
+                    <div style={{ width: COL.steepled,...cell }}>STEEPLED</div>
                     <div style={{ width: COL.horizon,    ...cell }}>Horizon</div>
                     <div style={{ width: COL.action, flexShrink: 0, ...cell }}>Cluster</div>
                   </div>
@@ -683,13 +698,9 @@ export default function ProjectDetail({ appState }) {
                         <div style={{ width: COL.type, flexShrink: 0 }}>
                           <InputTypeBadge subtype={inp.subtype} />
                         </div>
-                        {/* Strength */}
-                        <div style={{ width: COL.strength, flexShrink: 0 }}>
-                          {inp.strength ? <StrengthDot str={inp.strength} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
-                        </div>
-                        {/* Confidence */}
-                        <div style={{ width: COL.confidence, flexShrink: 0 }}>
-                          <ConfidenceBadge conf={inp.source_confidence} />
+                        {/* Signal Quality */}
+                        <div style={{ width: COL.quality, flexShrink: 0 }}>
+                          <QualityPill value={inp.signal_quality} />
                         </div>
                         {/* STEEPLED */}
                         <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>

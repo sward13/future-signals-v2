@@ -22,16 +22,16 @@ import SystemAnalysisCanvas from "./components/screens/SystemAnalysisCanvas.jsx"
 
 function ActiveScreen({ appState }) {
   switch (appState.activeScreen) {
-    case "dashboard":  return <Dashboard     appState={appState} />;
-    case "inbox":      return <Inbox         appState={appState} />;
-    case "projects":   return <Dashboard     appState={appState} />;  // projects list = dashboard
-    case "project":    return <ProjectDetail appState={appState} />;
-    case "clustering": return <Clustering    appState={appState} />;
-    case "scenarios":         return <ScenarioCanvas          appState={appState} />;
-    case "narrative":         return <NarrativeCanvas          appState={appState} />;
-    case "scenario_canvas":   return <ScenarioNarrativeCanvas  appState={appState} />;
-    case "analysis":          return <SystemAnalysisCanvas      appState={appState} />;
-    default:           return <Inbox         appState={appState} />;
+    case "dashboard": return <Dashboard appState={appState} />;
+    case "inbox": return <Inbox appState={appState} />;
+    case "projects": return <Dashboard appState={appState} />;  // projects list = dashboard
+    case "project": return <ProjectDetail appState={appState} />;
+    case "clustering": return <Clustering appState={appState} />;
+    case "scenarios": return <ScenarioCanvas appState={appState} />;
+    case "narrative": return <NarrativeCanvas appState={appState} />;
+    case "scenario_canvas": return <ScenarioNarrativeCanvas appState={appState} />;
+    case "analysis": return <SystemAnalysisCanvas appState={appState} />;
+    default: return <Inbox appState={appState} />;
   }
 }
 
@@ -40,7 +40,7 @@ export default function App() {
   // session === undefined: still resolving initial state (show nothing)
   // session === null:      resolved, not signed in (show AuthScreen)
   // session === object:    signed in
-  const [session,     setSession]     = useState(undefined);
+  const [session, setSession] = useState(undefined);
   const [workspaceId, setWorkspaceId] = useState(null);
 
   useEffect(() => {
@@ -64,12 +64,14 @@ export default function App() {
     const { data } = await supabase
       .from("workspaces")
       .select("id")
-      .eq("owner_id", userId)
+      .eq("user_id", userId)
       .single();
     if (data) setWorkspaceId(data.id);
   };
 
   const handleSignOut = async () => {
+    localStorage.removeItem("fs_active_screen");
+    localStorage.removeItem("fs_active_project");
     await supabase.auth.signOut();
   };
 

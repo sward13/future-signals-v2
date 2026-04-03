@@ -8,17 +8,19 @@ import { Sidebar } from "./Sidebar.jsx";
 export function AppShell({ appState, children, scroll = true, onSignOut }) {
   const { activeScreen, setActiveScreen, setActiveProjectId, user, inputs, clusters, scenarios, projects, activeProjectId, openProjectModal } = appState;
 
-  const activeProject      = projects.find((p) => p.id === activeProjectId) || null;
-  const inboxCount         = inputs.filter((i) => i.project_id === null).length;
-  const projectInputCount  = activeProjectId
+  const activeProject = projects.find((p) => p.id === activeProjectId) || null;
+  const inboxCount = inputs.filter((i) => i.project_id === null).length;
+  const projectInputCount = activeProjectId
     ? inputs.filter((i) => i.project_id === activeProjectId).length : 0;
-  const clusterCount       = activeProjectId
+  const clusterCount = activeProjectId
     ? clusters.filter((cl) => cl.project_id === activeProjectId).length : 0;
-  const scenarioCount      = activeProjectId
+  const scenarioCount = activeProjectId
     ? scenarios.filter((s) => s.project_id === activeProjectId).length : 0;
 
   // Analysis nav item unlocked once the project has ≥1 system built (same condition as "N built" badge)
-  const hasRelationships = scenarioCount > 0;
+  const hasRelationships = activeProjectId
+    ? appState.relationships.filter((r) => r.projectId === activeProjectId).length > 0
+    : false;
 
   // Clear active project when navigating to workspace-level screens
   const handleNavigation = (screen) => {

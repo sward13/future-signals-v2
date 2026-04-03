@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useRef, useMemo } from "react";
 import { c, btnP, btnSm, btnSec, btnG } from "../../styles/tokens.js";
-import { StrengthDot, HorizTag, SubtypeTag, Tag } from "../shared/Tag.jsx";
+import { HorizTag, SubtypeTag, Tag } from "../shared/Tag.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ClusterDrawer } from "../clusters/ClusterDrawer.jsx";
@@ -40,6 +40,24 @@ function SteepleList({ tags = [] }) {
         </span>
       ))}
     </div>
+  );
+}
+
+// ─── Signal quality pill ───────────────────────────────────────────────────────
+
+const QUALITY_COLORS = {
+  Emerging:    [c.amber700, c.amber50, c.amberBorder],
+  Established: [c.blue700,  c.blue50,  c.blueBorder],
+  Confirmed:   [c.green700, c.green50, c.greenBorder],
+};
+
+function QualityPill({ value }) {
+  if (!value) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
+  const [col, bg, brd] = QUALITY_COLORS[value] || [c.hint, c.surfaceAlt, c.border];
+  return (
+    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 8, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap" }}>
+      {value}
+    </span>
   );
 }
 
@@ -254,7 +272,7 @@ function InputTableRow({ input, clusters, assignedCluster, onAssign, onNewCluste
   const [pickerOpen, setPickerOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
 
-  const cols = "28px 1fr 80px 60px 160px 60px 120px";
+  const cols = "28px 1fr 100px 60px 160px 60px 120px";
 
   return (
     <div
@@ -293,9 +311,9 @@ function InputTableRow({ input, clusters, assignedCluster, onAssign, onNewCluste
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{input.name}</span>
       </div>
 
-      {/* Strength */}
+      {/* Signal Quality */}
       <div style={{ display: "flex", alignItems: "center" }}>
-        {input.strength ? <StrengthDot str={input.strength} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+        <QualityPill value={input.signal_quality} />
       </div>
 
       {/* Horizon */}
@@ -785,7 +803,7 @@ export default function Clustering({ appState }) {
               <TableHead cols={[
                 { label: "", width: "28px" },
                 { label: "Title", width: "1fr" },
-                { label: "Strength", width: "80px" },
+                { label: "Quality", width: "100px" },
                 { label: "Horizon", width: "60px" },
                 { label: "STEEPLED", width: "160px" },
                 { label: "Cluster", width: "60px" },

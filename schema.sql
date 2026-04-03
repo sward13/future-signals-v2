@@ -1,35 +1,48 @@
 -- ============================================================
--- Future Signals v2 — Supabase schema
--- Apply in the Supabase SQL editor (Project → SQL Editor → New query).
--- Run once per environment. Safe to re-run: uses CREATE OR REPLACE
--- and IF NOT EXISTS where possible.
+-- Future Signals v2 — Supabase Schema
+-- Canonical source of truth. Reflects actual database state.
+-- Apply in Supabase SQL Editor — New query → paste → Run.
+-- Last updated: April 2026
 -- ============================================================
 
--- ─── Tables ───────────────────────────────────────────────────────────────────
+-- Extensions
+create extension if not exists "uuid-ossp";
+create extension if not exists vector;
 
+-- ============================================================
+-- TABLES
+-- ============================================================
+
+-- Workspaces
+-- 1:1 with auth.users in v2. Created automatically on signup via trigger.
 create table if not exists workspaces (
   id         uuid        primary key default gen_random_uuid(),
-  owner_id   uuid        references auth.users(id) on delete cascade,
-  name       text        not null default 'My Workspace',
-  created_at timestamptz not null default now()
+  user_id    uuid        not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique(user_id)
 );
 
+-- Workspace settings
+-- Thin account-level record: plan tier, AI cap, feature flags.
 create table if not exists workspace_settings (
-  id                  uuid    primary key default gen_random_uuid(),
-  workspace_id        uuid    references workspaces(id) on delete cascade unique not null,
-  onboarding_complete boolean not null default false,
-  created_at          timestamptz not null default now()
+  id             uuid        primary key default gen_random_uuid(),
+  workspace_id   uuid        not null references workspaces(id) on delete cascade,
+  plan_tier      text        not null default 'individual',
+  ai_cap_monthly int         not null default 100,
+  feature_flags  jsonb       not null default '{}',
+  created_at     timestamptz not null default now(),
+  unique(workspace_id)
 );
 
+-- Projects
 create table if not exists projects (
   id           uuid        primary key default gen_random_uuid(),
-  workspace_id uuid        references workspaces(id) on delete cascade not null,
+  workspace_id uuid        not null references workspaces(id) on delete cascade,
   name         text        not null,
   domain       text,
   question     text,
-  unit         text,
+  focus        text,
   geo          text,
-  mode         text        default 'quick_scan',
   h1_start     text,
   h1_end       text,
   h2_start     text,
@@ -41,105 +54,162 @@ create table if not exists projects (
   created_at   timestamptz not null default now()
 );
 
+-- Inputs
+-- Single table for all input subtypes. Subtype-specific fields live in metadata JSONB.
+-- project_id null = lives in Inbox.
+-- On project deletion, inputs return to Inbox (set null) rather than being deleted.
 create table if not exists inputs (
-  id                uuid        primary key default gen_random_uuid(),
-  workspace_id      uuid        references workspaces(id) on delete cascade not null,
-  project_id        uuid        references projects(id) on delete set null,
-  name              text        not null,
-  description       text,
-  source_url        text,
-  subtype           text        default 'signal',
-  steepled          text[]      default '{}',
-  strength          text,
-  horizon           text,
-  is_seeded         boolean     not null default false,
-  source_confidence text,
-  metadata          jsonb       default '{}',
-  created_at        timestamptz not null default now()
+  id             uuid        primary key default gen_random_uuid(),
+  workspace_id   uuid        not null references workspaces(id) on delete cascade,
+  project_id     uuid        references projects(id) on delete set null,
+  name           text        not null,
+  description    text,
+  source_url     text,
+  subtype        text        not null default 'Signal',
+  steepled       text[]      not null default '{}',
+  signal_quality text,
+  horizon        text,
+  metadata       jsonb       not null default '{}',
+  is_seeded      boolean     not null default false,
+  created_at     timestamptz not null default now()
 );
 
+-- Clusters
 create table if not exists clusters (
   id           uuid        primary key default gen_random_uuid(),
-  workspace_id uuid        references workspaces(id) on delete cascade not null,
-  project_id   uuid        references projects(id) on delete cascade not null,
+  workspace_id uuid        not null references workspaces(id) on delete cascade,
+  project_id   uuid        not null references projects(id) on delete cascade,
   name         text        not null,
-  subtype      text        default 'Trend',
-  horizon      text        default 'H1',
-  likelihood   text,
+  subtype      text        not null default 'Trend',
+  horizon      text,
   description  text,
+  likelihood   text,
   created_at   timestamptz not null default now()
 );
 
--- Junction table: which inputs belong to which cluster
+-- Cluster inputs (junction table)
+-- Tracks which inputs belong to which cluster.
+-- Inputs are preserved when a cluster is deleted (cascade removes junction rows only).
 create table if not exists cluster_inputs (
-  cluster_id uuid references clusters(id) on delete cascade,
-  input_id   uuid references inputs(id)   on delete cascade,
-  primary key (cluster_id, input_id)
+  id           uuid        primary key default gen_random_uuid(),
+  workspace_id uuid        not null references workspaces(id) on delete cascade,
+  cluster_id   uuid        not null references clusters(id) on delete cascade,
+  input_id     uuid        not null references inputs(id) on delete cascade,
+  created_at   timestamptz not null default now(),
+  unique(cluster_id, input_id)
 );
 
+-- Scenarios (stub — full implementation in v3)
 create table if not exists scenarios (
   id           uuid        primary key default gen_random_uuid(),
-  workspace_id uuid        references workspaces(id) on delete cascade not null,
-  project_id   uuid        references projects(id)   on delete cascade not null,
+  workspace_id uuid        not null references workspaces(id) on delete cascade,
+  project_id   uuid        not null references projects(id) on delete cascade,
   name         text        not null,
-  archetype    text        default 'Continuation',
-  horizon      text        default 'H2',
-  narrative    text,
+  archetype    text,
+  horizon      text,
   created_at   timestamptz not null default now()
 );
 
--- Junction table: which clusters drive which scenario
+-- Scenario clusters (junction table)
 create table if not exists scenario_clusters (
-  scenario_id uuid references scenarios(id) on delete cascade,
-  cluster_id  uuid references clusters(id)  on delete cascade,
-  primary key (scenario_id, cluster_id)
+  id           uuid        primary key default gen_random_uuid(),
+  workspace_id uuid        not null references workspaces(id) on delete cascade,
+  scenario_id  uuid        not null references scenarios(id) on delete cascade,
+  cluster_id   uuid        not null references clusters(id) on delete cascade,
+  created_at   timestamptz not null default now(),
+  unique(scenario_id, cluster_id)
 );
 
--- One analysis record per project
-create table if not exists analyses (
-  id                     uuid        primary key default gen_random_uuid(),
-  workspace_id           uuid        references workspaces(id) on delete cascade not null,
-  project_id             uuid        references projects(id)   on delete cascade unique not null,
-  key_dynamics           text,
-  description            text,
-  critical_uncertainties text[]      default '{}',
-  implications           text,
-  confidence             text,
-  created_at             timestamptz not null default now()
+-- Canvas nodes: clusters placed on the system map
+create table if not exists canvas_nodes (
+  id           uuid        primary key default gen_random_uuid(),
+  workspace_id uuid        not null references workspaces(id) on delete cascade,
+  project_id   uuid        not null references projects(id) on delete cascade,
+  cluster_id   uuid        not null references clusters(id) on delete cascade,
+  x            float       not null default 120,
+  y            float       not null default 120,
+  created_at   timestamptz not null default now(),
+  unique(project_id, cluster_id)
 );
 
--- ─── handle_new_user trigger ─────────────────────────────────────────────────
--- Fires after a new auth.users row is created. Auto-creates the workspace
--- and workspace_settings so the app never has to create these manually.
+-- Relationships between clusters on the system map
+create table if not exists relationships (
+  id              uuid        primary key default gen_random_uuid(),
+  workspace_id    uuid        not null references workspaces(id) on delete cascade,
+  project_id      uuid        not null references projects(id) on delete cascade,
+  from_cluster_id uuid        not null references clusters(id) on delete cascade,
+  to_cluster_id   uuid        not null references clusters(id) on delete cascade,
+  type            text        not null default 'Drives',
+  evidence        text,
+  confidence      text,
+  created_at      timestamptz not null default now(),
+  unique(project_id, from_cluster_id, to_cluster_id)
+);
 
+-- AI usage log
+-- Created from day one so the cap model works immediately.
+create table if not exists ai_usage_log (
+  id            uuid        primary key default gen_random_uuid(),
+  workspace_id  uuid        not null references workspaces(id) on delete cascade,
+  model         text        not null,
+  operation     text        not null,
+  input_tokens  int,
+  output_tokens int,
+  created_at    timestamptz not null default now()
+);
+
+-- ============================================================
+-- INDEXES
+-- ============================================================
+
+create index if not exists idx_projects_workspace        on projects       (workspace_id);
+create index if not exists idx_inputs_workspace          on inputs         (workspace_id);
+create index if not exists idx_inputs_project            on inputs         (project_id);
+create index if not exists idx_inputs_workspace_project  on inputs         (workspace_id, project_id);
+create index if not exists idx_clusters_workspace        on clusters       (workspace_id);
+create index if not exists idx_clusters_project          on clusters       (project_id);
+create index if not exists idx_cluster_inputs_cluster    on cluster_inputs (cluster_id);
+create index if not exists idx_cluster_inputs_input      on cluster_inputs (input_id);
+create index if not exists idx_cluster_inputs_workspace  on cluster_inputs (workspace_id);
+create index if not exists idx_scenarios_workspace       on scenarios      (workspace_id);
+create index if not exists idx_scenarios_project         on scenarios      (project_id);
+create index if not exists idx_canvas_nodes_workspace    on canvas_nodes   (workspace_id);
+create index if not exists idx_canvas_nodes_project      on canvas_nodes   (project_id);
+create index if not exists idx_relationships_workspace   on relationships  (workspace_id);
+create index if not exists idx_relationships_project     on relationships  (project_id);
+create index if not exists idx_ai_usage_workspace        on ai_usage_log   (workspace_id);
+create index if not exists idx_ai_usage_workspace_date   on ai_usage_log   (workspace_id, created_at desc);
+
+-- ============================================================
+-- HANDLE NEW USER TRIGGER
+-- ============================================================
+
+-- Fires after a new auth.users row is created.
+-- Auto-creates workspace and workspace_settings with defaults.
 create or replace function handle_new_user()
-returns trigger
-language plpgsql
-security definer set search_path = public
-as $$
+returns trigger as $$
 declare
   new_workspace_id uuid;
 begin
-  insert into workspaces (owner_id, name)
-  values (
-    new.id,
-    coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1))
-  )
-  returning id into new_workspace_id;
+  insert into public.workspaces (user_id)
+    values (new.id)
+    returning id into new_workspace_id;
 
-  insert into workspace_settings (workspace_id)
-  values (new_workspace_id);
+  insert into public.workspace_settings (workspace_id)
+    values (new_workspace_id);
 
   return new;
 end;
-$$;
+$$ language plpgsql security definer set search_path = public;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure handle_new_user();
 
--- ─── Row Level Security ───────────────────────────────────────────────────────
+-- ============================================================
+-- ROW LEVEL SECURITY
+-- ============================================================
 
 alter table workspaces         enable row level security;
 alter table workspace_settings enable row level security;
@@ -149,142 +219,158 @@ alter table clusters           enable row level security;
 alter table cluster_inputs     enable row level security;
 alter table scenarios          enable row level security;
 alter table scenario_clusters  enable row level security;
-alter table analyses           enable row level security;
+alter table canvas_nodes       enable row level security;
+alter table relationships      enable row level security;
+alter table ai_usage_log       enable row level security;
 
--- Helper: returns the workspace id owned by the currently authenticated user.
+-- Helper: returns the workspace id for the current authenticated user.
 create or replace function get_workspace_id()
-returns uuid
-language sql stable
-security definer set search_path = public
-as $$
-  select id from workspaces where owner_id = auth.uid() limit 1;
-$$;
+returns uuid as $$
+  select id from public.workspaces where user_id = auth.uid() limit 1;
+$$ language sql security definer stable set search_path = public;
 
 -- Workspaces
-create policy "owner can select workspace"
-  on workspaces for select
-  using (owner_id = auth.uid());
+create policy "workspace_select" on workspaces
+  for select using (user_id = auth.uid());
 
-create policy "owner can update workspace"
-  on workspaces for update
-  using (owner_id = auth.uid());
+create policy "workspace_update" on workspaces
+  for update using (user_id = auth.uid());
 
 -- Workspace settings
-create policy "owner can select workspace_settings"
-  on workspace_settings for select
-  using (workspace_id = get_workspace_id());
+create policy "workspace_settings_select" on workspace_settings
+  for select using (workspace_id = get_workspace_id());
 
-create policy "owner can update workspace_settings"
-  on workspace_settings for update
-  using (workspace_id = get_workspace_id());
+create policy "workspace_settings_update" on workspace_settings
+  for update using (workspace_id = get_workspace_id());
 
 -- Projects
-create policy "workspace member can select projects"
-  on projects for select
-  using (workspace_id = get_workspace_id());
+create policy "projects_select" on projects
+  for select using (workspace_id = get_workspace_id());
 
-create policy "workspace member can insert projects"
-  on projects for insert
-  with check (workspace_id = get_workspace_id());
+create policy "projects_insert" on projects
+  for insert with check (workspace_id = get_workspace_id());
 
-create policy "workspace member can update projects"
-  on projects for update
-  using (workspace_id = get_workspace_id());
+create policy "projects_update" on projects
+  for update using (workspace_id = get_workspace_id());
 
-create policy "workspace member can delete projects"
-  on projects for delete
-  using (workspace_id = get_workspace_id());
+create policy "projects_delete" on projects
+  for delete using (workspace_id = get_workspace_id());
 
 -- Inputs
-create policy "workspace member can select inputs"
-  on inputs for select
-  using (workspace_id = get_workspace_id());
+create policy "inputs_select" on inputs
+  for select using (workspace_id = get_workspace_id());
 
-create policy "workspace member can insert inputs"
-  on inputs for insert
-  with check (workspace_id = get_workspace_id());
+create policy "inputs_insert" on inputs
+  for insert with check (workspace_id = get_workspace_id());
 
-create policy "workspace member can update inputs"
-  on inputs for update
-  using (workspace_id = get_workspace_id());
+create policy "inputs_update" on inputs
+  for update using (workspace_id = get_workspace_id());
 
-create policy "workspace member can delete inputs"
-  on inputs for delete
-  using (workspace_id = get_workspace_id());
+create policy "inputs_delete" on inputs
+  for delete using (workspace_id = get_workspace_id());
 
 -- Clusters
-create policy "workspace member can select clusters"
-  on clusters for select
-  using (workspace_id = get_workspace_id());
+create policy "clusters_select" on clusters
+  for select using (workspace_id = get_workspace_id());
 
-create policy "workspace member can insert clusters"
-  on clusters for insert
-  with check (workspace_id = get_workspace_id());
+create policy "clusters_insert" on clusters
+  for insert with check (workspace_id = get_workspace_id());
 
-create policy "workspace member can update clusters"
-  on clusters for update
-  using (workspace_id = get_workspace_id());
+create policy "clusters_update" on clusters
+  for update using (workspace_id = get_workspace_id());
 
-create policy "workspace member can delete clusters"
-  on clusters for delete
-  using (workspace_id = get_workspace_id());
+create policy "clusters_delete" on clusters
+  for delete using (workspace_id = get_workspace_id());
 
--- cluster_inputs (no workspace_id column — inherit via cluster)
-create policy "workspace member can select cluster_inputs"
-  on cluster_inputs for select
-  using (cluster_id in (select id from clusters where workspace_id = get_workspace_id()));
+-- Cluster inputs
+create policy "cluster_inputs_select" on cluster_inputs
+  for select using (workspace_id = get_workspace_id());
 
-create policy "workspace member can insert cluster_inputs"
-  on cluster_inputs for insert
-  with check (cluster_id in (select id from clusters where workspace_id = get_workspace_id()));
+create policy "cluster_inputs_insert" on cluster_inputs
+  for insert with check (workspace_id = get_workspace_id());
 
-create policy "workspace member can delete cluster_inputs"
-  on cluster_inputs for delete
-  using (cluster_id in (select id from clusters where workspace_id = get_workspace_id()));
+create policy "cluster_inputs_delete" on cluster_inputs
+  for delete using (workspace_id = get_workspace_id());
 
 -- Scenarios
-create policy "workspace member can select scenarios"
-  on scenarios for select
-  using (workspace_id = get_workspace_id());
+create policy "scenarios_select" on scenarios
+  for select using (workspace_id = get_workspace_id());
 
-create policy "workspace member can insert scenarios"
-  on scenarios for insert
-  with check (workspace_id = get_workspace_id());
+create policy "scenarios_insert" on scenarios
+  for insert with check (workspace_id = get_workspace_id());
 
-create policy "workspace member can update scenarios"
-  on scenarios for update
-  using (workspace_id = get_workspace_id());
+create policy "scenarios_update" on scenarios
+  for update using (workspace_id = get_workspace_id());
 
-create policy "workspace member can delete scenarios"
-  on scenarios for delete
-  using (workspace_id = get_workspace_id());
+create policy "scenarios_delete" on scenarios
+  for delete using (workspace_id = get_workspace_id());
 
--- scenario_clusters
-create policy "workspace member can select scenario_clusters"
-  on scenario_clusters for select
-  using (scenario_id in (select id from scenarios where workspace_id = get_workspace_id()));
+-- Scenario clusters
+create policy "scenario_clusters_select" on scenario_clusters
+  for select using (workspace_id = get_workspace_id());
 
-create policy "workspace member can insert scenario_clusters"
-  on scenario_clusters for insert
-  with check (scenario_id in (select id from scenarios where workspace_id = get_workspace_id()));
+create policy "scenario_clusters_insert" on scenario_clusters
+  for insert with check (workspace_id = get_workspace_id());
 
-create policy "workspace member can delete scenario_clusters"
-  on scenario_clusters for delete
-  using (scenario_id in (select id from scenarios where workspace_id = get_workspace_id()));
+create policy "scenario_clusters_delete" on scenario_clusters
+  for delete using (workspace_id = get_workspace_id());
 
--- Analyses
-create policy "workspace member can select analyses"
-  on analyses for select
-  using (workspace_id = get_workspace_id());
+-- Canvas nodes
+create policy "canvas_nodes_select" on canvas_nodes
+  for select using (workspace_id in (select id from workspaces where user_id = auth.uid()));
 
-create policy "workspace member can insert analyses"
-  on analyses for insert
-  with check (workspace_id = get_workspace_id());
+create policy "canvas_nodes_insert" on canvas_nodes
+  for insert with check (workspace_id in (select id from workspaces where user_id = auth.uid()));
 
-create policy "workspace member can update analyses"
-  on analyses for update
-  using (workspace_id = get_workspace_id());
+create policy "canvas_nodes_update" on canvas_nodes
+  for update using (workspace_id in (select id from workspaces where user_id = auth.uid()));
 
-create policy "workspace member can delete analyses"
-  on analyses for delete
-  using (workspace_id = get_workspace_id());
+create policy "canvas_nodes_delete" on canvas_nodes
+  for delete using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+
+-- Relationships
+create policy "relationships_select" on relationships
+  for select using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+
+create policy "relationships_insert" on relationships
+  for insert with check (workspace_id in (select id from workspaces where user_id = auth.uid()));
+
+create policy "relationships_update" on relationships
+  for update using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+
+create policy "relationships_delete" on relationships
+  for delete using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+
+-- AI usage log (insert + select only)
+create policy "ai_usage_log_select" on ai_usage_log
+  for select using (workspace_id = get_workspace_id());
+
+create policy "ai_usage_log_insert" on ai_usage_log
+  for insert with check (workspace_id = get_workspace_id());
+
+  create table if not exists analyses (
+  id                     uuid        primary key default gen_random_uuid(),
+  workspace_id           uuid        not null references workspaces(id) on delete cascade,
+  project_id             uuid        not null references projects(id) on delete cascade,
+  key_dynamics           text,
+  description            text,
+  implications           text,
+  critical_uncertainties text[]      not null default '{}',
+  confidence             text,
+  created_at             timestamptz not null default now(),
+  unique(project_id)
+);
+
+alter table analyses enable row level security;
+
+create policy "analyses_select" on analyses
+  for select using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+
+create policy "analyses_insert" on analyses
+  for insert with check (workspace_id in (select id from workspaces where user_id = auth.uid()));
+
+create policy "analyses_update" on analyses
+  for update using (workspace_id in (select id from workspaces where user_id = auth.uid()));
+
+create policy "analyses_delete" on analyses
+  for delete using (workspace_id in (select id from workspaces where user_id = auth.uid()));
