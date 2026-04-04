@@ -15,7 +15,7 @@ const STEEPLED = [
   'Political', 'Legal', 'Ethical', 'Demographic'
 ];
 
-const BATCH_SIZE = 10; // candidates to classify/embed per run
+const BATCH_SIZE = 50; // candidates to classify/embed per run
 const MAX_CANDIDATES_PER_SOURCE = 20;
 
 export default async function handler(req, res) {
