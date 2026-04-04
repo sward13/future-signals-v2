@@ -58,9 +58,14 @@ export default async function handler(req, res) {
       .eq('status', 'scored');
 
     if (candidatesError) throw candidatesError;
-    if (!candidates?.length) {
-      return res.status(200).json({ success: true, results });
-    }
+
+    // Temporary debug
+    return res.status(200).json({
+      debug: true,
+      candidates_count: candidates?.length,
+      candidates_error: candidatesError,
+      first_candidate: candidates?.[0]
+    });
 
     // Fetch sources separately for credibility lookup
     const { data: sources } = await supabase
