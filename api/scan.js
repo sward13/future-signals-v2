@@ -51,7 +51,8 @@ export default async function handler(req, res) {
         const items = feed.items.slice(0, MAX_CANDIDATES_PER_SOURCE);
 
         for (const item of items) {
-          if (!item.link || !item.title) continue;
+          const title = String(item.title || '').trim();
+          if (!item.link || !title) continue;
 
           // URL-based dedup — skip if already ingested
           const { data: existing } = await supabase
@@ -69,7 +70,7 @@ export default async function handler(req, res) {
             .from('candidates')
             .insert({
               source_id: source.id,
-              title: item.title.trim(),
+              title,
               url: item.link,
               published_at: item.pubDate ? new Date(item.pubDate).toISOString() : null,
               summary_raw: item.contentSnippet || item.summary || null,
