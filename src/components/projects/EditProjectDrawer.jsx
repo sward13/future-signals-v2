@@ -14,34 +14,34 @@ const CURRENT_YEAR = new Date().getFullYear();
 /** Derive slider percentages from stored year strings. */
 function parseHorizonState(project) {
   const startYear = parseInt(project.h1_start, 10) || CURRENT_YEAR;
-  const endYear   = parseInt(project.h3_end,   10) || CURRENT_YEAR + 15;
-  const h1End     = parseInt(project.h1_end,    10) || startYear + 3;
-  const h2End     = parseInt(project.h2_end,    10) || startYear + 8;
-  const span      = Math.max(endYear - startYear, 5);
+  const endYear = parseInt(project.h3_end, 10) || CURRENT_YEAR + 15;
+  const h1End = parseInt(project.h1_end, 10) || startYear + 3;
+  const h2End = parseInt(project.h2_end, 10) || startYear + 8;
+  const span = Math.max(endYear - startYear, 5);
   return {
     startYear,
     endYear,
     h1Pct: Math.max(0.05, Math.min(0.9, (h1End - startYear) / span)),
-    h2Pct: Math.max(0.1,  Math.min(0.95, (h2End - startYear) / span)),
+    h2Pct: Math.max(0.1, Math.min(0.95, (h2End - startYear) / span)),
   };
 }
 
 export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo }) {
   const initial = parseHorizonState(project);
 
-  const [name,         setName]         = useState(project.name        || "");
-  const [domain,       setDomain]       = useState(project.domain      || "");
-  const [question,     setQuestion]     = useState(project.question    || "");
-  const [unit,         setUnit]         = useState(project.unit        || "");
-  const [geo,          setGeo]          = useState(project.geo         || "");
-  const [assumptions,  setAssumptions]  = useState(project.assumptions || "");
+  const [name, setName] = useState(project.name || "");
+  const [domain, setDomain] = useState(project.domain || "");
+  const [question, setQuestion] = useState(project.question || "");
+  const [focus, setFocus] = useState(project.focus || "");
+  const [geo, setGeo] = useState(project.geo || "");
+  const [assumptions, setAssumptions] = useState(project.assumptions || "");
   const [stakeholders, setStakeholders] = useState(project.stakeholders || "");
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [startYear,    setStartYear]    = useState(initial.startYear);
-  const [endYear,      setEndYear]      = useState(initial.endYear);
-  const [h1Pct,        setH1Pct]        = useState(initial.h1Pct);
-  const [h2Pct,        setH2Pct]        = useState(initial.h2Pct);
-  const [nameError,    setNameError]    = useState(false);
+  const [startYear, setStartYear] = useState(initial.startYear);
+  const [endYear, setEndYear] = useState(initial.endYear);
+  const [h1Pct, setH1Pct] = useState(initial.h1Pct);
+  const [h2Pct, setH2Pct] = useState(initial.h2Pct);
+  const [nameError, setNameError] = useState(false);
 
   const bodyRef = useRef(null);
 
@@ -65,23 +65,23 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
 
   const handleSave = () => {
     if (!name.trim()) { setNameError(true); return; }
-    const span  = endYear - startYear;
+    const span = endYear - startYear;
     const h1End = String(Math.round(startYear + h1Pct * span));
     const h2End = String(Math.round(startYear + h2Pct * span));
     onSave({
       name: name.trim(),
       domain,
       question,
-      unit,
+      focus: focus,  // was: unit
       geo,
       assumptions,
       stakeholders,
       h1_start: String(startYear),
-      h1_end:   h1End,
+      h1_end: h1End,
       h2_start: h1End,
-      h2_end:   h2End,
+      h2_end: h2End,
       h3_start: h2End,
-      h3_end:   String(endYear),
+      h3_end: String(endYear),
     });
   };
 
@@ -178,7 +178,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
               </div>
               <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
                 <YearInput label="From" value={startYear} onChange={handleStartYearChange} min={2000} max={endYear - 5} />
-                <YearInput label="To"   value={endYear}   onChange={handleEndYearChange}   min={startYear + 5} max={2100} />
+                <YearInput label="To" value={endYear} onChange={handleEndYearChange} min={startYear + 5} max={2100} />
               </div>
             </div>
             <HorizonSlider
@@ -201,7 +201,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
             <div data-field="unit">
               <div style={fl}>Focus</div>
               <div style={fh}>The specific thing being examined.</div>
-              <input style={inp} type="text" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="e.g. Global supply chains" />
+              <input style={inp} type="text" value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="e.g. Global supply chains" />
             </div>
             <div data-field="geo">
               <div style={fl}>Geographic scope</div>

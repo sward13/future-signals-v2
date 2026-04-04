@@ -315,7 +315,7 @@ export function NewProjectModal({ open, onClose, onSave }) {
   const [h2Pct, setH2Pct] = useState(0.58);  // ~8-9 years in
 
   // ── Optional methodology fields (shown only for deep_analysis) ──────
-  const [unit, setUnit] = useState("");
+  const [focus, setFocus] = useState("");
   const [geo, setGeo] = useState("");
   const [assumptions, setAssumptions] = useState("");
   const [stakeholders, setStakeholders] = useState("");
@@ -350,7 +350,7 @@ export function NewProjectModal({ open, onClose, onSave }) {
       h2_end: h2End,
       h3_start: h2End,
       h3_end: String(endYear),
-      unit,
+      focus,
       geo,
       assumptions,
       stakeholders,
@@ -508,35 +508,35 @@ export function NewProjectModal({ open, onClose, onSave }) {
 
           {/* ── Methodology fields ────────────────────────────────────── */}
           <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 16 }}>
-                Methodology <div style={{ flex: 1, height: 1, background: c.border }} />
-              </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 16 }}>
+              Methodology <div style={{ flex: 1, height: 1, background: c.border }} />
+            </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-                <div>
-                  <div style={fl}>Focus</div>
-                  <div style={fh}>The specific thing being examined.</div>
-                  <input style={inp} type="text" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="e.g. Global supply chains" />
-                </div>
-                <div>
-                  <div style={fl}>Geographic scope</div>
-                  <div style={fh}>Where does this research focus?</div>
-                  <input style={inp} type="text" value={geo} onChange={(e) => setGeo(e.target.value)} placeholder="e.g. North America, Global" />
-                </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+              <div>
+                <div style={fl}>Focus</div>
+                <div style={fh}>The specific thing being examined.</div>
+                <input style={inp} type="text" value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="e.g. Global supply chains" />
               </div>
-
-              <div style={{ marginBottom: 14 }}>
-                <div style={fl}>Key assumptions</div>
-                <div style={fh}>Foundational beliefs or conditions assumed to be true for the purposes of the project.</div>
-                <textarea style={ta} rows={2} value={assumptions} onChange={(e) => setAssumptions(e.target.value)} placeholder="Conditions assumed true for this project." />
-              </div>
-
-              <div style={{ marginBottom: 8 }}>
-                <div style={fl}>Stakeholders & audience</div>
-                <div style={fh}>Who this work aims to inform.</div>
-                <input style={inp} type="text" value={stakeholders} onChange={(e) => setStakeholders(e.target.value)} placeholder="e.g. Policy makers, researchers" />
+              <div>
+                <div style={fl}>Geographic scope</div>
+                <div style={fh}>Where does this research focus?</div>
+                <input style={inp} type="text" value={geo} onChange={(e) => setGeo(e.target.value)} placeholder="e.g. North America, Global" />
               </div>
             </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <div style={fl}>Key assumptions</div>
+              <div style={fh}>Foundational beliefs or conditions assumed to be true for the purposes of the project.</div>
+              <textarea style={ta} rows={2} value={assumptions} onChange={(e) => setAssumptions(e.target.value)} placeholder="Conditions assumed true for this project." />
+            </div>
+
+            <div style={{ marginBottom: 8 }}>
+              <div style={fl}>Stakeholders & audience</div>
+              <div style={fh}>Who this work aims to inform.</div>
+              <input style={inp} type="text" value={stakeholders} onChange={(e) => setStakeholders(e.target.value)} placeholder="e.g. Policy makers, researchers" />
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
