@@ -40,8 +40,9 @@ export default function App() {
   // session === undefined: still resolving initial state (show nothing)
   // session === null:      resolved, not signed in (show AuthScreen)
   // session === object:    signed in
-  const [session, setSession] = useState(undefined);
-  const [workspaceId, setWorkspaceId] = useState(null);
+  const [session,          setSession]          = useState(undefined);
+  const [workspaceId,      setWorkspaceId]      = useState(null);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
 
   useEffect(() => {
     // Resolve the initial session synchronously (from local storage)
@@ -51,7 +52,15 @@ export default function App() {
     });
 
     // Subscribe to future auth changes (sign in, sign out, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setPasswordRecovery(true);
+        setSession(session ?? null);
+        return;
+      }
+      if (event === "USER_UPDATED") {
+        setPasswordRecovery(false);
+      }
       setSession(session ?? null);
       if (session) fetchWorkspaceId(session.user.id);
       else setWorkspaceId(null);
@@ -80,8 +89,9 @@ export default function App() {
   const { inputDetailId, clusterDetailId, closeInputDetail, closeClusterDetail, updateInput, updateCluster, assignInputToCluster, removeInputFromCluster, deleteInput, deleteCluster, inputs, clusters, projects } = appState;
 
   // ── Auth gates ─────────────────────────────────────────────────────────────
-  if (session === undefined) return null; // resolving — render nothing briefly
-  if (!session) return <AuthScreen />;    // not signed in
+  if (session === undefined) return null;   // resolving — render nothing briefly
+  if (passwordRecovery)     return <AuthScreen initialMode="reset" />;  // password reset flow
+  if (!session)             return <AuthScreen />;  // not signed in
 
   const handleCreateProject = (fields) => {
     const newProject = appState.addProject(fields);
