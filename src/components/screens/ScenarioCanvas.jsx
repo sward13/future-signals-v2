@@ -1,118 +1,219 @@
 /**
- * ScenarioCanvas — Relationship Canvas screen.
- * Left sidebar: cluster library + legend. Centre: draggable, pannable, zoomable canvas
- * with SVG relationship lines. Right: inspector panel. Toggle to table view.
+ * ScenarioCanvas — System Map canvas screen.
+ * Left sidebar: cluster library + legend. Centre: React Flow canvas.
+ * Right: inspector panel. Toggle to table view.
  * @param {{ appState: object }} props
  */
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  ReactFlow, ReactFlowProvider, Background, Controls,
+  useReactFlow, useNodesState, useEdgesState,
+  Handle, Position, BaseEdge, EdgeLabelRenderer,
+  getBezierPath, MarkerType, ConnectionMode,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import { c, ta, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 
 const NODE_W = 156;
-const NODE_H = 68;
 
 const REL_TYPES = [
-  { id: "Drives",        color: "#185FA5", dash: false, desc: "One cluster directly propels another" },
-  { id: "Enables",       color: "#3B6D11", dash: false, desc: "Creates conditions for another to occur" },
-  { id: "Accelerates",   color: "#0F766E", dash: false, desc: "Speeds up the pace of another cluster" },
-  { id: "Inhibits",      color: "#854F0B", dash: false, desc: "Slows down or weakens another cluster" },
-  { id: "Blocks",        color: "#791F1F", dash: false, desc: "Actively prevents or stops another cluster" },
-  { id: "Feedback Loop", color: "#B45309", dash: true,  desc: "Mutually reinforcing or dampening cycle" },
-  { id: "Displaces",     color: "#4B1010", dash: false, desc: "Replaces or supersedes another cluster" },
+  { id: "Drives", color: "#185FA5", dash: false, desc: "One cluster directly propels another" },
+  { id: "Enables", color: "#3B6D11", dash: false, desc: "Creates conditions for another to occur" },
+  { id: "Accelerates", color: "#0F766E", dash: false, desc: "Speeds up the pace of another cluster" },
+  { id: "Inhibits", color: "#854F0B", dash: false, desc: "Slows down or weakens another cluster" },
+  { id: "Blocks", color: "#791F1F", dash: false, desc: "Actively prevents or stops another cluster" },
+  { id: "Feedback Loop", color: "#B45309", dash: true, desc: "Mutually reinforcing or dampening cycle" },
+  { id: "Displaces", color: "#4B1010", dash: false, desc: "Replaces or supersedes another cluster" },
 ];
+// O(1) lookup by type id — used anywhere a single type needs to be resolved
+const REL_TYPE_MAP = Object.fromEntries(REL_TYPES.map((rt) => [rt.id, rt]));
 
 const SUBTYPE_STYLE = {
-  Trend:   { col: c.violet700, bg: c.violet50,  border: c.violetBorder },
-  Driver:  { col: c.blue700,   bg: c.blue50,    border: c.blueBorder   },
-  Tension: { col: c.amber700,  bg: c.amber50,   border: c.amberBorder  },
+  Trend: { col: c.violet700, bg: c.violet50, border: c.violetBorder },
+  Driver: { col: c.blue700, bg: c.blue50, border: c.blueBorder },
+  Tension: { col: c.amber700, bg: c.amber50, border: c.amberBorder },
 };
 
 const HORIZON_COLORS = {
   H1: [c.green700, c.green50, c.greenBorder],
-  H2: [c.blue700,  c.blue50,  c.blueBorder ],
+  H2: [c.blue700, c.blue50, c.blueBorder],
   H3: [c.amber700, c.amber50, c.amberBorder],
 };
 
 const LEFT_BORDER_COLOR = {
-  Trend:   c.violetBorder,
-  Driver:  c.blueBorder,
+  Trend: c.violetBorder,
+  Driver: c.blueBorder,
   Tension: c.amberBorder,
 };
 
-/**
- * Returns the cardinal edge midpoint nearest to the target, plus the unit exit
- * direction perpendicular to that edge (the direction a line leaves the node face).
- */
-function cardinalEdgePoint(node, towardX, towardY) {
-  const cx = node.x + NODE_W / 2;
-  const cy = node.y + NODE_H / 2;
-  const dx = towardX - cx;
-  const dy = towardY - cy;
-  if (Math.abs(dx) * NODE_H > Math.abs(dy) * NODE_W) {
-    return dx > 0
-      ? { x: node.x + NODE_W, y: cy, ex: 1,  ey: 0  }  // right edge → exits right
-      : { x: node.x,          y: cy, ex: -1, ey: 0  }; // left edge  → exits left
-  }
-  return dy > 0
-    ? { x: cx, y: node.y + NODE_H, ex: 0, ey: 1  }     // bottom edge → exits down
-    : { x: cx, y: node.y,          ex: 0, ey: -1 };    // top edge    → exits up
+// ─── React Flow node types and edge types ─────────────────────────────────────
+// Must be defined outside any component to keep stable references.
+
+/** Custom node: renders a cluster card with handles. */
+function ClusterNodeComponent({ data }) {
+  const [hovered, setHovered] = useState(false);
+  const { cluster, onRemove, connectMode, isConnectSource, selected } = data;
+  if (!cluster) return null;
+  const st = SUBTYPE_STYLE[cluster.subtype] || SUBTYPE_STYLE.Trend;
+
+  const handleStyle = {
+    width: 8, height: 8, borderRadius: "50%",
+    border: `1.5px solid ${st.border}`,
+    background: c.white,
+    opacity: connectMode ? 1 : 0,
+    transition: "opacity 0.15s",
+  };
+
+  return (
+    <>
+      <Handle type="source" position={Position.Top} id="t" style={handleStyle} />
+      <Handle type="source" position={Position.Left} id="l" style={handleStyle} />
+      <Handle type="source" position={Position.Bottom} id="b" style={handleStyle} />
+      <Handle type="source" position={Position.Right} id="r" style={handleStyle} />
+
+      <div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          width: NODE_W,
+          background: c.white,
+          border: `1.5px solid ${isConnectSource ? "#185FA5" : selected ? c.ink : hovered ? c.borderMid : c.border}`,
+          borderRadius: 10,
+          boxShadow: selected
+            ? "0 2px 12px rgba(0,0,0,0.13)"
+            : hovered ? "0 2px 8px rgba(0,0,0,0.09)" : "0 1px 4px rgba(0,0,0,0.05)",
+          overflow: "hidden",
+          position: "relative",
+          transition: "border-color 0.12s, box-shadow 0.12s",
+          cursor: connectMode ? "crosshair" : "grab",
+        }}
+      >
+        {/* Coloured left border strip */}
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: st.border }} />
+
+        <div style={{ padding: "8px 24px 9px 14px" }}>
+          {/* Type + horizon badges */}
+          <div style={{ display: "flex", gap: 4, alignItems: "center", marginBottom: 5 }}>
+            <span style={{
+              fontSize: 9, padding: "1px 6px", borderRadius: 4, fontWeight: 500,
+              background: st.bg, color: st.col, border: `0.5px solid ${st.border}`,
+            }}>
+              {cluster.subtype}
+            </span>
+            {cluster.horizon && HORIZON_COLORS[cluster.horizon] && (() => {
+              const [col, bg, brd] = HORIZON_COLORS[cluster.horizon];
+              return (
+                <span style={{
+                  fontSize: 9, padding: "1px 6px", borderRadius: 4, fontWeight: 500,
+                  background: bg, color: col, border: `0.5px solid ${brd}`,
+                }}>
+                  {cluster.horizon}
+                </span>
+              );
+            })()}
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, lineHeight: 1.35 }}>
+            {cluster.name}
+          </div>
+        </div>
+
+        {/* Remove button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          style={{
+            position: "absolute", top: 5, right: 5,
+            width: 17, height: 17, borderRadius: 4,
+            background: "transparent", border: "none",
+            color: c.hint, fontSize: 14, lineHeight: 1,
+            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: "inherit",
+          }}
+        >×</button>
+      </div>
+    </>
+  );
 }
 
-/**
- * Compute line segments terminating at node edges with perpendicular offsets for
- * parallel relationships. Exit directions are returned for cubic bezier control points.
- */
-function computeLineSegments(relationships, canvasNodes) {
-  const pairGroups = {};
-  relationships.forEach((rel) => {
-    const key = [rel.fromClusterId, rel.toClusterId].sort().join("||");
-    if (!pairGroups[key]) pairGroups[key] = [];
-    pairGroups[key].push(rel);
+/** Custom edge: relationship line with type label and optional bidirectional arrows. */
+function RelationshipEdgeComponent({
+  id, sourceX, sourceY, targetX, targetY,
+  sourcePosition, targetPosition, data,
+}) {
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition,
   });
 
-  return relationships.map((rel) => {
-    const fromNode = canvasNodes.find((n) => n.clusterId === rel.fromClusterId);
-    const toNode   = canvasNodes.find((n) => n.clusterId === rel.toClusterId);
-    if (!fromNode || !toNode) return null;
+  const color = data?.color || "#185FA5";
+  const dash = data?.dash || false;
+  const typeLabel = data?.typeLabel || "Drives";
+  const isSelected = data?.selected || false;
+  const sw = isSelected ? 3.5 : 2;
+  const typeKey = typeLabel.replace(/\s/g, "-");
 
-    const fromCx = fromNode.x + NODE_W / 2;
-    const fromCy = fromNode.y + NODE_H / 2;
-    const toCx   = toNode.x   + NODE_W / 2;
-    const toCy   = toNode.y   + NODE_H / 2;
+  return (
+    <>
+      {/* Visible path */}
+      <path
+        id={id}
+        className="react-flow__edge-path"
+        d={edgePath}
+        fill="none"
+        style={{
+          stroke: data?.color || "#185FA5",
+          strokeWidth: data?.selected ? 3.5 : 2,
+          strokeDasharray: data?.dash ? "6,4" : undefined,
+          pointerEvents: "none",
+        }}
+        markerEnd={`url(#arrow-end-${typeKey})`}
+        markerStart={data?.dash ? `url(#arrow-start-${typeKey})` : undefined}
+      />
 
-    const ep1 = cardinalEdgePoint(fromNode, toCx, toCy);
-    const ep2 = cardinalEdgePoint(toNode, fromCx, fromCy);
+      {/* Wide invisible hit area for easy clicking */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={18}
+        style={{ cursor: "pointer" }}
+      />
 
-    const key   = [rel.fromClusterId, rel.toClusterId].sort().join("||");
-    const group = pairGroups[key];
-    const idx   = group.indexOf(rel);
-    const total = group.length;
-
-    const dx  = ep2.x - ep1.x;
-    const dy  = ep2.y - ep1.y;
-    const len = Math.sqrt(dx * dx + dy * dy) || 1;
-    const nx  = -dy / len;
-    const ny  =  dx / len;
-    const offset = (idx - (total - 1) / 2) * 10;
-
-    return {
-      rel,
-      x1: ep1.x + nx * offset,
-      y1: ep1.y + ny * offset,
-      x2: ep2.x + nx * offset,
-      y2: ep2.y + ny * offset,
-      // exit directions for bezier control points (unaffected by parallel offset)
-      ex1: ep1.ex, ey1: ep1.ey,
-      ex2: ep2.ex, ey2: ep2.ey,
-    };
-  }).filter(Boolean);
+      {/* Midpoint label pill */}
+      <EdgeLabelRenderer>
+        <div
+          style={{
+            position: "absolute",
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            background: c.white,
+            border: "0.5px solid rgba(0,0,0,0.09)",
+            borderRadius: 3,
+            padding: "4px 8px",
+            fontSize: 11,
+            fontWeight: 500,
+            color,
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+            zIndex: 10,
+          }}
+          className="nodrag nopan"
+        >
+          {typeLabel}
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
 }
 
-/** Relationship type/evidence/confidence form modal. */
+// Stable type maps — defined once outside any component
+const nodeTypes = { cluster: ClusterNodeComponent };
+const edgeTypes = { relationship: RelationshipEdgeComponent };
+
+// ─── Relationship modal ───────────────────────────────────────────────────────
+
 function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
-  const [relType,    setRelType]    = useState(initial?.type       || "Drives");
-  const [evidence,   setEvidence]   = useState(initial?.evidence   || "");
+  const [relType, setRelType] = useState(initial?.type || "Drives");
+  const [evidence, setEvidence] = useState(initial?.evidence || "");
   const [confidence, setConfidence] = useState(initial?.confidence || "Medium");
 
   return (
@@ -228,80 +329,8 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
   );
 }
 
-/** Draggable cluster node card on the canvas. */
-function ClusterNode({ node, cluster, selected, connectMode, isConnectSource, onClick, onRemove, onMouseDown }) {
-  const [hovered, setHovered] = useState(false);
-  const st = SUBTYPE_STYLE[cluster.subtype] || SUBTYPE_STYLE.Trend;
+// ─── Left sidebar ─────────────────────────────────────────────────────────────
 
-  return (
-    <div
-      onMouseDown={onMouseDown}
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        position: "absolute",
-        left: node.x,
-        top: node.y,
-        width: NODE_W,
-        userSelect: "none",
-        background: c.white,
-        border: `1.5px solid ${isConnectSource ? "#185FA5" : selected ? c.ink : hovered ? c.borderMid : c.border}`,
-        borderRadius: 10,
-        boxShadow: selected
-          ? "0 2px 12px rgba(0,0,0,0.13)"
-          : hovered ? "0 2px 8px rgba(0,0,0,0.09)" : "0 1px 4px rgba(0,0,0,0.05)",
-        cursor: connectMode ? "crosshair" : "grab",
-        overflow: "hidden",
-        transition: "border-color 0.12s, box-shadow 0.12s",
-      }}
-    >
-      {/* Coloured left border strip */}
-      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: st.border }} />
-
-      <div style={{ padding: "8px 24px 9px 14px" }}>
-        {/* Type + horizon badges */}
-        <div style={{ display: "flex", gap: 4, alignItems: "center", marginBottom: 5 }}>
-          <span style={{
-            fontSize: 9, padding: "1px 6px", borderRadius: 4, fontWeight: 500,
-            background: st.bg, color: st.col, border: `0.5px solid ${st.border}`,
-          }}>
-            {cluster.subtype}
-          </span>
-          {cluster.horizon && HORIZON_COLORS[cluster.horizon] && (() => {
-            const [col, bg, brd] = HORIZON_COLORS[cluster.horizon];
-            return (
-              <span style={{
-                fontSize: 9, padding: "1px 6px", borderRadius: 4, fontWeight: 500,
-                background: bg, color: col, border: `0.5px solid ${brd}`,
-              }}>
-                {cluster.horizon}
-              </span>
-            );
-          })()}
-        </div>
-        <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, lineHeight: 1.35 }}>
-          {cluster.name}
-        </div>
-      </div>
-
-      {/* Remove button */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onRemove(); }}
-        style={{
-          position: "absolute", top: 5, right: 5,
-          width: 17, height: 17, borderRadius: 4,
-          background: "transparent", border: "none",
-          color: c.hint, fontSize: 14, lineHeight: 1,
-          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          fontFamily: "inherit",
-        }}
-      >×</button>
-    </div>
-  );
-}
-
-/** Left sidebar — cluster library with Add buttons and relationship legend. */
 function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
   const nodeClusterIds = new Set(canvasNodes.map((n) => n.clusterId));
 
@@ -350,8 +379,8 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
         ) : (
           clusters.map((cl) => {
             const added = nodeClusterIds.has(cl.id);
-            const st    = SUBTYPE_STYLE[cl.subtype]    || SUBTYPE_STYLE.Trend;
-            const lb    = LEFT_BORDER_COLOR[cl.subtype] || c.border;
+            const st = SUBTYPE_STYLE[cl.subtype] || SUBTYPE_STYLE.Trend;
+            const lb = LEFT_BORDER_COLOR[cl.subtype] || c.border;
 
             return (
               <div
@@ -419,11 +448,12 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
   );
 }
 
-/** Right inspector panel — empty state, cluster detail, relationship detail, or scenario detail. */
+// ─── Inspector ────────────────────────────────────────────────────────────────
+
 function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel, onDeleteRel, onClose, collapsed, onToggle }) {
-  const HORIZON_COLORS = {
+  const HINSP_COLORS = {
     H1: [c.green700, c.green50],
-    H2: [c.blue700,  c.blue50],
+    H2: [c.blue700, c.blue50],
     H3: [c.amber700, c.amber50],
   };
 
@@ -447,7 +477,6 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     width: 254, borderLeft: `1px solid ${c.border}`,
     display: "flex", flexDirection: "column", background: c.white, flexShrink: 0,
   };
-
   const headerStyle = {
     padding: "14px 16px 11px", borderBottom: `1px solid ${c.border}`,
     display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0,
@@ -476,8 +505,7 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     const cluster = clusters.find((cl) => cl.id === selectedItem.clusterId);
     if (!cluster) return null;
     const st = SUBTYPE_STYLE[cluster.subtype] || SUBTYPE_STYLE.Trend;
-    const [hcol, hbg] = HORIZON_COLORS[cluster.horizon] || [c.muted, c.surfaceAlt];
-
+    const [hcol, hbg] = HINSP_COLORS[cluster.horizon] || [c.muted, c.surfaceAlt];
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
@@ -488,32 +516,17 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px" }}>
-          <div style={{
-            display: "inline-flex", alignItems: "center", padding: "2px 8px",
-            borderRadius: 5, background: st.bg, border: `1px solid ${st.border}`, marginBottom: 10,
-          }}>
+          <div style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: 5, background: st.bg, border: `1px solid ${st.border}`, marginBottom: 10 }}>
             <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: st.col }}>{cluster.subtype}</span>
           </div>
-
-          <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.4, marginBottom: 10 }}>
-            {cluster.name}
-          </div>
-
+          <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.4, marginBottom: 10 }}>{cluster.name}</div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-            <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 10, background: hbg, color: hcol, fontWeight: 600 }}>
-              {cluster.horizon}
-            </span>
-            <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 10, background: c.surfaceAlt, color: c.muted }}>
-              {cluster.likelihood}
-            </span>
+            <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 10, background: hbg, color: hcol, fontWeight: 600 }}>{cluster.horizon}</span>
+            <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 10, background: c.surfaceAlt, color: c.muted }}>{cluster.likelihood}</span>
           </div>
-
           {cluster.description && (
-            <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.55, marginBottom: 12 }}>
-              {cluster.description}
-            </div>
+            <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.55, marginBottom: 12 }}>{cluster.description}</div>
           )}
-
           <div style={{ fontSize: 11, color: c.hint }}>
             {cluster.input_ids?.length || 0} linked input{(cluster.input_ids?.length || 0) !== 1 ? "s" : ""}
           </div>
@@ -525,10 +538,9 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
   if (selectedItem.type === "rel") {
     const rel = relationships.find((r) => r.id === selectedItem.id);
     if (!rel) return null;
-    const fromCl  = clusters.find((cl) => cl.id === rel.fromClusterId);
-    const toCl    = clusters.find((cl) => cl.id === rel.toClusterId);
-    const relType = REL_TYPES.find((r) => r.id === rel.type) || REL_TYPES[0];
-
+    const fromCl = clusters.find((cl) => cl.id === rel.fromClusterId);
+    const toCl = clusters.find((cl) => cl.id === rel.toClusterId);
+    const relType = REL_TYPE_MAP[rel.type] || REL_TYPES[0];
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
@@ -543,7 +555,6 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
             <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>From</div>
             <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{fromCl?.name}</div>
           </div>
-
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
             <div style={{
               width: 20, height: 2.5, borderRadius: 2, flexShrink: 0,
@@ -553,38 +564,25 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
             }} />
             <span style={{ fontSize: 11, fontWeight: 600, color: relType.color }}>{rel.type}</span>
           </div>
-
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>To</div>
             <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{toCl?.name}</div>
           </div>
-
           <div style={{ marginBottom: rel.evidence ? 12 : 16 }}>
             <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>Confidence</div>
-            <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 10, background: c.surfaceAlt, color: c.muted }}>
-              {rel.confidence}
-            </span>
+            <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 10, background: c.surfaceAlt, color: c.muted }}>{rel.confidence}</span>
           </div>
-
           {rel.evidence && (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>Evidence</div>
               <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.55 }}>{rel.evidence}</div>
             </div>
           )}
-
           <div style={{ display: "flex", gap: 6 }}>
-            <button
-              onClick={() => onEditRel(rel.id)}
-              style={{ ...btnSec, fontSize: 11, padding: "6px 14px" }}
-            >Edit</button>
+            <button onClick={() => onEditRel(rel.id)} style={{ ...btnSec, fontSize: 11, padding: "6px 14px" }}>Edit</button>
             <button
               onClick={() => onDeleteRel(rel.id)}
-              style={{
-                fontSize: 11, padding: "6px 14px", borderRadius: 7,
-                background: "transparent", border: `1px solid ${c.redBorder}`,
-                color: c.red800, cursor: "pointer", fontFamily: "inherit",
-              }}
+              style={{ fontSize: 11, padding: "6px 14px", borderRadius: 7, background: "transparent", border: `1px solid ${c.redBorder}`, color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
             >Delete</button>
           </div>
         </div>
@@ -596,14 +594,13 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     const scenario = (scenarios || []).find((s) => s.id === selectedItem.scenarioId);
     if (!scenario) return null;
     const ARCHETYPE_COLORS = {
-      Continuation:   { col: c.green700,  bg: c.green50  },
-      Collapse:       { col: c.red800,    bg: c.red50    },
-      Constraint:     { col: c.amber700,  bg: c.amber50  },
+      Continuation: { col: c.green700, bg: c.green50 },
+      Collapse: { col: c.red800, bg: c.red50 },
+      Constraint: { col: c.amber700, bg: c.amber50 },
       Transformation: { col: c.violet700, bg: c.violet50 },
     };
     const ac = ARCHETYPE_COLORS[scenario.archetype] || { col: c.muted, bg: c.surfaceAlt };
-    const [hcol, hbg] = HORIZON_COLORS[scenario.horizon] || [c.muted, c.surfaceAlt];
-
+    const [hcol, hbg] = HINSP_COLORS[scenario.horizon] || [c.muted, c.surfaceAlt];
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
@@ -614,32 +611,16 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px" }}>
-          <div style={{
-            display: "inline-flex", alignItems: "center", padding: "2px 8px",
-            borderRadius: 5, background: ac.bg, marginBottom: 10,
-          }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: ac.col }}>
-              {scenario.archetype}
-            </span>
+          <div style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: 5, background: ac.bg, marginBottom: 10 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: ac.col }}>{scenario.archetype}</span>
           </div>
-
-          <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.4, marginBottom: 10 }}>
-            {scenario.name}
-          </div>
-
+          <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.4, marginBottom: 10 }}>{scenario.name}</div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-            <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 10, background: hbg, color: hcol, fontWeight: 600 }}>
-              {scenario.horizon}
-            </span>
+            <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 10, background: hbg, color: hcol, fontWeight: 600 }}>{scenario.horizon}</span>
           </div>
-
-          {scenario.narrative && (
-            <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.55, fontStyle: "italic" }}>
-              {scenario.narrative}
-            </div>
-          )}
-
-          {!scenario.narrative && (
+          {scenario.narrative ? (
+            <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.55, fontStyle: "italic" }}>{scenario.narrative}</div>
+          ) : (
             <div style={{ fontSize: 11, color: c.hint, lineHeight: 1.55 }}>
               No narrative seed yet. Add clusters to the canvas below to start mapping relationships.
             </div>
@@ -652,19 +633,19 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
   return null;
 }
 
+// ─── Table view ───────────────────────────────────────────────────────────────
+
 const EMPTY_DRAFT = { fromClusterId: "", toClusterId: "", type: "Drives", evidence: "", confidence: "Medium" };
 
-/** Full-width table view showing clusters and relationships. */
 function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRel, onDeleteRel, onAddRel }) {
   const [adding, setAdding] = useState(false);
-  const [draft,  setDraft]  = useState(EMPTY_DRAFT);
+  const [draft, setDraft] = useState(EMPTY_DRAFT);
 
   const thStyle = {
     padding: "8px 14px", fontSize: 10, fontWeight: 600,
     textTransform: "uppercase", letterSpacing: "0.06em", color: c.hint,
     background: c.surfaceAlt, borderBottom: `1px solid ${c.border}`,
   };
-
   const selStyle = {
     width: "100%", padding: "5px 7px", border: `1px solid ${c.borderMid}`,
     borderRadius: 6, background: c.white, color: c.ink, fontSize: 11,
@@ -672,19 +653,8 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
   };
 
   const canSave = draft.fromClusterId && draft.toClusterId && draft.fromClusterId !== draft.toClusterId;
-
-  const handleSave = () => {
-    onAddRel(draft);
-    setDraft(EMPTY_DRAFT);
-    setAdding(false);
-  };
-
-  const handleCancel = () => {
-    setDraft(EMPTY_DRAFT);
-    setAdding(false);
-  };
-
-  // Clusters on canvas = eligible for From/To
+  const handleSave = () => { onAddRel(draft); setDraft(EMPTY_DRAFT); setAdding(false); };
+  const handleCancel = () => { setDraft(EMPTY_DRAFT); setAdding(false); };
   const canvasClusters = clusters.filter((cl) => canvasNodes.some((n) => n.clusterId === cl.id));
 
   return (
@@ -704,31 +674,16 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
               ))}
             </div>
             {clusters.map((cl, idx) => {
-              const st       = SUBTYPE_STYLE[cl.subtype] || SUBTYPE_STYLE.Trend;
+              const st = SUBTYPE_STYLE[cl.subtype] || SUBTYPE_STYLE.Trend;
               const onCanvas = canvasNodes.some((n) => n.clusterId === cl.id);
               return (
-                <div
-                  key={cl.id}
-                  style={{
-                    display: "grid", gridTemplateColumns: "2.5fr 1fr 1fr 1fr 60px",
-                    borderTop: idx > 0 ? `1px solid ${c.border}` : "none",
-                    alignItems: "center",
-                  }}
-                >
+                <div key={cl.id} style={{ display: "grid", gridTemplateColumns: "2.5fr 1fr 1fr 1fr 60px", borderTop: idx > 0 ? `1px solid ${c.border}` : "none", alignItems: "center" }}>
                   <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{cl.name}</span>
-                    {onCanvas && (
-                      <span style={{
-                        fontSize: 9, padding: "1px 5px", background: c.surfaceAlt,
-                        border: `1px solid ${c.border}`, borderRadius: 4, color: c.hint,
-                      }}>on canvas</span>
-                    )}
+                    {onCanvas && <span style={{ fontSize: 9, padding: "1px 5px", background: c.surfaceAlt, border: `1px solid ${c.border}`, borderRadius: 4, color: c.hint }}>on canvas</span>}
                   </div>
                   <div style={{ padding: "10px 14px" }}>
-                    <span style={{
-                      fontSize: 11, padding: "2px 8px", borderRadius: 4,
-                      background: st.bg, color: st.col, display: "inline-block",
-                    }}>{cl.subtype}</span>
+                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: st.bg, color: st.col, display: "inline-block" }}>{cl.subtype}</span>
                   </div>
                   <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.horizon}</div>
                   <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.likelihood}</div>
@@ -746,154 +701,68 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
           <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>
             Relationships <span style={{ fontSize: 11, color: c.hint, fontWeight: 400 }}>({relationships.length})</span>
           </div>
-          {!adding && (
-            <button
-              onClick={() => setAdding(true)}
-              style={{ ...btnSec, fontSize: 11, padding: "4px 12px" }}
-            >
-              + Add relationship
-            </button>
-          )}
+          {!adding && <button onClick={() => setAdding(true)} style={{ ...btnSec, fontSize: 11, padding: "4px 12px" }}>+ Add relationship</button>}
         </div>
 
         {relationships.length === 0 && !adding ? (
-          <div style={{ fontSize: 12, color: c.hint }}>
-            No relationships mapped yet. Use the button above or switch to canvas view.
-          </div>
+          <div style={{ fontSize: 12, color: c.hint }}>No relationships mapped yet. Use the button above or switch to canvas view.</div>
         ) : (
           <div style={{ border: `1px solid ${c.border}`, borderRadius: 8, overflow: "hidden" }}>
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 2.5fr 1fr 90px" }}>
-              {["From", "Type", "To", "Evidence", "Confidence", ""].map((h, i) => (
-                <div key={i} style={thStyle}>{h}</div>
-              ))}
+              {["From", "Type", "To", "Evidence", "Confidence", ""].map((h, i) => <div key={i} style={thStyle}>{h}</div>)}
             </div>
             {relationships.map((rel, idx) => {
               const fromCl = allClusters.find((cl) => cl.id === rel.fromClusterId);
-              const toCl   = allClusters.find((cl) => cl.id === rel.toClusterId);
-              const rt     = REL_TYPES.find((r) => r.id === rel.type) || REL_TYPES[0];
+              const toCl = allClusters.find((cl) => cl.id === rel.toClusterId);
+              const rt = REL_TYPE_MAP[rel.type] || REL_TYPES[0];
               return (
-                <div
-                  key={rel.id}
-                  style={{
-                    display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 2.5fr 1fr 90px",
-                    borderTop: idx > 0 ? `1px solid ${c.border}` : "none",
-                    alignItems: "center",
-                  }}
-                >
+                <div key={rel.id} style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 2.5fr 1fr 90px", borderTop: idx > 0 ? `1px solid ${c.border}` : "none", alignItems: "center" }}>
                   <div style={{ padding: "10px 14px", fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fromCl?.name}</div>
                   <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{
-                      width: 16, height: 2.5, borderRadius: 2, flexShrink: 0,
-                      background: rt.dash
-                        ? `repeating-linear-gradient(to right, ${rt.color} 0, ${rt.color} 4px, transparent 4px, transparent 8px)`
-                        : rt.color,
-                    }} />
+                    <div style={{ width: 16, height: 2.5, borderRadius: 2, flexShrink: 0, background: rt.dash ? `repeating-linear-gradient(to right, ${rt.color} 0, ${rt.color} 4px, transparent 4px, transparent 8px)` : rt.color }} />
                     <span style={{ fontSize: 11, color: rt.color, fontWeight: 500 }}>{rel.type}</span>
                   </div>
                   <div style={{ padding: "10px 14px", fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{toCl?.name}</div>
                   <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rel.evidence || "—"}</div>
                   <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{rel.confidence}</div>
                   <div style={{ padding: "10px 14px", display: "flex", gap: 5 }}>
-                    <button
-                      onClick={() => onEditRel(rel.id)}
-                      style={{ ...btnG, fontSize: 10, padding: "3px 8px", border: `1px solid ${c.border}` }}
-                    >Edit</button>
-                    <button
-                      onClick={() => onDeleteRel(rel.id)}
-                      style={{ ...btnG, fontSize: 10, padding: "3px 8px", border: `1px solid ${c.redBorder}`, color: c.red800 }}
-                    >Del</button>
+                    <button onClick={() => onEditRel(rel.id)} style={{ ...btnG, fontSize: 10, padding: "3px 8px", border: `1px solid ${c.border}` }}>Edit</button>
+                    <button onClick={() => onDeleteRel(rel.id)} style={{ ...btnG, fontSize: 10, padding: "3px 8px", border: `1px solid ${c.redBorder}`, color: c.red800 }}>Del</button>
                   </div>
                 </div>
               );
             })}
 
-            {/* Inline new relationship row */}
             {adding && (
-              <div style={{
-                display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 2.5fr 1fr 90px",
-                borderTop: `1px solid ${c.border}`, alignItems: "center",
-                background: c.surfaceAlt,
-              }}>
-                {/* From */}
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 2.5fr 1fr 90px", borderTop: `1px solid ${c.border}`, alignItems: "center", background: c.surfaceAlt }}>
                 <div style={{ padding: "8px 10px" }}>
-                  <select
-                    style={selStyle}
-                    value={draft.fromClusterId}
-                    onChange={(e) => setDraft((d) => ({ ...d, fromClusterId: e.target.value, toClusterId: d.toClusterId === e.target.value ? "" : d.toClusterId }))}
-                  >
+                  <select style={selStyle} value={draft.fromClusterId} onChange={(e) => setDraft((d) => ({ ...d, fromClusterId: e.target.value, toClusterId: d.toClusterId === e.target.value ? "" : d.toClusterId }))}>
                     <option value="">From…</option>
-                    {canvasClusters.map((cl) => (
-                      <option key={cl.id} value={cl.id}>{cl.name}</option>
-                    ))}
+                    {canvasClusters.map((cl) => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
                   </select>
                 </div>
-                {/* Type */}
                 <div style={{ padding: "8px 10px" }}>
-                  <select
-                    style={selStyle}
-                    value={draft.type}
-                    onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value }))}
-                  >
-                    {REL_TYPES.map((rt) => (
-                      <option key={rt.id} value={rt.id}>{rt.id}</option>
-                    ))}
+                  <select style={selStyle} value={draft.type} onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value }))}>
+                    {REL_TYPES.map((rt) => <option key={rt.id} value={rt.id}>{rt.id}</option>)}
                   </select>
                 </div>
-                {/* To */}
                 <div style={{ padding: "8px 10px" }}>
-                  <select
-                    style={selStyle}
-                    value={draft.toClusterId}
-                    onChange={(e) => setDraft((d) => ({ ...d, toClusterId: e.target.value }))}
-                  >
+                  <select style={selStyle} value={draft.toClusterId} onChange={(e) => setDraft((d) => ({ ...d, toClusterId: e.target.value }))}>
                     <option value="">To…</option>
-                    {canvasClusters
-                      .filter((cl) => cl.id !== draft.fromClusterId)
-                      .map((cl) => (
-                        <option key={cl.id} value={cl.id}>{cl.name}</option>
-                      ))}
+                    {canvasClusters.filter((cl) => cl.id !== draft.fromClusterId).map((cl) => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
                   </select>
                 </div>
-                {/* Evidence */}
                 <div style={{ padding: "8px 10px" }}>
-                  <input
-                    style={{ ...selStyle, cursor: "text" }}
-                    type="text"
-                    value={draft.evidence}
-                    onChange={(e) => setDraft((d) => ({ ...d, evidence: e.target.value }))}
-                    placeholder="Evidence (optional)"
-                  />
+                  <input style={{ ...selStyle, cursor: "text" }} type="text" value={draft.evidence} onChange={(e) => setDraft((d) => ({ ...d, evidence: e.target.value }))} placeholder="Evidence (optional)" />
                 </div>
-                {/* Confidence */}
                 <div style={{ padding: "8px 10px" }}>
-                  <select
-                    style={selStyle}
-                    value={draft.confidence}
-                    onChange={(e) => setDraft((d) => ({ ...d, confidence: e.target.value }))}
-                  >
-                    {["Low", "Medium", "High"].map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
+                  <select style={selStyle} value={draft.confidence} onChange={(e) => setDraft((d) => ({ ...d, confidence: e.target.value }))}>
+                    {["Low", "Medium", "High"].map((opt) => <option key={opt} value={opt}>{opt}</option>)}
                   </select>
                 </div>
-                {/* Save / Cancel */}
                 <div style={{ padding: "8px 10px", display: "flex", gap: 4 }}>
-                  <button
-                    onClick={handleSave}
-                    disabled={!canSave}
-                    style={{
-                      fontSize: 10, padding: "4px 8px", borderRadius: 5,
-                      background: canSave ? c.ink : c.surfaceAlt,
-                      border: `1px solid ${canSave ? c.ink : c.border}`,
-                      color: canSave ? c.white : c.hint,
-                      cursor: canSave ? "pointer" : "default",
-                      fontFamily: "inherit", fontWeight: 500,
-                    }}
-                  >Save</button>
-                  <button
-                    onClick={handleCancel}
-                    style={{ ...btnG, fontSize: 10, padding: "4px 8px", border: `1px solid ${c.border}` }}
-                  >Cancel</button>
+                  <button onClick={handleSave} disabled={!canSave} style={{ fontSize: 10, padding: "4px 8px", borderRadius: 5, background: canSave ? c.ink : c.surfaceAlt, border: `1px solid ${canSave ? c.ink : c.border}`, color: canSave ? c.white : c.hint, cursor: canSave ? "pointer" : "default", fontFamily: "inherit", fontWeight: 500 }}>Save</button>
+                  <button onClick={handleCancel} style={{ ...btnG, fontSize: 10, padding: "4px 8px", border: `1px solid ${c.border}` }}>Cancel</button>
                 </div>
               </div>
             )}
@@ -904,7 +773,224 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
   );
 }
 
-/** Main Relationship Canvas screen. */
+// ─── Canvas area (must be inside ReactFlowProvider to use useReactFlow) ───────
+
+function CanvasArea({
+  projectNodes, projectRels, clusters,
+  connectMode, setConnectMode,
+  selectedItem, setSelectedItem,
+  onConnect, onNodeDragStop,
+  onRemoveNode, isPanning,
+}) {
+  const { zoomIn, zoomOut, setViewport, getViewport } = useReactFlow();
+  const [rfNodes, setRFNodes, onNodesChange] = useNodesState([]);
+  const [rfEdges, setRFEdges, onEdgesChange] = useEdgesState([]);
+  const [currentZoom, setCurrentZoom] = useState(1);
+
+  // Stable ref for onRemoveNode so node data closures don't go stale
+  const onRemoveNodeRef = useRef(onRemoveNode);
+  useEffect(() => { onRemoveNodeRef.current = onRemoveNode; }, [onRemoveNode]);
+
+  // Rebuild RF nodes whenever projectNodes structure changes (add/remove)
+  const nodeIdsKey = projectNodes.map((n) => n.id).join(",");
+  useEffect(() => {
+    setRFNodes(projectNodes.map((pNode) => ({
+      id: pNode.id,
+      type: "cluster",
+      position: { x: pNode.x, y: pNode.y },
+      selectable: false,
+      data: {
+        cluster: clusters.find((cl) => cl.id === pNode.clusterId),
+        onRemove: () => onRemoveNodeRef.current(pNode.id),
+        connectMode: !!connectMode,
+        isConnectSource: false,
+        selected: false,
+      },
+    })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodeIdsKey]);
+
+  // Update data (selection, connectMode) without resetting positions
+  useEffect(() => {
+    setRFNodes((nds) => nds.map((rfNode) => ({
+      ...rfNode,
+      data: {
+        ...rfNode.data,
+        connectMode: !!connectMode,
+        selected: selectedItem?.type === "node" && selectedItem.nodeId === rfNode.id,
+      },
+    })));
+  }, [selectedItem, connectMode, setRFNodes]);
+
+  // Rebuild edges whenever relationships or selection changes
+  useEffect(() => {
+    setRFEdges(projectRels.map((rel) => {
+      const fromNode = projectNodes.find((n) => n.clusterId === rel.fromClusterId);
+      const toNode = projectNodes.find((n) => n.clusterId === rel.toClusterId);
+      if (!fromNode || !toNode) return null;
+      const rt = REL_TYPE_MAP[rel.type] || REL_TYPES[0];
+      const isSelected = selectedItem?.type === "rel" && selectedItem.id === rel.id;
+      return {
+        id: `${rel.id}-${rel.type}`,
+        source: fromNode.id,
+        target: toNode.id,
+        sourceHandle: rel.sourceHandle || null,
+        targetHandle: rel.targetHandle || null,
+        type: "relationship",
+        data: {
+          rel,
+          selected: isSelected,
+          color: rt.color,
+          dash: rt.dash,
+          typeLabel: rt.id,
+        },
+        selectable: false,
+      };
+    }).filter(Boolean));
+  }, [projectRels, projectNodes, selectedItem, setRFEdges]);
+
+  const handleNodeClick = useCallback((_, rfNode) => {
+    const pNode = projectNodes.find((n) => n.id === rfNode.id);
+    if (!pNode) return;
+    setSelectedItem({ type: "node", nodeId: rfNode.id, clusterId: pNode.clusterId });
+  }, [projectNodes, setSelectedItem]);
+
+  const handleEdgeClick = useCallback((_, rfEdge) => {
+    // rfEdge.id is `${rel.id}-${rel.type}` — read the stable rel id from data
+    setSelectedItem({ type: "rel", id: rfEdge.data.rel.id });
+  }, [setSelectedItem]);
+
+  const handlePaneClick = useCallback(() => {
+    if (connectMode) { setConnectMode(false); return; }
+    setSelectedItem(null);
+  }, [connectMode, setConnectMode, setSelectedItem]);
+
+  return (
+    <div style={{ flex: 1, position: "relative", width: "100%", height: "100%" }}>
+      {/* Global SVG marker definitions — one per relationship type, always in DOM */}
+      <svg style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
+        <defs>
+          {REL_TYPES.map((rt) => {
+            const k = rt.id.replace(/\s/g, "-");
+            return (
+              <>
+                <marker key={`end-${k}`} id={`arrow-end-${k}`} markerWidth="6" markerHeight="6" refX="7" refY="3" orient="auto">
+                  <path d="M0,0 L0,6 L8,3 z" fill={rt.color} />
+                </marker>
+                {rt.dash && (
+                  <marker key={`start-${k}`} id={`arrow-start-${k}`} markerWidth="6" markerHeight="6" refX="2" refY="3" orient="auto-start-reverse">
+                    <path d="M0,0 L0,6 L8,3 z" fill={rt.color} />
+                  </marker>
+                )}
+              </>
+            );
+          })}
+        </defs>
+      </svg>
+
+      {/* Connect mode banner */}
+      {connectMode && (
+        <div style={{
+          position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)",
+          zIndex: 10, padding: "8px 18px", background: c.ink, color: c.white,
+          borderRadius: 20, fontSize: 12, fontWeight: 500,
+          display: "flex", alignItems: "center", gap: 12,
+          boxShadow: "0 2px 14px rgba(0,0,0,0.18)", whiteSpace: "nowrap",
+          pointerEvents: "none",
+        }}>
+          Drag from a node handle to connect
+          <button
+            onMouseDown={(e) => { e.stopPropagation(); setConnectMode(false); }}
+            style={{ background: "rgba(255,255,255,0.15)", border: "none", color: c.white, fontSize: 11, padding: "2px 10px", borderRadius: 4, cursor: "pointer", fontFamily: "inherit", pointerEvents: "all" }}
+          >Cancel</button>
+        </div>
+      )}
+
+      {/* Add relationship button */}
+      {!connectMode && projectNodes.length >= 2 && (
+        <div style={{ position: "absolute", top: 14, right: 14, zIndex: 10 }}>
+          <button onClick={() => setConnectMode(true)} style={{ ...btnSm, fontSize: 11 }}>
+            + Add relationship
+          </button>
+        </div>
+      )}
+
+      <ReactFlow
+        nodes={rfNodes}
+        edges={rfEdges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onNodeClick={handleNodeClick}
+        onEdgeClick={handleEdgeClick}
+        onPaneClick={handlePaneClick}
+        onNodeDragStop={onNodeDragStop}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        fitView
+        fitViewOptions={{ padding: 0.3 }}
+        minZoom={0.2}
+        maxZoom={3}
+        zoomOnPinch={true}
+        zoomOnScroll={true}
+        panOnScroll={false}
+        preventScrolling={true}
+        panOnDrag={isPanning ? true : [1, 2]}
+        connectionMode={ConnectionMode.Loose}
+        connectionRadius={20}
+        deleteKeyCode={null}
+        selectionKeyCode={null}
+        multiSelectionKeyCode={null}
+        onViewportChange={(vp) => setCurrentZoom(vp.zoom)}
+        style={{ background: c.canvas, touchAction: "none" }}
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background color="rgba(0,0,0,0.11)" gap={24} size={1} />
+      </ReactFlow>
+
+      {/* Empty canvas nudge */}
+      {projectNodes.length === 0 && (
+        <div style={{
+          position: "absolute", inset: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          pointerEvents: "none",
+        }}>
+          <div style={{ fontSize: 12, color: c.hint, textAlign: "center", lineHeight: 1.6 }}>
+            Add clusters from the sidebar to begin mapping relationships.
+          </div>
+        </div>
+      )}
+
+      {/* Zoom controls */}
+      <div style={{
+        position: "absolute", bottom: 14, right: 14, zIndex: 10,
+        display: "flex", alignItems: "center",
+        border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden",
+        background: c.white,
+      }}>
+        <button onClick={() => zoomOut()} style={{ ...btnG, padding: "5px 11px", fontSize: 15, lineHeight: 1 }}>−</button>
+        <div style={{ padding: "5px 10px", fontSize: 11, color: c.muted, borderLeft: `1px solid ${c.border}`, borderRight: `1px solid ${c.border}`, minWidth: 48, textAlign: "center" }}>
+          {Math.round(currentZoom * 100)}%
+        </div>
+        <button onClick={() => zoomIn()} style={{ ...btnG, padding: "5px 11px", fontSize: 15, lineHeight: 1 }}>+</button>
+        <button
+          onClick={() => { setViewport({ x: 60, y: 60, zoom: 1 }); setCurrentZoom(1); }}
+          style={{ ...btnG, padding: "5px 10px", fontSize: 10, borderLeft: `1px solid ${c.border}` }}
+        >reset</button>
+      </div>
+
+      {/* Hint */}
+      <div style={{ position: "absolute", bottom: 18, left: 16, zIndex: 10, pointerEvents: "none" }}>
+        <div style={{ fontSize: 10, color: c.hint }}>
+          Space + drag to pan · Scroll to zoom · Drag handle to connect
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
+
 export default function ScenarioCanvas({ appState }) {
   const {
     clusters, inputs, scenarios, projects, activeProjectId, setActiveProjectId, openProjectModal,
@@ -914,70 +1000,44 @@ export default function ScenarioCanvas({ appState }) {
     deleteSystemMap, showToast, scenarioDetailId, closeScenarioDetail,
   } = appState;
 
-  const project         = projects.find((p) => p.id === activeProjectId) || null;
+  const project = projects.find((p) => p.id === activeProjectId) || null;
   const projectClusters = clusters.filter((cl) => cl.project_id === activeProjectId);
-  const projectNodes    = canvasNodes.filter((n) => n.projectId === activeProjectId);
-  const projectRels     = relationships.filter((r) => r.projectId === activeProjectId);
+  const projectNodes = canvasNodes.filter((n) => n.projectId === activeProjectId);
+  const projectRels = relationships.filter((r) => r.projectId === activeProjectId);
 
-  const [viewMode,        setViewMode]        = useState("canvas");
+  const [viewMode, setViewMode] = useState("canvas");
   const [confirmDeleteMap, setConfirmDeleteMap] = useState(false);
-  const [leftOpen,      setLeftOpen]      = useState(true);
-  const [rightOpen,     setRightOpen]     = useState(true);
-  const [connectMode,   setConnectMode]   = useState(null);   // null | 'source' | 'target'
-  const [connectSource, setConnectSource] = useState(null);   // canvasNode id
-  const [relModalOpen,  setRelModalOpen]  = useState(false);
-  const [pendingRel,    setPendingRel]    = useState(null);   // { fromClusterId, toClusterId }
-  const [editingRelId,  setEditingRelId]  = useState(null);
-  const [selectedItem,  setSelectedItem]  = useState(null);
-  const [pan,  setPan]  = useState({ x: 60, y: 60 });
-  const [zoom, setZoom] = useState(1);
-  const [spacebarPan,   setSpacebarPan]   = useState(false);
-  const [isDragging,    setIsDragging]    = useState(false);
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
+  const [connectMode, setConnectMode] = useState(false);
+  const [relModalOpen, setRelModalOpen] = useState(false);
+  const [pendingRel, setPendingRel] = useState(null);
+  const [editingRelId, setEditingRelId] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [isPanning, setIsPanning] = useState(false);
 
-  const canvasRef       = useRef(null);
-  const isPanningRef    = useRef(false);
-  const panStartRef     = useRef(null);
-  const dragRef         = useRef(null);
-  const dragOccurredRef = useRef(false);
-  const mouseDownPosRef = useRef(null);
-  // Refs for use inside callbacks without stale-closure issues
-  const spacebarPanRef  = useRef(false);
-  const panRef          = useRef(pan);
-  const zoomRef         = useRef(zoom);
-  const pinchRef        = useRef(null); // { dist, zoom, pan, cx, cy }
-
-  useEffect(() => { panRef.current  = pan;  }, [pan]);
-  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
-
-  const clampZoom = (z) => Math.min(Math.max(z, 0.25), 2.5);
-
+  // Escape key: cancel connect mode / close modal
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.key === "Escape") {
-        setConnectMode(null);
-        setConnectSource(null);
+        setConnectMode(false);
         setRelModalOpen(false);
         setPendingRel(null);
         setEditingRelId(null);
       }
       if (e.code === "Space" && !e.repeat) {
         e.preventDefault();
-        spacebarPanRef.current = true;
-        setSpacebarPan(true);
+        setIsPanning(true);
       }
     };
     const onKeyUp = (e) => {
-      if (e.code === "Space") {
-        spacebarPanRef.current = false;
-        setSpacebarPan(false);
-        setIsDragging(false);
-      }
+      if (e.code === "Space") setIsPanning(false);
     };
     window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup",   onKeyUp);
+    window.addEventListener("keyup", onKeyUp);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup",   onKeyUp);
+      window.removeEventListener("keyup", onKeyUp);
     };
   }, []);
 
@@ -989,154 +1049,6 @@ export default function ScenarioCanvas({ appState }) {
       closeScenarioDetail();
     }
   }, [scenarioDetailId, closeScenarioDetail]);
-
-  // Prevent browser zoom on trackpad pinch (ctrlKey + wheel). Must be
-  // non-passive so preventDefault() is honoured — React's synthetic onWheel
-  // is passive in modern browsers and cannot block the default action.
-  useEffect(() => {
-    const el = canvasRef.current;
-    if (!el) return;
-    const onWheel = (e) => { if (e.ctrlKey) e.preventDefault(); };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, []);
-
-  const handleCanvasMouseDown = useCallback((e) => {
-    if (!e.target.dataset.canvasBg && !spacebarPanRef.current) return;
-    if (connectMode) return;
-    isPanningRef.current    = true;
-    panStartRef.current     = { mx: e.clientX, my: e.clientY, px: panRef.current.x, py: panRef.current.y };
-    mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
-    dragOccurredRef.current = false;
-    if (spacebarPanRef.current) setIsDragging(true);
-    e.preventDefault();
-  }, [connectMode]);
-
-  const handleNodeMouseDown = useCallback((e, nodeId, nodeX, nodeY) => {
-    // Always reset drag guard so handleNodeClick works correctly in connect mode too
-    mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
-    dragOccurredRef.current = false;
-    if (connectMode) return;
-    e.stopPropagation();
-    if (spacebarPanRef.current) {
-      // Spacebar held — pan the canvas instead of dragging the node
-      isPanningRef.current = true;
-      panStartRef.current  = { mx: e.clientX, my: e.clientY, px: panRef.current.x, py: panRef.current.y };
-      setIsDragging(true);
-      return;
-    }
-    dragRef.current = { nodeId, startMouseX: e.clientX, startMouseY: e.clientY, startNodeX: nodeX, startNodeY: nodeY };
-  }, [connectMode]);
-
-  const handleMouseMove = useCallback((e) => {
-    if (mouseDownPosRef.current) {
-      const dx = e.clientX - mouseDownPosRef.current.x;
-      const dy = e.clientY - mouseDownPosRef.current.y;
-      if (Math.sqrt(dx * dx + dy * dy) > 4) dragOccurredRef.current = true;
-    }
-    if (isPanningRef.current && panStartRef.current) {
-      const dx = e.clientX - panStartRef.current.mx;
-      const dy = e.clientY - panStartRef.current.my;
-      setPan({ x: panStartRef.current.px + dx, y: panStartRef.current.py + dy });
-    }
-    if (dragRef.current) {
-      const { nodeId, startMouseX, startMouseY, startNodeX, startNodeY } = dragRef.current;
-      const dx = (e.clientX - startMouseX) / zoom;
-      const dy = (e.clientY - startMouseY) / zoom;
-      updateCanvasNodePos(nodeId, { x: Math.max(0, startNodeX + dx), y: Math.max(0, startNodeY + dy) });
-    }
-  }, [zoom, updateCanvasNodePos]);
-
-  const handleMouseUp = useCallback(() => {
-    isPanningRef.current = false;
-    panStartRef.current  = null;
-    dragRef.current      = null;
-    setIsDragging(false);
-  }, []);
-
-  const handleWheel = useCallback((e) => {
-    e.preventDefault();
-    const rect    = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    // Cursor position relative to the canvas element
-    const cx = e.clientX - rect.left;
-    const cy = e.clientY - rect.top;
-    setZoom((z) => {
-      const newZoom = clampZoom(z * (1 - e.deltaY * 0.001));
-      // Adjust pan so the world point under the cursor stays fixed
-      setPan((p) => ({
-        x: cx - ((cx - p.x) / z) * newZoom,
-        y: cy - ((cy - p.y) / z) * newZoom,
-      }));
-      return newZoom;
-    });
-  }, []);
-
-  // ── Pinch-to-zoom (touch) ────────────────────────────────────────────────
-  const handleTouchStart = useCallback((e) => {
-    if (e.touches.length !== 2) return;
-    const t0 = e.touches[0], t1 = e.touches[1];
-    const dx = t0.clientX - t1.clientX;
-    const dy = t0.clientY - t1.clientY;
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const mx = (t0.clientX + t1.clientX) / 2 - rect.left;
-    const my = (t0.clientY + t1.clientY) / 2 - rect.top;
-    pinchRef.current = {
-      dist: Math.sqrt(dx * dx + dy * dy),
-      zoom: zoomRef.current,
-      pan:  { ...panRef.current },
-      cx: mx, cy: my,
-    };
-  }, []);
-
-  const handleTouchMove = useCallback((e) => {
-    if (e.touches.length !== 2 || !pinchRef.current) return;
-    e.preventDefault();
-    const t0 = e.touches[0], t1 = e.touches[1];
-    const dx = t0.clientX - t1.clientX;
-    const dy = t0.clientY - t1.clientY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const { dist: d0, zoom: z0, pan: p0, cx, cy } = pinchRef.current;
-    const newZoom = clampZoom(z0 * (dist / d0));
-    // Keep the pinch midpoint fixed in world space
-    setZoom(newZoom);
-    setPan({
-      x: cx - ((cx - p0.x) / z0) * newZoom,
-      y: cy - ((cy - p0.y) / z0) * newZoom,
-    });
-  }, []);
-
-  const handleTouchEnd = useCallback((e) => {
-    if (e.touches.length < 2) pinchRef.current = null;
-  }, []);
-
-  const handleNodeClick = useCallback((e, node) => {
-    e.stopPropagation();
-    if (dragOccurredRef.current) return;
-    if (connectMode === "source") {
-      setConnectSource(node.id);
-      setConnectMode("target");
-      return;
-    }
-    if (connectMode === "target") {
-      if (node.id === connectSource) return;
-      const srcNode = projectNodes.find((n) => n.id === connectSource);
-      if (!srcNode) return;
-      setPendingRel({ fromClusterId: srcNode.clusterId, toClusterId: node.clusterId });
-      setRelModalOpen(true);
-      setConnectMode(null);
-      setConnectSource(null);
-      return;
-    }
-    setSelectedItem({ type: "node", nodeId: node.id, clusterId: node.clusterId });
-  }, [connectMode, connectSource, projectNodes]);
-
-  const handleCanvasClick = useCallback(() => {
-    if (dragOccurredRef.current) return;
-    if (connectMode === "source") { setConnectMode(null); return; }
-    setSelectedItem(null);
-  }, [connectMode]);
 
   const handleAddToCanvas = useCallback((cluster) => {
     if (projectNodes.find((n) => n.clusterId === cluster.id)) return;
@@ -1190,13 +1102,32 @@ export default function ScenarioCanvas({ appState }) {
     setEditingRelId(null);
   }, []);
 
-  const lineSegments = computeLineSegments(projectRels, projectNodes);
+  // React Flow connection callback
+  const onConnect = useCallback((connection) => {
+    const fromNode = projectNodes.find((n) => n.id === connection.source);
+    const toNode = projectNodes.find((n) => n.id === connection.target);
+    if (fromNode && toNode) {
+      setPendingRel({
+        fromClusterId: fromNode.clusterId,
+        toClusterId: toNode.clusterId,
+        sourceHandle: connection.sourceHandle || null,
+        targetHandle: connection.targetHandle || null,
+      });
+      setRelModalOpen(true);
+      setConnectMode(false);
+    }
+  }, [projectNodes]);
 
-  const editingRel  = editingRelId ? relationships.find((r) => r.id === editingRelId) : null;
+  // Persist position on drag end
+  const onNodeDragStop = useCallback((_, rfNode) => {
+    updateCanvasNodePos(rfNode.id, { x: rfNode.position.x, y: rfNode.position.y });
+  }, [updateCanvasNodePos]);
+
+  const editingRel = editingRelId ? relationships.find((r) => r.id === editingRelId) : null;
   const fromCluster = pendingRel
     ? clusters.find((cl) => cl.id === pendingRel.fromClusterId)
     : editingRel ? clusters.find((cl) => cl.id === editingRel.fromClusterId) : null;
-  const toCluster   = pendingRel
+  const toCluster = pendingRel
     ? clusters.find((cl) => cl.id === pendingRel.toClusterId)
     : editingRel ? clusters.find((cl) => cl.id === editingRel.toClusterId) : null;
 
@@ -1219,22 +1150,14 @@ export default function ScenarioCanvas({ appState }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: c.bg }}>
       {/* Top bar */}
-      <div style={{
-        padding: "14px 22px 12px", background: c.white,
-        borderBottom: `1px solid ${c.border}`, flexShrink: 0,
-      }}>
+      <div style={{ padding: "14px 22px 12px", background: c.white, borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
           <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.09em", color: c.hint }}>
             {project.name}
           </div>
           <button
             onClick={() => setActiveProjectId(null)}
-            style={{
-              fontSize: 9, padding: "1px 6px", borderRadius: 4,
-              border: `1px solid ${c.border}`, background: "transparent",
-              color: c.hint, cursor: "pointer", fontFamily: "inherit",
-              letterSpacing: 0, textTransform: "none",
-            }}
+            style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, border: `1px solid ${c.border}`, background: "transparent", color: c.hint, cursor: "pointer", fontFamily: "inherit", letterSpacing: 0, textTransform: "none" }}
           >switch ↕</button>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -1251,9 +1174,7 @@ export default function ScenarioCanvas({ appState }) {
               <button
                 onClick={() => setConfirmDeleteMap(true)}
                 style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
-              >
-                Delete map
-              </button>
+              >Delete map</button>
             )}
             <div style={{ display: "flex", border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden" }}>
               {["canvas", "table"].map((mode) => (
@@ -1306,256 +1227,21 @@ export default function ScenarioCanvas({ appState }) {
             onToggle={() => setLeftOpen((o) => !o)}
           />
 
-          {/* Canvas area */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
-            {/* Connection mode banner */}
-            {connectMode && (
-              <div style={{
-                position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)",
-                zIndex: 10, padding: "8px 18px", background: c.ink, color: c.white,
-                borderRadius: 20, fontSize: 12, fontWeight: 500,
-                display: "flex", alignItems: "center", gap: 12,
-                boxShadow: "0 2px 14px rgba(0,0,0,0.18)", whiteSpace: "nowrap",
-              }}>
-                {connectMode === "source"
-                  ? "Click a cluster to start the relationship"
-                  : "Now click the target cluster"}
-                <button
-                  onClick={() => { setConnectMode(null); setConnectSource(null); }}
-                  style={{
-                    background: "rgba(255,255,255,0.15)", border: "none",
-                    color: c.white, fontSize: 11, padding: "2px 10px",
-                    borderRadius: 4, cursor: "pointer", fontFamily: "inherit",
-                  }}
-                >Cancel</button>
-              </div>
-            )}
-
-            {/* Add relationship button */}
-            {!connectMode && projectNodes.length >= 2 && (
-              <div style={{ position: "absolute", top: 14, right: 14, zIndex: 10 }}>
-                <button onClick={() => setConnectMode("source")} style={{ ...btnSm, fontSize: 11 }}>
-                  + Add relationship
-                </button>
-              </div>
-            )}
-
-            {/* Canvas */}
-            <div
-              ref={canvasRef}
-              data-canvas-bg="1"
-              onMouseDown={handleCanvasMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onClick={handleCanvasClick}
-              onWheel={handleWheel}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              style={{
-                flex: 1, overflow: "hidden", position: "relative",
-                touchAction: "none",
-                cursor: connectMode ? "crosshair"
-                      : spacebarPan  ? (isDragging ? "grabbing" : "grab")
-                      : "default",
-                backgroundImage: "radial-gradient(circle, rgba(0,0,0,0.11) 1px, transparent 1px)",
-                backgroundSize: "24px 24px",
-                backgroundPosition: `${((pan.x % 24) + 24) % 24}px ${((pan.y % 24) + 24) % 24}px`,
-              }}
-            >
-              {/* World — pan + zoom applied here */}
-              <div
-                data-canvas-bg="1"
-                style={{
-                  position: "absolute", top: 0, left: 0,
-                  transformOrigin: "0 0",
-                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                }}
-              >
-                {/* SVG relationship lines */}
-                <svg
-                  style={{
-                    position: "absolute", top: 0, left: 0,
-                    width: 4000, height: 4000, overflow: "visible",
-                  }}
-                >
-                  {/* Root-level defs — end markers only; start arrowheads drawn as explicit polygons */}
-                  <defs>
-                    {lineSegments.map(({ rel }) => {
-                      const rt = REL_TYPES.find((r) => r.id === rel.type) || REL_TYPES[0];
-                      return (
-                        <marker key={rel.id} id={`arr-end-${rel.id}`} markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto" markerUnits="strokeWidth">
-                          <path d="M0,0.5 L0,6.5 L7,3.5 z" fill={rt.color} />
-                        </marker>
-                      );
-                    })}
-                  </defs>
-
-                  {lineSegments.map(({ rel, x1, y1, x2, y2, ex1, ey1, ex2, ey2 }) => {
-                    const rt         = REL_TYPES.find((r) => r.id === rel.type) || REL_TYPES[0];
-                    const isSelected = selectedItem?.type === "rel" && selectedItem.id === rel.id;
-
-                    const endMarkerId = `arr-end-${rel.id}`;
-
-                    // Cubic bezier S-curve: control points extend along each node's exit direction.
-                    // dist scales with separation so short lines stay gentle, long lines curve enough.
-                    const edgeDist = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
-                    const dist = Math.min(edgeDist * 0.45, 120);
-                    const cp1x = x1 + ex1 * dist;
-                    const cp1y = y1 + ey1 * dist;
-                    const cp2x = x2 + ex2 * dist;
-                    const cp2y = y2 + ey2 * dist;
-
-                    // Label at t=0.5 on the cubic bezier
-                    const mx = 0.125*x1 + 0.375*cp1x + 0.375*cp2x + 0.125*x2;
-                    const my = 0.125*y1 + 0.375*cp1y + 0.375*cp2y + 0.125*y2;
-                    const labelW = Math.max(40, rt.id.length * 5.8 + 14);
-                    const labelH = 15;
-
-                    const pathD = `M ${x1} ${y1} C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${x2} ${y2}`;
-
-                    // Feedback Loop start arrowhead — manual polygon mirrors the end marker geometry.
-                    // markerStart is unreliable across browsers; explicit polygon is guaranteed.
-                    // Geometry mirrors markerUnits="strokeWidth" at current strokeWidth:
-                    //   tip  = 2 sw units behind x1 (into node, occluded by node div)
-                    //   base = 5 sw units forward from x1
-                    //   half-width = 3 sw units perpendicular
-                    const sw = isSelected ? 2.5 : 1.8;
-                    const startPolygon = rt.dash ? (() => {
-                      const tipX  = x1 - ex1 * 2 * sw,  tipY  = y1 - ey1 * 2 * sw;
-                      const baseCX = x1 + ex1 * 5 * sw, baseCY = y1 + ey1 * 5 * sw;
-                      const b1x = baseCX - ey1 * 3 * sw, b1y = baseCY + ex1 * 3 * sw;
-                      const b2x = baseCX + ey1 * 3 * sw, b2y = baseCY - ex1 * 3 * sw;
-                      return `${tipX},${tipY} ${b1x},${b1y} ${b2x},${b2y}`;
-                    })() : null;
-
-                    return (
-                      <g key={rel.id}>
-                        {/* Visible curved path */}
-                        <path
-                          d={pathD}
-                          fill="none"
-                          stroke={rt.color}
-                          strokeWidth={sw}
-                          strokeDasharray={rt.dash ? "6,4" : undefined}
-                          markerEnd={`url(#${endMarkerId})`}
-                          style={{ pointerEvents: "none" }}
-                        />
-                        {/* Start arrowhead for Feedback Loop — drawn as polygon to bypass markerStart unreliability */}
-                        {startPolygon && (
-                          <polygon points={startPolygon} fill={rt.color} style={{ pointerEvents: "none" }} />
-                        )}
-
-                        {/* Midpoint label — background pill + text */}
-                        <g style={{ pointerEvents: "none" }}>
-                          <rect
-                            x={mx - labelW / 2} y={my - labelH / 2}
-                            width={labelW} height={labelH}
-                            rx={3}
-                            fill={c.white}
-                            stroke="rgba(0,0,0,0.09)"
-                            strokeWidth={0.5}
-                          />
-                          <text
-                            x={mx} y={my}
-                            textAnchor="middle"
-                            dominantBaseline="middle"
-                            style={{
-                              fontSize: 9,
-                              fill: rt.color,
-                              fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
-                              fontWeight: 500,
-                            }}
-                          >
-                            {rt.id}
-                          </text>
-                        </g>
-
-                        {/* Wide invisible hit area — same curve, rendered last to capture clicks over label */}
-                        <path
-                          d={pathD}
-                          fill="none"
-                          stroke="transparent"
-                          strokeWidth={18}
-                          style={{ cursor: "pointer", pointerEvents: "stroke" }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedItem({ type: "rel", id: rel.id });
-                          }}
-                        />
-                      </g>
-                    );
-                  })}
-                </svg>
-
-                {/* Cluster node cards */}
-                {projectNodes.map((node) => {
-                  const cluster = clusters.find((cl) => cl.id === node.clusterId);
-                  if (!cluster) return null;
-                  return (
-                    <ClusterNode
-                      key={node.id}
-                      node={node}
-                      cluster={cluster}
-                      selected={selectedItem?.type === "node" && selectedItem.nodeId === node.id}
-                      connectMode={!!connectMode}
-                      isConnectSource={connectSource === node.id}
-                      onClick={(e) => handleNodeClick(e, node)}
-                      onRemove={() => handleRemoveFromCanvas(node.id)}
-                      onMouseDown={(e) => handleNodeMouseDown(e, node.id, node.x, node.y)}
-                    />
-                  );
-                })}
-
-                {/* Empty canvas nudge */}
-                {projectNodes.length === 0 && (
-                  <div style={{
-                    position: "absolute", top: 160, left: 160,
-                    fontSize: 12, color: c.hint, pointerEvents: "none", lineHeight: 1.6,
-                  }}>
-                    Add clusters from the sidebar to begin mapping relationships.
-                  </div>
-                )}
-              </div>
-
-              {/* Bottom hint + zoom controls */}
-              <div style={{
-                position: "absolute", bottom: 14, left: 0, right: 0,
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                padding: "0 16px", pointerEvents: "none",
-              }}>
-                <div style={{ fontSize: 10, color: c.hint }}>
-                  Drag to pan · Scroll to zoom · Use × to remove a cluster
-                </div>
-                <div style={{
-                  display: "flex", alignItems: "center",
-                  border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden",
-                  background: c.white, pointerEvents: "all",
-                }}>
-                  <button
-                    onClick={() => setZoom((z) => clampZoom(z - 0.1))}
-                    style={{ ...btnG, padding: "5px 11px", fontSize: 15, lineHeight: 1 }}
-                  >−</button>
-                  <div style={{
-                    padding: "5px 10px", fontSize: 11, color: c.muted,
-                    borderLeft: `1px solid ${c.border}`, borderRight: `1px solid ${c.border}`,
-                    minWidth: 48, textAlign: "center",
-                  }}>
-                    {Math.round(zoom * 100)}%
-                  </div>
-                  <button
-                    onClick={() => setZoom((z) => clampZoom(z + 0.1))}
-                    style={{ ...btnG, padding: "5px 11px", fontSize: 15, lineHeight: 1 }}
-                  >+</button>
-                  <button
-                    onClick={() => { setZoom(1); setPan({ x: 60, y: 60 }); }}
-                    style={{ ...btnG, padding: "5px 10px", fontSize: 10, borderLeft: `1px solid ${c.border}` }}
-                  >reset</button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ReactFlowProvider>
+            <CanvasArea
+              projectNodes={projectNodes}
+              projectRels={projectRels}
+              clusters={clusters}
+              connectMode={connectMode}
+              setConnectMode={setConnectMode}
+              selectedItem={selectedItem}
+              setSelectedItem={setSelectedItem}
+              onConnect={onConnect}
+              onNodeDragStop={onNodeDragStop}
+              onRemoveNode={handleRemoveFromCanvas}
+              isPanning={isPanning}
+            />
+          </ReactFlowProvider>
 
           <Inspector
             selectedItem={selectedItem}
