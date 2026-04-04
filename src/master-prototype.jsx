@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 // ─── Design tokens ─────────────────────────────────────────────────────────────
 const c = {
   bg:"#f5f4f0", white:"#ffffff", ink:"#111111",
-  muted:"#666666", faint:"#aaaaaa", hint:"#c4c3bc",
+  muted:"#4a4a48", faint:"#767670", hint:"#767670",
   border:"rgba(0,0,0,0.09)", borderMid:"rgba(0,0,0,0.18)",
   surfaceAlt:"#f9f9f7", fieldBg:"#fafaf8", canvas:"#f7f6f2",
   green50:"#EAF3DE", green700:"#3B6D11", greenBorder:"#C0DD97",

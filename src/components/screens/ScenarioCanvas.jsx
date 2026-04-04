@@ -931,6 +931,8 @@ export default function ScenarioCanvas({ appState }) {
   const [selectedItem,  setSelectedItem]  = useState(null);
   const [pan,  setPan]  = useState({ x: 60, y: 60 });
   const [zoom, setZoom] = useState(1);
+  const [spacebarPan,   setSpacebarPan]   = useState(false);
+  const [isDragging,    setIsDragging]    = useState(false);
 
   const canvasRef       = useRef(null);
   const isPanningRef    = useRef(false);
@@ -938,11 +940,19 @@ export default function ScenarioCanvas({ appState }) {
   const dragRef         = useRef(null);
   const dragOccurredRef = useRef(false);
   const mouseDownPosRef = useRef(null);
+  // Refs for use inside callbacks without stale-closure issues
+  const spacebarPanRef  = useRef(false);
+  const panRef          = useRef(pan);
+  const zoomRef         = useRef(zoom);
+  const pinchRef        = useRef(null); // { dist, zoom, pan, cx, cy }
+
+  useEffect(() => { panRef.current  = pan;  }, [pan]);
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
 
   const clampZoom = (z) => Math.min(Math.max(z, 0.25), 2.5);
 
   useEffect(() => {
-    const handler = (e) => {
+    const onKeyDown = (e) => {
       if (e.key === "Escape") {
         setConnectMode(null);
         setConnectSource(null);
@@ -950,9 +960,25 @@ export default function ScenarioCanvas({ appState }) {
         setPendingRel(null);
         setEditingRelId(null);
       }
+      if (e.code === "Space" && !e.repeat) {
+        e.preventDefault();
+        spacebarPanRef.current = true;
+        setSpacebarPan(true);
+      }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    const onKeyUp = (e) => {
+      if (e.code === "Space") {
+        spacebarPanRef.current = false;
+        setSpacebarPan(false);
+        setIsDragging(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup",   onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup",   onKeyUp);
+    };
   }, []);
 
   // Pre-select a scenario in the inspector when navigating from ProjectDetail
@@ -964,15 +990,27 @@ export default function ScenarioCanvas({ appState }) {
     }
   }, [scenarioDetailId, closeScenarioDetail]);
 
+  // Prevent browser zoom on trackpad pinch (ctrlKey + wheel). Must be
+  // non-passive so preventDefault() is honoured — React's synthetic onWheel
+  // is passive in modern browsers and cannot block the default action.
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const onWheel = (e) => { if (e.ctrlKey) e.preventDefault(); };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   const handleCanvasMouseDown = useCallback((e) => {
-    if (!e.target.dataset.canvasBg) return;
+    if (!e.target.dataset.canvasBg && !spacebarPanRef.current) return;
     if (connectMode) return;
-    isPanningRef.current   = true;
-    panStartRef.current    = { mx: e.clientX, my: e.clientY, px: pan.x, py: pan.y };
+    isPanningRef.current    = true;
+    panStartRef.current     = { mx: e.clientX, my: e.clientY, px: panRef.current.x, py: panRef.current.y };
     mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
     dragOccurredRef.current = false;
+    if (spacebarPanRef.current) setIsDragging(true);
     e.preventDefault();
-  }, [pan, connectMode]);
+  }, [connectMode]);
 
   const handleNodeMouseDown = useCallback((e, nodeId, nodeX, nodeY) => {
     // Always reset drag guard so handleNodeClick works correctly in connect mode too
@@ -980,6 +1018,13 @@ export default function ScenarioCanvas({ appState }) {
     dragOccurredRef.current = false;
     if (connectMode) return;
     e.stopPropagation();
+    if (spacebarPanRef.current) {
+      // Spacebar held — pan the canvas instead of dragging the node
+      isPanningRef.current = true;
+      panStartRef.current  = { mx: e.clientX, my: e.clientY, px: panRef.current.x, py: panRef.current.y };
+      setIsDragging(true);
+      return;
+    }
     dragRef.current = { nodeId, startMouseX: e.clientX, startMouseY: e.clientY, startNodeX: nodeX, startNodeY: nodeY };
   }, [connectMode]);
 
@@ -1006,12 +1051,64 @@ export default function ScenarioCanvas({ appState }) {
     isPanningRef.current = false;
     panStartRef.current  = null;
     dragRef.current      = null;
+    setIsDragging(false);
   }, []);
 
   const handleWheel = useCallback((e) => {
     e.preventDefault();
-    const delta = -e.deltaY * 0.0008;
-    setZoom((z) => clampZoom(z + delta));
+    const rect    = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    // Cursor position relative to the canvas element
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    setZoom((z) => {
+      const newZoom = clampZoom(z * (1 - e.deltaY * 0.001));
+      // Adjust pan so the world point under the cursor stays fixed
+      setPan((p) => ({
+        x: cx - ((cx - p.x) / z) * newZoom,
+        y: cy - ((cy - p.y) / z) * newZoom,
+      }));
+      return newZoom;
+    });
+  }, []);
+
+  // ── Pinch-to-zoom (touch) ────────────────────────────────────────────────
+  const handleTouchStart = useCallback((e) => {
+    if (e.touches.length !== 2) return;
+    const t0 = e.touches[0], t1 = e.touches[1];
+    const dx = t0.clientX - t1.clientX;
+    const dy = t0.clientY - t1.clientY;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const mx = (t0.clientX + t1.clientX) / 2 - rect.left;
+    const my = (t0.clientY + t1.clientY) / 2 - rect.top;
+    pinchRef.current = {
+      dist: Math.sqrt(dx * dx + dy * dy),
+      zoom: zoomRef.current,
+      pan:  { ...panRef.current },
+      cx: mx, cy: my,
+    };
+  }, []);
+
+  const handleTouchMove = useCallback((e) => {
+    if (e.touches.length !== 2 || !pinchRef.current) return;
+    e.preventDefault();
+    const t0 = e.touches[0], t1 = e.touches[1];
+    const dx = t0.clientX - t1.clientX;
+    const dy = t0.clientY - t1.clientY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const { dist: d0, zoom: z0, pan: p0, cx, cy } = pinchRef.current;
+    const newZoom = clampZoom(z0 * (dist / d0));
+    // Keep the pinch midpoint fixed in world space
+    setZoom(newZoom);
+    setPan({
+      x: cx - ((cx - p0.x) / z0) * newZoom,
+      y: cy - ((cy - p0.y) / z0) * newZoom,
+    });
+  }, []);
+
+  const handleTouchEnd = useCallback((e) => {
+    if (e.touches.length < 2) pinchRef.current = null;
   }, []);
 
   const handleNodeClick = useCallback((e, node) => {
@@ -1253,9 +1350,15 @@ export default function ScenarioCanvas({ appState }) {
               onMouseLeave={handleMouseUp}
               onClick={handleCanvasClick}
               onWheel={handleWheel}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
               style={{
                 flex: 1, overflow: "hidden", position: "relative",
-                cursor: connectMode ? "crosshair" : "default",
+                touchAction: "none",
+                cursor: connectMode ? "crosshair"
+                      : spacebarPan  ? (isDragging ? "grabbing" : "grab")
+                      : "default",
                 backgroundImage: "radial-gradient(circle, rgba(0,0,0,0.11) 1px, transparent 1px)",
                 backgroundSize: "24px 24px",
                 backgroundPosition: `${((pan.x % 24) + 24) % 24}px ${((pan.y % 24) + 24) % 24}px`,

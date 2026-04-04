@@ -1,11 +1,13 @@
 /**
  * App — root component. Manages Supabase auth session, then holds all app state
  * via useAppState, renders the AppShell, active screen, modals, and toast.
+ * New users are gated behind OnboardingFlow until workspace_settings.onboarding_complete.
  */
 import { useState, useEffect } from "react";
 import { supabase } from "./lib/supabase.js";
 import { useAppState } from "./hooks/useAppState.js";
 import { AuthScreen } from "./components/auth/AuthScreen.jsx";
+import { OnboardingFlow } from "./components/onboarding/OnboardingFlow.jsx";
 import { AppShell } from "./components/layout/AppShell.jsx";
 import { Toast } from "./components/layout/Toast.jsx";
 import { NewProjectModal } from "./components/projects/NewProjectModal.jsx";
@@ -44,6 +46,11 @@ export default function App() {
   const [workspaceId,      setWorkspaceId]      = useState(null);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
 
+  // ── Onboarding gate ────────────────────────────────────────────────────────
+  // undefined = still loading, true/false = resolved
+  const [onboardingComplete, setOnboardingComplete] = useState(undefined);
+  const [preferences,        setPreferences]        = useState({});
+
   useEffect(() => {
     // Resolve the initial session synchronously (from local storage)
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -63,7 +70,11 @@ export default function App() {
       }
       setSession(session ?? null);
       if (session) fetchWorkspaceId(session.user.id);
-      else setWorkspaceId(null);
+      else {
+        setWorkspaceId(null);
+        setOnboardingComplete(undefined);
+        setPreferences({});
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -75,7 +86,25 @@ export default function App() {
       .select("id")
       .eq("user_id", userId)
       .single();
-    if (data) setWorkspaceId(data.id);
+    if (data) {
+      setWorkspaceId(data.id);
+      fetchWorkspaceSettings(data.id);
+    }
+  };
+
+  const fetchWorkspaceSettings = async (wsId) => {
+    const { data } = await supabase
+      .from("workspace_settings")
+      .select("onboarding_complete, preferences")
+      .eq("workspace_id", wsId)
+      .single();
+    if (data) {
+      setOnboardingComplete(data.onboarding_complete ?? false);
+      setPreferences(data.preferences ?? {});
+    } else {
+      // Row doesn't exist yet — treat as not complete
+      setOnboardingComplete(false);
+    }
   };
 
   const handleSignOut = async () => {
@@ -85,13 +114,41 @@ export default function App() {
   };
 
   // ── App state ──────────────────────────────────────────────────────────────
-  const appState = useAppState(workspaceId, session ?? null);
+  const appState = useAppState(workspaceId, session ?? null, preferences);
   const { inputDetailId, clusterDetailId, closeInputDetail, closeClusterDetail, updateInput, updateCluster, assignInputToCluster, removeInputFromCluster, deleteInput, deleteCluster, inputs, clusters, projects } = appState;
+
+  // ── Onboarding completion handler ──────────────────────────────────────────
+  const handleOnboardingComplete = async (prefs, projectFields) => {
+    // Persist preferences and mark complete
+    await supabase.from("workspace_settings").upsert({
+      workspace_id: workspaceId,
+      onboarding_complete: true,
+      preferences: prefs,
+    }, { onConflict: "workspace_id" });
+
+    setPreferences(prefs);
+    setOnboardingComplete(true);
+
+    if (projectFields) {
+      // Create the first project and navigate into it
+      const newProject = appState.addProject(projectFields);
+      appState.openProject(newProject.id);
+      appState.showToast(`"${newProject.name}" created`);
+    }
+    // If skipped (projectFields === null), lands on Dashboard (default screen)
+  };
 
   // ── Auth gates ─────────────────────────────────────────────────────────────
   if (session === undefined) return null;   // resolving — render nothing briefly
   if (passwordRecovery)     return <AuthScreen initialMode="reset" />;  // password reset flow
   if (!session)             return <AuthScreen />;  // not signed in
+
+  // ── Onboarding gate ────────────────────────────────────────────────────────
+  // Wait until workspace settings are loaded before deciding
+  if (onboardingComplete === undefined) return null;
+  if (!onboardingComplete) {
+    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+  }
 
   const handleCreateProject = (fields) => {
     const newProject = appState.addProject(fields);

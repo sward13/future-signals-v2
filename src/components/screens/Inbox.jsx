@@ -711,8 +711,8 @@ export default function Inbox({ appState }) {
         {inboxInputs.length === 0 && (
           <EmptyState
             icon="◎"
-            title="No inputs yet"
-            body="No inputs yet — add one to get started."
+            title="Your inbox is empty"
+            body="Add your first input manually, or use the Chrome extension to capture signals from the web."
             ctaLabel="Add an input"
             onCta={() => setDrawerOpen(true)}
           />

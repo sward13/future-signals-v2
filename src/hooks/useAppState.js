@@ -7,7 +7,8 @@
  *   scenario_clusters → cluster_ids derived array on each scenario
  * Analyses remain in-memory.
  * @param {string|null} workspaceId
- * @param {object|null} session  — Supabase auth session
+ * @param {object|null} session      — Supabase auth session
+ * @param {object}      preferences  — from workspace_settings (level, domains, purpose)
  */
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "../lib/supabase.js";
@@ -20,7 +21,7 @@ function newId() {
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useAppState(workspaceId = null, session = null) {
+export function useAppState(workspaceId = null, session = null, preferences = {}) {
 
   // ── Auth-derived user ────────────────────────────────────────────────────
   const authUser = session?.user ?? null;
@@ -30,9 +31,9 @@ export function useAppState(workspaceId = null, session = null) {
       || authUser?.email?.split("@")[0]
       || "User",
     email: authUser?.email || "",
-    level: "advanced",
-    domains: [],
-    purpose: "strategy",
+    level: preferences.level || "advanced",
+    domains: preferences.domains || [],
+    purpose: preferences.purpose || "",
   };
 
   // ── Core data (projects + inputs from Supabase; rest in-memory) ──────────
