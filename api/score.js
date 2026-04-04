@@ -77,6 +77,12 @@ export default async function handler(req, res) {
         // Embed key question (or use cached embedding)
         let keyQuestionEmbedding = project.key_question_embedding;
 
+        if (keyQuestionEmbedding) {
+          keyQuestionEmbedding = typeof keyQuestionEmbedding === 'string'
+            ? JSON.parse(keyQuestionEmbedding)
+            : keyQuestionEmbedding;
+        }
+
         if (!keyQuestionEmbedding) {
           const embeddingResponse = await openai.embeddings.create({
             model: 'text-embedding-3-small',
@@ -124,7 +130,9 @@ export default async function handler(req, res) {
         for (const candidate of candidates) {
           if (alreadyScoredIds.has(candidate.id)) continue;
 
-          const embedding = candidate.embedding;
+          const embedding = typeof candidate.embedding === 'string'
+            ? JSON.parse(candidate.embedding)
+            : candidate.embedding;
           if (!embedding) continue;
 
           // Compute similarities
