@@ -55,8 +55,7 @@ export default async function handler(req, res) {
     const { data: candidates, error: candidatesError } = await supabase
       .from('candidates')
       .select('*, sources(credibility)')
-      .eq('status', 'scored')
-      .not('embedding', 'is', null);
+      .eq('status', 'scored');
 
     if (candidatesError) throw candidatesError;
     if (!candidates?.length) {
@@ -218,8 +217,8 @@ export default async function handler(req, res) {
         const signalQuality = source?.credibility === 'institutional'
           ? 'Confirmed'
           : source?.credibility === 'specialist'
-          ? 'Established'
-          : 'Emerging';
+            ? 'Established'
+            : 'Emerging';
 
         // Insert into inputs as AI-suggested
         await supabase.from('inputs').insert({
