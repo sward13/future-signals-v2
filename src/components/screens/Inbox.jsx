@@ -257,7 +257,7 @@ function ListHeader() {
 
 // ─── List row (flat single-row) ────────────────────────────────────────────────
 
-function ListRow({ input, isSeeded, onSaveToProject, onOpen, selected, onToggle, anySelected }) {
+function ListRow({ input, isSeeded, isScannerSuggested, suggestedProjects, onSaveToProject, onOpen, selected, onToggle, anySelected }) {
   const [hovered, setHovered] = useState(false);
   const steepled = input.steepled || [];
   const visible2 = steepled.slice(0, 2);
@@ -270,7 +270,7 @@ function ListRow({ input, isSeeded, onSaveToProject, onOpen, selected, onToggle,
       onClick={onOpen}
       style={{
         display: "flex", alignItems: "center", gap: 10,
-        padding: "0 14px", height: 38,
+        padding: "0 14px", minHeight: 38,
         background: selected ? c.surfaceAlt : hovered ? "rgba(0,0,0,0.02)" : c.white,
         borderBottom: `1px solid ${c.border}`,
         cursor: "pointer",
@@ -281,12 +281,30 @@ function ListRow({ input, isSeeded, onSaveToProject, onOpen, selected, onToggle,
         <RowCheckbox checked={selected} visible={anySelected || hovered} />
       </div>
 
-      {/* Title */}
-      <div style={{
-        flex: 1, fontSize: 12, fontWeight: 500, color: c.ink,
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
-      }}>
-        {input.name}
+      {/* Title + AI pill + suggested projects hint */}
+      <div style={{ flex: 1, minWidth: 0, paddingTop: 8, paddingBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{
+            fontSize: 12, fontWeight: 500, color: c.ink,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {input.name}
+          </div>
+          {isScannerSuggested && (
+            <span style={{
+              fontSize: 10, padding: "2px 7px", borderRadius: 10, flexShrink: 0,
+              background: c.amber50, color: c.amber700, border: `0.5px solid ${c.amberBorder}`,
+              fontWeight: 500,
+            }}>
+              AI suggested
+            </span>
+          )}
+        </div>
+        {isScannerSuggested && suggestedProjects.length > 0 && (
+          <div style={{ fontSize: 11, color: c.hint, marginTop: 2 }}>
+            Suggested for: {suggestedProjects.slice(0, 2).map((p) => p.name).join(", ")}
+          </div>
+        )}
       </div>
 
       {/* Curated indicator */}
@@ -334,7 +352,7 @@ function ListRow({ input, isSeeded, onSaveToProject, onOpen, selected, onToggle,
 
 // ─── Compact card (2-col grid) ────────────────────────────────────────────────
 
-function CompactCard({ input, isSeeded, projects, savedProjectId, onSaveToProject, onOpen, selected, onToggle, anySelected }) {
+function CompactCard({ input, isSeeded, isScannerSuggested, suggestedProjects, projects, savedProjectId, onSaveToProject, onOpen, selected, onToggle, anySelected }) {
   const [hovered, setHovered] = useState(false);
   const project = savedProjectId ? projects.find((p) => p.id === savedProjectId) : null;
   const steepled = input.steepled || [];
@@ -357,7 +375,10 @@ function CompactCard({ input, isSeeded, projects, savedProjectId, onSaveToProjec
             <RowCheckbox checked={selected} visible={anySelected || hovered} />
           </div>
           <QualityPill value={input.signal_quality} />
-          {isSeeded && <span style={{ fontSize: 9, color: c.amber700, background: c.amber50, padding: "1px 5px", borderRadius: 4 }}>Curated</span>}
+          {isScannerSuggested
+            ? <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.amber50, color: c.amber700, border: `0.5px solid ${c.amberBorder}`, fontWeight: 500 }}>AI suggested</span>
+            : isSeeded && <span style={{ fontSize: 9, color: c.amber700, background: c.amber50, padding: "1px 5px", borderRadius: 4 }}>Curated</span>
+          }
         </div>
         <span style={{ fontSize: 10, color: c.hint }}>{input.created_at}</span>
       </div>
@@ -366,12 +387,18 @@ function CompactCard({ input, isSeeded, projects, savedProjectId, onSaveToProjec
       <div
         onClick={() => anySelected ? onToggle(input.id) : onOpen()}
         style={{
-          fontSize: 12, fontWeight: 500, color: c.ink, lineHeight: 1.4, marginBottom: 5,
+          fontSize: 12, fontWeight: 500, color: c.ink, lineHeight: 1.4, marginBottom: 3,
           display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
         }}
       >
         {input.name}
       </div>
+
+      {isScannerSuggested && suggestedProjects.length > 0 && (
+        <div style={{ fontSize: 11, color: c.hint, marginBottom: 5 }}>
+          Suggested for: {suggestedProjects.slice(0, 2).map((p) => p.name).join(", ")}
+        </div>
+      )}
 
       {/* Description snippet */}
       {(input.description || input.desc) && (
@@ -417,7 +444,7 @@ function CompactCard({ input, isSeeded, projects, savedProjectId, onSaveToProjec
 
 // ─── Full card (Card view) ────────────────────────────────────────────────────
 
-function FullCard({ input, isSeeded, projects, savedProjectId, onSaveToProject, onDismiss, onOpen, selected, onToggle, anySelected }) {
+function FullCard({ input, isSeeded, isScannerSuggested, suggestedProjects, projects, savedProjectId, onSaveToProject, onDismiss, onOpen, selected, onToggle, anySelected }) {
   const [hovered, setHovered] = useState(false);
   const project = savedProjectId ? projects.find((p) => p.id === savedProjectId) : null;
 
@@ -439,7 +466,9 @@ function FullCard({ input, isSeeded, projects, savedProjectId, onSaveToProject, 
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
-          {isSeeded
+          {isScannerSuggested
+            ? <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.amber50, color: c.amber700, border: `0.5px solid ${c.amberBorder}`, fontWeight: 500 }}>AI suggested</span>
+            : isSeeded
             ? <span style={{ fontSize: 10, color: c.hint }}>Curated · {input.domain}</span>
             : input.subtype && (
               <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#f0f0ee", color: c.faint }}>
@@ -452,10 +481,16 @@ function FullCard({ input, isSeeded, projects, savedProjectId, onSaveToProject, 
 
         <div
           onClick={(e) => { e.stopPropagation(); onToggle(input.id); }}
-          style={{ fontSize: 13, fontWeight: 500, color: c.ink, lineHeight: 1.35, marginBottom: 5, cursor: "pointer" }}
+          style={{ fontSize: 13, fontWeight: 500, color: c.ink, lineHeight: 1.35, marginBottom: isScannerSuggested && suggestedProjects.length > 0 ? 2 : 5, cursor: "pointer" }}
         >
           {input.name}
         </div>
+
+        {isScannerSuggested && suggestedProjects.length > 0 && (
+          <div style={{ fontSize: 11, color: c.hint, marginBottom: 8 }}>
+            Suggested for: {suggestedProjects.slice(0, 2).map((p) => p.name).join(", ")}
+          </div>
+        )}
 
         {(input.description || input.desc) && (
           <div
@@ -525,6 +560,7 @@ export default function Inbox({ appState }) {
   const [savingInputId,     setSavingInputId]     = useState(null);
   const [selectedInputIds,  setSelectedInputIds]  = useState([]);
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
+  const [aiTab,             setAiTab]             = useState("all");
 
   const anySelected = selectedInputIds.length > 0;
 
@@ -537,8 +573,14 @@ export default function Inbox({ appState }) {
 
   const activeFilterCount = filters.steepled.length + filters.quality.length + filters.horizon.length;
 
+  const aiSuggestedCount = useMemo(
+    () => inboxInputs.filter((i) => i.is_seeded && i.metadata?.source === "scanner").length,
+    [inboxInputs]
+  );
+
   const filteredInputs = useMemo(() => {
     return inboxInputs.filter((inp) => {
+      if (aiTab === "ai" && !(inp.is_seeded && inp.metadata?.source === "scanner")) return false;
       if (search) {
         const q = search.toLowerCase();
         const inTitle = (inp.name || "").toLowerCase().includes(q);
@@ -550,7 +592,7 @@ export default function Inbox({ appState }) {
       if (filters.horizon.length  > 0 && !filters.horizon.includes(inp.horizon))                         return false;
       return true;
     });
-  }, [inboxInputs, search, filters]);
+  }, [inboxInputs, search, filters, aiTab]);
 
   // Handlers
   const handleSave = (fields) => {
@@ -593,6 +635,8 @@ export default function Inbox({ appState }) {
     key: inp.id,
     input: inp,
     isSeeded: !!inp.is_seeded,
+    isScannerSuggested: !!(inp.is_seeded && inp.metadata?.source === "scanner"),
+    suggestedProjects: inp.metadata?.suggested_projects || [],
     projects,
     savedProjectId: savedToProject[inp.id],
     onSaveToProject: (id) => setSavingInputId(id),
@@ -650,6 +694,26 @@ export default function Inbox({ appState }) {
             <button onClick={() => setDrawerOpen(true)} style={btnP}>Add an input</button>
           </div>
         </div>
+
+        {/* ── AI suggested / All tabs ──────────────────────────── */}
+        {aiSuggestedCount > 0 && (
+          <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
+            {[["all", "All"], ["ai", `AI suggested · ${aiSuggestedCount}`]].map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => setAiTab(val)}
+                style={{
+                  padding: "4px 12px", borderRadius: 10, fontSize: 11,
+                  border: `1px solid ${aiTab === val ? c.ink : c.border}`,
+                  background: aiTab === val ? c.ink : c.white,
+                  color: aiTab === val ? c.white : c.muted,
+                  cursor: "pointer", fontFamily: "inherit",
+                  fontWeight: aiTab === val ? 500 : 400,
+                }}
+              >{label}</button>
+            ))}
+          </div>
+        )}
 
         {/* ── Search + Filter bar ──────────────────────────────── */}
         <div style={{ display: "flex", gap: 8, marginBottom: filtersOpen ? 10 : 16, alignItems: "center" }}>

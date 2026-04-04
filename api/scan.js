@@ -177,6 +177,17 @@ Return only valid JSON, no markdown.`
 
     results.candidates_deduped = results.candidates_fetched - (pending?.length || 0);
 
+    // Trigger scoring after ingestion
+    try {
+      await fetch(`${process.env.VITE_APP_URL}/api/score`, {
+        method: 'GET',
+        headers: { 'x-cron-secret': process.env.CRON_SECRET },
+      });
+    } catch (e) {
+      // Non-fatal — scoring will catch up on next run
+      results.errors.push(`Score trigger failed: ${e.message}`);
+    }
+
     return res.status(200).json({ success: true, results });
 
   } catch (error) {
