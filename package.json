@@ -12,8 +12,10 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
     "@xyflow/react": "^12.10.1",
+    "openai": "^6.33.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "rss-parser": "^3.13.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
