@@ -51,8 +51,8 @@ export default async function handler(req, res) {
         const items = feed.items.slice(0, MAX_CANDIDATES_PER_SOURCE);
 
         for (const item of items) {
-          const title = String(item.title || '').trim();
-          if (!item.link || !title) continue;
+          if (!item.link || !item.title || typeof item.title === 'object') continue;
+          const title = item.title.trim();
 
           // URL-based dedup — skip if already ingested
           const { data: existing } = await supabase
