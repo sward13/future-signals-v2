@@ -54,13 +54,22 @@ export default async function handler(req, res) {
     // Fetch all scored candidates with their source credibility
     const { data: candidates, error: candidatesError } = await supabase
       .from('candidates')
-      .select('*, sources(credibility)')
+      .select('*')
       .eq('status', 'scored');
 
     if (candidatesError) throw candidatesError;
     if (!candidates?.length) {
       return res.status(200).json({ success: true, results });
     }
+
+    // Fetch sources separately for credibility lookup
+    const { data: sources } = await supabase
+      .from('sources')
+      .select('id, credibility');
+
+    const sourceMap = Object.fromEntries(
+      (sources || []).map(s => [s.id, s])
+    );
 
     // Track which candidates score well for which projects
     // key: candidate_id, value: { candidate, projects: [...] }
@@ -128,7 +137,7 @@ export default async function handler(req, res) {
             : 0;
 
           // Credibility boost
-          const credibility = candidate.sources?.credibility || 'general';
+          const credibility = sourceMap[candidate.source_id]?.credibility || 'general';
           const credibilityScore = CREDIBILITY_SCORES[credibility] || 50;
 
           // Final score (0-100)
