@@ -426,6 +426,36 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     setInputs((prev) => prev.filter((inp) => inp.id !== id));
   }, []);
 
+  const dismissSuggestedInput = useCallback(async (input) => {
+    setInputs((prev) => prev.map((i) =>
+      i.id === input.id ? { ...i, metadata: { ...i.metadata, dismissed: true } } : i
+    ));
+    if (workspaceId) {
+      try {
+        const suggestedProjects = input.metadata?.suggested_projects || [];
+        for (const sp of suggestedProjects) {
+          await supabase
+            .from('project_candidates')
+            .update({ user_action: 'dismissed', dismissal_reason: 'not_relevant' })
+            .eq('candidate_id', input.metadata.candidate_id)
+            .eq('project_id', sp.id);
+        }
+        await supabase
+          .from('inputs')
+          .update({
+            metadata: {
+              ...input.metadata,
+              dismissed: true,
+              dismissed_at: new Date().toISOString(),
+            },
+          })
+          .eq('id', input.id);
+      } catch {
+        showToast('Failed to dismiss signal', 'error');
+      }
+    }
+  }, [workspaceId, showToast]);
+
   /** Delete an input and strip it from all cluster input_ids. */
   const deleteInput = useCallback((id) => {
     setInputs((prev) => prev.filter((inp) => inp.id !== id));
@@ -1103,6 +1133,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     updateInput,
     updateCluster,
     dismissInput,
+    dismissSuggestedInput,
     saveInputToProject,
     saveInputsToProject,
     analyses,
