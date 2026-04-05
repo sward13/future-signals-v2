@@ -171,6 +171,26 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
   const [fields, setFields] = useState(EMPTY_FIELDS);
   const [titleError, setTitleError] = useState(false);
   const [projectId, setProjectId] = useState(defaultProjectId);
+  const [scraping, setScraping] = useState(false);
+
+  const handleUrlBlur = async (url) => {
+    if (!url || !url.startsWith("http")) return;
+    setScraping(true);
+    try {
+      const res = await fetch(`/api/scrape?url=${encodeURIComponent(url)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setFields((prev) => ({
+        ...prev,
+        title: prev.title || data.title || prev.title,
+        description: prev.description || data.description || prev.description,
+      }));
+    } catch {
+      // Silent fail
+    } finally {
+      setScraping(false);
+    }
+  };
 
   const typeData = INPUT_TYPES.find((t) => t.id === selectedType);
 
@@ -214,6 +234,7 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
     setFields(EMPTY_FIELDS);
     setTitleError(false);
     setProjectId(defaultProjectId);
+    setScraping(false);
   };
 
   const handleClose = () => {
@@ -257,8 +278,9 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
 
         {/* ── Common fields ────────────────────────────────────────────── */}
         <div style={{ marginBottom: 16 }}>
-          <div style={fl}>
-            Title <span style={badg}>required</span>
+          <div style={{ ...fl, justifyContent: "space-between" }}>
+            <span>Title <span style={badg}>required</span></span>
+            {scraping && <span style={{ fontSize: 10, color: c.hint, fontWeight: 400 }}>Fetching…</span>}
           </div>
           <input
             style={{ ...inp, borderColor: titleError ? c.redBorder : undefined }}
@@ -292,8 +314,12 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
             type="url"
             value={fields.source_url}
             onChange={(e) => setField("source_url", e.target.value)}
+            onBlur={(e) => handleUrlBlur(e.target.value)}
             placeholder="https://…"
           />
+          {scraping && (
+            <div style={{ fontSize: 11, color: c.hint, marginTop: 4 }}>Fetching page info…</div>
+          )}
         </div>
 
         {/* ── Type-specific fields ─────────────────────────────────────── */}
