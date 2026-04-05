@@ -389,26 +389,45 @@ const STEEPLED_ABB = {
 
 // ─── Step 6 — Loading / signal seeding ───────────────────────────────────────
 
-function StepLoading({ newProjectId, inputs, onEnter }) {
+function StepLoading({ newProjectId, inputs, refreshInputs, onEnter }) {
   const [phase, setPhase] = useState("loading"); // 'loading' | 'signals' | 'done'
   const [visibleCount, setVisibleCount] = useState(0);
+  const [liveInputs, setLiveInputs] = useState(inputs);
 
   const seedSignals = useMemo(() =>
-    inputs.filter((i) =>
+    liveInputs.filter((i) =>
       i.is_seeded &&
       i.metadata?.source === "scanner" &&
       i.metadata?.suggested_projects?.some((p) => p.id === newProjectId)
     ).slice(0, 5),
-    [inputs, newProjectId]
+    [liveInputs, newProjectId]
   );
 
-  // Phase 1 → 2 or 3 after 1.5s
+  // Await scorer, then refresh inputs, then transition
   useEffect(() => {
-    const t = setTimeout(() => {
-      setPhase(seedSignals.length > 0 ? "signals" : "done");
-    }, 1500);
-    return () => clearTimeout(t);
+    const runScorer = async () => {
+      try {
+        await fetch('/api/trigger-score', { method: 'POST' });
+        // Refresh inputs so newly promoted signals appear in state
+        if (refreshInputs) await refreshInputs();
+      } catch {
+        // Silent fail
+      }
+      setPhase('signals_check');
+    };
+    runScorer();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // After refresh, read updated inputs from appState prop
+  useEffect(() => {
+    setLiveInputs(inputs);
+  }, [inputs]);
+
+  // Transition from signals_check → signals or done
+  useEffect(() => {
+    if (phase !== 'signals_check') return;
+    setPhase(seedSignals.length > 0 ? 'signals' : 'done');
+  }, [phase, seedSignals.length]);
 
   // Phase 2: reveal signals one by one, then → done
   useEffect(() => {
@@ -516,7 +535,7 @@ function StepLoading({ newProjectId, inputs, onEnter }) {
 
 // ─── Main flow ───────────────────────────────────────────────────────────────
 
-export function OnboardingFlow({ inputs, onProjectCreate, onComplete }) {
+export function OnboardingFlow({ inputs, refreshInputs, onProjectCreate, onComplete }) {
   const [step,         setStep]         = useState(1);
   const [level,        setLevel]        = useState("");
   const [domains,      setDomains]      = useState([]);
@@ -597,6 +616,7 @@ export function OnboardingFlow({ inputs, onProjectCreate, onComplete }) {
           <StepLoading
             newProjectId={newProjectId}
             inputs={inputs}
+            refreshInputs={refreshInputs}
             onEnter={handleEnterWorkspace}
           />
         )}

@@ -151,6 +151,7 @@ export default function App() {
     return (
       <OnboardingFlow
         inputs={appState.inputs}
+        refreshInputs={appState.refreshInputs}
         onProjectCreate={handleOnboardingProjectCreate}
         onComplete={handleOnboardingComplete}
       />

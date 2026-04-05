@@ -67,6 +67,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [scenarioDetailId, setScenarioDetailId] = useState(null);
 
   const toastTimer = useRef(null);
+  const refreshInputsRef = useRef(null);
 
   // ── Toast ─────────────────────────────────────────────────────────────────
   const showToast = useCallback((message, type = "success") => {
@@ -139,6 +140,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
         showToast("Failed to load inputs", "error");
       }
     };
+
+    refreshInputsRef.current = fetchInputs;
 
     const fetchClusters = async () => {
       try {
@@ -1136,6 +1139,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     updateCluster,
     dismissInput,
     dismissSuggestedInput,
+    refreshInputs: () => refreshInputsRef.current?.(),
     saveInputToProject,
     saveInputsToProject,
     analyses,
