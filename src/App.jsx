@@ -42,14 +42,14 @@ export default function App() {
   // session === undefined: still resolving initial state (show nothing)
   // session === null:      resolved, not signed in (show AuthScreen)
   // session === object:    signed in
-  const [session,          setSession]          = useState(undefined);
-  const [workspaceId,      setWorkspaceId]      = useState(null);
+  const [session, setSession] = useState(undefined);
+  const [workspaceId, setWorkspaceId] = useState(null);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
 
   // ── Onboarding gate ────────────────────────────────────────────────────────
   // undefined = still loading, true/false = resolved
   const [onboardingComplete, setOnboardingComplete] = useState(undefined);
-  const [preferences,        setPreferences]        = useState({});
+  const [preferences, setPreferences] = useState({});
 
   useEffect(() => {
     // Resolve the initial session synchronously (from local storage)
@@ -124,7 +124,7 @@ export default function App() {
 
   const handleOnboardingComplete = async (prefs, projectId) => {
     // Persist preferences and mark complete
-    await supabase.from("workspace_settings").upsert({
+    await supabase.from("workspace_settings").update({
       workspace_id: workspaceId,
       onboarding_complete: true,
       preferences: prefs,
@@ -141,8 +141,8 @@ export default function App() {
 
   // ── Auth gates ─────────────────────────────────────────────────────────────
   if (session === undefined) return null;   // resolving — render nothing briefly
-  if (passwordRecovery)     return <AuthScreen initialMode="reset" />;  // password reset flow
-  if (!session)             return <AuthScreen />;  // not signed in
+  if (passwordRecovery) return <AuthScreen initialMode="reset" />;  // password reset flow
+  if (!session) return <AuthScreen />;  // not signed in
 
   // ── Onboarding gate ────────────────────────────────────────────────────────
   // Wait until workspace settings are loaded before deciding
