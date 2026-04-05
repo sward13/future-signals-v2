@@ -41,7 +41,7 @@ function formatDate(str) {
 }
 
 // Column widths for list/table layout
-const COL = { curated: 32, quality: 100, steepled: 120, horizon: 60, actions: 200 };
+const COL = { curated: 32, actions: 310 };
 
 // ─── Checkbox ────────────────────────────────────────────────────────────────
 
@@ -246,10 +246,7 @@ function ListHeader() {
     }}>
       <div style={{ width: 15, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, ...cell }}>Title</div>
-      <div style={{ width: COL.curated,  flexShrink: 0 }} />
-      <div style={{ width: COL.quality,  ...cell }}>Quality</div>
-      <div style={{ width: COL.steepled, ...cell }}>STEEPLED</div>
-      <div style={{ width: COL.horizon,     ...cell }}>Horizon</div>
+      <div style={{ width: COL.curated, flexShrink: 0 }} />
       <div style={{ width: COL.actions, flexShrink: 0 }} />
     </div>
   );
@@ -259,9 +256,6 @@ function ListHeader() {
 
 function ListRow({ input, isSeeded, isScannerSuggested, suggestedProjects, onSaveToProject, onAccept, onDismissSuggested, onOpen, selected, onToggle, anySelected }) {
   const [hovered, setHovered] = useState(false);
-  const steepled = input.steepled || [];
-  const visible2 = steepled.slice(0, 2);
-  const overflow  = steepled.length - 2;
 
   return (
     <div
@@ -312,28 +306,6 @@ function ListRow({ input, isSeeded, isScannerSuggested, suggestedProjects, onSav
         {isSeeded && (
           <span title="Surfaced by Future Signals" style={{ fontSize: 11, color: c.hint }}>✦</span>
         )}
-      </div>
-
-      {/* Signal Quality */}
-      <div style={{ width: COL.quality, flexShrink: 0 }}>
-        <QualityPill value={input.signal_quality} />
-      </div>
-
-      {/* STEEPLED (max 2 + overflow) */}
-      <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
-        {visible2.map((t) => (
-          <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: "#f0f0ee", color: c.muted }}>
-            {STEEPLED_ABB[t] || t}
-          </span>
-        ))}
-        {overflow > 0 && (
-          <span style={{ fontSize: 9, color: c.hint }}>+{overflow}</span>
-        )}
-      </div>
-
-      {/* Horizon */}
-      <div style={{ width: COL.horizon, flexShrink: 0 }}>
-        {input.horizon ? <HorizTag h={input.horizon} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
       </div>
 
       {/* Date + Add to project */}
