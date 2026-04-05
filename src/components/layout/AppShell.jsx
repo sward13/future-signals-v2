@@ -9,7 +9,10 @@ export function AppShell({ appState, children, scroll = true, onSignOut }) {
   const { activeScreen, setActiveScreen, setActiveProjectId, user, inputs, clusters, scenarios, projects, activeProjectId, openProjectModal } = appState;
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
-  const inboxCount = inputs.filter((i) => i.project_id === null).length;
+  const inboxCount = inputs.filter((i) =>
+    i.project_id === null &&
+    !(i.is_seeded && i.metadata?.source === 'scanner' && i.metadata?.dismissed)
+  ).length;
   const projectInputCount = activeProjectId
     ? inputs.filter((i) => i.project_id === activeProjectId).length : 0;
   const clusterCount = activeProjectId

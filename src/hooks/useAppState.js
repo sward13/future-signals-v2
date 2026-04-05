@@ -973,10 +973,10 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
           // Map camelCase local fields to snake_case DB columns
           const dbFields = { ...fields };
           if (fields.fromClusterId !== undefined) { dbFields.from_cluster_id = fields.fromClusterId; delete dbFields.fromClusterId; }
-          if (fields.toClusterId   !== undefined) { dbFields.to_cluster_id   = fields.toClusterId;   delete dbFields.toClusterId; }
-          if (fields.projectId     !== undefined) { dbFields.project_id      = fields.projectId;     delete dbFields.projectId; }
-          if (fields.sourceHandle  !== undefined) { dbFields.source_handle   = fields.sourceHandle;  delete dbFields.sourceHandle; }
-          if (fields.targetHandle  !== undefined) { dbFields.target_handle   = fields.targetHandle;  delete dbFields.targetHandle; }
+          if (fields.toClusterId !== undefined) { dbFields.to_cluster_id = fields.toClusterId; delete dbFields.toClusterId; }
+          if (fields.projectId !== undefined) { dbFields.project_id = fields.projectId; delete dbFields.projectId; }
+          if (fields.sourceHandle !== undefined) { dbFields.source_handle = fields.sourceHandle; delete dbFields.sourceHandle; }
+          if (fields.targetHandle !== undefined) { dbFields.target_handle = fields.targetHandle; delete dbFields.targetHandle; }
           const { error } = await supabase
             .from("relationships")
             .update(dbFields)
