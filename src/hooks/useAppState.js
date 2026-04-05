@@ -287,6 +287,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
         try {
           const { error } = await supabase.from("projects").insert(newProject);
           if (error) throw error;
+          // Trigger scorer in background — non-blocking, silent fail
+          fetch('/api/trigger-score', { method: 'POST' }).catch(() => {});
           // Refetch to confirm server state
           const { data, error: fetchError } = await supabase
             .from("projects")
