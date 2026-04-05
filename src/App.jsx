@@ -123,20 +123,21 @@ export default function App() {
   };
 
   const handleOnboardingComplete = async (prefs, projectId) => {
-    // Persist preferences and mark complete
-    await supabase.from("workspace_settings").update({
-      workspace_id: workspaceId,
-      onboarding_complete: true,
-      preferences: prefs,
-    }, { onConflict: "workspace_id" });
+    console.log('workspaceId:', workspaceId);
+
+    const { data, error } = await supabase
+      .from("workspace_settings")
+      .update({
+        onboarding_complete: true,
+        preferences: prefs,
+      })
+      .eq("workspace_id", workspaceId);
+
+    console.log('update result:', data, error);
 
     setPreferences(prefs);
     setOnboardingComplete(true);
-
-    if (projectId) {
-      appState.openProject(projectId);
-    }
-    // If skipped (projectId === null), lands on Dashboard (default screen)
+    if (projectId) appState.openProject(projectId);
   };
 
   // ── Auth gates ─────────────────────────────────────────────────────────────
