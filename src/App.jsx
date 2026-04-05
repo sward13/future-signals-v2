@@ -93,16 +93,16 @@ export default function App() {
   };
 
   const fetchWorkspaceSettings = async (wsId) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("workspace_settings")
       .select("onboarding_complete, preferences")
       .eq("workspace_id", wsId)
       .single();
+    console.log('workspace_settings fetch:', data, error);
     if (data) {
       setOnboardingComplete(data.onboarding_complete ?? false);
       setPreferences(data.preferences ?? {});
     } else {
-      // Row doesn't exist yet — treat as not complete
       setOnboardingComplete(false);
     }
   };
