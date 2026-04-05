@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     const { data: candidates, error: candidatesError } = await supabase
       .from('candidates')
       .select('*')
-      .eq('status', 'scored');
+      .in('status', ['scored', 'promoted']);
 
     if (candidatesError) throw candidatesError;
 
