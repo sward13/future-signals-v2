@@ -98,7 +98,6 @@ export default function App() {
       .select("onboarding_complete, preferences")
       .eq("workspace_id", wsId)
       .single();
-    console.log('workspace_settings fetch:', data, error);
     if (data) {
       setOnboardingComplete(data.onboarding_complete ?? false);
       setPreferences(data.preferences ?? {});
@@ -123,7 +122,7 @@ export default function App() {
   };
 
   const handleOnboardingComplete = async (prefs, projectId) => {
-    console.log('workspaceId:', workspaceId);
+
 
     const { data, error } = await supabase
       .from("workspace_settings")
@@ -133,7 +132,6 @@ export default function App() {
       })
       .eq("workspace_id", workspaceId);
 
-    console.log('update result:', data, error);
 
     setPreferences(prefs);
     setOnboardingComplete(true);
