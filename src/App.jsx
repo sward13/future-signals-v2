@@ -117,8 +117,12 @@ export default function App() {
   const appState = useAppState(workspaceId, session ?? null, preferences);
   const { inputDetailId, clusterDetailId, closeInputDetail, closeClusterDetail, updateInput, updateCluster, assignInputToCluster, removeInputFromCluster, deleteInput, deleteCluster, inputs, clusters, projects } = appState;
 
-  // ── Onboarding completion handler ──────────────────────────────────────────
-  const handleOnboardingComplete = async (prefs, projectFields) => {
+  // ── Onboarding handlers ────────────────────────────────────────────────────
+  const handleOnboardingProjectCreate = (fields) => {
+    return appState.addProject(fields);
+  };
+
+  const handleOnboardingComplete = async (prefs, projectId) => {
     // Persist preferences and mark complete
     await supabase.from("workspace_settings").upsert({
       workspace_id: workspaceId,
@@ -129,13 +133,10 @@ export default function App() {
     setPreferences(prefs);
     setOnboardingComplete(true);
 
-    if (projectFields) {
-      // Create the first project and navigate into it
-      const newProject = appState.addProject(projectFields);
-      appState.openProject(newProject.id);
-      appState.showToast(`"${newProject.name}" created`);
+    if (projectId) {
+      appState.openProject(projectId);
     }
-    // If skipped (projectFields === null), lands on Dashboard (default screen)
+    // If skipped (projectId === null), lands on Dashboard (default screen)
   };
 
   // ── Auth gates ─────────────────────────────────────────────────────────────
@@ -147,7 +148,13 @@ export default function App() {
   // Wait until workspace settings are loaded before deciding
   if (onboardingComplete === undefined) return null;
   if (!onboardingComplete) {
-    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+    return (
+      <OnboardingFlow
+        inputs={appState.inputs}
+        onProjectCreate={handleOnboardingProjectCreate}
+        onComplete={handleOnboardingComplete}
+      />
+    );
   }
 
   const handleCreateProject = (fields) => {

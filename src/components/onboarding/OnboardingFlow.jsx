@@ -8,7 +8,7 @@
  *
  * @param {{ onComplete: (preferences: object, project: object) => void }} props
  */
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { c, btnP, btnSec, inp } from "../../styles/tokens.js";
 import { OnboardingEducation } from "./OnboardingEducation.jsx";
 
@@ -382,19 +382,160 @@ function StepProject({ onSubmit, onBack, onSkip }) {
   );
 }
 
+const STEEPLED_ABB = {
+  Social: "Soc", Technological: "Tech", Economic: "Eco", Environmental: "Env",
+  Political: "Pol", Legal: "Leg", Ethical: "Eth", Demographic: "Dem",
+};
+
+// ─── Step 6 — Loading / signal seeding ───────────────────────────────────────
+
+function StepLoading({ newProjectId, inputs, onEnter }) {
+  const [phase, setPhase] = useState("loading"); // 'loading' | 'signals' | 'done'
+  const [visibleCount, setVisibleCount] = useState(0);
+
+  const seedSignals = useMemo(() =>
+    inputs.filter((i) =>
+      i.is_seeded &&
+      i.metadata?.source === "scanner" &&
+      i.metadata?.suggested_projects?.some((p) => p.id === newProjectId)
+    ).slice(0, 5),
+    [inputs, newProjectId]
+  );
+
+  // Phase 1 → 2 or 3 after 1.5s
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setPhase(seedSignals.length > 0 ? "signals" : "done");
+    }, 1500);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Phase 2: reveal signals one by one, then → done
+  useEffect(() => {
+    if (phase !== "signals") return;
+    if (visibleCount < seedSignals.length) {
+      const t = setTimeout(() => setVisibleCount((v) => v + 1), 500);
+      return () => clearTimeout(t);
+    } else {
+      const t = setTimeout(() => setPhase("done"), 800);
+      return () => clearTimeout(t);
+    }
+  }, [phase, visibleCount, seedSignals.length]);
+
+  const hasFallback = seedSignals.length === 0;
+
+  return (
+    <>
+      <style>{`
+        @keyframes fs-spin { to { transform: rotate(360deg); } }
+        @keyframes fs-fade  { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, padding: "8px 0" }}>
+
+        {/* Phase 1 — Loading */}
+        {phase === "loading" && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "16px 0" }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: "50%",
+              border: `3px solid rgba(0,0,0,0.1)`,
+              borderTopColor: c.ink,
+              animation: "fs-spin 0.8s linear infinite",
+            }} />
+            <div style={{ fontSize: 16, fontWeight: 500, color: c.ink }}>Scanning for signals</div>
+            <div style={{ fontSize: 12, color: c.muted, textAlign: "center" }}>
+              Finding recent developments relevant to your project…
+            </div>
+          </div>
+        )}
+
+        {/* Phase 2 — Signals appearing */}
+        {phase === "signals" && (
+          <div style={{ width: "100%" }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 12, textAlign: "center" }}>
+              Signals found
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {seedSignals.slice(0, visibleCount).map((sig, i) => {
+                const firstCat = (sig.steepled || [])[0];
+                return (
+                  <div key={sig.id} style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "9px 12px", borderRadius: 8,
+                    border: `1px solid ${c.border}`, background: c.surfaceAlt,
+                    animation: "fs-fade 0.3s ease both",
+                  }}>
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: c.ink, flexShrink: 0 }} />
+                    <div style={{
+                      flex: 1, fontSize: 12, fontWeight: 500, color: c.ink,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {sig.name}
+                    </div>
+                    {firstCat && (
+                      <span style={{
+                        fontSize: 10, padding: "1px 6px", borderRadius: 4,
+                        background: "#f0f0ee", color: c.muted, flexShrink: 0,
+                      }}>
+                        {STEEPLED_ABB[firstCat] || firstCat}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Phase 3 — Done */}
+        {phase === "done" && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "8px 0", width: "100%", animation: "fs-fade 0.4s ease both" }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: "50%", background: c.ink,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <span style={{ color: c.white, fontSize: 22, lineHeight: 1 }}>✓</span>
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 500, color: c.ink }}>Your workspace is ready</div>
+            <div style={{ fontSize: 12, color: c.muted, textAlign: "center", maxWidth: 340 }}>
+              {hasFallback
+                ? "Your Inbox is ready — signals will arrive overnight as the scanner runs."
+                : `We've found ${seedSignals.length} signal${seedSignals.length !== 1 ? "s" : ""} to review — keep what's useful, dismiss the rest.`
+              }
+            </div>
+            <button onClick={onEnter} style={{ ...btnP, marginTop: 4 }}>
+              Go to my workspace →
+            </button>
+          </div>
+        )}
+
+      </div>
+    </>
+  );
+}
+
 // ─── Main flow ───────────────────────────────────────────────────────────────
 
-export function OnboardingFlow({ onComplete }) {
-  const [step,    setStep]    = useState(1);
-  const [level,   setLevel]   = useState("");
-  const [domains, setDomains] = useState([]);
-  const [purpose, setPurpose] = useState("");
+export function OnboardingFlow({ inputs, onProjectCreate, onComplete }) {
+  const [step,         setStep]         = useState(1);
+  const [level,        setLevel]        = useState("");
+  const [domains,      setDomains]      = useState([]);
+  const [purpose,      setPurpose]      = useState("");
+  const [newProjectId, setNewProjectId] = useState(null);
+
+  const prefs = { level, domains, purpose };
 
   const next = () => setStep((s) => s + 1);
   const back = () => setStep((s) => s - 1);
 
-  const handleProjectSubmit = (project) => {
-    onComplete({ level, domains, purpose }, project);
+  const handleProjectSubmit = (projectFields) => {
+    const newProject = onProjectCreate(projectFields);
+    setNewProjectId(newProject.id);
+    setStep(6);
+  };
+
+  const handleEnterWorkspace = () => {
+    onComplete(prefs, newProjectId);
   };
 
   return (
@@ -425,7 +566,7 @@ export function OnboardingFlow({ onComplete }) {
           <span style={{ fontSize: 13, fontWeight: 600, color: c.ink }}>Future Signals</span>
         </div>
 
-        <ProgressDots step={step} />
+        {step < 6 && <ProgressDots step={step} />}
 
         {step === 1 && (
           <StepLevel value={level} onChange={setLevel} onNext={next} />
@@ -449,7 +590,14 @@ export function OnboardingFlow({ onComplete }) {
           <StepProject
             onSubmit={handleProjectSubmit}
             onBack={back}
-            onSkip={() => onComplete({ level, domains, purpose }, null)}
+            onSkip={() => onComplete(prefs, null)}
+          />
+        )}
+        {step === 6 && (
+          <StepLoading
+            newProjectId={newProjectId}
+            inputs={inputs}
+            onEnter={handleEnterWorkspace}
           />
         )}
       </div>
