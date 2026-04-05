@@ -3,6 +3,7 @@
  * left = inputs table with filter tabs, right = clusters/systems summary.
  */
 import { useState, useRef } from "react";
+import { useScannerStatus } from "../../hooks/useScannerStatus.js";
 import { c, inp, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { STEEPLED } from "../../data/seeds.js";
 import { HorizTag, SubtypeTag } from "../shared/Tag.jsx";
@@ -311,6 +312,8 @@ export default function ProjectDetail({ appState }) {
   const [filterSteepled,    setFilterSteepled]    = useState(null);
   const [openFilterDropdown,setOpenFilterDropdown]= useState(null);
 
+  const { status: scanStatus, foundCount, dismiss: dismissScan } = useScannerStatus(activeProjectId, inputs);
+
   const project = projects.find((p) => p.id === activeProjectId);
 
   if (!project) {
@@ -444,6 +447,67 @@ export default function ProjectDetail({ appState }) {
 
   return (
     <>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      {/* ── Scanner status banner ─────────────────────────────── */}
+      {scanStatus === 'scanning' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '10px 22px',
+          background: c.amber50,
+          borderBottom: `1px solid ${c.amberBorder}`,
+          fontSize: 12,
+          color: c.amber700,
+        }}>
+          <div style={{
+            width: 12, height: 12, borderRadius: '50%',
+            border: `2px solid ${c.amber700}`,
+            borderTopColor: 'transparent',
+            animation: 'spin 0.8s linear infinite',
+            flexShrink: 0,
+          }} />
+          <span>Finding signals for this project…</span>
+          <button
+            onClick={dismissScan}
+            style={{ marginLeft: 'auto', fontSize: 11, color: c.amber700,
+                     background: 'none', border: 'none', cursor: 'pointer',
+                     fontFamily: 'inherit' }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {scanStatus === 'found' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '10px 22px',
+          background: c.green50,
+          borderBottom: `1px solid ${c.greenBorder}`,
+          fontSize: 12,
+          color: c.green700,
+        }}>
+          <span>✓</span>
+          <span>{foundCount} new signal{foundCount !== 1 ? 's' : ''} found for this project</span>
+          <button
+            onClick={() => { setActiveScreen('inbox'); dismissScan(); }}
+            style={{ marginLeft: 4, fontSize: 12, color: c.green700,
+                     background: 'none', border: 'none', cursor: 'pointer',
+                     fontFamily: 'inherit', textDecoration: 'underline' }}
+          >
+            View in Inbox →
+          </button>
+          <button
+            onClick={dismissScan}
+            style={{ marginLeft: 'auto', fontSize: 11, color: c.green700,
+                     background: 'none', border: 'none', cursor: 'pointer',
+                     fontFamily: 'inherit' }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <div style={{ padding: "24px 32px", background: c.bg, minHeight: "100%", overflowY: "auto" }}>
 
         {/* ── Breadcrumb ──────────────────────────────────────── */}
