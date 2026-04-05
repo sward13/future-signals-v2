@@ -257,7 +257,7 @@ function ListHeader() {
 
 // ─── List row (flat single-row) ────────────────────────────────────────────────
 
-function ListRow({ input, isSeeded, isScannerSuggested, suggestedProjects, onSaveToProject, onOpen, selected, onToggle, anySelected }) {
+function ListRow({ input, isSeeded, isScannerSuggested, suggestedProjects, onSaveToProject, onAccept, onOpen, selected, onToggle, anySelected }) {
   const [hovered, setHovered] = useState(false);
   const steepled = input.steepled || [];
   const visible2 = steepled.slice(0, 2);
@@ -339,12 +339,29 @@ function ListRow({ input, isSeeded, isScannerSuggested, suggestedProjects, onSav
       {/* Date + Add to project */}
       <div style={{ width: COL.actions, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 10, color: c.hint }}>{formatDate(input.created_at)}</span>
-        <button
-          onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }}
-          style={{ ...btnSm, fontSize: 10, padding: "3px 8px", whiteSpace: "nowrap" }}
-        >
-          Add to project →
-        </button>
+        {isScannerSuggested && suggestedProjects.length > 0 ? (
+          <div style={{ display: "flex", gap: 5 }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onAccept(); }}
+              style={{ ...btnSm, fontSize: 10, padding: "3px 8px", whiteSpace: "nowrap" }}
+            >
+              Accept →
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }}
+              style={{ fontSize: 10, padding: "3px 8px", borderRadius: 7, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+            >
+              Add to project →
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }}
+            style={{ ...btnSm, fontSize: 10, padding: "3px 8px", whiteSpace: "nowrap" }}
+          >
+            Add to project →
+          </button>
+        )}
       </div>
     </div>
   );
@@ -352,7 +369,7 @@ function ListRow({ input, isSeeded, isScannerSuggested, suggestedProjects, onSav
 
 // ─── Compact card (2-col grid) ────────────────────────────────────────────────
 
-function CompactCard({ input, isSeeded, isScannerSuggested, suggestedProjects, projects, savedProjectId, onSaveToProject, onOpen, selected, onToggle, anySelected }) {
+function CompactCard({ input, isSeeded, isScannerSuggested, suggestedProjects, projects, savedProjectId, onSaveToProject, onAccept, onOpen, selected, onToggle, anySelected }) {
   const [hovered, setHovered] = useState(false);
   const project = savedProjectId ? projects.find((p) => p.id === savedProjectId) : null;
   const steepled = input.steepled || [];
@@ -425,6 +442,21 @@ function CompactCard({ input, isSeeded, isScannerSuggested, suggestedProjects, p
       {isSeeded && !anySelected && (
         savedProjectId ? (
           <span style={{ fontSize: 10, color: c.green700 }}>✓ {project?.name || "Saved"}</span>
+        ) : isScannerSuggested && suggestedProjects.length > 0 ? (
+          <div style={{ display: "flex", gap: 5 }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onAccept(); }}
+              style={{ fontSize: 10, padding: "3px 10px", borderRadius: 5, background: c.ink, color: c.white, border: "none", cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Accept →
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }}
+              style={{ fontSize: 10, padding: "3px 10px", borderRadius: 5, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Add to project →
+            </button>
+          </div>
         ) : (
           <button
             onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }}
@@ -444,7 +476,7 @@ function CompactCard({ input, isSeeded, isScannerSuggested, suggestedProjects, p
 
 // ─── Full card (Card view) ────────────────────────────────────────────────────
 
-function FullCard({ input, isSeeded, isScannerSuggested, suggestedProjects, projects, savedProjectId, onSaveToProject, onDismiss, onOpen, selected, onToggle, anySelected }) {
+function FullCard({ input, isSeeded, isScannerSuggested, suggestedProjects, projects, savedProjectId, onSaveToProject, onAccept, onDismiss, onOpen, selected, onToggle, anySelected }) {
   const [hovered, setHovered] = useState(false);
   const project = savedProjectId ? projects.find((p) => p.id === savedProjectId) : null;
 
@@ -522,11 +554,20 @@ function FullCard({ input, isSeeded, isScannerSuggested, suggestedProjects, proj
                     <button onClick={(e) => { e.stopPropagation(); onDismiss(input.id); }} style={{ ...btnG, fontSize: 11, padding: "4px 8px", color: c.hint }}>
                       Dismiss
                     </button>
-                    {projects.length > 0 && (
+                    {projects.length > 0 && (isScannerSuggested && suggestedProjects.length > 0 ? (
+                      <>
+                        <button onClick={(e) => { e.stopPropagation(); onAccept(); }} style={{ padding: "4px 12px", borderRadius: 7, background: c.ink, color: c.white, border: "none", fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
+                          Accept →
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }} style={{ padding: "4px 12px", borderRadius: 7, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
+                          Add to project →
+                        </button>
+                      </>
+                    ) : (
                       <button onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }} style={{ padding: "4px 12px", borderRadius: 7, background: c.ink, color: c.white, border: "none", fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
                         Save to project
                       </button>
-                    )}
+                    ))}
                   </>
                 )
               ) : (
@@ -630,6 +671,14 @@ export default function Inbox({ appState }) {
 
   const hasActiveSearch = search.length > 0 || activeFilterCount > 0;
 
+  const handleAccept = (inp) => {
+    const topProject = inp.metadata?.suggested_projects?.[0];
+    if (!topProject) return;
+    saveInputToProject(inp.id, topProject.id);
+    setSavedToProject((prev) => ({ ...prev, [inp.id]: topProject.id }));
+    showToast(`Added to "${topProject.name}"`);
+  };
+
   // Shared item props builder
   const itemProps = (inp) => ({
     key: inp.id,
@@ -640,6 +689,7 @@ export default function Inbox({ appState }) {
     projects,
     savedProjectId: savedToProject[inp.id],
     onSaveToProject: (id) => setSavingInputId(id),
+    onAccept: () => handleAccept(inp),
     onDismiss: handleDismiss,
     onOpen: () => openInputDetail(inp.id),
     selected: selectedInputIds.includes(inp.id),
