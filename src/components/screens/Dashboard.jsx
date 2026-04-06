@@ -62,16 +62,17 @@ function ProjectPickerPopover({ projects, onSelect, onClose, onCreateProject }) 
 
 // ─── Project card ─────────────────────────────────────────────────────────────
 
-function ProjectCard({ project, inputCount, clusterCount, scenarioCount, onClick }) {
+function ProjectCard({ project, inputCount, clusterCount, scenarioCount, analysisCount, onClick }) {
   const [hovered, setHovered] = useState(false);
 
   const q = project.question || null;
   const displayQ = q ? (q.length > 100 ? q.slice(0, 100) + "…" : q) : null;
 
   const cta =
-    inputCount   === 0 ? "Add an input →" :
-    clusterCount === 0 ? "Build a cluster →" :
+    inputCount    === 0 ? "Add an input →" :
+    clusterCount  === 0 ? "Build a cluster →" :
     scenarioCount === 0 ? "Map a system →" :
+    analysisCount === 0 ? "Start analysis →" :
     "Open project →";
 
   const nodeColor  = (n) => n > 0 ? c.ink : "rgba(0,0,0,0.12)";
@@ -146,6 +147,13 @@ function ProjectCard({ project, inputCount, clusterCount, scenarioCount, onClick
           <div style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: nodeColor(scenarioCount) }} />
           <span style={{ fontSize: 11, color: labelColor(scenarioCount), whiteSpace: "nowrap" }}>{scenarioCount} System maps</span>
         </div>
+        {/* Line 3 */}
+        <div style={{ flex: 1, height: 1, background: lineColor(analysisCount), margin: "0 8px" }} />
+        {/* Analysis node */}
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: nodeColor(analysisCount) }} />
+          <span style={{ fontSize: 11, color: labelColor(analysisCount), whiteSpace: "nowrap" }}>{analysisCount} Analysis</span>
+        </div>
       </div>
 
       {/* Footer */}
@@ -208,7 +216,7 @@ function ViewToggle({ value, onChange }) {
  */
 export default function Dashboard({ appState }) {
   const {
-    inputs, clusters, scenarios, projects,
+    inputs, clusters, scenarios, projects, analyses, canvasNodes,
     setActiveScreen, openProjectModal, openProject,
     addInput, saveInputToProject, openInputDetail, showToast,
   } = appState;
@@ -299,14 +307,16 @@ export default function Dashboard({ appState }) {
             {projects.map((p) => {
               const pInputs    = inputs.filter((i)   => i.project_id  === p.id);
               const pClusters  = clusters.filter((cl) => cl.project_id === p.id);
-              const pScenarios = scenarios.filter((s)  => s.project_id  === p.id);
+              const hasCanvas  = canvasNodes.some((n) => n.projectId   === p.id);
+              const pAnalyses  = analyses.filter((a)  => a.project_id  === p.id);
               return (
                 <ProjectCard
                   key={p.id}
                   project={p}
                   inputCount={pInputs.length}
                   clusterCount={pClusters.length}
-                  scenarioCount={pScenarios.length}
+                  scenarioCount={hasCanvas ? 1 : 0}
+                  analysisCount={pAnalyses.length}
                   onClick={() => openProject(p.id)}
                 />
               );
@@ -325,15 +335,17 @@ export default function Dashboard({ appState }) {
                   <div style={{ width: 80, textAlign: "right", ...cell }}>Inputs</div>
                   <div style={{ width: 80, textAlign: "right", ...cell }}>Clusters</div>
                   <div style={{ width: 80, textAlign: "right", ...cell }}>System Map</div>
+                  <div style={{ width: 80, textAlign: "right", ...cell }}>Analysis</div>
                   <div style={{ width: 32, ...cell }} />
                 </div>
               );
             })()}
             {/* Data rows */}
             {projects.map((p) => {
-              const pInputs    = inputs.filter((i)   => i.project_id  === p.id);
-              const pClusters  = clusters.filter((cl) => cl.project_id === p.id);
-              const pScenarios = scenarios.filter((s)  => s.project_id  === p.id);
+              const pInputs   = inputs.filter((i)   => i.project_id === p.id);
+              const pClusters = clusters.filter((cl) => cl.project_id === p.id);
+              const hasCanvas = canvasNodes.some((n) => n.projectId  === p.id);
+              const pAnalyses = analyses.filter((a)  => a.project_id === p.id);
               return (
                 <div
                   key={p.id}
@@ -355,7 +367,10 @@ export default function Dashboard({ appState }) {
                     {pClusters.length} <span style={{ color: c.hint }}>clusters</span>
                   </div>
                   <div style={{ width: 80, flexShrink: 0, textAlign: "right", fontSize: 11, color: c.muted }}>
-                    {pScenarios.length} <span style={{ color: c.hint }}>systems</span>
+                    {hasCanvas ? 1 : 0} <span style={{ color: c.hint }}>systems</span>
+                  </div>
+                  <div style={{ width: 80, flexShrink: 0, textAlign: "right", fontSize: 11, color: c.muted }}>
+                    {pAnalyses.length} <span style={{ color: c.hint }}>analysis</span>
                   </div>
                   <div style={{ width: 32, flexShrink: 0, textAlign: "right", fontSize: 12, color: c.hint }}>→</div>
                 </div>
