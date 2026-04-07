@@ -476,7 +476,7 @@ function FullCard({ input, isScannerSuggested, suggestedProjects, projects, save
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
-          {input.subtype && (
+          {!isScannerSuggested && input.subtype && (
             <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#f0f0ee", color: c.faint }}>
               {input.subtype}
             </span>
@@ -523,25 +523,20 @@ function FullCard({ input, isScannerSuggested, suggestedProjects, projects, save
                 </span>
               ) : isScannerSuggested && suggestedProjects.length > 0 ? (
                 <>
-                  <button onClick={(e) => { e.stopPropagation(); onDismissSuggested(); }} style={{ ...btnG, fontSize: 11, padding: "4px 8px", color: c.hint }}>
-                    Dismiss
-                  </button>
                   <button onClick={(e) => { e.stopPropagation(); onAccept(); }} style={{ padding: "4px 12px", borderRadius: 7, background: c.ink, color: c.white, border: "none", fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
                     Accept →
                   </button>
                   <button onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }} style={{ padding: "4px 12px", borderRadius: 7, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
                     Add to project →
                   </button>
-                </>
-              ) : (
-                <>
-                  <button onClick={(e) => { e.stopPropagation(); onDismiss(input.id); }} style={{ ...btnG, fontSize: 11, padding: "4px 8px", color: c.hint }}>
+                  <button onClick={(e) => { e.stopPropagation(); onDismissSuggested(); }} style={{ ...btnG, fontSize: 11, padding: "4px 8px", color: c.hint }}>
                     Dismiss
                   </button>
-                  <button onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }} style={{ padding: "4px 12px", borderRadius: 7, background: c.ink, color: c.white, border: "none", fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
-                    Add to project →
-                  </button>
                 </>
+              ) : (
+                <button onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }} style={{ padding: "4px 12px", borderRadius: 7, background: c.ink, color: c.white, border: "none", fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
+                  Add to project →
+                </button>
               )}
             </div>
           )}
