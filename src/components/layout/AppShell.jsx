@@ -29,7 +29,7 @@ export function AppShell({ appState, children, scroll = true, onSignOut }) {
 
   // Clear active project when navigating to workspace-level screens
   const handleNavigation = (screen) => {
-    if (screen === "dashboard" || screen === "inbox" || screen === "projects") {
+    if (screen === "dashboard" || screen === "inbox" || screen === "projects" || screen === "settings") {
       setActiveProjectId(null);
     }
     setActiveScreen(screen);

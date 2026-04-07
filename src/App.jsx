@@ -21,6 +21,7 @@ import ScenarioCanvas from "./components/screens/ScenarioCanvas.jsx";
 import NarrativeCanvas from "./components/screens/NarrativeCanvas.jsx";
 import ScenarioNarrativeCanvas from "./components/screens/ScenarioNarrativeCanvas.jsx";
 import SystemAnalysisCanvas from "./components/screens/SystemAnalysisCanvas.jsx";
+import AccountSettings from "./components/screens/AccountSettings.jsx";
 
 function ActiveScreen({ appState }) {
   switch (appState.activeScreen) {
@@ -33,6 +34,7 @@ function ActiveScreen({ appState }) {
     case "narrative": return <NarrativeCanvas appState={appState} />;
     case "scenario_canvas": return <ScenarioNarrativeCanvas appState={appState} />;
     case "analysis": return <SystemAnalysisCanvas appState={appState} />;
+    case "settings": return <AccountSettings appState={appState} />;
     default: return <Inbox appState={appState} />;
   }
 }

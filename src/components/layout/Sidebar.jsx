@@ -229,25 +229,32 @@ export function Sidebar({
 
       {/* User footer */}
       <div style={{ padding: "10px 16px", borderTop: `1px solid ${c.border}` }}>
-        <div style={{ fontSize: 11, color: c.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {user?.email || "user@example.com"}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 1 }}>
-          <div style={{ fontSize: 10, color: c.hint }}>
-            {user?.level === "advanced" ? "Advanced" : user?.level === "intermediate" ? "Intermediate" : "Beginner"} · Pro plan
+        <button
+          onClick={() => setActiveScreen("settings")}
+          style={{
+            display: "block", width: "100%", textAlign: "left",
+            background: "none", border: "none", cursor: "pointer", padding: 0,
+            fontFamily: "inherit",
+          }}
+        >
+          <div style={{ fontSize: 11, color: activeScreen === "settings" ? c.ink : c.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: activeScreen === "settings" ? 500 : 400 }}>
+            {user?.email || "user@example.com"}
           </div>
-          {onSignOut && (
-            <button
-              onClick={onSignOut}
-              style={{
-                fontSize: 9, color: c.hint, background: "none", border: "none",
-                cursor: "pointer", fontFamily: "inherit", padding: 0,
-              }}
-            >
-              Sign out
-            </button>
-          )}
-        </div>
+          <div style={{ fontSize: 10, color: c.hint, marginTop: 1 }}>
+            {user?.level === "advanced" ? "Advanced" : user?.level === "intermediate" ? "Intermediate" : "Beginner"} · Account settings
+          </div>
+        </button>
+        {onSignOut && (
+          <button
+            onClick={onSignOut}
+            style={{
+              fontSize: 9, color: c.hint, background: "none", border: "none",
+              cursor: "pointer", fontFamily: "inherit", padding: 0, marginTop: 4,
+            }}
+          >
+            Sign out
+          </button>
+        )}
       </div>
     </div>
   );
