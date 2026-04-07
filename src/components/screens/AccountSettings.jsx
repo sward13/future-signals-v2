@@ -3,7 +3,7 @@
  * Profile and security sections save independently.
  * @param {{ appState: object }} props
  */
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { c, inp, btnSm, btnSec, btnG, fl, fh } from "../../styles/tokens.js";
 
@@ -66,6 +66,15 @@ function SectionCard({ children }) {
 export default function AccountSettings({ appState }) {
   const { user } = appState;
 
+  // ── Timeout cleanup ─────────────────────────────────────────────────────────
+
+  const profileTimerRef  = useRef(null);
+  const passwordTimerRef = useRef(null);
+  useEffect(() => () => {
+    clearTimeout(profileTimerRef.current);
+    clearTimeout(passwordTimerRef.current);
+  }, []);
+
   // ── Profile section ─────────────────────────────────────────────────────────
 
   const [profileEditing,        setProfileEditing]        = useState(false);
@@ -112,7 +121,7 @@ export default function AccountSettings({ appState }) {
         setProfileEditing(false);
       } else {
         setProfileSuccess(true);
-        setTimeout(() => { setProfileSuccess(false); setProfileEditing(false); }, 2000);
+        profileTimerRef.current = setTimeout(() => { setProfileSuccess(false); setProfileEditing(false); }, 2000);
       }
     } catch (err) {
       const msg = err.message || "Failed to update profile.";
@@ -161,7 +170,6 @@ export default function AccountSettings({ appState }) {
       });
       if (authError) {
         setPasswordErrors({ currentPassword: "Current password is incorrect." });
-        setPasswordSaving(false);
         return;
       }
 
@@ -170,7 +178,7 @@ export default function AccountSettings({ appState }) {
 
       setPasswordSuccess(true);
       setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
-      setTimeout(() => { setPasswordSuccess(false); setPasswordOpen(false); }, 2000);
+      passwordTimerRef.current = setTimeout(() => { setPasswordSuccess(false); setPasswordOpen(false); }, 2000);
     } catch (err) {
       setPasswordErrors({ general: err.message || "Failed to update password." });
     } finally {
