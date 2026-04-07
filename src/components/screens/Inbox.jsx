@@ -305,7 +305,7 @@ function ListRow({ input, isScannerSuggested, suggestedProjects, onSaveToProject
         </div>
         {isScannerSuggested && suggestedProjects.length > 0 && (
           <div style={{ fontSize: 11, color: c.hint, marginTop: 2 }}>
-            Suggested for: {suggestedProjects.slice(0, 2).map((p) => p.name).join(", ")}
+            {suggestedProjects.slice(0, 2).map((p) => p.name).join(", ")}
           </div>
         )}
       </div>
@@ -389,7 +389,7 @@ function CompactCard({ input, isSeeded, isScannerSuggested, suggestedProjects, p
 
       {isScannerSuggested && suggestedProjects.length > 0 && (
         <div style={{ fontSize: 11, color: c.hint, marginBottom: 5 }}>
-          Suggested for: {suggestedProjects.slice(0, 2).map((p) => p.name).join(", ")}
+          {suggestedProjects.slice(0, 2).map((p) => p.name).join(", ")}
         </div>
       )}
 
@@ -493,7 +493,7 @@ function FullCard({ input, isScannerSuggested, suggestedProjects, projects, save
 
         {isScannerSuggested && suggestedProjects.length > 0 && (
           <div style={{ fontSize: 11, color: c.hint, marginBottom: 8 }}>
-            Suggested for: {suggestedProjects.slice(0, 2).map((p) => p.name).join(", ")}
+            {suggestedProjects.slice(0, 2).map((p) => p.name).join(", ")}
           </div>
         )}
 
