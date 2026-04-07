@@ -325,7 +325,7 @@ export function NewProjectModal({ open, onClose, onSave }) {
     setNameError(false); setDomainError(false);
     setStartYear(CURRENT_YEAR); setEndYear(DEFAULT_END_YEAR);
     setH1Pct(0.22); setH2Pct(0.58);
-    setUnit(""); setGeo(""); setAssumptions(""); setStakeholders("");
+    setFocus(""); setGeo(""); setAssumptions(""); setStakeholders("");
   };
 
   const handleClose = () => { resetForm(); onClose(); };
