@@ -6,7 +6,7 @@
 import { Sidebar } from "./Sidebar.jsx";
 
 export function AppShell({ appState, children, scroll = true, onSignOut }) {
-  const { activeScreen, setActiveScreen, setActiveProjectId, user, inputs, clusters, scenarios, projects, activeProjectId, openProjectModal } = appState;
+  const { activeScreen, setActiveScreen, setActiveProjectId, user, inputs, clusters, scenarios, projects, activeProjectId, openProjectModal, analyses, canvasNodes } = appState;
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
   const inboxCount = inputs.filter((i) =>
@@ -18,7 +18,9 @@ export function AppShell({ appState, children, scroll = true, onSignOut }) {
   const clusterCount = activeProjectId
     ? clusters.filter((cl) => cl.project_id === activeProjectId).length : 0;
   const scenarioCount = activeProjectId
-    ? scenarios.filter((s) => s.project_id === activeProjectId).length : 0;
+    ? (canvasNodes.some((n) => n.projectId === activeProjectId) ? 1 : 0) : 0;
+  const analysisCount = activeProjectId
+    ? analyses.filter((a) => a.project_id === activeProjectId).length : 0;
 
   // Analysis nav item unlocked once the project has ≥1 system built (same condition as "N built" badge)
   const hasRelationships = activeProjectId
@@ -45,6 +47,7 @@ export function AppShell({ appState, children, scroll = true, onSignOut }) {
         projectInputCount={projectInputCount}
         clusterCount={clusterCount}
         scenarioCount={scenarioCount}
+        analysisCount={analysisCount}
         hasRelationships={hasRelationships}
         onSignOut={onSignOut}
       />

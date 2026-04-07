@@ -13,6 +13,7 @@
  *   projectInputCount: number,
  *   clusterCount: number,
  *   scenarioCount: number,
+ *   analysisCount: number,
  * }} props
  */
 import { c } from "../../styles/tokens.js";
@@ -39,6 +40,7 @@ export function Sidebar({
   projectInputCount = 0,
   clusterCount = 0,
   scenarioCount = 0,
+  analysisCount = 0,
   hasRelationships = false,
   onSignOut,
 }) {
@@ -52,6 +54,7 @@ export function Sidebar({
     project:    projectInputCount || null,
     clustering: clusterCount      || null,
     scenarios:  scenarioCount     || null,
+    analysis:   analysisCount     || null,
   };
 
   const NavButton = ({ icon, label, screen, isActive, count, indented = false }) => (
