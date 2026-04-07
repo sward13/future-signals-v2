@@ -1,7 +1,8 @@
 /**
  * Inbox screen — shows unassigned inputs (project_id === null).
+ * Two tables: My Inputs (manual) and AI Suggested (scanner).
  * Three view densities (List / Compact / Card), full-text search,
- * inline filter panel (STEEPLED / Strength / Horizon), and multi-select
+ * inline filter panel (STEEPLED / Quality / Horizon), and multi-select
  * bulk actions (add to project, dismiss).
  * @param {{ appState: object }} props
  */
@@ -24,6 +25,11 @@ const QUALITY_COLORS = {
   Confirmed:   [c.green700, c.green50, c.greenBorder],
 };
 
+const AI_PREVIEW_COUNT = 10;
+
+// Column widths for list/table layout
+const COL = { actions: 310 };
+
 function QualityPill({ value }) {
   if (!value) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
   const [col, bg, brd] = QUALITY_COLORS[value] || [c.hint, c.surfaceAlt, c.border];
@@ -39,9 +45,6 @@ function formatDate(str) {
   const d = new Date(str);
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
-
-// Column widths for list/table layout
-const COL = { curated: 32, actions: 310 };
 
 // ─── Checkbox ────────────────────────────────────────────────────────────────
 
@@ -234,6 +237,24 @@ function ProjectPickerModal({ projects, onSelect, onClose, onCreateProject }) {
   );
 }
 
+// ─── Table section header ─────────────────────────────────────────────────────
+
+function SectionHeader({ title, count }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+      <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>{title}</div>
+      {count > 0 && (
+        <span style={{
+          fontSize: 10, padding: "2px 7px", borderRadius: 10,
+          background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500,
+        }}>
+          {count}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ─── List table header ────────────────────────────────────────────────────────
 
 function ListHeader() {
@@ -246,7 +267,6 @@ function ListHeader() {
     }}>
       <div style={{ width: 15, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, ...cell }}>Title</div>
-      <div style={{ width: COL.curated, flexShrink: 0 }} />
       <div style={{ width: COL.actions, flexShrink: 0 }} />
     </div>
   );
@@ -254,7 +274,7 @@ function ListHeader() {
 
 // ─── List row (flat single-row) ────────────────────────────────────────────────
 
-function ListRow({ input, isSeeded, isScannerSuggested, suggestedProjects, onSaveToProject, onAccept, onDismissSuggested, onOpen, selected, onToggle, anySelected }) {
+function ListRow({ input, isScannerSuggested, suggestedProjects, onSaveToProject, onAccept, onDismissSuggested, onOpen, selected, onToggle, anySelected }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -275,24 +295,13 @@ function ListRow({ input, isSeeded, isScannerSuggested, suggestedProjects, onSav
         <RowCheckbox checked={selected} visible={anySelected || hovered} />
       </div>
 
-      {/* Title + AI pill + suggested projects hint */}
+      {/* Title + suggested projects hint */}
       <div style={{ flex: 1, minWidth: 0, paddingTop: 8, paddingBottom: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{
-            fontSize: 12, fontWeight: 500, color: c.ink,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
-            {input.name}
-          </div>
-          {isScannerSuggested && (
-            <span style={{
-              fontSize: 10, padding: "2px 7px", borderRadius: 10, flexShrink: 0,
-              background: c.amber50, color: c.amber700, border: `0.5px solid ${c.amberBorder}`,
-              fontWeight: 500,
-            }}>
-              AI suggested
-            </span>
-          )}
+        <div style={{
+          fontSize: 12, fontWeight: 500, color: c.ink,
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          {input.name}
         </div>
         {isScannerSuggested && suggestedProjects.length > 0 && (
           <div style={{ fontSize: 11, color: c.hint, marginTop: 2 }}>
@@ -301,14 +310,7 @@ function ListRow({ input, isSeeded, isScannerSuggested, suggestedProjects, onSav
         )}
       </div>
 
-      {/* Curated indicator */}
-      <div style={{ width: COL.curated, flexShrink: 0, textAlign: "center" }}>
-        {isSeeded && (
-          <span title="Surfaced by Future Signals" style={{ fontSize: 11, color: c.hint }}>✦</span>
-        )}
-      </div>
-
-      {/* Date + Add to project */}
+      {/* Date + actions */}
       <div style={{ width: COL.actions, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 10, color: c.hint }}>{formatDate(input.created_at)}</span>
         {isScannerSuggested && suggestedProjects.length > 0 ? (
@@ -370,12 +372,8 @@ function CompactCard({ input, isSeeded, isScannerSuggested, suggestedProjects, p
             <RowCheckbox checked={selected} visible={anySelected || hovered} />
           </div>
           <QualityPill value={input.signal_quality} />
-          {isScannerSuggested
-            ? <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.amber50, color: c.amber700, border: `0.5px solid ${c.amberBorder}`, fontWeight: 500 }}>AI suggested</span>
-            : isSeeded && <span style={{ fontSize: 9, color: c.amber700, background: c.amber50, padding: "1px 5px", borderRadius: 4 }}>Curated</span>
-          }
         </div>
-        <span style={{ fontSize: 10, color: c.hint }}>{input.created_at}</span>
+        <span style={{ fontSize: 10, color: c.hint }}>{formatDate(input.created_at)}</span>
       </div>
 
       {/* Title */}
@@ -406,7 +404,7 @@ function CompactCard({ input, isSeeded, isScannerSuggested, suggestedProjects, p
       )}
 
       {/* Tags */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4, marginBottom: isSeeded && !savedProjectId ? 8 : 0 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4, marginBottom: 8 }}>
         {steepled.slice(0, 3).map((t) => (
           <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: "#f0f0ee", color: c.muted }}>
             {STEEPLED_ABB[t] || t}
@@ -416,8 +414,8 @@ function CompactCard({ input, isSeeded, isScannerSuggested, suggestedProjects, p
         <HorizTag h={input.horizon} />
       </div>
 
-      {/* Save action (seeded) */}
-      {isSeeded && !anySelected && (
+      {/* Actions */}
+      {!anySelected && (
         savedProjectId ? (
           <span style={{ fontSize: 10, color: c.green700 }}>✓ {project?.name || "Saved"}</span>
         ) : isScannerSuggested && suggestedProjects.length > 0 ? (
@@ -444,13 +442,9 @@ function CompactCard({ input, isSeeded, isScannerSuggested, suggestedProjects, p
         ) : (
           <button
             onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }}
-            style={{
-              fontSize: 10, padding: "3px 10px", borderRadius: 5,
-              background: c.ink, color: c.white, border: "none",
-              cursor: "pointer", fontFamily: "inherit",
-            }}
+            style={{ fontSize: 10, padding: "3px 10px", borderRadius: 5, background: c.ink, color: c.white, border: "none", cursor: "pointer", fontFamily: "inherit" }}
           >
-            Save to project
+            Add to project →
           </button>
         )
       )}
@@ -460,7 +454,7 @@ function CompactCard({ input, isSeeded, isScannerSuggested, suggestedProjects, p
 
 // ─── Full card (Card view) ────────────────────────────────────────────────────
 
-function FullCard({ input, isSeeded, isScannerSuggested, suggestedProjects, projects, savedProjectId, onSaveToProject, onAccept, onDismissSuggested, onDismiss, onOpen, selected, onToggle, anySelected }) {
+function FullCard({ input, isScannerSuggested, suggestedProjects, projects, savedProjectId, onSaveToProject, onAccept, onDismissSuggested, onDismiss, onOpen, selected, onToggle, anySelected }) {
   const [hovered, setHovered] = useState(false);
   const project = savedProjectId ? projects.find((p) => p.id === savedProjectId) : null;
 
@@ -470,7 +464,7 @@ function FullCard({ input, isSeeded, isScannerSuggested, suggestedProjects, proj
       onMouseLeave={() => setHovered(false)}
       style={{
         background: c.white,
-        border: `1px solid ${selected ? c.borderMid : isSeeded && savedProjectId ? c.greenBorder : c.border}`,
+        border: `1px solid ${selected ? c.borderMid : c.border}`,
         borderRadius: 10, padding: "14px 16px",
         transition: "border-color 0.15s",
         display: "flex", alignItems: "flex-start", gap: 10,
@@ -482,16 +476,11 @@ function FullCard({ input, isSeeded, isScannerSuggested, suggestedProjects, proj
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
-          {isScannerSuggested
-            ? <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.amber50, color: c.amber700, border: `0.5px solid ${c.amberBorder}`, fontWeight: 500 }}>AI suggested</span>
-            : isSeeded
-            ? <span style={{ fontSize: 10, color: c.hint }}>Curated · {input.domain}</span>
-            : input.subtype && (
-              <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#f0f0ee", color: c.faint }}>
-                {input.subtype}
-              </span>
-            )
-          }
+          {input.subtype && (
+            <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#f0f0ee", color: c.faint }}>
+              {input.subtype}
+            </span>
+          )}
           <span style={{ marginLeft: "auto" }}><QualityPill value={input.signal_quality} /></span>
         </div>
 
@@ -524,45 +513,35 @@ function FullCard({ input, isSeeded, isScannerSuggested, suggestedProjects, proj
             </span>
           ))}
           <HorizTag h={input.horizon} />
-          {!isSeeded && <span style={{ fontSize: 10, color: c.hint }}>{input.created_at}</span>}
+          <span style={{ fontSize: 10, color: c.hint }}>{formatDate(input.created_at)}</span>
 
           {!anySelected && (
             <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
-              {isSeeded ? (
-                savedProjectId ? (
-                  <span style={{ fontSize: 11, color: c.green700, background: c.green50, border: `1px solid ${c.greenBorder}`, borderRadius: 6, padding: "3px 9px" }}>
-                    ✓ Saved to {project?.name || "project"}
-                  </span>
-                ) : (
-                  <>
-                    <button onClick={(e) => { e.stopPropagation(); onDismiss(input.id); }} style={{ ...btnG, fontSize: 11, padding: "4px 8px", color: c.hint }}>
-                      Dismiss
-                    </button>
-                    {projects.length > 0 && (isScannerSuggested && suggestedProjects.length > 0 ? (
-                      <>
-                        <button onClick={(e) => { e.stopPropagation(); onAccept(); }} style={{ padding: "4px 12px", borderRadius: 7, background: c.ink, color: c.white, border: "none", fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
-                          Accept →
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }} style={{ padding: "4px 12px", borderRadius: 7, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
-                          Add to project →
-                        </button>
-                      </>
-                    ) : (
-                      <button onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }} style={{ padding: "4px 12px", borderRadius: 7, background: c.ink, color: c.white, border: "none", fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
-                        Save to project
-                      </button>
-                    ))}
-                    {isScannerSuggested && (
-                      <button onClick={(e) => { e.stopPropagation(); onDismissSuggested(); }} style={{ ...btnG, fontSize: 11, padding: "4px 8px", color: c.hint }}>
-                        Dismiss
-                      </button>
-                    )}
-                  </>
-                )
+              {savedProjectId ? (
+                <span style={{ fontSize: 11, color: c.green700, background: c.green50, border: `1px solid ${c.greenBorder}`, borderRadius: 6, padding: "3px 9px" }}>
+                  ✓ Saved to {project?.name || "project"}
+                </span>
+              ) : isScannerSuggested && suggestedProjects.length > 0 ? (
+                <>
+                  <button onClick={(e) => { e.stopPropagation(); onDismissSuggested(); }} style={{ ...btnG, fontSize: 11, padding: "4px 8px", color: c.hint }}>
+                    Dismiss
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); onAccept(); }} style={{ padding: "4px 12px", borderRadius: 7, background: c.ink, color: c.white, border: "none", fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
+                    Accept →
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }} style={{ padding: "4px 12px", borderRadius: 7, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
+                    Add to project →
+                  </button>
+                </>
               ) : (
-                <button onClick={(e) => { e.stopPropagation(); onDismiss(input.id); }} style={{ ...btnG, fontSize: 11, padding: "4px 8px", color: c.hint }}>
-                  Dismiss
-                </button>
+                <>
+                  <button onClick={(e) => { e.stopPropagation(); onDismiss(input.id); }} style={{ ...btnG, fontSize: 11, padding: "4px 8px", color: c.hint }}>
+                    Dismiss
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }} style={{ padding: "4px 12px", borderRadius: 7, background: c.ink, color: c.white, border: "none", fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
+                    Add to project →
+                  </button>
+                </>
               )}
             </div>
           )}
@@ -570,6 +549,23 @@ function FullCard({ input, isSeeded, isScannerSuggested, suggestedProjects, proj
       </div>
     </div>
   );
+}
+
+// ─── Shared filter function ────────────────────────────────────────────────────
+
+function applyFilters(items, search, filters) {
+  return items.filter((inp) => {
+    if (search) {
+      const q = search.toLowerCase();
+      const inTitle = (inp.name || "").toLowerCase().includes(q);
+      const inDesc  = (inp.description || inp.desc || "").toLowerCase().includes(q);
+      if (!inTitle && !inDesc) return false;
+    }
+    if (filters.steepled.length > 0 && !filters.steepled.some((s) => (inp.steepled || []).includes(s))) return false;
+    if (filters.quality.length  > 0 && !filters.quality.includes(inp.signal_quality))                   return false;
+    if (filters.horizon.length  > 0 && !filters.horizon.includes(inp.horizon))                          return false;
+    return true;
+  });
 }
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
@@ -591,43 +587,41 @@ export default function Inbox({ appState }) {
   const [savingInputId,     setSavingInputId]     = useState(null);
   const [selectedInputIds,  setSelectedInputIds]  = useState([]);
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
-  const [aiTab,             setAiTab]             = useState("all");
+  const [aiExpanded,        setAiExpanded]        = useState(false);
 
   const anySelected = selectedInputIds.length > 0;
 
-  // Derive inbox inputs and apply search + filters
-  const inboxInputs = useMemo(() =>
+  // All inbox inputs (base list — used for total count + selection reference)
+  const allInboxInputs = useMemo(() =>
     [...inputs.filter((i) =>
       i.project_id === null &&
-      !(i.is_seeded && i.metadata?.source === 'scanner' && i.metadata?.dismissed)
+      !(i.is_seeded && i.metadata?.source === "scanner" && i.metadata?.dismissed)
     )].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
     [inputs]
   );
 
-  const activeFilterCount = filters.steepled.length + filters.quality.length + filters.horizon.length;
-
-  const aiSuggestedCount = useMemo(
-    () => inboxInputs.filter((i) => i.is_seeded && i.metadata?.source === "scanner").length,
-    [inboxInputs]
+  // Split into manual vs AI suggested
+  const manualInputs = useMemo(
+    () => allInboxInputs.filter((i) => !(i.is_seeded && i.metadata?.source === "scanner")),
+    [allInboxInputs]
+  );
+  const aiInputs = useMemo(
+    () => allInboxInputs.filter((i) => i.is_seeded && i.metadata?.source === "scanner"),
+    [allInboxInputs]
   );
 
-  const filteredInputs = useMemo(() => {
-    return inboxInputs.filter((inp) => {
-      if (aiTab === "ai" && !(inp.is_seeded && inp.metadata?.source === "scanner")) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        const inTitle = (inp.name || "").toLowerCase().includes(q);
-        const inDesc  = (inp.description || inp.desc || "").toLowerCase().includes(q);
-        if (!inTitle && !inDesc) return false;
-      }
-      if (filters.steepled.length > 0 && !filters.steepled.some((s) => (inp.steepled || []).includes(s))) return false;
-      if (filters.quality.length  > 0 && !filters.quality.includes(inp.signal_quality))                  return false;
-      if (filters.horizon.length  > 0 && !filters.horizon.includes(inp.horizon))                         return false;
-      return true;
-    });
-  }, [inboxInputs, search, filters, aiTab]);
+  const activeFilterCount = filters.steepled.length + filters.quality.length + filters.horizon.length;
+  const hasActiveSearch = search.length > 0 || activeFilterCount > 0;
 
-  // Handlers
+  // Apply search + filters independently
+  const filteredManual = useMemo(() => applyFilters(manualInputs, search, filters), [manualInputs, search, filters]);
+  const filteredAI     = useMemo(() => applyFilters(aiInputs, search, filters),     [aiInputs, search, filters]);
+
+  // AI items to display (collapsed = first 10)
+  const visibleAI = aiExpanded ? filteredAI : filteredAI.slice(0, AI_PREVIEW_COUNT);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
   const handleSave = (fields) => {
     addInput(fields);
     showToast("Input saved to Inbox");
@@ -658,7 +652,7 @@ export default function Inbox({ appState }) {
   };
 
   const handleBulkAccept = () => {
-    const selectedInputs = inboxInputs.filter((i) => selectedInputIds.includes(i.id));
+    const selectedInputs = allInboxInputs.filter((i) => selectedInputIds.includes(i.id));
     selectedInputs.forEach((inp) => {
       const topProject = inp.metadata?.suggested_projects?.[0];
       if (!topProject) return;
@@ -671,9 +665,9 @@ export default function Inbox({ appState }) {
   };
 
   const handleBulkDismiss = () => {
-    const selectedInputs = inboxInputs.filter((i) => selectedInputIds.includes(i.id));
+    const selectedInputs = allInboxInputs.filter((i) => selectedInputIds.includes(i.id));
     selectedInputs.forEach((inp) => {
-      if (inp.is_seeded && inp.metadata?.source === 'scanner') {
+      if (inp.is_seeded && inp.metadata?.source === "scanner") {
         dismissSuggestedInput(inp);
       } else {
         dismissInput(inp.id);
@@ -685,8 +679,6 @@ export default function Inbox({ appState }) {
   };
 
   const clearFilters = () => setFilters(EMPTY_FILTERS);
-
-  const hasActiveSearch = search.length > 0 || activeFilterCount > 0;
 
   const handleAccept = (inp) => {
     const topProject = inp.metadata?.suggested_projects?.[0];
@@ -715,6 +707,33 @@ export default function Inbox({ appState }) {
     anySelected,
   });
 
+  // ── Render helpers ────────────────────────────────────────────────────────
+
+  const renderList = (items) => (
+    <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden" }}>
+      <ListHeader />
+      {items.map((inp) => <ListRow {...itemProps(inp)} />)}
+    </div>
+  );
+
+  const renderCompact = (items) => (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+      {items.map((inp) => <CompactCard {...itemProps(inp)} />)}
+    </div>
+  );
+
+  const renderCards = (items) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {items.map((inp) => <FullCard {...itemProps(inp)} />)}
+    </div>
+  );
+
+  const renderItems = (items) => {
+    if (viewMode === "list")    return renderList(items);
+    if (viewMode === "compact") return renderCompact(items);
+    return renderCards(items);
+  };
+
   return (
     <>
       <div style={{ padding: "24px 32px", background: c.bg, minHeight: "100%" }}>
@@ -727,9 +746,9 @@ export default function Inbox({ appState }) {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Inbox</div>
-              {inboxInputs.length > 0 && (
+              {allInboxInputs.length > 0 && (
                 <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500 }}>
-                  {inboxInputs.length}
+                  {allInboxInputs.length}
                 </span>
               )}
             </div>
@@ -763,29 +782,8 @@ export default function Inbox({ appState }) {
           </div>
         </div>
 
-        {/* ── AI suggested / All tabs ──────────────────────────── */}
-        {aiSuggestedCount > 0 && (
-          <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
-            {[["all", "All"], ["ai", `AI suggested · ${aiSuggestedCount}`]].map(([val, label]) => (
-              <button
-                key={val}
-                onClick={() => setAiTab(val)}
-                style={{
-                  padding: "4px 12px", borderRadius: 10, fontSize: 11,
-                  border: `1px solid ${aiTab === val ? c.ink : c.border}`,
-                  background: aiTab === val ? c.ink : c.white,
-                  color: aiTab === val ? c.white : c.muted,
-                  cursor: "pointer", fontFamily: "inherit",
-                  fontWeight: aiTab === val ? 500 : 400,
-                }}
-              >{label}</button>
-            ))}
-          </div>
-        )}
-
         {/* ── Search + Filter bar ──────────────────────────────── */}
         <div style={{ display: "flex", gap: 8, marginBottom: filtersOpen ? 10 : 16, alignItems: "center" }}>
-          {/* Search */}
           <div style={{ position: "relative", flex: 1 }}>
             <input
               value={search}
@@ -812,7 +810,6 @@ export default function Inbox({ appState }) {
             )}
           </div>
 
-          {/* Filter button */}
           <button
             onClick={() => setFiltersOpen((s) => !s)}
             style={{
@@ -839,34 +836,10 @@ export default function Inbox({ appState }) {
           <FilterPanel filters={filters} onChange={setFilters} onClear={clearFilters} activeCount={activeFilterCount} />
         )}
 
-        {/* ── Empty state ──────────────────────────────────────── */}
-        {inboxInputs.length === 0 && (
-          <EmptyState
-            icon="◎"
-            title="Your inbox is empty"
-            body="Add your first input manually, or use the Chrome extension to capture signals from the web."
-            ctaLabel="Add an input"
-            onCta={() => setDrawerOpen(true)}
-          />
-        )}
-
-        {/* ── No results ───────────────────────────────────────── */}
-        {inboxInputs.length > 0 && filteredInputs.length === 0 && (
-          <div style={{ textAlign: "center", padding: "32px 0", color: c.hint, fontSize: 13 }}>
-            No inputs match your {search ? "search" : "filters"}.{" "}
-            <button
-              onClick={() => { setSearch(""); clearFilters(); }}
-              style={{ color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
-            >
-              Clear {hasActiveSearch ? "all" : ""}
-            </button>
-          </div>
-        )}
-
         {/* ── Bulk selection action bar ────────────────────────── */}
         {anySelected && (() => {
-          const selectedInputs = inboxInputs.filter((i) => selectedInputIds.includes(i.id));
-          const allAiSuggested = selectedInputs.every((i) => i.is_seeded && i.metadata?.source === 'scanner' && (i.metadata?.suggested_projects?.length > 0));
+          const selectedInputs = allInboxInputs.filter((i) => selectedInputIds.includes(i.id));
+          const allAiSuggested = selectedInputs.every((i) => i.is_seeded && i.metadata?.source === "scanner" && (i.metadata?.suggested_projects?.length > 0));
           return (
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
@@ -905,39 +878,72 @@ export default function Inbox({ appState }) {
           );
         })()}
 
-        {/* ── List view ────────────────────────────────────────── */}
-        {viewMode === "list" && filteredInputs.length > 0 && (
-          <div style={{
-            background: c.white, border: `1px solid ${c.border}`,
-            borderRadius: 10, overflow: "hidden",
-          }}>
-            <ListHeader />
-            {filteredInputs.map((inp) => (
-              <ListRow {...itemProps(inp)} />
-            ))}
+        {/* ── My Inputs table ──────────────────────────────────── */}
+        <SectionHeader title="My Inputs" count={filteredManual.length} />
+
+        {manualInputs.length === 0 ? (
+          <div style={{ marginBottom: 36 }}>
+            <EmptyState
+              icon="◎"
+              title="No inputs yet"
+              body="Add your first input manually, or use the Chrome extension to capture signals from the web."
+              ctaLabel="Add an input"
+              onCta={() => setDrawerOpen(true)}
+            />
+          </div>
+        ) : filteredManual.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "24px 0 36px", color: c.hint, fontSize: 13 }}>
+            No inputs match your {search ? "search" : "filters"}.{" "}
+            <button
+              onClick={() => { setSearch(""); clearFilters(); }}
+              style={{ color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
+            >
+              Clear {hasActiveSearch ? "all" : ""}
+            </button>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 36 }}>
+            {renderItems(filteredManual)}
           </div>
         )}
 
-        {/* ── Compact view (2-col grid) ─────────────────────────── */}
-        {viewMode === "compact" && filteredInputs.length > 0 && (
-          <div style={{
-            display: "grid", gridTemplateColumns: "1fr 1fr",
-            gap: 8,
-          }}>
-            {filteredInputs.map((inp) => (
-              <CompactCard {...itemProps(inp)} />
-            ))}
-          </div>
+        {/* ── AI Suggested table ───────────────────────────────── */}
+        {aiInputs.length > 0 && (
+          <>
+            <SectionHeader title="AI Suggested" count={filteredAI.length} />
+
+            {filteredAI.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "24px 0", color: c.hint, fontSize: 13 }}>
+                No AI suggestions match your {search ? "search" : "filters"}.{" "}
+                <button
+                  onClick={() => { setSearch(""); clearFilters(); }}
+                  style={{ color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
+                >
+                  Clear {hasActiveSearch ? "all" : ""}
+                </button>
+              </div>
+            ) : (
+              <>
+                {renderItems(visibleAI)}
+                {!aiExpanded && filteredAI.length > AI_PREVIEW_COUNT && (
+                  <button
+                    onClick={() => setAiExpanded(true)}
+                    style={{
+                      display: "block", width: "100%", marginTop: 8,
+                      padding: "9px 0", borderRadius: 8, fontSize: 12,
+                      background: "transparent", border: `1px solid ${c.border}`,
+                      color: c.muted, cursor: "pointer", fontFamily: "inherit",
+                      textAlign: "center",
+                    }}
+                  >
+                    Show all {filteredAI.length} →
+                  </button>
+                )}
+              </>
+            )}
+          </>
         )}
 
-        {/* ── Card view (single col) ────────────────────────────── */}
-        {viewMode === "card" && filteredInputs.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {filteredInputs.map((inp) => (
-              <FullCard {...itemProps(inp)} />
-            ))}
-          </div>
-        )}
       </div>
 
       <InputDrawer
