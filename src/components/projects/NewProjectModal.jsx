@@ -300,13 +300,14 @@ function _ModeSelector_removed({ value, onChange }) {
 const CURRENT_YEAR = new Date().getFullYear();
 const DEFAULT_END_YEAR = CURRENT_YEAR + 15;
 
-export function NewProjectModal({ open, onClose, onSave }) {
+export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnabled = true }) {
   // ── Form fields ──────────────────────────────────────────────────────
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
   const [question, setQuestion] = useState("");
   const [nameError, setNameError] = useState(false);
   const [domainError, setDomainError] = useState(false);
+  const [scanningEnabled, setScanningEnabled] = useState(true);
 
   // ── Horizon slider state ─────────────────────────────────────────────
   const [startYear, setStartYear] = useState(CURRENT_YEAR);
@@ -326,6 +327,7 @@ export function NewProjectModal({ open, onClose, onSave }) {
     setStartYear(CURRENT_YEAR); setEndYear(DEFAULT_END_YEAR);
     setH1Pct(0.22); setH2Pct(0.58);
     setFocus(""); setGeo(""); setAssumptions(""); setStakeholders("");
+    setScanningEnabled(true);
   };
 
   const handleClose = () => { resetForm(); onClose(); };
@@ -354,6 +356,7 @@ export function NewProjectModal({ open, onClose, onSave }) {
       geo,
       assumptions,
       stakeholders,
+      scanning_enabled: workspaceScanningEnabled && scanningEnabled,
     });
     resetForm();
   };
@@ -535,6 +538,49 @@ export function NewProjectModal({ open, onClose, onSave }) {
               <div style={fl}>Stakeholders & audience</div>
               <div style={fh}>Who this work aims to inform.</div>
               <input style={inp} type="text" value={stakeholders} onChange={(e) => setStakeholders(e.target.value)} placeholder="e.g. Policy makers, researchers" />
+            </div>
+          </div>
+
+          {/* ── Signal Scanning ───────────────────────────────────── */}
+          <div style={{
+            marginTop: 8, padding: "14px 16px",
+            background: c.surfaceAlt, border: `1px solid ${c.border}`,
+            borderRadius: 9,
+          }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: workspaceScanningEnabled ? c.ink : c.hint, marginBottom: 2 }}>
+                  Scan for signals on this project
+                </div>
+                <div style={{ fontSize: 11, color: c.muted, lineHeight: 1.5 }}>
+                  {workspaceScanningEnabled
+                    ? "The AI scanner will surface relevant signals from curated sources into your Inbox."
+                    : "Enable scanning in Account Settings to activate."}
+                </div>
+              </div>
+              <button
+                role="switch"
+                aria-checked={workspaceScanningEnabled && scanningEnabled}
+                disabled={!workspaceScanningEnabled}
+                onClick={() => setScanningEnabled((s) => !s)}
+                style={{
+                  flexShrink: 0,
+                  width: 40, height: 22, borderRadius: 11,
+                  background: workspaceScanningEnabled && scanningEnabled ? c.ink : c.hint,
+                  border: "none",
+                  cursor: workspaceScanningEnabled ? "pointer" : "default",
+                  padding: 0, position: "relative", transition: "background 0.2s",
+                  opacity: workspaceScanningEnabled ? 1 : 0.5,
+                }}
+              >
+                <span style={{
+                  position: "absolute",
+                  top: 3,
+                  left: workspaceScanningEnabled && scanningEnabled ? 21 : 3,
+                  width: 16, height: 16, borderRadius: "50%",
+                  background: c.white, transition: "left 0.2s",
+                }} />
+              </button>
             </div>
           </div>
         </div>

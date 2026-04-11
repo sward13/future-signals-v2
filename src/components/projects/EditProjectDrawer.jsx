@@ -26,7 +26,7 @@ function parseHorizonState(project) {
   };
 }
 
-export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo }) {
+export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo, workspaceScanningEnabled = true }) {
   const initial = parseHorizonState(project);
 
   const [name, setName] = useState(project.name || "");
@@ -36,6 +36,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
   const [geo, setGeo] = useState(project.geo || "");
   const [assumptions, setAssumptions] = useState(project.assumptions || "");
   const [stakeholders, setStakeholders] = useState(project.stakeholders || "");
+  const [scanningEnabled, setScanningEnabled] = useState(project.scanning_enabled !== false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [startYear, setStartYear] = useState(initial.startYear);
   const [endYear, setEndYear] = useState(initial.endYear);
@@ -82,6 +83,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
       h2_end: h2End,
       h3_start: h2End,
       h3_end: String(endYear),
+      scanning_enabled: workspaceScanningEnabled && scanningEnabled,
     });
   };
 
@@ -218,10 +220,53 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
           </div>
 
           {/* Stakeholders */}
-          <div style={{ marginBottom: 8 }} data-field="stakeholders">
+          <div style={{ marginBottom: 14 }} data-field="stakeholders">
             <div style={fl}>Stakeholders & audience</div>
             <div style={fh}>Who this work aims to inform.</div>
             <input style={inp} type="text" value={stakeholders} onChange={(e) => setStakeholders(e.target.value)} placeholder="e.g. Policy makers, researchers" />
+          </div>
+
+          {/* Signal Scanning */}
+          <div style={{
+            padding: "14px 16px",
+            background: c.surfaceAlt, border: `1px solid ${c.border}`,
+            borderRadius: 9,
+          }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: workspaceScanningEnabled ? c.ink : c.hint, marginBottom: 2 }}>
+                  Scan for signals on this project
+                </div>
+                <div style={{ fontSize: 11, color: c.muted, lineHeight: 1.5 }}>
+                  {workspaceScanningEnabled
+                    ? "The AI scanner will surface relevant signals from curated sources into your Inbox."
+                    : "Enable scanning in Account Settings to activate."}
+                </div>
+              </div>
+              <button
+                role="switch"
+                aria-checked={workspaceScanningEnabled && scanningEnabled}
+                disabled={!workspaceScanningEnabled}
+                onClick={() => setScanningEnabled((s) => !s)}
+                style={{
+                  flexShrink: 0,
+                  width: 40, height: 22, borderRadius: 11,
+                  background: workspaceScanningEnabled && scanningEnabled ? c.ink : c.hint,
+                  border: "none",
+                  cursor: workspaceScanningEnabled ? "pointer" : "default",
+                  padding: 0, position: "relative", transition: "background 0.2s",
+                  opacity: workspaceScanningEnabled ? 1 : 0.5,
+                }}
+              >
+                <span style={{
+                  position: "absolute",
+                  top: 3,
+                  left: workspaceScanningEnabled && scanningEnabled ? 21 : 3,
+                  width: 16, height: 16, borderRadius: "50%",
+                  background: c.white, transition: "left 0.2s",
+                }} />
+              </button>
+            </div>
           </div>
         </div>
 

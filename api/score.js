@@ -51,6 +51,19 @@ export default async function handler(req, res) {
 
     if (projectsError) throw projectsError;
 
+    // Fetch workspace scanning flags for all relevant workspaces
+    const workspaceIds = [...new Set((projects || []).map(p => p.workspace_id))];
+    const { data: wsSettings } = await supabase
+      .from('workspace_settings')
+      .select('workspace_id, scanning_enabled')
+      .in('workspace_id', workspaceIds);
+
+    const disabledWorkspaces = new Set(
+      (wsSettings || [])
+        .filter(ws => ws.scanning_enabled === false)
+        .map(ws => ws.workspace_id)
+    );
+
     // Fetch all scored candidates with their source credibility
     const { data: candidates, error: candidatesError } = await supabase
       .from('candidates')
@@ -73,6 +86,11 @@ export default async function handler(req, res) {
     const candidateProjectScores = {};
 
     for (const project of projects) {
+      // Skip if workspace scanning is disabled
+      if (disabledWorkspaces.has(project.workspace_id)) continue;
+      // Skip if project-level scanning is disabled
+      if (project.scanning_enabled === false) continue;
+
       try {
         // Embed key question (or use cached embedding)
         let keyQuestionEmbedding = project.key_question_embedding;

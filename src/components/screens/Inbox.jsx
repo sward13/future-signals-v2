@@ -685,7 +685,6 @@ export default function Inbox({ appState }) {
 
   // Shared item props builder
   const itemProps = (inp) => ({
-    key: inp.id,
     input: inp,
     isSeeded: !!inp.is_seeded,
     isScannerSuggested: !!(inp.is_seeded && inp.metadata?.source === "scanner"),
@@ -707,19 +706,19 @@ export default function Inbox({ appState }) {
   const renderList = (items) => (
     <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden" }}>
       <ListHeader />
-      {items.map((inp) => <ListRow {...itemProps(inp)} />)}
+      {items.map((inp) => <ListRow key={inp.id} {...itemProps(inp)} />)}
     </div>
   );
 
   const renderCompact = (items) => (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-      {items.map((inp) => <CompactCard {...itemProps(inp)} />)}
+      {items.map((inp) => <CompactCard key={inp.id} {...itemProps(inp)} />)}
     </div>
   );
 
   const renderCards = (items) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {items.map((inp) => <FullCard {...itemProps(inp)} />)}
+      {items.map((inp) => <FullCard key={inp.id} {...itemProps(inp)} />)}
     </div>
   );
 

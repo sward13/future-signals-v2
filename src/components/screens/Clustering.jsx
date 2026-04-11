@@ -4,8 +4,9 @@
  * AI suggestions table (bottom). No tabs.
  * @param {{ appState: object }} props
  */
-import { useState, useEffect, useRef, useMemo } from "react";
-import { c, btnP, btnSm, btnSec, btnG } from "../../styles/tokens.js";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { c, btnP, btnSm, btnSec, btnG, fl, badg } from "../../styles/tokens.js";
+import { supabase } from "../../lib/supabase.js";
 import { HorizTag, SubtypeTag, Tag } from "../shared/Tag.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
@@ -61,45 +62,6 @@ function QualityPill({ value }) {
   );
 }
 
-// ─── Mock AI suggestion generator ─────────────────────────────────────────────
-
-const SUGGESTION_META = {
-  Political:     { name: "Governance & Regulatory Pressures",  subtype: "Driver",  expl: "These inputs converge on political and governance dynamics. Together they point to a structural shift in how states are asserting control over emerging technologies and systemic risks — shaping the operating rules for multiple industries." },
-  Legal:         { name: "Legal & Compliance Constraints",     subtype: "Tension", expl: "A shared legal dimension connects these inputs. Each signals a domain where formal rules are being written, contested, or enforced — creating near-term compliance complexity and longer-term regulatory uncertainty." },
-  Technological: { name: "Technology Disruption Dynamics",     subtype: "Driver",  expl: "These inputs each point to a distinct layer of technology-driven change. Taken together, they describe an accelerating structural shift in how AI and digital systems are being deployed, absorbed, and regulated across sectors." },
-  Social:        { name: "Social & Behavioural Shifts",        subtype: "Trend",   expl: "These inputs reflect changing social behaviours, expectations, and public attitudes. Together they suggest a reconfiguration of trust, identity, and how people relate to institutions — with cascading effects on both demand and legitimacy." },
-  Economic:      { name: "Economic Structural Change",         subtype: "Trend",   expl: "These inputs share an economic dimension, pointing toward structural changes in finance, labour markets, and capital allocation patterns that are likely to persist across multiple time horizons." },
-  Environmental: { name: "Environmental & Resource Pressures", subtype: "Driver",  expl: "These inputs track environmental constraints and the physical realities of decarbonisation. Together they represent converging pressures on energy systems, emissions accounting, and infrastructure investment." },
-  Ethical:       { name: "Ethical & Values Tensions",          subtype: "Tension", expl: "These inputs raise questions of values and ethics — where norms are contested, obligations are unclear, or the distribution of benefit and risk is uneven across populations and jurisdictions." },
-  Demographic:   { name: "Demographic & Workforce Shifts",     subtype: "Trend",   expl: "These inputs track population and workforce dynamics. Together they signal structural shifts in how societies organise labour, education, and care over coming decades." },
-};
-
-const CONFIDENCE_LEVELS = [88, 74, 63];
-
-function generateSuggestions(projectInputs) {
-  if (projectInputs.length < 2) return [];
-  const groups = {};
-  for (const inp of projectInputs) {
-    for (const tag of (inp.steepled || [])) {
-      if (!groups[tag]) groups[tag] = [];
-      if (!groups[tag].some((i) => i.id === inp.id)) groups[tag].push(inp);
-    }
-  }
-  return Object.entries(groups)
-    .filter(([, inps]) => inps.length >= 2)
-    .slice(0, 3)
-    .map(([tag, inps], i) => {
-      const meta = SUGGESTION_META[tag] || { name: `${tag} Cluster`, subtype: "Trend", expl: `These inputs share a ${tag.toLowerCase()} dimension.` };
-      return {
-        id: `sug-${i}-${tag}`,
-        name: meta.name,
-        suggestedSubtype: meta.subtype,
-        confidence: CONFIDENCE_LEVELS[i] ?? 60,
-        explanation: meta.expl,
-        inputIds: inps.slice(0, 4).map((inp) => inp.id),
-      };
-    });
-}
 
 // ─── Cluster assign popover ────────────────────────────────────────────────────
 
@@ -252,8 +214,8 @@ function TableHead({ cols }) {
       background: c.surfaceAlt,
       borderRadius: "8px 8px 0 0",
     }}>
-      {cols.map((col) => (
-        <div key={col.label} style={{
+      {cols.map((col, i) => (
+        <div key={i} style={{
           fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint,
           textAlign: col.align || "left",
         }}>
@@ -371,111 +333,235 @@ function InputTableRow({ input, clusters, assignedCluster, onAssign, onNewCluste
   );
 }
 
-// ─── Suggestion table row ──────────────────────────────────────────────────────
+// ─── Suggestion row ───────────────────────────────────────────────────────────
 
-function SuggestionRow({ suggestion, inputs, onAccept, onDismiss, isLast }) {
+const SUG_COLS = "1fr 110px 230px";
+
+function SuggestionRow({ suggestion, inputs, onAccept, onDismiss, onOpen, isLast }) {
+  const [expanded,    setExpanded]    = useState(false);
   const [editingName, setEditingName] = useState(false);
-  const [name, setName] = useState(suggestion.name);
+  const [name,        setName]        = useState(suggestion.name);
   const nameRef = useRef(null);
 
   useEffect(() => {
     if (editingName && nameRef.current) nameRef.current.focus();
   }, [editingName]);
 
-  const sugInputs = inputs.filter((inp) => suggestion.inputIds.includes(inp.id));
-
-  const SUBTYPE_COLORS = {
-    Trend:   [c.violet700, c.violet50, c.violetBorder],
-    Driver:  [c.cyan700,   c.cyan50,   c.cyanBorder],
-    Tension: [c.amber700,  c.amber50,  c.amberBorder],
-  };
-  const [col, bg, brd] = SUBTYPE_COLORS[suggestion.suggestedSubtype] || [c.muted, c.surfaceAlt, c.border];
+  const sugInputs = inputs.filter((inp) => (suggestion.input_ids || []).includes(inp.id));
 
   return (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: "1fr 80px 90px 80px 160px",
-      alignItems: "center",
-      padding: "10px 12px",
-      background: c.white,
-      borderBottom: isLast ? "none" : `1px solid ${c.border}`,
-      gap: 0,
-    }}>
-      {/* Name */}
-      <div style={{ paddingRight: 8 }}>
-        {editingName ? (
-          <input
-            ref={nameRef}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => setEditingName(false)}
-            onKeyDown={(e) => { if (e.key === "Enter") setEditingName(false); }}
-            style={{
+    <div style={{ background: c.white, borderBottom: isLast ? "none" : `1px solid ${c.border}` }}>
+
+      {/* ── Main row ──────────────────────────────────────────────── */}
+      <div style={{
+        display: "grid", gridTemplateColumns: SUG_COLS,
+        alignItems: "center", padding: "10px 12px", gap: 0,
+      }}>
+
+        {/* Suggestion name + rationale — click to open inspector */}
+        <div
+          onClick={() => !editingName && onOpen?.(suggestion)}
+          style={{ paddingRight: 12, minWidth: 0, cursor: editingName ? "default" : "pointer" }}
+        >
+          {editingName ? (
+            <input
+              ref={nameRef}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={() => setEditingName(false)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") setEditingName(false); }}
+              style={{
+                fontSize: 12, fontWeight: 500, color: c.ink,
+                border: "none", outline: `2px solid ${c.borderMid}`,
+                borderRadius: 4, padding: "2px 6px",
+                background: c.fieldBg, fontFamily: "inherit",
+                width: "100%", boxSizing: "border-box",
+              }}
+            />
+          ) : (
+            <div style={{
               fontSize: 12, fontWeight: 500, color: c.ink,
-              border: "none", outline: `2px solid ${c.borderMid}`,
-              borderRadius: 4, padding: "2px 6px",
-              background: c.fieldBg, fontFamily: "inherit", width: "100%",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              {name}
+            </div>
+          )}
+          {suggestion.rationale && (
+            <div style={{
+              fontSize: 10, color: c.hint, marginTop: 2, lineHeight: 1.45,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              {suggestion.rationale}
+            </div>
+          )}
+        </div>
+
+        {/* Input count — click to expand */}
+        <div>
+          <button
+            onClick={() => setExpanded((s) => !s)}
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              background: "none", border: "none", cursor: "pointer",
+              fontFamily: "inherit", padding: 0,
+              fontSize: 11, color: c.muted,
             }}
-          />
-        ) : (
-          <div
-            onClick={() => setEditingName(true)}
-            style={{ fontSize: 12, fontWeight: 500, color: c.ink, cursor: "text" }}
-            title="Click to rename"
           >
-            {name}
-          </div>
-        )}
-        <div style={{ fontSize: 10, color: c.hint, marginTop: 2, lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "90%" }}>
-          {suggestion.explanation}
+            <span>{sugInputs.length} input{sugInputs.length !== 1 ? "s" : ""}</span>
+            <span style={{ fontSize: 9, color: c.hint }}>{expanded ? "▲" : "▼"}</span>
+          </button>
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>
+          <button
+            onClick={() => onAccept(suggestion, name)}
+            style={{
+              fontSize: 10, padding: "4px 12px", borderRadius: 6,
+              background: c.ink, color: c.white, border: "none",
+              cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+            }}
+          >
+            Accept →
+          </button>
+          <button
+            onClick={() => setEditingName((s) => !s)}
+            style={{
+              fontSize: 10, padding: "4px 9px", borderRadius: 6,
+              background: "transparent", color: c.muted,
+              border: `1px solid ${c.border}`,
+              cursor: "pointer", fontFamily: "inherit",
+            }}
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => onDismiss(suggestion.id)}
+            style={{
+              fontSize: 10, padding: "4px 9px", borderRadius: 6,
+              background: "transparent", color: c.muted,
+              border: "none",
+              cursor: "pointer", fontFamily: "inherit",
+            }}
+          >
+            Dismiss
+          </button>
         </div>
       </div>
 
-      {/* Subtype */}
-      <div>
-        <span style={{
-          fontSize: 10, padding: "2px 7px", borderRadius: 8,
-          background: bg, color: col, border: `1px solid ${brd}`,
+      {/* ── Expanded input list ───────────────────────────────────── */}
+      {expanded && sugInputs.length > 0 && (
+        <div style={{
+          padding: "8px 12px 12px",
+          borderTop: `1px solid ${c.border}`,
+          display: "flex", flexWrap: "wrap", gap: 4,
         }}>
-          {suggestion.suggestedSubtype}
-        </span>
-      </div>
-
-      {/* Confidence */}
-      <div style={{ fontSize: 11, color: c.muted }}>
-        <strong style={{ color: c.ink }}>{suggestion.confidence}%</strong>
-      </div>
-
-      {/* Inputs */}
-      <div style={{ fontSize: 11, color: c.muted }}>
-        {sugInputs.length} input{sugInputs.length !== 1 ? "s" : ""}
-      </div>
-
-      {/* Actions */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>
-        <button
-          onClick={() => onAccept({ ...suggestion, name })}
-          style={{
-            fontSize: 10, padding: "4px 10px", borderRadius: 6,
-            background: c.ink, color: c.white, border: "none",
-            cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
-          }}
-        >
-          Accept
-        </button>
-        <button
-          onClick={onDismiss}
-          style={{
-            fontSize: 10, padding: "4px 10px", borderRadius: 6,
-            background: "transparent", color: c.muted,
-            border: `1px solid ${c.border}`,
-            cursor: "pointer", fontFamily: "inherit",
-          }}
-        >
-          Dismiss
-        </button>
-      </div>
+          {sugInputs.map((i) => (
+            <span key={i.id} style={{
+              fontSize: 10, padding: "2px 8px", borderRadius: 10,
+              background: c.surfaceAlt, color: c.muted,
+              border: `1px solid ${c.border}`,
+              maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              {i.name}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+// ─── Suggestion inspector panel ───────────────────────────────────────────────
+
+function SuggestionInspector({ suggestion, inputs, onAccept, onDismiss, onClose }) {
+  const sugInputs = inputs.filter((inp) => (suggestion.input_ids || []).includes(inp.id));
+
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 300 }}
+      />
+      <div style={{
+        position: "fixed", top: 0, right: 0, bottom: 0, width: 420,
+        background: c.white, borderLeft: `1px solid ${c.border}`,
+        zIndex: 301, display: "flex", flexDirection: "column",
+        animation: "drawerSlideIn 0.28s ease",
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: "20px 24px 16px", borderBottom: `1px solid ${c.border}`,
+          display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexShrink: 0,
+        }}>
+          <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 4 }}>
+              AI suggestion
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 500, color: c.ink, lineHeight: 1.35 }}>
+              {suggestion.name}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ ...btnG, fontSize: 16, padding: "2px 6px", color: c.muted, flexShrink: 0 }}>×</button>
+        </div>
+
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+          {suggestion.rationale && (
+            <div style={{ marginBottom: 24 }}>
+              <div style={fl}>Rationale</div>
+              <div style={{ fontSize: 13, color: c.muted, lineHeight: 1.65 }}>{suggestion.rationale}</div>
+            </div>
+          )}
+
+          <div>
+            <div style={fl}>
+              Linked inputs
+              <span style={{ ...badg, marginLeft: 2 }}>{sugInputs.length}</span>
+            </div>
+            {sugInputs.length === 0 ? (
+              <div style={{ fontSize: 12, color: c.hint }}>No matching inputs found.</div>
+            ) : (
+              <div style={{ border: `1px solid ${c.border}`, borderRadius: 8, overflow: "hidden" }}>
+                {sugInputs.map((inp, idx) => (
+                  <div key={inp.id} style={{
+                    padding: "9px 12px",
+                    borderTop: idx > 0 ? `1px solid ${c.border}` : "none",
+                    background: c.white,
+                  }}>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{inp.name}</div>
+                    {inp.description && (
+                      <div style={{ fontSize: 11, color: c.muted, marginTop: 2, lineHeight: 1.45 }}>
+                        {inp.description}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: "14px 24px 20px", borderTop: `1px solid ${c.border}`,
+          display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, flexShrink: 0,
+        }}>
+          <button
+            onClick={() => { onDismiss(suggestion.id); onClose(); }}
+            style={btnSec}
+          >
+            Dismiss
+          </button>
+          <button
+            onClick={() => { onAccept(suggestion, suggestion.name); onClose(); }}
+            style={btnP}
+          >
+            Accept →
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -502,6 +588,7 @@ export default function Clustering({ appState }) {
     assignInputToCluster,
     showToast, setActiveScreen, openProjectModal,
     openInputDetail, openClusterDetail, scenarios,
+    workspaceId,
   } = appState;
 
   const [newClusterDrawerOpen,  setNewClusterDrawerOpen]  = useState(false);
@@ -512,9 +599,14 @@ export default function Clustering({ appState }) {
   const [inputSearch,           setInputSearch]           = useState("");
 
   // AI suggestions state
-  const [suggestions,  setSuggestions]  = useState([]);
-  const [dismissedIds, setDismissedIds] = useState(new Set());
-  const [acceptedIds,  setAcceptedIds]  = useState(new Set());
+  const [dbSuggestions,      setDbSuggestions]      = useState([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [generatingSugs,     setGeneratingSugs]     = useState(false);
+  const [suggestionsError,   setSuggestionsError]   = useState(null);
+  const [regenCooldownUntil, setRegenCooldownUntil] = useState(null);
+  const [inputCountAtRegen,  setInputCountAtRegen]  = useState(null);
+  const [lastRegenReason,    setLastRegenReason]    = useState(null);
+  const [inspectedSuggestion, setInspectedSuggestion] = useState(null);
 
   const project         = activeProjectId ? projects.find((p) => p.id === activeProjectId) : null;
   const projectInputs   = project ? inputs.filter((i)  => i.project_id  === project.id) : [];
@@ -533,16 +625,34 @@ export default function Clustering({ appState }) {
     );
   }, [unassignedInputs, inputSearch]);
 
-  useEffect(() => {
-    setSuggestions(generateSuggestions(projectInputs));
-    setDismissedIds(new Set());
-    setAcceptedIds(new Set());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeProjectId]);
+  const loadSuggestions = useCallback(async (projectId) => {
+    setLoadingSuggestions(true);
+    setSuggestionsError(null);
+    try {
+      const { data, error } = await supabase
+        .from("cluster_suggestions")
+        .select("*")
+        .eq("project_id", projectId)
+        .eq("status", "pending")
+        .order("generated_at", { ascending: false });
+      if (error) throw error;
+      setDbSuggestions(data || []);
+    } catch (err) {
+      setSuggestionsError(err.message || "Failed to load suggestions.");
+      setDbSuggestions([]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }, []);
 
-  const visibleSuggestions = suggestions.filter(
-    (s) => !dismissedIds.has(s.id) && !acceptedIds.has(s.id)
-  );
+  useEffect(() => {
+    if (!project) { setDbSuggestions([]); return; }
+    loadSuggestions(project.id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.id]);
+
+  const regenOnCooldown = regenCooldownUntil != null && Date.now() < regenCooldownUntil;
+  const newInputsSinceRegen = inputCountAtRegen != null && projectInputs.length > inputCountAtRegen;
 
   const getInputCluster = (inputId) =>
     projectClusters.find((cl) => cl.input_ids?.includes(inputId)) || null;
@@ -573,18 +683,68 @@ export default function Clustering({ appState }) {
     );
   };
 
-  const handleAcceptSuggestion = (sug) => {
-    const newCluster = addCluster({
-      name: sug.name,
-      subtype: sug.suggestedSubtype,
+  const handleAcceptSuggestion = (sug, editedName) => {
+    const name = editedName?.trim() || sug.name;
+    const inputIds = sug.input_ids || [];
+    setDbSuggestions((prev) => prev.filter((s) => s.id !== sug.id));
+    addCluster({
+      name,
+      subtype: "Trend",
       horizon: "H1",
       likelihood: "Plausible",
-      description: "",
+      description: sug.rationale || "",
       project_id: project.id,
-      input_ids: sug.inputIds,
+      input_ids: inputIds,
     });
-    setAcceptedIds((prev) => new Set([...prev, sug.id]));
-    showToast(`Cluster "${newCluster.name}" created`);
+    // Mark accepted in DB — fire and forget
+    supabase
+      .from("cluster_suggestions")
+      .update({ status: "accepted", acted_on_at: new Date().toISOString() })
+      .eq("id", sug.id)
+      .then();
+    const n = inputIds.length;
+    showToast(`Cluster "${name}" created with ${n} input${n !== 1 ? "s" : ""}`);
+  };
+
+  const handleDismissSuggestion = (id) => {
+    setDbSuggestions((prev) => prev.filter((s) => s.id !== id));
+    supabase
+      .from("cluster_suggestions")
+      .update({ status: "dismissed", acted_on_at: new Date().toISOString() })
+      .eq("id", id)
+      .then();
+  };
+
+  const handleRegen = async () => {
+    if (!project || regenOnCooldown || generatingSugs) return;
+    setGeneratingSugs(true);
+    setSuggestionsError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-cluster-suggestions", {
+        body: { project_id: project.id, workspace_id: workspaceId },
+      });
+      if (error) {
+        let message = error.message;
+        try {
+          const text = await error.context?.text?.();
+          console.error("generate-cluster-suggestions error body:", text);
+          const body = text ? JSON.parse(text) : null;
+          if (body?.error) message = body.error;
+          else if (text) message = text;
+        } catch (e) {
+          console.error("generate-cluster-suggestions error:", error);
+        }
+        throw new Error(message);
+      }
+      setLastRegenReason(data?.reason ?? null);
+      await loadSuggestions(project.id);
+      setRegenCooldownUntil(Date.now() + 60_000);
+      setInputCountAtRegen(projectInputs.length);
+    } catch (err) {
+      setSuggestionsError(err.message || "Failed to generate suggestions.");
+    } finally {
+      setGeneratingSugs(false);
+    }
   };
 
   const handleCreateCluster = (fields) => {
@@ -832,52 +992,119 @@ export default function Clustering({ appState }) {
         <div style={{ marginBottom: 32 }}>
           <SectionHeader
             title="AI suggestions"
-            count={visibleSuggestions.length || null}
+            count={dbSuggestions.length || null}
+            action={
+              projectInputs.length >= 3 && (
+                <button
+                  onClick={handleRegen}
+                  disabled={regenOnCooldown || generatingSugs || loadingSuggestions}
+                  style={{
+                    fontSize: 11, padding: "4px 12px", borderRadius: 6,
+                    background: "transparent", color: regenOnCooldown ? c.hint : c.muted,
+                    border: `1px solid ${regenOnCooldown ? c.border : c.borderMid}`,
+                    cursor: regenOnCooldown || generatingSugs ? "default" : "pointer",
+                    fontFamily: "inherit",
+                    opacity: regenOnCooldown ? 0.5 : 1,
+                  }}
+                >
+                  {generatingSugs ? "Generating…" : "Regenerate suggestions"}
+                </button>
+              )
+            }
           />
 
-          {projectInputs.length < 2 ? (
+          {/* New-inputs nudge */}
+          {newInputsSinceRegen && dbSuggestions.length > 0 && (
+            <div style={{
+              fontSize: 11, color: c.blue700,
+              background: c.blue50, border: `1px solid ${c.blueBorder}`,
+              borderRadius: 7, padding: "8px 14px", marginBottom: 10,
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+            }}>
+              <span>
+                You&apos;ve added {projectInputs.length - inputCountAtRegen} input{projectInputs.length - inputCountAtRegen !== 1 ? "s" : ""} since your last suggestions were generated.
+              </span>
+              <button
+                onClick={handleRegen}
+                disabled={regenOnCooldown || generatingSugs}
+                style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, color: c.blue700, fontWeight: 500, padding: 0 }}
+              >
+                Regenerate?
+              </button>
+            </div>
+          )}
+
+          {projectInputs.length < 3 ? (
             <div style={{
               padding: "16px 18px", background: c.white,
               border: `1px solid ${c.border}`, borderRadius: 9,
               fontSize: 12, color: c.hint,
             }}>
-              Add at least 2 inputs to generate cluster suggestions.
+              Add at least 3 inputs with descriptions to generate cluster suggestions.
             </div>
-          ) : visibleSuggestions.length === 0 ? (
+          ) : loadingSuggestions || generatingSugs ? (
             <div style={{
-              padding: "16px 18px", background: c.white,
+              padding: "24px 18px", background: c.white,
               border: `1px solid ${c.border}`, borderRadius: 9,
-              fontSize: 12, color: c.hint,
+              fontSize: 12, color: c.hint, textAlign: "center",
             }}>
-              All suggestions accepted or dismissed. Add more inputs to generate new ones.
+              {generatingSugs ? "Analysing inputs and grouping by semantic similarity…" : "Loading suggestions…"}
             </div>
-          ) : (
-            <>
+          ) : suggestionsError ? (
+            <div style={{
+              padding: "14px 18px", background: c.red50,
+              border: `1px solid ${c.redBorder}`, borderRadius: 9,
+              fontSize: 12, color: c.red800,
+            }}>
+              {suggestionsError}
+            </div>
+          ) : dbSuggestions.length === 0 ? (
+            lastRegenReason === "no_clusters" ? (
               <div style={{
-                fontSize: 11, color: c.muted, lineHeight: 1.55, marginBottom: 10,
+                padding: "16px 18px", background: c.white,
+                border: `1px solid ${c.border}`, borderRadius: 9,
+                fontSize: 12, color: c.hint,
               }}>
-                Groupings generated by analysing STEEPLED dimensions. Accept to create a cluster, click name to rename, or dismiss to ignore.
+                Your inputs are too varied to suggest clear clusters yet. Try adding more inputs on a focused topic.
               </div>
-              <TableContainer>
-                <TableHead cols={[
-                  { label: "Suggestion", width: "1fr" },
-                  { label: "Type", width: "80px" },
-                  { label: "Confidence", width: "90px" },
-                  { label: "Inputs", width: "80px" },
-                  { label: "", width: "160px" },
-                ]} />
-                {visibleSuggestions.map((sug, idx) => (
-                  <SuggestionRow
-                    key={sug.id}
-                    suggestion={sug}
-                    inputs={projectInputs}
-                    onAccept={handleAcceptSuggestion}
-                    onDismiss={() => setDismissedIds((prev) => new Set([...prev, sug.id]))}
-                    isLast={idx === visibleSuggestions.length - 1}
-                  />
-                ))}
-              </TableContainer>
-            </>
+            ) : (
+              <div style={{
+                padding: "20px 24px", background: c.white,
+                border: `1px solid ${c.border}`, borderRadius: 9,
+                textAlign: "center",
+              }}>
+                <div style={{ fontSize: 13, color: c.muted, marginBottom: 8 }}>No AI suggestions yet.</div>
+                <div style={{ fontSize: 11, color: c.hint, marginBottom: 14 }}>
+                  Run the AI to group your inputs by semantic similarity.
+                </div>
+                <button onClick={handleRegen} style={{
+                  fontSize: 12, padding: "7px 18px", borderRadius: 7,
+                  background: c.ink, color: c.white, border: "none",
+                  cursor: "pointer", fontFamily: "inherit",
+                }}>
+                  Generate suggestions
+                </button>
+              </div>
+            )
+          ) : (
+            <TableContainer>
+              <TableHead cols={[
+                { label: "Suggestion", width: "1fr" },
+                { label: "Inputs",     width: "110px" },
+                { label: "",           width: "230px" },
+              ]} />
+              {dbSuggestions.map((sug, idx) => (
+                <SuggestionRow
+                  key={sug.id}
+                  suggestion={sug}
+                  inputs={projectInputs}
+                  onAccept={handleAcceptSuggestion}
+                  onDismiss={handleDismissSuggestion}
+                  onOpen={setInspectedSuggestion}
+                  isLast={idx === dbSuggestions.length - 1}
+                />
+              ))}
+            </TableContainer>
           )}
         </div>
 
@@ -899,6 +1126,16 @@ export default function Clustering({ appState }) {
         projects={projects}
         defaultProjectId={project.id}
       />
+
+      {inspectedSuggestion && (
+        <SuggestionInspector
+          suggestion={inspectedSuggestion}
+          inputs={projectInputs}
+          onAccept={handleAcceptSuggestion}
+          onDismiss={handleDismissSuggestion}
+          onClose={() => setInspectedSuggestion(null)}
+        />
+      )}
     </>
   );
 }

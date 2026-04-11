@@ -64,7 +64,7 @@ function SectionCard({ children }) {
 // ─── Main screen ───────────────────────────────────────────────────────────────
 
 export default function AccountSettings({ appState }) {
-  const { user } = appState;
+  const { user, workspaceScanningEnabled, updateWorkspaceScanningEnabled } = appState;
 
   // ── Timeout cleanup ─────────────────────────────────────────────────────────
 
@@ -294,6 +294,45 @@ export default function AccountSettings({ appState }) {
             </div>
           )}
 
+        </SectionCard>
+
+        {/* ── Signal Scanning section ──────────────────────────────── */}
+        <SectionCard>
+          <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 14 }}>Signal Scanning</div>
+
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 13, color: c.ink, marginBottom: 3 }}>Enable signal scanning</div>
+              <div style={{ fontSize: 11, color: c.muted, lineHeight: 1.5 }}>
+                When off, the AI signal scanner will pause for all projects in your workspace.
+              </div>
+              {!workspaceScanningEnabled && (
+                <div style={{ fontSize: 11, color: c.amber700, marginTop: 6 }}>
+                  Scanning paused for all projects.
+                </div>
+              )}
+            </div>
+            {/* Toggle */}
+            <button
+              role="switch"
+              aria-checked={workspaceScanningEnabled}
+              onClick={() => updateWorkspaceScanningEnabled(!workspaceScanningEnabled)}
+              style={{
+                flexShrink: 0,
+                width: 40, height: 22, borderRadius: 11,
+                background: workspaceScanningEnabled ? c.ink : c.hint,
+                border: "none", cursor: "pointer", padding: 0,
+                position: "relative", transition: "background 0.2s",
+              }}
+            >
+              <span style={{
+                position: "absolute",
+                top: 3, left: workspaceScanningEnabled ? 21 : 3,
+                width: 16, height: 16, borderRadius: "50%",
+                background: c.white, transition: "left 0.2s",
+              }} />
+            </button>
+          </div>
         </SectionCard>
 
         {/* ── Security section ─────────────────────────────────────── */}

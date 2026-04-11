@@ -182,6 +182,7 @@ export default function App() {
         open={appState.projectModalOpen}
         onClose={appState.closeProjectModal}
         onSave={handleCreateProject}
+        workspaceScanningEnabled={appState.workspaceScanningEnabled}
       />
 
       <Toast toast={appState.toast} />

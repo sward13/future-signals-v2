@@ -43,6 +43,9 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [scenarios, setScenarios] = useState([]);
   const [analyses, setAnalyses] = useState([]);
 
+  // Workspace settings
+  const [workspaceScanningEnabled, setWorkspaceScanningEnabled] = useState(true);
+
   // Canvas / system map (in-memory)
   const [nodePositions, setNodePositions] = useState({});
   const [connections, setConnections] = useState([]);
@@ -235,6 +238,19 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       }
     };
 
+    const fetchWorkspaceScanning = async () => {
+      try {
+        const { data } = await supabase
+          .from("workspace_settings")
+          .select("scanning_enabled")
+          .eq("workspace_id", workspaceId)
+          .single();
+        if (data) setWorkspaceScanningEnabled(data.scanning_enabled ?? true);
+      } catch {
+        // non-fatal — default stays true
+      }
+    };
+
     fetchProjects();
     fetchInputs();
     fetchClusters();
@@ -242,6 +258,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     fetchCanvasNodes();
     fetchRelationships();
     fetchAnalyses();
+    fetchWorkspaceScanning();
   }, [workspaceId, showToast]);
 
   // ── Drawers / modal ───────────────────────────────────────────────────────
@@ -278,6 +295,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       h3_end: fields.h3_end || "",
       assumptions: fields.assumptions || "",
       stakeholders: fields.stakeholders || "",
+      scanning_enabled: fields.scanning_enabled !== false,
       created_at: now,
     };
 
@@ -308,6 +326,19 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     }
 
     return newProject;
+  }, [workspaceId, showToast]);
+
+  const updateWorkspaceScanningEnabled = useCallback((enabled) => {
+    setWorkspaceScanningEnabled(enabled);
+    if (workspaceId) {
+      supabase
+        .from("workspace_settings")
+        .update({ scanning_enabled: enabled })
+        .eq("workspace_id", workspaceId)
+        .then(({ error }) => {
+          if (error) showToast("Failed to update scanning setting", "error");
+        });
+    }
   }, [workspaceId, showToast]);
 
   const updateProject = useCallback((id, fields) => {
@@ -358,6 +389,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
         try {
           const { error } = await supabase.from("inputs").insert(newInput);
           if (error) throw error;
+          // Generate embedding asynchronously — fire and forget
+          supabase.functions.invoke("embed-input", { body: { input_id: id } }).catch(() => {});
         } catch {
           setInputs((prev) => prev.filter((i) => i.id !== id));
           showToast("Failed to save input", "error");
@@ -379,6 +412,10 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
             .eq("id", id)
             .eq("workspace_id", workspaceId);
           if (error) throw error;
+          // Re-embed if the text content changed
+          if (fields.name !== undefined || fields.description !== undefined) {
+            supabase.functions.invoke("embed-input", { body: { input_id: id } }).catch(() => {});
+          }
         } catch {
           showToast("Failed to update input", "error");
         }
@@ -393,12 +430,19 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     if (workspaceId) {
       (async () => {
         try {
+          const now = new Date().toISOString();
           const { error } = await supabase
             .from("inputs")
             .update({ project_id: projectId })
             .eq("id", id)
             .eq("workspace_id", workspaceId);
           if (error) throw error;
+          // Step 5: stamp last_reviewed_at on the project (fire-and-forget)
+          supabase
+            .from("projects")
+            .update({ last_reviewed_at: now })
+            .eq("id", projectId)
+            .then();
         } catch {
           showToast("Failed to assign input", "error");
         }
@@ -437,6 +481,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     ));
     if (workspaceId) {
       try {
+        const now = new Date().toISOString();
         const suggestedProjects = input.metadata?.suggested_projects || [];
         for (const sp of suggestedProjects) {
           await supabase
@@ -451,10 +496,18 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
             metadata: {
               ...input.metadata,
               dismissed: true,
-              dismissed_at: new Date().toISOString(),
+              dismissed_at: now,
             },
           })
           .eq('id', input.id);
+        // Step 5: stamp last_reviewed_at on all suggested projects (fire-and-forget)
+        if (suggestedProjects.length > 0) {
+          supabase
+            .from('projects')
+            .update({ last_reviewed_at: now })
+            .in('id', suggestedProjects.map((sp) => sp.id))
+            .then();
+        }
       } catch {
         showToast('Failed to dismiss signal', 'error');
       }
@@ -488,6 +541,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const addCluster = useCallback((fields) => {
     const id = newId();
     const now = new Date().toISOString();
+    const inputIds = fields.input_ids || [];
     const newCluster = {
       id,
       workspace_id: workspaceId,
@@ -497,7 +551,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       likelihood: fields.likelihood || null,
       description: fields.description || "",
       project_id: fields.project_id || null,
-      input_ids: [],
+      input_ids: inputIds,
       created_at: now,
     };
 
@@ -522,9 +576,15 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
             .select()
             .single();
           if (error) throw error;
-          // Replace optimistic row with server response, keeping derived input_ids: []
+          // Insert cluster_inputs rows after the cluster row is committed (avoids FK race)
+          if (inputIds.length > 0) {
+            const { error: ciError } = await supabase
+              .from("cluster_inputs")
+              .insert(inputIds.map((input_id) => ({ workspace_id: workspaceId, cluster_id: id, input_id })));
+            if (ciError) throw ciError;
+          }
           setClusters((prev) =>
-            prev.map((cl) => cl.id === id ? { ...data, input_ids: [] } : cl)
+            prev.map((cl) => cl.id === id ? { ...data, input_ids: inputIds } : cl)
           );
         } catch {
           setClusters((prev) => prev.filter((cl) => cl.id !== id));
@@ -1102,6 +1162,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   return {
     user,
     workspaceId,
+    workspaceScanningEnabled,
+    updateWorkspaceScanningEnabled,
     inputs,
     clusters,
     scenarios,

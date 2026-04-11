@@ -291,6 +291,7 @@ export default function ProjectDetail({ appState }) {
     addInput, saveInputsToProject, showToast, setActiveScreen, setActiveProjectId,
     openInputDetail, openClusterDetail, openScenarioDetail,
     addCluster, addScenario, updateProject, assignInputToCluster, deleteProject,
+    workspaceScanningEnabled,
   } = appState;
 
   const [drawerOpen,        setDrawerOpen]        = useState(false);
@@ -571,7 +572,7 @@ export default function ProjectDetail({ appState }) {
 
           {/* ── LEFT: Inputs table ───────────────────────────── */}
           {/* TODO: responsive pass — sidebar min-width is causing overflow at <1200px */}
-          <div>
+          <div style={{ minWidth: 0 }}>
             {/* Row 1: tabs left, add actions right */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -990,6 +991,7 @@ export default function ProjectDetail({ appState }) {
           onSave={handleUpdateProject}
           onDelete={handleDeleteProject}
           scrollTo={editScrollTo}
+          workspaceScanningEnabled={workspaceScanningEnabled}
         />
       )}
 
