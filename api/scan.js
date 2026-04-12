@@ -15,8 +15,15 @@ const STEEPLED = [
   'Political', 'Legal', 'Ethical', 'Demographic'
 ];
 
-const BATCH_SIZE = 50; // candidates to classify/embed per run
+const BATCH_SIZE = 200;            // candidates to classify/embed per run
 const MAX_CANDIDATES_PER_SOURCE = 20;
+const CLASSIFY_CONCURRENCY = 25;   // parallel classify calls at a time
+
+const SYSTEM_PROMPT = `You are a strategic foresight analyst. Given a news item, return JSON only with two fields:
+- "steepled": array of applicable categories from [${STEEPLED.join(', ')}] (1-3 categories)
+- "summary": 2-3 sentence summary focusing on future implications
+
+Return only valid JSON, no markdown.`;
 
 export default async function handler(req, res) {
   // Verify cron secret to prevent unauthorised triggers
@@ -94,99 +101,121 @@ export default async function handler(req, res) {
       }
     }
 
-    // Step 3: Classify + embed pending candidates in batches
+    // Step 3: Classify + embed pending candidates in parallel
     const { data: pending } = await supabase
       .from('candidates')
       .select('*')
       .eq('status', 'pending')
       .limit(BATCH_SIZE);
 
-    for (const candidate of (pending || [])) {
-      try {
-        const textForAI = `${candidate.title}\n\n${candidate.summary_raw || ''}`.trim();
+    const candidates = pending || [];
 
-        // Classify: STEEPLED categories + AI summary
-        const classification = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
-          max_tokens: 300,
-          messages: [{
-            role: 'system',
-            content: `You are a strategic foresight analyst. Given a news item, return JSON only with two fields:
-- "steepled": array of applicable categories from [${STEEPLED.join(', ')}] (1-3 categories)
-- "summary": 2-3 sentence summary focusing on future implications
+    if (candidates.length > 0) {
+      // Step 3a: Classify in parallel, CLASSIFY_CONCURRENCY at a time
+      const classifyResults = [];
+      for (let i = 0; i < candidates.length; i += CLASSIFY_CONCURRENCY) {
+        const chunk = candidates.slice(i, i + CLASSIFY_CONCURRENCY);
+        const chunkResults = await Promise.allSettled(
+          chunk.map((candidate) =>
+            openai.chat.completions.create({
+              model: 'gpt-4o-mini',
+              max_tokens: 300,
+              messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'user', content: `${candidate.title}\n\n${candidate.summary_raw || ''}`.trim() },
+              ],
+            })
+          )
+        );
+        classifyResults.push(...chunkResults);
+      }
 
-Return only valid JSON, no markdown.`
-          }, {
-            role: 'user',
-            content: textForAI,
-          }]
-        });
+      // Step 3b: Parse classify results — split into classified vs failed
+      const classified = [];
+      const failedIds = [];
 
+      candidates.forEach((candidate, i) => {
+        const result = classifyResults[i];
+        if (result.status === 'rejected') {
+          results.errors.push(`Classify ${candidate.id}: ${result.reason?.message}`);
+          failedIds.push(candidate.id);
+          return;
+        }
         let steepled = [];
         let summaryAi = null;
-
         try {
-          const parsed = JSON.parse(classification.choices[0].message.content);
+          const parsed = JSON.parse(result.value.choices[0].message.content);
           steepled = parsed.steepled || [];
           summaryAi = parsed.summary || null;
         } catch {
-          // JSON parse failed — leave steepled empty, continue
+          // JSON parse failed — continue with empty steepled
         }
+        classified.push({ ...candidate, steepled, summaryAi, classifyUsage: result.value.usage });
+      });
 
-        // Embed: title + summary for vector similarity
-        const embeddingText = `${candidate.title}\n${summaryAi || candidate.summary_raw || ''}`.trim();
+      // Mark failed candidates as expired so they don't block the queue
+      if (failedIds.length > 0) {
+        await Promise.allSettled(
+          failedIds.map((id) =>
+            supabase.from('candidates').update({ status: 'expired' }).eq('id', id)
+          )
+        );
+      }
+
+      if (classified.length > 0) {
+        // Step 3c: Batch embed all classified candidates in a single API call
+        const embeddingTexts = classified.map((c) =>
+          `${c.title}\n${c.summaryAi || c.summary_raw || ''}`.trim()
+        );
+
         const embeddingResponse = await openai.embeddings.create({
           model: 'text-embedding-3-small',
-          input: embeddingText,
+          input: embeddingTexts,
         });
 
-        const embedding = embeddingResponse.data[0].embedding;
+        // Step 3d: Write results back to DB in parallel
+        await Promise.allSettled(
+          classified.map((candidate, i) =>
+            supabase
+              .from('candidates')
+              .update({
+                summary_ai: candidate.summaryAi,
+                steepled: candidate.steepled,
+                embedding: embeddingResponse.data[i].embedding,
+                status: 'scored',
+              })
+              .eq('id', candidate.id)
+          )
+        );
 
-        // Update candidate with classification + embedding
-        await supabase
-          .from('candidates')
-          .update({
-            summary_ai: summaryAi,
-            steepled,
-            embedding,
-            status: 'scored',
-          })
-          .eq('id', candidate.id);
+        // Single aggregate usage log entry for the batch
+        const totalInputTokens  = classified.reduce((s, c) => s + (c.classifyUsage?.prompt_tokens     || 0), 0);
+        const totalOutputTokens = classified.reduce((s, c) => s + (c.classifyUsage?.completion_tokens || 0), 0);
 
-        // Log AI usage
         await supabase.from('ai_usage_log').insert({
-          workspace_id: null, // platform-level operation
+          workspace_id: null,
           model: 'gpt-4o-mini + text-embedding-3-small',
           operation: 'scan_classify_embed',
-          input_tokens: classification.usage?.prompt_tokens || null,
-          output_tokens: classification.usage?.completion_tokens || null,
+          input_tokens:  totalInputTokens  || null,
+          output_tokens: totalOutputTokens || null,
         });
 
-        results.candidates_classified++;
-        results.candidates_embedded++;
-
-      } catch (candidateError) {
-        results.errors.push(`Candidate ${candidate.id}: ${candidateError.message}`);
-        // Mark as expired so it doesn't block the queue
-        await supabase
-          .from('candidates')
-          .update({ status: 'expired' })
-          .eq('id', candidate.id);
+        results.candidates_classified = classified.length;
+        results.candidates_embedded   = classified.length;
       }
     }
 
-    results.candidates_deduped = results.candidates_fetched - (pending?.length || 0);
+    results.candidates_deduped = results.candidates_fetched - candidates.length;
 
-    // Trigger scoring after ingestion
-    try {
-      await fetch(`${process.env.VITE_APP_URL}/api/score`, {
-        method: 'GET',
-        headers: { 'x-cron-secret': process.env.CRON_SECRET },
-      });
-    } catch (e) {
+    // Trigger scoring after ingestion — fire and forget so scan doesn't
+    // share its timeout budget with the score run
+    fetch(`${process.env.VITE_APP_URL}/api/score`, {
+      method: 'GET',
+      headers: { 'x-cron-secret': process.env.CRON_SECRET },
+    }).catch((e) => {
       // Non-fatal — scoring will catch up on next run
-      results.errors.push(`Score trigger failed: ${e.message}`);
-    }
+      console.error('Score trigger failed:', e.message);
+    });
 
     return res.status(200).json({ success: true, results });
 
