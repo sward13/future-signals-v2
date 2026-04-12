@@ -20,7 +20,6 @@ const PANELS = [
     prompt: "What are the most significant patterns, feedback loops, and interactions in this system?",
     placeholder: "The most significant pattern is a reinforcing loop between...",
     type: "text",
-    aiLabel: "Generate",
   },
   {
     id: "description",
@@ -30,7 +29,6 @@ const PANELS = [
     prompt: "Summarise what this system is and what it is trying to explain.",
     placeholder: "This system maps the dynamics of...",
     type: "text",
-    aiLabel: "Generate",
   },
   {
     id: "critical_uncertainties",
@@ -39,7 +37,6 @@ const PANELS = [
     label: "Critical Uncertainties",
     prompt: "What does this system not resolve? Where could it tip in fundamentally different directions?",
     type: "chips",
-    aiLabel: "Suggest more",
   },
   {
     id: "implications",
@@ -49,7 +46,6 @@ const PANELS = [
     prompt: "What does this system analysis mean for the people and organisations involved?",
     placeholder: "The primary implication for...",
     type: "text",
-    aiLabel: "Generate",
   },
   {
     id: "confidence",
@@ -58,7 +54,6 @@ const PANELS = [
     label: "Confidence",
     prompt: "How well does this system map account for the dynamics at play?",
     type: "confidence",
-    aiLabel: null,
   },
 ];
 
@@ -152,7 +147,7 @@ function ConfidencePanel({ value, onChange, prompt }) {
 
 // ─── Analysis panel ────────────────────────────────────────────────────────────
 
-function AnalysisPanel({ panel, value, onChange, selected, onSelect, onAI }) {
+function AnalysisPanel({ panel, value, onChange, selected, onSelect }) {
   const isFocused = selected === panel.id;
 
   const hasCont = panel.type === "text"
@@ -191,21 +186,6 @@ function AnalysisPanel({ panel, value, onChange, selected, onSelect, onAI }) {
       }}>
         <span style={{ fontSize: 9, color: isFocused ? "rgba(255,255,255,.5)" : c.hint }}>{panel.icon}</span>
         <span style={{ fontSize: 10, fontWeight: 500, color: isFocused ? c.white : c.ink }}>{panel.label}</span>
-        {panel.aiLabel && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onAI(panel.id); }}
-            style={{
-              marginLeft: "auto",
-              padding: "2px 8px", borderRadius: 4,
-              background: isFocused ? "rgba(255,255,255,.1)" : "transparent",
-              border: `0.5px solid ${isFocused ? "rgba(255,255,255,.2)" : c.borderMid}`,
-              color: isFocused ? "rgba(255,255,255,.65)" : c.muted,
-              fontSize: 9, cursor: "pointer", fontFamily: "inherit",
-            }}
-          >
-            {panel.aiLabel} ↗
-          </button>
-        )}
       </div>
 
       {/* Prompt — visible when focused or empty (text/chips only) */}
@@ -288,10 +268,6 @@ export default function SystemAnalysisCanvas({ appState }) {
   const handleSave = () => {
     upsertAnalysis(activeProjectId, localFields);
     showToast("Analysis saved");
-  };
-
-  const handleAI = () => {
-    showToast("AI generation coming soon");
   };
 
   // ── No active project ────────────────────────────────────────────────────────
@@ -423,7 +399,6 @@ export default function SystemAnalysisCanvas({ appState }) {
             onChange={setValue(panel.id)}
             selected={selected}
             onSelect={setSelected}
-            onAI={handleAI}
           />
         ))}
       </div>
