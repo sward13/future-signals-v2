@@ -1155,10 +1155,6 @@ export default function ScenarioCanvas({ appState }) {
           <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.09em", color: c.hint }}>
             {project.name}
           </div>
-          <button
-            onClick={() => setActiveProjectId(null)}
-            style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, border: `1px solid ${c.border}`, background: "transparent", color: c.hint, cursor: "pointer", fontFamily: "inherit", letterSpacing: 0, textTransform: "none" }}
-          >switch ↕</button>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
