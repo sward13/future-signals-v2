@@ -1003,7 +1003,9 @@ export default function ScenarioCanvas({ appState }) {
   const project = projects.find((p) => p.id === activeProjectId) || null;
   const projectClusters = clusters.filter((cl) => cl.project_id === activeProjectId);
   const projectNodes = canvasNodes.filter((n) => n.projectId === activeProjectId);
-  const projectRels = relationships.filter((r) => r.projectId === activeProjectId);
+  const projectRels = relationships
+    .filter((r) => r.projectId === activeProjectId)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   const [viewMode, setViewMode] = useState("canvas");
   const [confirmDeleteMap, setConfirmDeleteMap] = useState(false);
