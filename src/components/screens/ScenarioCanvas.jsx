@@ -677,7 +677,7 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
               const st = SUBTYPE_STYLE[cl.subtype] || SUBTYPE_STYLE.Trend;
               const onCanvas = canvasNodes.some((n) => n.clusterId === cl.id);
               return (
-                <div key={cl.id} style={{ display: "grid", gridTemplateColumns: "2.5fr 1fr 1fr 1fr 60px", borderTop: idx > 0 ? `1px solid ${c.border}` : "none", alignItems: "center" }}>
+                <div key={cl.id} style={{ display: "grid", gridTemplateColumns: "2.5fr 1fr 1fr 1fr 60px", borderTop: `1px solid ${c.border}`, alignItems: "center" }}>
                   <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{cl.name}</span>
                     {onCanvas && <span style={{ fontSize: 9, padding: "1px 5px", background: c.surfaceAlt, border: `1px solid ${c.border}`, borderRadius: 4, color: c.hint }}>on canvas</span>}
@@ -711,28 +711,6 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 2.5fr 1fr 90px" }}>
               {["From", "Type", "To", "Evidence", "Confidence", ""].map((h, i) => <div key={i} style={thStyle}>{h}</div>)}
             </div>
-            {relationships.map((rel, idx) => {
-              const fromCl = allClusters.find((cl) => cl.id === rel.fromClusterId);
-              const toCl = allClusters.find((cl) => cl.id === rel.toClusterId);
-              const rt = REL_TYPE_MAP[rel.type] || REL_TYPES[0];
-              return (
-                <div key={rel.id} style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 2.5fr 1fr 90px", borderTop: idx > 0 ? `1px solid ${c.border}` : "none", alignItems: "center" }}>
-                  <div style={{ padding: "10px 14px", fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fromCl?.name}</div>
-                  <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ width: 16, height: 2.5, borderRadius: 2, flexShrink: 0, background: rt.dash ? `repeating-linear-gradient(to right, ${rt.color} 0, ${rt.color} 4px, transparent 4px, transparent 8px)` : rt.color }} />
-                    <span style={{ fontSize: 11, color: rt.color, fontWeight: 500 }}>{rel.type}</span>
-                  </div>
-                  <div style={{ padding: "10px 14px", fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{toCl?.name}</div>
-                  <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rel.evidence || "—"}</div>
-                  <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{rel.confidence}</div>
-                  <div style={{ padding: "10px 14px", display: "flex", gap: 5 }}>
-                    <button onClick={() => onEditRel(rel.id)} style={{ ...btnG, fontSize: 10, padding: "3px 8px", border: `1px solid ${c.border}` }}>Edit</button>
-                    <button onClick={() => onDeleteRel(rel.id)} style={{ ...btnG, fontSize: 10, padding: "3px 8px", border: `1px solid ${c.redBorder}`, color: c.red800 }}>Del</button>
-                  </div>
-                </div>
-              );
-            })}
-
             {adding && (
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 2.5fr 1fr 90px", borderTop: `1px solid ${c.border}`, alignItems: "center", background: c.surfaceAlt }}>
                 <div style={{ padding: "8px 10px" }}>
@@ -766,6 +744,28 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
                 </div>
               </div>
             )}
+            {relationships.map((rel, idx) => {
+              const fromCl = allClusters.find((cl) => cl.id === rel.fromClusterId);
+              const toCl = allClusters.find((cl) => cl.id === rel.toClusterId);
+              const rt = REL_TYPE_MAP[rel.type] || REL_TYPES[0];
+              return (
+                <div key={rel.id} style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 2.5fr 1fr 90px", borderTop: `1px solid ${c.border}`, alignItems: "center" }}>
+                  <div style={{ padding: "10px 14px", fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fromCl?.name}</div>
+                  <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ width: 16, height: 2.5, borderRadius: 2, flexShrink: 0, background: rt.dash ? `repeating-linear-gradient(to right, ${rt.color} 0, ${rt.color} 4px, transparent 4px, transparent 8px)` : rt.color }} />
+                    <span style={{ fontSize: 11, color: rt.color, fontWeight: 500 }}>{rel.type}</span>
+                  </div>
+                  <div style={{ padding: "10px 14px", fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{toCl?.name}</div>
+                  <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rel.evidence || "—"}</div>
+                  <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{rel.confidence}</div>
+                  <div style={{ padding: "10px 14px", display: "flex", gap: 5 }}>
+                    <button onClick={() => onEditRel(rel.id)} style={{ ...btnG, fontSize: 10, padding: "3px 8px", border: `1px solid ${c.border}` }}>Edit</button>
+                    <button onClick={() => onDeleteRel(rel.id)} style={{ ...btnG, fontSize: 10, padding: "3px 8px", border: `1px solid ${c.redBorder}`, color: c.red800 }}>Del</button>
+                  </div>
+                </div>
+              );
+            })}
+
           </div>
         )}
       </div>
