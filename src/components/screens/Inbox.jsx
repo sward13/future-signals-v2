@@ -580,11 +580,11 @@ export default function Inbox({ appState }) {
   const [filters,           setFilters]           = useState(EMPTY_FILTERS);
   const [savedToProject,    setSavedToProject]    = useState({});
   const [savingInputId,     setSavingInputId]     = useState(null);
-  const [selectedInputIds,  setSelectedInputIds]  = useState([]);
-  const [projectPickerOpen, setProjectPickerOpen] = useState(false);
+  const [selectedManualIds, setSelectedManualIds] = useState([]);
+  const [selectedAiIds,     setSelectedAiIds]     = useState([]);
+  const [manualPickerOpen,  setManualPickerOpen]  = useState(false);
+  const [aiPickerOpen,      setAiPickerOpen]      = useState(false);
   const [aiExpanded,        setAiExpanded]        = useState(false);
-
-  const anySelected = selectedInputIds.length > 0;
 
   // All inbox inputs (base list — used for total count + selection reference)
   const allInboxInputs = useMemo(() =>
@@ -633,21 +633,33 @@ export default function Inbox({ appState }) {
     showToast("Signal dismissed");
   };
 
-  const toggleSelect = (id) => {
-    setSelectedInputIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  const toggleSelectManual = (id) => {
+    setSelectedManualIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
 
-  const clearSelection = () => { setSelectedInputIds([]); setProjectPickerOpen(false); };
+  const toggleSelectAi = (id) => {
+    setSelectedAiIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  };
 
-  const handleBulkAddToProject = (project) => {
-    saveInputsToProject(selectedInputIds, project.id);
-    const n = selectedInputIds.length;
+  const clearManualSelection = () => { setSelectedManualIds([]); setManualPickerOpen(false); };
+  const clearAiSelection     = () => { setSelectedAiIds([]);     setAiPickerOpen(false); };
+
+  const handleBulkAddToProjectManual = (project) => {
+    saveInputsToProject(selectedManualIds, project.id);
+    const n = selectedManualIds.length;
     showToast(`${n} input${n !== 1 ? "s" : ""} added to "${project.name}"`);
-    clearSelection();
+    clearManualSelection();
   };
 
-  const handleBulkAccept = () => {
-    const selectedInputs = allInboxInputs.filter((i) => selectedInputIds.includes(i.id));
+  const handleBulkAddToProjectAi = (project) => {
+    saveInputsToProject(selectedAiIds, project.id);
+    const n = selectedAiIds.length;
+    showToast(`${n} input${n !== 1 ? "s" : ""} added to "${project.name}"`);
+    clearAiSelection();
+  };
+
+  const handleBulkAcceptAi = () => {
+    const selectedInputs = aiInputs.filter((i) => selectedAiIds.includes(i.id));
     selectedInputs.forEach((inp) => {
       const topProject = inp.metadata?.suggested_projects?.[0];
       if (!topProject) return;
@@ -656,21 +668,15 @@ export default function Inbox({ appState }) {
     });
     const n = selectedInputs.length;
     showToast(`${n} signal${n !== 1 ? "s" : ""} accepted`);
-    clearSelection();
+    clearAiSelection();
   };
 
-  const handleBulkDismiss = () => {
-    const selectedInputs = allInboxInputs.filter((i) => selectedInputIds.includes(i.id));
-    selectedInputs.forEach((inp) => {
-      if (inp.is_seeded && inp.metadata?.source === "scanner") {
-        dismissSuggestedInput(inp);
-      } else {
-        dismissInput(inp.id);
-      }
-    });
+  const handleBulkDismissAi = () => {
+    const selectedInputs = aiInputs.filter((i) => selectedAiIds.includes(i.id));
+    selectedInputs.forEach((inp) => dismissSuggestedInput(inp));
     const n = selectedInputs.length;
     showToast(`${n} signal${n !== 1 ? "s" : ""} dismissed`);
-    clearSelection();
+    clearAiSelection();
   };
 
   const clearFilters = () => setFilters(EMPTY_FILTERS);
@@ -683,8 +689,8 @@ export default function Inbox({ appState }) {
     showToast(`Added to "${topProject.name}"`);
   };
 
-  // Shared item props builder
-  const itemProps = (inp) => ({
+  // Item props builder — selection context passed per-table
+  const itemProps = (inp, selectedIds, onToggle, anyTableSelected) => ({
     input: inp,
     isSeeded: !!inp.is_seeded,
     isScannerSuggested: !!(inp.is_seeded && inp.metadata?.source === "scanner"),
@@ -696,37 +702,40 @@ export default function Inbox({ appState }) {
     onDismissSuggested: () => handleDismissSuggested(inp),
     onDismiss: handleDismiss,
     onOpen: () => openInputDetail(inp.id),
-    selected: selectedInputIds.includes(inp.id),
-    onToggle: toggleSelect,
-    anySelected,
+    selected: selectedIds.includes(inp.id),
+    onToggle,
+    anySelected: anyTableSelected,
   });
 
   // ── Render helpers ────────────────────────────────────────────────────────
 
-  const renderList = (items) => (
+  const renderList = (items, getProps) => (
     <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden" }}>
       <ListHeader />
-      {items.map((inp) => <ListRow key={inp.id} {...itemProps(inp)} />)}
+      {items.map((inp) => <ListRow key={inp.id} {...getProps(inp)} />)}
     </div>
   );
 
-  const renderCompact = (items) => (
+  const renderCompact = (items, getProps) => (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-      {items.map((inp) => <CompactCard key={inp.id} {...itemProps(inp)} />)}
+      {items.map((inp) => <CompactCard key={inp.id} {...getProps(inp)} />)}
     </div>
   );
 
-  const renderCards = (items) => (
+  const renderCards = (items, getProps) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {items.map((inp) => <FullCard key={inp.id} {...itemProps(inp)} />)}
+      {items.map((inp) => <FullCard key={inp.id} {...getProps(inp)} />)}
     </div>
   );
 
-  const renderItems = (items) => {
-    if (viewMode === "list")    return renderList(items);
-    if (viewMode === "compact") return renderCompact(items);
-    return renderCards(items);
+  const renderItems = (items, getProps) => {
+    if (viewMode === "list")    return renderList(items, getProps);
+    if (viewMode === "compact") return renderCompact(items, getProps);
+    return renderCards(items, getProps);
   };
+
+  const manualGetProps = (inp) => itemProps(inp, selectedManualIds, toggleSelectManual, selectedManualIds.length > 0);
+  const aiGetProps     = (inp) => itemProps(inp, selectedAiIds,     toggleSelectAi,     selectedAiIds.length > 0);
 
   return (
     <>
@@ -830,50 +839,37 @@ export default function Inbox({ appState }) {
           <FilterPanel filters={filters} onChange={setFilters} onClear={clearFilters} activeCount={activeFilterCount} />
         )}
 
-        {/* ── Bulk selection action bar ────────────────────────── */}
-        {anySelected && (() => {
-          const selectedInputs = allInboxInputs.filter((i) => selectedInputIds.includes(i.id));
-          const allAiSuggested = selectedInputs.every((i) => i.is_seeded && i.metadata?.source === "scanner" && (i.metadata?.suggested_projects?.length > 0));
-          return (
-            <div style={{
-              display: "flex", alignItems: "center", gap: 8,
-              padding: "10px 14px", background: c.white,
-              border: `1px solid ${c.borderMid}`, borderRadius: 9, marginBottom: 12,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-            }}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: c.ink, flex: 1 }}>
-                {selectedInputIds.length} input{selectedInputIds.length !== 1 ? "s" : ""} selected
-              </span>
-              {allAiSuggested && (
-                <button onClick={handleBulkAccept} style={{ ...btnSm, fontSize: 11 }}>
-                  Accept suggestions →
-                </button>
-              )}
-              <div style={{ position: "relative" }}>
-                <button onClick={() => setProjectPickerOpen((s) => !s)} style={{ ...(allAiSuggested ? { padding: "7px 16px", borderRadius: 7, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, fontSize: 11, cursor: "pointer", fontFamily: "inherit" } : { ...btnSm, fontSize: 11 }) }}>
-                  Add to project →
-                </button>
-                {projectPickerOpen && (
-                  <ProjectPickerPopover
-                    projects={projects}
-                    onSelect={handleBulkAddToProject}
-                    onClose={() => setProjectPickerOpen(false)}
-                    onCreateProject={() => { clearSelection(); openProjectModal(); }}
-                  />
-                )}
-              </div>
-              <button onClick={handleBulkDismiss} style={{ ...btnG, fontSize: 11, color: c.muted }}>
-                Dismiss
-              </button>
-              <button onClick={clearSelection} style={{ fontSize: 11, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-                Clear selection
-              </button>
-            </div>
-          );
-        })()}
-
         {/* ── My Inputs table ──────────────────────────────────── */}
         <SectionHeader title="My Inputs" count={filteredManual.length} />
+
+        {/* My Inputs inline action bar */}
+        {selectedManualIds.length > 0 && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "8px 12px", background: c.surfaceAlt,
+            border: `1px solid ${c.border}`, borderRadius: 8, marginBottom: 8,
+          }}>
+            <span style={{ fontSize: 12, fontWeight: 500, color: c.ink, flex: 1 }}>
+              {selectedManualIds.length} selected
+            </span>
+            <div style={{ position: "relative" }}>
+              <button onClick={() => setManualPickerOpen((s) => !s)} style={{ ...btnSm, fontSize: 11 }}>
+                Add to project →
+              </button>
+              {manualPickerOpen && (
+                <ProjectPickerPopover
+                  projects={projects}
+                  onSelect={handleBulkAddToProjectManual}
+                  onClose={() => setManualPickerOpen(false)}
+                  onCreateProject={() => { clearManualSelection(); openProjectModal(); }}
+                />
+              )}
+            </div>
+            <button onClick={clearManualSelection} style={{ fontSize: 11, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+              Clear selection
+            </button>
+          </div>
+        )}
 
         {manualInputs.length === 0 ? (
           <div style={{ marginBottom: 36 }}>
@@ -897,7 +893,7 @@ export default function Inbox({ appState }) {
           </div>
         ) : (
           <div style={{ marginBottom: 36 }}>
-            {renderItems(filteredManual)}
+            {renderItems(filteredManual, manualGetProps)}
           </div>
         )}
 
@@ -905,6 +901,44 @@ export default function Inbox({ appState }) {
         {aiInputs.length > 0 && (
           <>
             <SectionHeader title="AI Suggested" count={filteredAI.length} />
+
+            {/* AI Suggested inline action bar */}
+            {selectedAiIds.length > 0 && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "8px 12px", background: c.surfaceAlt,
+                border: `1px solid ${c.border}`, borderRadius: 8, marginBottom: 8,
+              }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: c.ink, flex: 1 }}>
+                  {selectedAiIds.length} selected
+                </span>
+                <button onClick={handleBulkAcceptAi} style={{ ...btnSm, fontSize: 11 }}>
+                  Accept →
+                </button>
+                <div style={{ position: "relative" }}>
+                  <button
+                    onClick={() => setAiPickerOpen((s) => !s)}
+                    style={{ padding: "7px 16px", borderRadius: 7, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    Add to project →
+                  </button>
+                  {aiPickerOpen && (
+                    <ProjectPickerPopover
+                      projects={projects}
+                      onSelect={handleBulkAddToProjectAi}
+                      onClose={() => setAiPickerOpen(false)}
+                      onCreateProject={() => { clearAiSelection(); openProjectModal(); }}
+                    />
+                  )}
+                </div>
+                <button onClick={handleBulkDismissAi} style={{ ...btnG, fontSize: 11, color: c.muted }}>
+                  Dismiss
+                </button>
+                <button onClick={clearAiSelection} style={{ fontSize: 11, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                  Clear selection
+                </button>
+              </div>
+            )}
 
             {filteredAI.length === 0 ? (
               <div style={{ textAlign: "center", padding: "24px 0", color: c.hint, fontSize: 13 }}>
@@ -918,7 +952,7 @@ export default function Inbox({ appState }) {
               </div>
             ) : (
               <>
-                {renderItems(visibleAI)}
+                {renderItems(visibleAI, aiGetProps)}
                 {!aiExpanded && filteredAI.length > AI_PREVIEW_COUNT && (
                   <button
                     onClick={() => setAiExpanded(true)}

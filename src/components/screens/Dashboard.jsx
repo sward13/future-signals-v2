@@ -361,16 +361,16 @@ export default function Dashboard({ appState }) {
                     {p.domain || <span style={{ color: c.hint }}>—</span>}
                   </div>
                   <div style={{ width: 80, flexShrink: 0, textAlign: "right", fontSize: 11, color: c.muted }}>
-                    {pInputs.length} <span style={{ color: c.hint }}>inputs</span>
+                    {pInputs.length}
                   </div>
                   <div style={{ width: 80, flexShrink: 0, textAlign: "right", fontSize: 11, color: c.muted }}>
-                    {pClusters.length} <span style={{ color: c.hint }}>clusters</span>
+                    {pClusters.length}
                   </div>
                   <div style={{ width: 80, flexShrink: 0, textAlign: "right", fontSize: 11, color: c.muted }}>
-                    {hasCanvas ? 1 : 0} <span style={{ color: c.hint }}>systems</span>
+                    {hasCanvas ? 1 : 0}
                   </div>
                   <div style={{ width: 80, flexShrink: 0, textAlign: "right", fontSize: 11, color: c.muted }}>
-                    {pAnalyses.length} <span style={{ color: c.hint }}>analysis</span>
+                    {pAnalyses.length}
                   </div>
                   <div style={{ width: 32, flexShrink: 0, textAlign: "right", fontSize: 12, color: c.hint }}>→</div>
                 </div>

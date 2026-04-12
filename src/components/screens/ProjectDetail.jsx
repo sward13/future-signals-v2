@@ -171,7 +171,7 @@ function InputTypeBadge({ subtype }) {
 
 // ─── Filter dropdown chip ──────────────────────────────────────────────────────
 
-function FilterDropdown({ label, value, options, onChange, onClear, isOpen, onToggle }) {
+export function FilterDropdown({ label, value, options, onChange, onClear, isOpen, onToggle }) {
   const active = !!value;
   return (
     <div style={{ position: "relative" }}>

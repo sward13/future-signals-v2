@@ -5,13 +5,17 @@
  * @param {{ appState: object }} props
  */
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { c, btnP, btnSm, btnSec, btnG, fl, badg } from "../../styles/tokens.js";
+import { c, inp, btnP, btnSm, btnSec, btnG, fl, badg } from "../../styles/tokens.js";
 import { supabase } from "../../lib/supabase.js";
 import { HorizTag, SubtypeTag, Tag } from "../shared/Tag.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ClusterDrawer } from "../clusters/ClusterDrawer.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
+import { FilterDropdown } from "./ProjectDetail.jsx";
+import { STEEPLED } from "../../data/seeds.js";
+
+const INPUT_TYPE_OPTS = ["Signal", "Issue", "Projection", "Plan", "Obstacle"];
 
 // ─── Likelihood tag ────────────────────────────────────────────────────────────
 
@@ -597,6 +601,10 @@ export default function Clustering({ appState }) {
   const [assignPickerOpen,      setAssignPickerOpen]      = useState(false);
   const [preselectedForCluster, setPreselectedForCluster] = useState([]);
   const [inputSearch,           setInputSearch]           = useState("");
+  const [filterType,            setFilterType]            = useState(null);
+  const [filterHorizon,         setFilterHorizon]         = useState(null);
+  const [filterSteepled,        setFilterSteepled]        = useState(null);
+  const [openFilterDropdown,    setOpenFilterDropdown]    = useState(null);
 
   // AI suggestions state
   const [dbSuggestions,      setDbSuggestions]      = useState([]);
@@ -618,12 +626,19 @@ export default function Clustering({ appState }) {
   );
 
   const filteredUnassigned = useMemo(() => {
-    if (!inputSearch.trim()) return unassignedInputs;
-    const q = inputSearch.toLowerCase();
-    return unassignedInputs.filter((i) =>
-      i.name.toLowerCase().includes(q) || (i.description || "").toLowerCase().includes(q)
-    );
-  }, [unassignedInputs, inputSearch]);
+    const q = inputSearch.trim().toLowerCase();
+    return unassignedInputs
+      .filter((i) => !q || i.name.toLowerCase().includes(q) || (i.description || "").toLowerCase().includes(q))
+      .filter((i) => !filterType     || i.subtype === filterType)
+      .filter((i) => !filterHorizon  || i.horizon === filterHorizon)
+      .filter((i) => !filterSteepled || (i.steepled || []).includes(filterSteepled));
+  }, [unassignedInputs, inputSearch, filterType, filterHorizon, filterSteepled]);
+
+  const anyFilterActive = !!(inputSearch.trim() || filterType || filterHorizon || filterSteepled);
+
+  const clearAllFilters = () => {
+    setInputSearch(""); setFilterType(null); setFilterHorizon(null); setFilterSteepled(null);
+  };
 
   const loadSuggestions = useCallback(async (projectId) => {
     setLoadingSuggestions(true);
@@ -898,29 +913,54 @@ export default function Clustering({ appState }) {
             </div>
           )}
 
-          {/* Search bar */}
+          {/* Search + filter bar */}
           {unassignedInputs.length > 0 && (
-            <div style={{ position: "relative", marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <input
                 value={inputSearch}
                 onChange={(e) => setInputSearch(e.target.value)}
-                placeholder="Search unassigned inputs…"
+                placeholder="Search inputs…"
                 style={{
-                  width: "100%", padding: "7px 30px 7px 11px",
-                  border: `1px solid ${c.borderMid}`, borderRadius: 8,
-                  background: c.white, color: c.ink, fontSize: 12,
-                  fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+                  ...inp, width: 240, padding: "5px 10px", fontSize: 12,
+                  border: `1px solid ${c.border}`, borderRadius: 6,
                 }}
               />
-              {inputSearch && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
+                <FilterDropdown
+                  label="Type"
+                  value={filterType}
+                  options={INPUT_TYPE_OPTS.map((v) => ({ value: v, label: v }))}
+                  onChange={setFilterType}
+                  onClear={() => setFilterType(null)}
+                  isOpen={openFilterDropdown === "type"}
+                  onToggle={() => setOpenFilterDropdown(openFilterDropdown === "type" ? null : "type")}
+                />
+                <FilterDropdown
+                  label="Horizon"
+                  value={filterHorizon}
+                  options={["H1", "H2", "H3"].map((v) => ({ value: v, label: v }))}
+                  onChange={setFilterHorizon}
+                  onClear={() => setFilterHorizon(null)}
+                  isOpen={openFilterDropdown === "horizon"}
+                  onToggle={() => setOpenFilterDropdown(openFilterDropdown === "horizon" ? null : "horizon")}
+                />
+                <FilterDropdown
+                  label="STEEPLED"
+                  value={filterSteepled}
+                  options={STEEPLED.map((v) => ({ value: v, label: v }))}
+                  onChange={setFilterSteepled}
+                  onClear={() => setFilterSteepled(null)}
+                  isOpen={openFilterDropdown === "steepled"}
+                  onToggle={() => setOpenFilterDropdown(openFilterDropdown === "steepled" ? null : "steepled")}
+                />
+              </div>
+              {anyFilterActive && (
                 <button
-                  onClick={() => setInputSearch("")}
-                  style={{
-                    position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
-                    background: "none", border: "none", cursor: "pointer",
-                    fontSize: 14, color: c.hint, padding: 0, lineHeight: 1,
-                  }}
-                >×</button>
+                  onClick={clearAllFilters}
+                  style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                >
+                  Clear all
+                </button>
               )}
             </div>
           )}
@@ -950,12 +990,12 @@ export default function Clustering({ appState }) {
               background: c.white, border: `1px solid ${c.border}`,
               borderRadius: 9,
             }}>
-              <div style={{ fontSize: 13, color: c.muted, marginBottom: 6 }}>No inputs match your search.</div>
+              <div style={{ fontSize: 13, color: c.muted, marginBottom: 6 }}>No inputs match the current filters.</div>
               <button
-                onClick={() => setInputSearch("")}
+                onClick={clearAllFilters}
                 style={{ fontSize: 12, color: c.ink, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}
               >
-                Clear search
+                Clear all
               </button>
             </div>
           ) : (
