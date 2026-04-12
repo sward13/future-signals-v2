@@ -117,7 +117,7 @@ function ChipsPanel({ value = [], onChange, onFocus }) {
 function ConfidencePanel({ value, onChange, prompt }) {
   return (
     <div style={{ flex: 1, padding: "8px 9px 10px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-      <div style={{ fontSize: 8, color: c.hint, fontStyle: "italic", lineHeight: 1.55, marginBottom: 10 }}>
+      <div style={{ fontSize: 13, color: c.muted, fontStyle: "italic", lineHeight: 1.55, marginBottom: 10 }}>
         {prompt}
       </div>
       <div style={{ display: "flex", gap: 6 }}>
@@ -190,7 +190,7 @@ function AnalysisPanel({ panel, value, onChange, selected, onSelect }) {
 
       {/* Prompt — visible when focused or empty (text/chips only) */}
       {showPrompt && (
-        <div style={{ padding: "5px 9px 0", flexShrink: 0, fontSize: 8, color: c.hint, fontStyle: "italic", lineHeight: 1.55 }}>
+        <div style={{ padding: "5px 9px 0", flexShrink: 0, fontSize: 13, color: c.muted, fontStyle: "italic", lineHeight: 1.55 }}>
           {panel.prompt}
         </div>
       )}
