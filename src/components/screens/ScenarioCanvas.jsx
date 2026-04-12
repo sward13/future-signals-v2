@@ -701,7 +701,7 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
           <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>
             Relationships <span style={{ fontSize: 11, color: c.hint, fontWeight: 400 }}>({relationships.length})</span>
           </div>
-          {!adding && <button onClick={() => setAdding(true)} style={{ ...btnSec, fontSize: 11, padding: "4px 12px" }}>+ Add relationship</button>}
+          {!adding && <button onClick={() => setAdding(true)} style={{ ...btnSm, fontSize: 11, padding: "4px 12px" }}>+ Add relationship</button>}
         </div>
 
         {relationships.length === 0 && !adding ? (
