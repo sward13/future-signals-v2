@@ -370,9 +370,9 @@ export default function SystemAnalysisCanvas({ appState }) {
 
       {confirmDelete && (
         <ConfirmDialog
-          title="Delete this analysis?"
+          title="Delete this System Analysis?"
           message={`This will permanently delete the System Analysis for "${project.name}". This cannot be undone.`}
-          onConfirm={() => { deleteAnalysis(activeProjectId); showToast("Analysis deleted"); setConfirmDelete(false); }}
+          onConfirm={() => { deleteAnalysis(activeProjectId); showToast("System Analysis deleted"); setConfirmDelete(false); }}
           onClose={() => setConfirmDelete(false)}
         />
       )}

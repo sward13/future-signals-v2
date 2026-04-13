@@ -997,7 +997,7 @@ export default function ScenarioCanvas({ appState }) {
     canvasNodes, relationships,
     addCanvasNode, removeCanvasNode, updateCanvasNodePos,
     addRelationship, updateRelationship, removeRelationship,
-    deleteSystemMap, showToast, scenarioDetailId, closeScenarioDetail,
+    deleteSystemMap, deleteAnalysis, showToast, scenarioDetailId, closeScenarioDetail,
   } = appState;
 
   const project = projects.find((p) => p.id === activeProjectId) || null;
@@ -1172,7 +1172,7 @@ export default function ScenarioCanvas({ appState }) {
               <button
                 onClick={() => setConfirmDeleteMap(true)}
                 style={{ fontSize: 11, padding: "5px 11px", borderRadius: 6, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
-              >Delete map</button>
+              >Clear Map</button>
             )}
             <div style={{ display: "flex", border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden" }}>
               {["canvas", "table"].map((mode) => (
@@ -1197,10 +1197,10 @@ export default function ScenarioCanvas({ appState }) {
 
       {confirmDeleteMap && (
         <ConfirmDialog
-          title="Delete this System Map?"
-          message={`This will permanently remove all nodes and relationships from the System Map for "${project.name}". Clusters will not be deleted. This cannot be undone.`}
-          confirmLabel="Delete map"
-          onConfirm={() => { deleteSystemMap(activeProjectId); showToast("System map cleared"); setConfirmDeleteMap(false); }}
+          title="Clear System Map?"
+          message={`This will remove all nodes and relationships from the map and delete the System Analysis for "${project.name}". This cannot be undone.`}
+          confirmLabel="Clear Map"
+          onConfirm={() => { deleteSystemMap(activeProjectId); deleteAnalysis(activeProjectId); showToast("System map cleared"); setConfirmDeleteMap(false); }}
           onClose={() => setConfirmDeleteMap(false)}
         />
       )}

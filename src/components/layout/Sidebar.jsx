@@ -27,7 +27,7 @@ const PROJECT_ITEMS = [
   { icon: "◎", label: "Inputs",       screen: "project" },
   { icon: "◈", label: "Clusters",     screen: "clustering" },
   { icon: "◆", label: "System Map",   screen: "scenarios" },
-  { icon: "◑", label: "Analysis",     screen: "analysis" },
+  { icon: "◑", label: "System Analysis", screen: "analysis" },
 ];
 
 export function Sidebar({
