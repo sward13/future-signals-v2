@@ -285,6 +285,7 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
               style={{ ...ta, minHeight: 68 }}
               value={evidence}
               onChange={(e) => setEvidence(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
               placeholder="What evidence supports this relationship?"
             />
           </div>
@@ -731,7 +732,7 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
                   </select>
                 </div>
                 <div style={{ padding: "8px 10px" }}>
-                  <input style={{ ...selStyle, cursor: "text" }} type="text" value={draft.evidence} onChange={(e) => setDraft((d) => ({ ...d, evidence: e.target.value }))} placeholder="Evidence (optional)" />
+                  <input style={{ ...selStyle, cursor: "text" }} type="text" value={draft.evidence} onChange={(e) => setDraft((d) => ({ ...d, evidence: e.target.value }))} onKeyDown={(e) => e.stopPropagation()} placeholder="Evidence (optional)" />
                 </div>
                 <div style={{ padding: "8px 10px" }}>
                   <select style={selStyle} value={draft.confidence} onChange={(e) => setDraft((d) => ({ ...d, confidence: e.target.value }))}>
