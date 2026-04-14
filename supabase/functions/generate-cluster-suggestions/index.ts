@@ -48,7 +48,7 @@ type Suggestion = {
 
 type Project = {
   workspace_id: string;
-  key_question: string | null;
+  question: string | null;
   focus: string | null;
   h1_start: string | null;
   h1_end: string | null;
@@ -81,7 +81,7 @@ serve(async (req: Request) => {
       await Promise.all([
         supabase
           .from("projects")
-          .select("workspace_id, key_question, focus, h1_start, h1_end, h2_start, h2_end, h3_start, h3_end")
+          .select("workspace_id, question, focus, h1_start, h1_end, h2_start, h2_end, h3_start, h3_end")
           .eq("id", project_id)
           .single(),
         supabase
@@ -187,7 +187,11 @@ serve(async (req: Request) => {
     return respond({ suggestions: inserted ?? [], errors });
 
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
+    const message = err instanceof Error
+      ? err.message
+      : (typeof err === "object" && err !== null)
+        ? JSON.stringify(err)
+        : String(err);
     return respond({ error: message }, 500);
   }
 });
@@ -347,7 +351,7 @@ async function interpretCluster(
 
 This is for a foresight project investigating the following question:
 
-"${project.key_question ?? "Not specified"}"
+"${project.question ?? "Not specified"}"
 
 The project's focus is: ${project.focus ?? "Not specified"}
 Time horizons: ${horizons}
@@ -435,7 +439,7 @@ async function reviewWeakSignals(
 
 ## Context
 
-This is for a foresight project investigating: "${project.key_question ?? "Not specified"}"
+This is for a foresight project investigating: "${project.question ?? "Not specified"}"
 Focus: ${project.focus ?? "Not specified"}
 Time horizons: ${horizons}${clusterContext}
 
