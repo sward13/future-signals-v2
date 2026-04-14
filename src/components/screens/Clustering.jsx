@@ -4,8 +4,8 @@
  * AI suggestions table (bottom). No tabs.
  * @param {{ appState: object }} props
  */
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { c, inp, btnP, btnSm, btnSec, btnG, fl, badg } from "../../styles/tokens.js";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { c, inp, ta, btnP, btnSm, btnSec, btnG, fl, badg } from "../../styles/tokens.js";
 import { supabase } from "../../lib/supabase.js";
 import { HorizTag, SubtypeTag, Tag } from "../shared/Tag.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
@@ -337,141 +337,170 @@ function InputTableRow({ input, clusters, assignedCluster, onAssign, onNewCluste
   );
 }
 
-// ─── Suggestion row ───────────────────────────────────────────────────────────
+// ─── Suggestion card ──────────────────────────────────────────────────────────
 
-const SUG_COLS = "1fr 110px 230px";
+function SuggestionCard({ suggestion, inputs, onAccept, onDismiss, isFadingOut }) {
+  const [editing,      setEditing]      = useState(false);
+  const [editName,     setEditName]     = useState(suggestion.name);
+  const [editDesc,     setEditDesc]     = useState(suggestion.description || "");
+  const [editInputIds, setEditInputIds] = useState(suggestion.input_ids || []);
 
-function SuggestionRow({ suggestion, inputs, onAccept, onDismiss, onOpen, isLast }) {
-  const [expanded,    setExpanded]    = useState(false);
-  const [editingName, setEditingName] = useState(false);
-  const [name,        setName]        = useState(suggestion.name);
-  const nameRef = useRef(null);
+  const subtype    = suggestion.subtype
+    ? suggestion.subtype.charAt(0).toUpperCase() + suggestion.subtype.slice(1)
+    : "Trend";
+  const activeIds  = editing ? editInputIds : (suggestion.input_ids || []);
+  const sugInputs  = inputs.filter((i) => activeIds.includes(i.id));
+  const shown      = sugInputs.slice(0, 5);
+  const extraCount = sugInputs.length - 5;
 
-  useEffect(() => {
-    if (editingName && nameRef.current) nameRef.current.focus();
-  }, [editingName]);
-
-  const sugInputs = inputs.filter((inp) => (suggestion.input_ids || []).includes(inp.id));
+  const handleCancel = () => {
+    setEditing(false);
+    setEditName(suggestion.name);
+    setEditDesc(suggestion.description || "");
+    setEditInputIds(suggestion.input_ids || []);
+  };
 
   return (
-    <div style={{ background: c.white, borderBottom: isLast ? "none" : `1px solid ${c.border}` }}>
+    <div style={{
+      background: c.white,
+      border: `1px solid ${c.border}`,
+      borderRadius: 11,
+      overflow: "hidden",
+      opacity: isFadingOut ? 0 : 1,
+      transition: "opacity 0.25s ease",
+    }}>
+      <div style={{ padding: "15px 18px" }}>
 
-      {/* ── Main row ──────────────────────────────────────────────── */}
-      <div style={{
-        display: "grid", gridTemplateColumns: SUG_COLS,
-        alignItems: "center", padding: "10px 12px", gap: 0,
-      }}>
-
-        {/* Suggestion name + rationale — click to open inspector */}
-        <div
-          onClick={() => !editingName && onOpen?.(suggestion)}
-          style={{ paddingRight: 12, minWidth: 0, cursor: editingName ? "default" : "pointer" }}
-        >
-          {editingName ? (
-            <input
-              ref={nameRef}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={() => setEditingName(false)}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") setEditingName(false); }}
-              style={{
-                fontSize: 12, fontWeight: 500, color: c.ink,
-                border: "none", outline: `2px solid ${c.borderMid}`,
-                borderRadius: 4, padding: "2px 6px",
-                background: c.fieldBg, fontFamily: "inherit",
-                width: "100%", boxSizing: "border-box",
-              }}
-            />
-          ) : (
-            <div style={{
-              fontSize: 12, fontWeight: 500, color: c.ink,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
-              {name}
-            </div>
-          )}
-          {suggestion.rationale && (
-            <div style={{
-              fontSize: 10, color: c.hint, marginTop: 2, lineHeight: 1.45,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
-              {suggestion.rationale}
-            </div>
-          )}
+        {/* Name + badge row */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: editing ? 10 : 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {editing ? (
+              <input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                style={{ ...inp, fontSize: 13, fontWeight: 500, padding: "5px 9px", borderRadius: 6 }}
+              />
+            ) : (
+              <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, lineHeight: 1.4 }}>
+                {suggestion.name}
+              </div>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 5, alignItems: "center", flexShrink: 0, paddingTop: 2 }}>
+            <SubtypeTag sub={subtype} />
+            {suggestion.is_weak_signal && (
+              <span style={{
+                fontSize: 10, padding: "2px 7px", borderRadius: 8,
+                background: c.amber50, color: c.amber700, border: `1px solid ${c.amberBorder}`,
+                whiteSpace: "nowrap",
+              }}>
+                Weak signal
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Input count — click to expand */}
-        <div>
-          <button
-            onClick={() => setExpanded((s) => !s)}
-            style={{
-              display: "flex", alignItems: "center", gap: 4,
-              background: "none", border: "none", cursor: "pointer",
-              fontFamily: "inherit", padding: 0,
-              fontSize: 11, color: c.muted,
-            }}
-          >
-            <span>{sugInputs.length} input{sugInputs.length !== 1 ? "s" : ""}</span>
-            <span style={{ fontSize: 9, color: c.hint }}>{expanded ? "▲" : "▼"}</span>
-          </button>
-        </div>
+        {/* Description */}
+        {editing ? (
+          <textarea
+            value={editDesc}
+            onChange={(e) => setEditDesc(e.target.value)}
+            rows={3}
+            style={{ ...ta, fontSize: 12, marginBottom: 10 }}
+          />
+        ) : suggestion.description ? (
+          <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.65, marginBottom: 10 }}>
+            {suggestion.description}
+          </div>
+        ) : null}
+
+        {/* Input chips */}
+        {activeIds.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
+            {editing ? (
+              editInputIds.map((id) => {
+                const found = inputs.find((i) => i.id === id);
+                if (!found) return null;
+                return (
+                  <span key={id} style={{
+                    fontSize: 10, padding: "2px 6px 2px 8px", borderRadius: 10,
+                    background: c.surfaceAlt, color: c.muted,
+                    border: `1px solid ${c.border}`,
+                    display: "inline-flex", alignItems: "center", gap: 3,
+                  }}>
+                    <span style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {found.name}
+                    </span>
+                    <button
+                      onClick={() => setEditInputIds((prev) => prev.filter((x) => x !== id))}
+                      style={{
+                        background: "none", border: "none", cursor: "pointer",
+                        color: c.hint, fontSize: 12, padding: 0, lineHeight: 1,
+                        fontFamily: "inherit", flexShrink: 0,
+                      }}
+                    >×</button>
+                  </span>
+                );
+              })
+            ) : (
+              <>
+                {shown.map((i) => (
+                  <span key={i.id} style={{
+                    fontSize: 10, padding: "2px 8px", borderRadius: 10,
+                    background: c.surfaceAlt, color: c.muted,
+                    border: `1px solid ${c.border}`,
+                    maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {i.name}
+                  </span>
+                ))}
+                {extraCount > 0 && (
+                  <span style={{
+                    fontSize: 10, padding: "2px 8px", borderRadius: 10,
+                    background: "transparent", color: c.hint,
+                    border: `1px solid ${c.border}`, whiteSpace: "nowrap",
+                  }}>
+                    +{extraCount} more
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {/* Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>
-          <button
-            onClick={() => onAccept(suggestion, name)}
-            style={{
-              fontSize: 10, padding: "4px 12px", borderRadius: 6,
-              background: c.ink, color: c.white, border: "none",
-              cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
-            }}
-          >
-            Accept →
-          </button>
-          <button
-            onClick={() => setEditingName((s) => !s)}
-            style={{
-              fontSize: 10, padding: "4px 9px", borderRadius: 6,
-              background: "transparent", color: c.muted,
-              border: `1px solid ${c.border}`,
-              cursor: "pointer", fontFamily: "inherit",
-            }}
-          >
-            Edit
-          </button>
-          <button
-            onClick={() => onDismiss(suggestion.id)}
-            style={{
-              fontSize: 10, padding: "4px 9px", borderRadius: 6,
-              background: "transparent", color: c.muted,
-              border: "none",
-              cursor: "pointer", fontFamily: "inherit",
-            }}
-          >
-            Dismiss
-          </button>
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          {editing ? (
+            <>
+              <button
+                onClick={() => onAccept(suggestion, editName, editDesc, editInputIds)}
+                style={{ ...btnSm, fontSize: 11 }}
+              >
+                Create cluster
+              </button>
+              <button onClick={handleCancel} style={{ ...btnSec, fontSize: 11, padding: "6px 14px" }}>
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => onAccept(suggestion, suggestion.name, suggestion.description || "", suggestion.input_ids || [])}
+                style={{ ...btnSm, fontSize: 11 }}
+              >
+                Create cluster
+              </button>
+              <button onClick={() => setEditing(true)} style={{ ...btnSec, fontSize: 11, padding: "6px 14px" }}>
+                Edit
+              </button>
+              <button onClick={() => onDismiss(suggestion.id)} style={{ ...btnG, fontSize: 11 }}>
+                Dismiss
+              </button>
+            </>
+          )}
         </div>
-      </div>
 
-      {/* ── Expanded input list ───────────────────────────────────── */}
-      {expanded && sugInputs.length > 0 && (
-        <div style={{
-          padding: "8px 12px 12px",
-          borderTop: `1px solid ${c.border}`,
-          display: "flex", flexWrap: "wrap", gap: 4,
-        }}>
-          {sugInputs.map((i) => (
-            <span key={i.id} style={{
-              fontSize: 10, padding: "2px 8px", borderRadius: 10,
-              background: c.surfaceAlt, color: c.muted,
-              border: `1px solid ${c.border}`,
-              maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
-              {i.name}
-            </span>
-          ))}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -511,10 +540,10 @@ function SuggestionInspector({ suggestion, inputs, onAccept, onDismiss, onClose 
 
         {/* Body */}
         <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
-          {suggestion.rationale && (
+          {suggestion.description && (
             <div style={{ marginBottom: 24 }}>
-              <div style={fl}>Rationale</div>
-              <div style={{ fontSize: 13, color: c.muted, lineHeight: 1.65 }}>{suggestion.rationale}</div>
+              <div style={fl}>Description</div>
+              <div style={{ fontSize: 13, color: c.muted, lineHeight: 1.65 }}>{suggestion.description}</div>
             </div>
           )}
 
@@ -569,6 +598,15 @@ function SuggestionInspector({ suggestion, inputs, onAccept, onDismiss, onClose 
   );
 }
 
+// ─── Overlap ratio helper ─────────────────────────────────────────────────────
+
+/** Fraction of IDs shared, normalised by the larger set. */
+function overlapRatio(idsA, idsB) {
+  if (!idsA?.length || !idsB?.length) return 0;
+  const setB = new Set(idsB);
+  return idsA.filter((id) => setB.has(id)).length / Math.max(idsA.length, idsB.length);
+}
+
 // ─── Table container ──────────────────────────────────────────────────────────
 
 function TableContainer({ children }) {
@@ -607,14 +645,15 @@ export default function Clustering({ appState }) {
   const [openFilterDropdown,    setOpenFilterDropdown]    = useState(null);
 
   // AI suggestions state
-  const [dbSuggestions,      setDbSuggestions]      = useState([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-  const [generatingSugs,     setGeneratingSugs]     = useState(false);
-  const [suggestionsError,   setSuggestionsError]   = useState(null);
-  const [regenCooldownUntil, setRegenCooldownUntil] = useState(null);
-  const [inputCountAtRegen,  setInputCountAtRegen]  = useState(null);
-  const [lastRegenReason,    setLastRegenReason]    = useState(null);
-  const [inspectedSuggestion, setInspectedSuggestion] = useState(null);
+  const [dbSuggestions,       setDbSuggestions]       = useState([]);
+  const [loadingSuggestions,  setLoadingSuggestions]  = useState(false);
+  const [generatingSugs,      setGeneratingSugs]      = useState(false);
+  const [suggestionsError,    setSuggestionsError]    = useState(null);
+  const [regenCooldownUntil,  setRegenCooldownUntil]  = useState(null);
+  const [inputCountAtRegen,   setInputCountAtRegen]   = useState(null);
+  const [lastRegenReason,     setLastRegenReason]     = useState(null);
+  const [dismissedSuggestions, setDismissedSuggestions] = useState([]);
+  const [fadingOutIds,         setFadingOutIds]         = useState(new Set());
 
   const project         = activeProjectId ? projects.find((p) => p.id === activeProjectId) : null;
   const projectInputs   = project ? inputs.filter((i)  => i.project_id  === project.id) : [];
@@ -635,6 +674,19 @@ export default function Clustering({ appState }) {
   }, [unassignedInputs, inputSearch, filterType, filterHorizon, filterSteepled]);
 
   const anyFilterActive = !!(inputSearch.trim() || filterType || filterHorizon || filterSteepled);
+
+  const visibleSugs = useMemo(() =>
+    dbSuggestions.filter((sug) => {
+      if (fadingOutIds.has(sug.id)) return true; // keep in DOM during fade
+      return !dismissedSuggestions.some(
+        (dis) => overlapRatio(sug.input_ids, dis.input_ids) > 0.8
+      );
+    }),
+    [dbSuggestions, dismissedSuggestions, fadingOutIds]
+  );
+
+  const mainSugs = useMemo(() => visibleSugs.filter((s) => !s.is_weak_signal), [visibleSugs]);
+  const weakSugs = useMemo(() => visibleSugs.filter((s) =>  s.is_weak_signal), [visibleSugs]);
 
   const clearAllFilters = () => {
     setInputSearch(""); setFilterType(null); setFilterHorizon(null); setFilterSteepled(null);
@@ -698,16 +750,20 @@ export default function Clustering({ appState }) {
     );
   };
 
-  const handleAcceptSuggestion = (sug, editedName) => {
-    const name = editedName?.trim() || sug.name;
-    const inputIds = sug.input_ids || [];
+  const handleAcceptSuggestion = (sug, editedName, editedDesc, editedInputIds) => {
+    const name     = editedName?.trim() || sug.name;
+    const desc     = editedDesc ?? sug.description ?? "";
+    const inputIds = editedInputIds ?? sug.input_ids ?? [];
+    const subtype  = sug.subtype
+      ? sug.subtype.charAt(0).toUpperCase() + sug.subtype.slice(1)
+      : "Trend";
     setDbSuggestions((prev) => prev.filter((s) => s.id !== sug.id));
     addCluster({
       name,
-      subtype: "Trend",
+      subtype,
       horizon: "H1",
       likelihood: "Plausible",
-      description: sug.rationale || "",
+      description: desc,
       project_id: project.id,
       input_ids: inputIds,
     });
@@ -722,7 +778,15 @@ export default function Clustering({ appState }) {
   };
 
   const handleDismissSuggestion = (id) => {
-    setDbSuggestions((prev) => prev.filter((s) => s.id !== id));
+    const sug = dbSuggestions.find((s) => s.id === id);
+    if (sug) {
+      setDismissedSuggestions((prev) => [...prev, { id: sug.id, input_ids: sug.input_ids || [] }]);
+    }
+    setFadingOutIds((prev) => new Set([...prev, id]));
+    setTimeout(() => {
+      setDbSuggestions((prev) => prev.filter((s) => s.id !== id));
+      setFadingOutIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    }, 280);
     supabase
       .from("cluster_suggestions")
       .update({ status: "dismissed", acted_on_at: new Date().toISOString() })
@@ -1032,9 +1096,9 @@ export default function Clustering({ appState }) {
         <div style={{ marginBottom: 32 }}>
           <SectionHeader
             title="AI suggestions"
-            count={dbSuggestions.length || null}
+            count={visibleSugs.length || null}
             action={
-              projectInputs.length >= 3 && (
+              projectInputs.length >= 3 && visibleSugs.length > 0 && (
                 <button
                   onClick={handleRegen}
                   disabled={regenOnCooldown || generatingSugs || loadingSuggestions}
@@ -1047,14 +1111,14 @@ export default function Clustering({ appState }) {
                     opacity: regenOnCooldown ? 0.5 : 1,
                   }}
                 >
-                  {generatingSugs ? "Generating…" : "Regenerate suggestions"}
+                  Regenerate
                 </button>
               )
             }
           />
 
           {/* New-inputs nudge */}
-          {newInputsSinceRegen && dbSuggestions.length > 0 && (
+          {newInputsSinceRegen && visibleSugs.length > 0 && (
             <div style={{
               fontSize: 11, color: c.blue700,
               background: c.blue50, border: `1px solid ${c.blueBorder}`,
@@ -1084,11 +1148,19 @@ export default function Clustering({ appState }) {
             </div>
           ) : loadingSuggestions || generatingSugs ? (
             <div style={{
-              padding: "24px 18px", background: c.white,
+              padding: "32px 18px", background: c.white,
               border: `1px solid ${c.border}`, borderRadius: 9,
-              fontSize: 12, color: c.hint, textAlign: "center",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
             }}>
-              {generatingSugs ? "Analysing inputs and grouping by semantic similarity…" : "Loading suggestions…"}
+              <div style={{
+                width: 18, height: 18, borderRadius: "50%",
+                border: `2px solid ${c.border}`, borderTopColor: c.ink,
+                animation: "clusterSpinner 0.7s linear infinite",
+              }} />
+              <div style={{ fontSize: 12, color: c.muted }}>
+                {generatingSugs ? "Analysing your inputs…" : "Loading suggestions…"}
+              </div>
+              <style>{`@keyframes clusterSpinner { to { transform: rotate(360deg); } }`}</style>
             </div>
           ) : suggestionsError ? (
             <div style={{
@@ -1098,7 +1170,7 @@ export default function Clustering({ appState }) {
             }}>
               {suggestionsError}
             </div>
-          ) : dbSuggestions.length === 0 ? (
+          ) : visibleSugs.length === 0 ? (
             lastRegenReason === "no_clusters" ? (
               <div style={{
                 padding: "16px 18px", background: c.white,
@@ -1109,42 +1181,55 @@ export default function Clustering({ appState }) {
               </div>
             ) : (
               <div style={{
-                padding: "20px 24px", background: c.white,
+                padding: "28px 24px", background: c.white,
                 border: `1px solid ${c.border}`, borderRadius: 9,
                 textAlign: "center",
               }}>
-                <div style={{ fontSize: 13, color: c.muted, marginBottom: 8 }}>No AI suggestions yet.</div>
-                <div style={{ fontSize: 11, color: c.hint, marginBottom: 14 }}>
+                <div style={{ fontSize: 13, color: c.muted, marginBottom: 6 }}>No AI suggestions yet.</div>
+                <div style={{ fontSize: 11, color: c.hint, marginBottom: 18 }}>
                   Run the AI to group your inputs by semantic similarity.
                 </div>
-                <button onClick={handleRegen} style={{
-                  fontSize: 12, padding: "7px 18px", borderRadius: 7,
-                  background: c.ink, color: c.white, border: "none",
-                  cursor: "pointer", fontFamily: "inherit",
-                }}>
+                <button
+                  onClick={handleRegen}
+                  disabled={regenOnCooldown}
+                  style={{ ...btnP, opacity: regenOnCooldown ? 0.5 : 1 }}
+                >
                   Generate suggestions
                 </button>
               </div>
             )
           ) : (
-            <TableContainer>
-              <TableHead cols={[
-                { label: "Suggestion", width: "1fr" },
-                { label: "Inputs",     width: "110px" },
-                { label: "",           width: "230px" },
-              ]} />
-              {dbSuggestions.map((sug, idx) => (
-                <SuggestionRow
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {mainSugs.map((sug) => (
+                <SuggestionCard
                   key={sug.id}
                   suggestion={sug}
                   inputs={projectInputs}
                   onAccept={handleAcceptSuggestion}
                   onDismiss={handleDismissSuggestion}
-                  onOpen={setInspectedSuggestion}
-                  isLast={idx === dbSuggestions.length - 1}
+                  isFadingOut={fadingOutIds.has(sug.id)}
                 />
               ))}
-            </TableContainer>
+              {weakSugs.length > 0 && (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "4px 0" }}>
+                    <div style={{ height: 1, flex: 1, background: c.border }} />
+                    <span style={{ fontSize: 11, color: c.hint, whiteSpace: "nowrap" }}>Weak Signals</span>
+                    <div style={{ height: 1, flex: 1, background: c.border }} />
+                  </div>
+                  {weakSugs.map((sug) => (
+                    <SuggestionCard
+                      key={sug.id}
+                      suggestion={sug}
+                      inputs={projectInputs}
+                      onAccept={handleAcceptSuggestion}
+                      onDismiss={handleDismissSuggestion}
+                      isFadingOut={fadingOutIds.has(sug.id)}
+                    />
+                  ))}
+                </>
+              )}
+            </div>
           )}
         </div>
 
@@ -1167,15 +1252,6 @@ export default function Clustering({ appState }) {
         defaultProjectId={project.id}
       />
 
-      {inspectedSuggestion && (
-        <SuggestionInspector
-          suggestion={inspectedSuggestion}
-          inputs={projectInputs}
-          onAccept={handleAcceptSuggestion}
-          onDismiss={handleDismissSuggestion}
-          onClose={() => setInspectedSuggestion(null)}
-        />
-      )}
     </>
   );
 }
