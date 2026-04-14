@@ -714,6 +714,7 @@ export default function Clustering({ appState }) {
         .eq("project_id", projectId)
         .eq("status", "pending")
         .order("generated_at", { ascending: false });
+      console.log("[loadSuggestions] project:", projectId, "data:", data, "error:", error);
       if (error) throw error;
       setDbSuggestions(data || []);
     } catch (err) {
@@ -827,8 +828,15 @@ export default function Clustering({ appState }) {
         }
         throw new Error(message);
       }
+      console.log("[handleRegen] Edge Function response:", data);
+      // Use the rows returned by the Edge Function directly — avoids a second
+      // round-trip and any RLS timing issues on the immediate re-fetch.
+      if (Array.isArray(data?.suggestions)) {
+        setDbSuggestions(data.suggestions.filter((s) => s.status === "pending"));
+      } else {
+        await loadSuggestions(project.id);
+      }
       setLastRegenReason(data?.reason ?? null);
-      await loadSuggestions(project.id);
       setRegenCooldownUntil(Date.now() + 60_000);
       setInputCountAtRegen(projectInputs.length);
     } catch (err) {
