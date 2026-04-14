@@ -4,7 +4,7 @@
  * AI suggestions table (bottom). No tabs.
  * @param {{ appState: object }} props
  */
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { c, inp, ta, btnP, btnSm, btnSec, btnG, fl, badg } from "../../styles/tokens.js";
 import { supabase } from "../../lib/supabase.js";
 import { HorizTag, SubtypeTag, Tag } from "../shared/Tag.jsx";
@@ -658,6 +658,18 @@ export default function Clustering({ appState }) {
   const project         = activeProjectId ? projects.find((p) => p.id === activeProjectId) : null;
   const projectInputs   = project ? inputs.filter((i)  => i.project_id  === project.id) : [];
   const projectClusters = project ? clusters.filter((cl) => cl.project_id === project.id) : [];
+
+  // Backfill embeddings for any inputs that pre-date the embedding feature.
+  // Runs once per project open; fire-and-forget so it never blocks the UI.
+  const backfilledProjectRef = useRef(null);
+  useEffect(() => {
+    if (!project || backfilledProjectRef.current === project.id) return;
+    backfilledProjectRef.current = project.id;
+    const missing = projectInputs.filter((i) => !i.embedding);
+    missing.forEach((i) => {
+      supabase.functions.invoke("embed-input", { body: { input_id: i.id } }).catch(() => {});
+    });
+  }, [project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const unassignedInputs = useMemo(() =>
     projectInputs.filter((i) => !projectClusters.some((cl) => cl.input_ids?.includes(i.id))),
