@@ -782,6 +782,7 @@ function CanvasArea({
   selectedItem, setSelectedItem,
   onConnect, onNodeDragStop,
   onRemoveNode, isPanning,
+  panelsHidden, onTogglePanels,
 }) {
   const { zoomIn, zoomOut, setViewport, getViewport } = useReactFlow();
   const [rfNodes, setRFNodes, onNodesChange] = useNodesState([]);
@@ -962,6 +963,41 @@ function CanvasArea({
         </div>
       )}
 
+      {/* Panel toggle button */}
+      <div style={{ position: "absolute", bottom: 14, left: 14, zIndex: 10 }}>
+        <button
+          onClick={onTogglePanels}
+          title={panelsHidden ? "Show panels (Tab)" : "Hide panels (Tab)"}
+          style={{
+            ...btnG,
+            padding: "5px 8px",
+            background: panelsHidden ? c.ink : c.white,
+            color: panelsHidden ? c.white : c.muted,
+            border: `1px solid ${panelsHidden ? c.ink : c.border}`,
+            borderRadius: 7,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "background 0.15s, color 0.15s, border-color 0.15s",
+          }}
+        >
+          {panelsHidden ? (
+            // Expand icon: single full-width block with outward arrows
+            <svg width="16" height="14" viewBox="0 0 16 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="14" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+              <path d="M6 5L4 7L6 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M10 5L12 7L10 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          ) : (
+            // Collapse icon: three-column layout with inward arrows
+            <svg width="16" height="14" viewBox="0 0 16 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="1" y="1" width="3.5" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+              <rect x="11.5" y="1" width="3.5" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+              <path d="M6.5 5L8.5 7L6.5 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M9.5 5L7.5 7L9.5 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
+        </button>
+      </div>
+
       {/* Zoom controls */}
       <div style={{
         position: "absolute", bottom: 14, right: 14, zIndex: 10,
@@ -981,9 +1017,9 @@ function CanvasArea({
       </div>
 
       {/* Hint */}
-      <div style={{ position: "absolute", bottom: 18, left: 16, zIndex: 10, pointerEvents: "none" }}>
+      <div style={{ position: "absolute", bottom: 18, left: 54, zIndex: 10, pointerEvents: "none" }}>
         <div style={{ fontSize: 10, color: c.hint }}>
-          Space + drag to pan · Scroll to zoom · Drag handle to connect
+          Space + drag to pan · Scroll to zoom · Tab to toggle panels
         </div>
       </div>
     </div>
@@ -1012,6 +1048,7 @@ export default function ScenarioCanvas({ appState }) {
   const [confirmDeleteMap, setConfirmDeleteMap] = useState(false);
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+  const [panelsHidden, setPanelsHidden] = useState(false);
   const [connectMode, setConnectMode] = useState(false);
   const [relModalOpen, setRelModalOpen] = useState(false);
   const [pendingRel, setPendingRel] = useState(null);
@@ -1019,7 +1056,7 @@ export default function ScenarioCanvas({ appState }) {
   const [selectedItem, setSelectedItem] = useState(null);
   const [isPanning, setIsPanning] = useState(false);
 
-  // Escape key: cancel connect mode / close modal
+  // Keyboard shortcuts: Escape, Space (pan), Tab (toggle panels)
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.key === "Escape") {
@@ -1031,6 +1068,13 @@ export default function ScenarioCanvas({ appState }) {
       if (e.code === "Space" && !e.repeat) {
         e.preventDefault();
         setIsPanning(true);
+      }
+      if (e.key === "Tab") {
+        const tag = document.activeElement?.tagName.toLowerCase();
+        if (tag === "input" || tag === "textarea" || tag === "select" ||
+            document.activeElement?.isContentEditable) return;
+        e.preventDefault();
+        setPanelsHidden((h) => !h);
       }
     };
     const onKeyUp = (e) => {
@@ -1222,7 +1266,7 @@ export default function ScenarioCanvas({ appState }) {
             clusters={projectClusters}
             canvasNodes={projectNodes}
             onAdd={handleAddToCanvas}
-            collapsed={!leftOpen}
+            collapsed={!leftOpen || panelsHidden}
             onToggle={() => setLeftOpen((o) => !o)}
           />
 
@@ -1239,6 +1283,8 @@ export default function ScenarioCanvas({ appState }) {
               onNodeDragStop={onNodeDragStop}
               onRemoveNode={handleRemoveFromCanvas}
               isPanning={isPanning}
+              panelsHidden={panelsHidden}
+              onTogglePanels={() => setPanelsHidden((h) => !h)}
             />
           </ReactFlowProvider>
 
@@ -1250,7 +1296,7 @@ export default function ScenarioCanvas({ appState }) {
             onEditRel={handleEditRel}
             onDeleteRel={handleDeleteRel}
             onClose={() => setSelectedItem(null)}
-            collapsed={!rightOpen}
+            collapsed={!rightOpen || panelsHidden}
             onToggle={() => setRightOpen((o) => !o)}
           />
         </div>
