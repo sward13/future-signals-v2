@@ -2,6 +2,10 @@ import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import Parser from 'rss-parser';
 
+export const config = {
+  maxDuration: 60,
+};
+
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -17,6 +21,7 @@ const STEEPLED = [
 
 const BATCH_SIZE = 200;            // candidates to classify/embed per run
 const MAX_CANDIDATES_PER_SOURCE = 20;
+const SOURCE_CONCURRENCY = 10;     // parallel RSS fetches at a time
 const CLASSIFY_CONCURRENCY = 25;   // parallel classify calls at a time
 
 const SYSTEM_PROMPT = `You are a strategic foresight analyst. Given a news item, return JSON only with two fields:
@@ -24,6 +29,68 @@ const SYSTEM_PROMPT = `You are a strategic foresight analyst. Given a news item,
 - "summary": 2-3 sentence summary focusing on future implications
 
 Return only valid JSON, no markdown.`;
+
+// ── Per-source fetch + dedup + insert ──────────────────────────────────────────
+
+async function processSource(source, results) {
+  try {
+    const feed = await parser.parseURL(source.url);
+    results.sources_processed++;
+
+    const items = feed.items
+      .slice(0, MAX_CANDIDATES_PER_SOURCE)
+      .filter((item) => item.link && item.title && typeof item.title !== 'object');
+
+    if (items.length === 0) return;
+
+    // Dedup all items for this source in parallel
+    const dedupResults = await Promise.allSettled(
+      items.map((item) =>
+        supabase.from('candidates').select('id').eq('url', item.link).single()
+      )
+    );
+
+    // Insert new items in parallel
+    await Promise.allSettled(
+      items.map((item, i) => {
+        const dedup = dedupResults[i];
+        // Skip if dedup succeeded and found an existing row
+        if (dedup.status === 'fulfilled' && dedup.value.data) return Promise.resolve();
+
+        results.candidates_fetched++;
+        const title = item.title.trim();
+
+        return supabase
+          .from('candidates')
+          .insert({
+            source_id: source.id,
+            title,
+            url: item.link,
+            published_at: item.pubDate ? new Date(item.pubDate).toISOString() : null,
+            summary_raw: item.contentSnippet || item.summary || null,
+            status: 'pending',
+          })
+          .then(({ error: insertError }) => {
+            if (insertError && insertError.code !== '23505') {
+              // 23505 = unique violation (race condition) — safe to ignore
+              results.errors.push(`Insert error for ${item.link}: ${insertError.message}`);
+            }
+          });
+      })
+    );
+
+    // Update last_fetched_at
+    await supabase
+      .from('sources')
+      .update({ last_fetched_at: new Date().toISOString() })
+      .eq('id', source.id);
+
+  } catch (sourceError) {
+    results.errors.push(`Source ${source.name}: ${sourceError.message}`);
+  }
+}
+
+// ── Handler ────────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
   // Verify cron secret to prevent unauthorised triggers
@@ -49,56 +116,10 @@ export default async function handler(req, res) {
 
     if (sourcesError) throw sourcesError;
 
-    // Step 2: Fetch + dedup each source
-    for (const source of sources) {
-      try {
-        const feed = await parser.parseURL(source.url);
-        results.sources_processed++;
-
-        const items = feed.items.slice(0, MAX_CANDIDATES_PER_SOURCE);
-
-        for (const item of items) {
-          if (!item.link || !item.title || typeof item.title === 'object') continue;
-          const title = item.title.trim();
-
-          // URL-based dedup — skip if already ingested
-          const { data: existing } = await supabase
-            .from('candidates')
-            .select('id')
-            .eq('url', item.link)
-            .single();
-
-          if (existing) continue;
-
-          results.candidates_fetched++;
-
-          // Insert as pending — classify and embed in batch step below
-          const { error: insertError } = await supabase
-            .from('candidates')
-            .insert({
-              source_id: source.id,
-              title,
-              url: item.link,
-              published_at: item.pubDate ? new Date(item.pubDate).toISOString() : null,
-              summary_raw: item.contentSnippet || item.summary || null,
-              status: 'pending',
-            });
-
-          if (insertError && insertError.code !== '23505') {
-            // 23505 = unique violation (race condition) — safe to ignore
-            results.errors.push(`Insert error for ${item.link}: ${insertError.message}`);
-          }
-        }
-
-        // Update last_fetched_at
-        await supabase
-          .from('sources')
-          .update({ last_fetched_at: new Date().toISOString() })
-          .eq('id', source.id);
-
-      } catch (sourceError) {
-        results.errors.push(`Source ${source.name}: ${sourceError.message}`);
-      }
+    // Step 2: Fetch + dedup each source in parallel chunks of SOURCE_CONCURRENCY
+    for (let i = 0; i < (sources || []).length; i += SOURCE_CONCURRENCY) {
+      const chunk = sources.slice(i, i + SOURCE_CONCURRENCY);
+      await Promise.allSettled(chunk.map((source) => processSource(source, results)));
     }
 
     // Step 3: Classify + embed pending candidates in parallel
