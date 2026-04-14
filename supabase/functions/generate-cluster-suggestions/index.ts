@@ -14,8 +14,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SIMILARITY_THRESHOLD = 0.72;
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_MODEL = "gpt-4o-mini";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -283,17 +283,16 @@ function averageLinkageClustering(
 
 // ─── LLM helpers ─────────────────────────────────────────────────────────────
 
-/** Call Anthropic and parse the JSON response, stripping any markdown fences. */
+/** Call OpenAI and parse the JSON response, stripping any markdown fences. */
 async function claudeJSON(prompt: string): Promise<unknown> {
-  const res = await fetch(ANTHROPIC_API_URL, {
+  const res = await fetch(OPENAI_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
-      "anthropic-version": "2023-06-01",
+      "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
     },
     body: JSON.stringify({
-      model: CLAUDE_MODEL,
+      model: OPENAI_MODEL,
       max_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     }),
@@ -301,11 +300,11 @@ async function claudeJSON(prompt: string): Promise<unknown> {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Anthropic API ${res.status}: ${text}`);
+    throw new Error(`OpenAI API ${res.status}: ${text}`);
   }
 
   const data = await res.json();
-  const raw = (data.content[0].text as string).trim();
+  const raw = (data.choices[0].message.content as string).trim();
   // Strip optional markdown fences before parsing
   const json = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   return JSON.parse(json);
