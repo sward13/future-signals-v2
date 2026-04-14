@@ -205,28 +205,6 @@ export function Sidebar({
         )}
       </div>
 
-      {/* New project button */}
-      <div style={{ padding: "8px 10px", borderTop: `1px solid ${c.border}` }}>
-        <button
-          onClick={openProjectModal}
-          style={{
-            width: "100%",
-            padding: "8px 12px",
-            borderRadius: 7,
-            border: `1px dashed ${c.borderMid}`,
-            background: "transparent",
-            color: c.muted,
-            fontSize: 11,
-            fontFamily: "inherit",
-            cursor: "pointer",
-            textAlign: "left",
-            transition: "background 0.1s, color 0.1s",
-          }}
-        >
-          + New project
-        </button>
-      </div>
-
       {/* User footer */}
       <div style={{ padding: "10px 16px", borderTop: `1px solid ${c.border}` }}>
         <button
