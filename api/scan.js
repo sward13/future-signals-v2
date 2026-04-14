@@ -31,6 +31,8 @@ const SYSTEM_PROMPT = `You are a strategic foresight analyst. Given a news item,
 Return only valid JSON, no markdown.`;
 
 // ── Per-source fetch + dedup + insert ──────────────────────────────────────────
+// Index note: candidates.url has a unique constraint (see 23505 handling below),
+// which implicitly creates a B-tree index — no separate CREATE INDEX needed.
 
 async function processSource(source, results) {
   try {
@@ -43,41 +45,38 @@ async function processSource(source, results) {
 
     if (items.length === 0) return;
 
-    // Dedup all items for this source in parallel
-    const dedupResults = await Promise.allSettled(
-      items.map((item) =>
-        supabase.from('candidates').select('id').eq('url', item.link).maybeSingle()
-      )
-    );
+    // Batch dedup: one query for all URLs in this feed (replaces N individual queries)
+    const urls = items.map((item) => item.link);
+    const { data: existing } = await supabase
+      .from('candidates')
+      .select('url')
+      .in('url', urls);
 
-    // Insert new items in parallel
-    await Promise.allSettled(
-      items.map((item, i) => {
-        const dedup = dedupResults[i];
-        // Skip if dedup succeeded and found an existing row
-        if (dedup.status === 'fulfilled' && dedup.value.data) return Promise.resolve();
+    const existingUrls = new Set((existing || []).map((r) => r.url));
+    const newItems = items.filter((item) => !existingUrls.has(item.link));
 
-        results.candidates_fetched++;
-        const title = item.title.trim();
+    if (newItems.length > 0) {
+      results.candidates_fetched += newItems.length;
 
-        return supabase
-          .from('candidates')
-          .insert({
+      // Bulk insert all new candidates in a single query (replaces N individual inserts)
+      const { error: insertError } = await supabase
+        .from('candidates')
+        .insert(
+          newItems.map((item) => ({
             source_id: source.id,
-            title,
+            title: item.title.trim(),
             url: item.link,
             published_at: item.pubDate ? new Date(item.pubDate).toISOString() : null,
             summary_raw: item.contentSnippet || item.summary || null,
             status: 'pending',
-          })
-          .then(({ error: insertError }) => {
-            if (insertError && insertError.code !== '23505') {
-              // 23505 = unique violation (race condition) — safe to ignore
-              results.errors.push(`Insert error for ${item.link}: ${insertError.message}`);
-            }
-          });
-      })
-    );
+          }))
+        );
+
+      if (insertError && insertError.code !== '23505') {
+        // 23505 = unique violation (race condition between parallel sources) — safe to ignore
+        results.errors.push(`Insert error for source ${source.name}: ${insertError.message}`);
+      }
+    }
 
     // Update last_fetched_at
     await supabase
