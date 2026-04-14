@@ -46,7 +46,7 @@ async function processSource(source, results) {
     // Dedup all items for this source in parallel
     const dedupResults = await Promise.allSettled(
       items.map((item) =>
-        supabase.from('candidates').select('id').eq('url', item.link).single()
+        supabase.from('candidates').select('id').eq('url', item.link).maybeSingle()
       )
     );
 
@@ -116,11 +116,8 @@ export default async function handler(req, res) {
 
     if (sourcesError) throw sourcesError;
 
-    // Step 2: Fetch + dedup each source in parallel chunks of SOURCE_CONCURRENCY
-    for (let i = 0; i < (sources || []).length; i += SOURCE_CONCURRENCY) {
-      const chunk = sources.slice(i, i + SOURCE_CONCURRENCY);
-      await Promise.allSettled(chunk.map((source) => processSource(source, results)));
-    }
+    // Step 2: Fetch + dedup all sources concurrently
+    await Promise.allSettled((sources || []).map((source) => processSource(source, results)));
 
     // Step 3: Classify + embed pending candidates in parallel
     const { data: pending } = await supabase
