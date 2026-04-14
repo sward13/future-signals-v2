@@ -704,7 +704,7 @@ export default function Clustering({ appState }) {
     setInputSearch(""); setFilterType(null); setFilterHorizon(null); setFilterSteepled(null);
   };
 
-  const loadSuggestions = useCallback(async (projectId) => {
+  const loadSuggestions = useCallback(async (projectId, wsId) => {
     setLoadingSuggestions(true);
     setSuggestionsError(null);
     try {
@@ -712,9 +712,9 @@ export default function Clustering({ appState }) {
         .from("cluster_suggestions")
         .select("*")
         .eq("project_id", projectId)
+        .eq("workspace_id", wsId)
         .eq("status", "pending")
         .order("generated_at", { ascending: false });
-      console.log("[loadSuggestions] project:", projectId, "data:", data, "error:", error);
       if (error) throw error;
       setDbSuggestions(data || []);
     } catch (err) {
@@ -726,8 +726,8 @@ export default function Clustering({ appState }) {
   }, []);
 
   useEffect(() => {
-    if (!project) { setDbSuggestions([]); return; }
-    loadSuggestions(project.id);
+    if (!project || !workspaceId) { setDbSuggestions([]); return; }
+    loadSuggestions(project.id, workspaceId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id]);
 
@@ -828,13 +828,12 @@ export default function Clustering({ appState }) {
         }
         throw new Error(message);
       }
-      console.log("[handleRegen] Edge Function response:", data);
       // Use the rows returned by the Edge Function directly — avoids a second
       // round-trip and any RLS timing issues on the immediate re-fetch.
       if (Array.isArray(data?.suggestions)) {
         setDbSuggestions(data.suggestions.filter((s) => s.status === "pending"));
       } else {
-        await loadSuggestions(project.id);
+        await loadSuggestions(project.id, workspaceId);
       }
       setLastRegenReason(data?.reason ?? null);
       setRegenCooldownUntil(Date.now() + 60_000);
