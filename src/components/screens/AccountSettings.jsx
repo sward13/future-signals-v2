@@ -63,7 +63,7 @@ function SectionCard({ children }) {
 
 // ─── Main screen ───────────────────────────────────────────────────────────────
 
-export default function AccountSettings({ appState }) {
+export default function AccountSettings({ appState, onSignOut }) {
   const { user, workspaceScanningEnabled, updateWorkspaceScanningEnabled } = appState;
 
   // ── Timeout cleanup ─────────────────────────────────────────────────────────
@@ -397,6 +397,24 @@ export default function AccountSettings({ appState }) {
           )}
 
         </SectionCard>
+
+        {/* ── Sign out ─────────────────────────────────────────────── */}
+        {onSignOut && (
+          <div style={{ paddingTop: 8, paddingBottom: 8 }}>
+            <button
+              onClick={onSignOut}
+              style={{
+                fontSize: 12, padding: "7px 16px", borderRadius: 7,
+                background: "transparent",
+                border: `1px solid ${c.redBorder}`,
+                color: c.red800,
+                cursor: "pointer", fontFamily: "inherit",
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+        )}
 
       </div>
     </div>

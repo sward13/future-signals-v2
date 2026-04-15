@@ -18,6 +18,16 @@
  */
 import { c } from "../../styles/tokens.js";
 
+function getInitials(user) {
+  if (user?.name) {
+    const parts = user.name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return parts[0][0].toUpperCase();
+  }
+  if (user?.email) return user.email[0].toUpperCase();
+  return "?";
+}
+
 const NAV_ITEMS = [
   { icon: "⌂", label: "Dashboard", screen: "dashboard" },
   { icon: "◎", label: "Inbox",     screen: "inbox" },
@@ -42,7 +52,6 @@ export function Sidebar({
   scenarioCount = 0,
   analysisCount = 0,
   hasRelationships = false,
-  onSignOut,
 }) {
   const inProject = !!activeProject;
 
@@ -206,33 +215,40 @@ export function Sidebar({
       </div>
 
       {/* User footer */}
-      <div style={{ padding: "10px 16px", borderTop: `1px solid ${c.border}` }}>
+      <div style={{ padding: "8px 10px", borderTop: `1px solid ${c.border}` }}>
         <button
           onClick={() => setActiveScreen("settings")}
+          onMouseEnter={(e) => { e.currentTarget.style.background = c.surfaceAlt; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           style={{
-            display: "block", width: "100%", textAlign: "left",
-            background: "none", border: "none", cursor: "pointer", padding: 0,
-            fontFamily: "inherit",
+            display: "flex", alignItems: "center", gap: 9,
+            width: "100%", background: "transparent", border: "none",
+            cursor: "pointer", padding: "5px 6px", borderRadius: 7,
+            fontFamily: "inherit", textAlign: "left",
           }}
         >
-          <div style={{ fontSize: 11, color: activeScreen === "settings" ? c.ink : c.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: activeScreen === "settings" ? 500 : 400 }}>
-            {user?.email || "user@example.com"}
+          <div style={{
+            width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+            background: c.surfaceAlt, border: `1px solid ${c.border}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 10, fontWeight: 600, color: c.muted, letterSpacing: "0.03em",
+            userSelect: "none",
+          }}>
+            {getInitials(user)}
           </div>
-          <div style={{ fontSize: 10, color: c.hint, marginTop: 1 }}>
-            {user?.level === "advanced" ? "Advanced" : user?.level === "intermediate" ? "Intermediate" : "Beginner"} · Account settings
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{
+              fontSize: 11, color: activeScreen === "settings" ? c.ink : c.faint,
+              fontWeight: activeScreen === "settings" ? 500 : 400,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              {user?.email || "user@example.com"}
+            </div>
+            <div style={{ fontSize: 10, color: c.hint, marginTop: 1 }}>
+              {user?.level === "advanced" ? "Advanced" : user?.level === "intermediate" ? "Intermediate" : "Beginner"}
+            </div>
           </div>
         </button>
-        {onSignOut && (
-          <button
-            onClick={onSignOut}
-            style={{
-              fontSize: 9, color: c.hint, background: "none", border: "none",
-              cursor: "pointer", fontFamily: "inherit", padding: 0, marginTop: 4,
-            }}
-          >
-            Sign out
-          </button>
-        )}
       </div>
     </div>
   );

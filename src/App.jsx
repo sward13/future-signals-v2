@@ -23,7 +23,7 @@ import ScenarioNarrativeCanvas from "./components/screens/ScenarioNarrativeCanva
 import SystemAnalysisCanvas from "./components/screens/SystemAnalysisCanvas.jsx";
 import AccountSettings from "./components/screens/AccountSettings.jsx";
 
-function ActiveScreen({ appState }) {
+function ActiveScreen({ appState, onSignOut }) {
   switch (appState.activeScreen) {
     case "dashboard": return <Dashboard appState={appState} />;
     case "inbox": return <Inbox appState={appState} />;
@@ -34,7 +34,7 @@ function ActiveScreen({ appState }) {
     case "narrative": return <NarrativeCanvas appState={appState} />;
     case "scenario_canvas": return <ScenarioNarrativeCanvas appState={appState} />;
     case "analysis": return <SystemAnalysisCanvas appState={appState} />;
-    case "settings": return <AccountSettings appState={appState} />;
+    case "settings": return <AccountSettings appState={appState} onSignOut={onSignOut} />;
     default: return <Inbox appState={appState} />;
   }
 }
@@ -175,7 +175,7 @@ export default function App() {
       WebkitFontSmoothing: "antialiased",
     }}>
       <AppShell appState={appState} onSignOut={handleSignOut} scroll={!["scenarios", "scenario_canvas", "analysis"].includes(appState.activeScreen)}>
-        <ActiveScreen appState={appState} />
+        <ActiveScreen appState={appState} onSignOut={handleSignOut} />
       </AppShell>
 
       <NewProjectModal
