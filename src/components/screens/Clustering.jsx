@@ -644,6 +644,9 @@ export default function Clustering({ appState }) {
   const [filterSteepled,        setFilterSteepled]        = useState(null);
   const [openFilterDropdown,    setOpenFilterDropdown]    = useState(null);
 
+  // Tightness setting for AI clustering
+  const [tightness, setTightness] = useState("balanced");
+
   // AI suggestions state
   const [dbSuggestions,       setDbSuggestions]       = useState([]);
   const [loadingSuggestions,  setLoadingSuggestions]  = useState(false);
@@ -812,8 +815,14 @@ export default function Clustering({ appState }) {
     setGeneratingSugs(true);
     setSuggestionsError(null);
     try {
+      const TIGHTNESS_MAP = {
+        tight:       { threshold: 0.82, min_cluster_size: 3 },
+        balanced:    { threshold: 0.72, min_cluster_size: 2 },
+        exploratory: { threshold: 0.62, min_cluster_size: 2 },
+      };
+      const { threshold, min_cluster_size } = TIGHTNESS_MAP[tightness] || TIGHTNESS_MAP.balanced;
       const { data, error } = await supabase.functions.invoke("generate-cluster-suggestions", {
-        body: { project_id: project.id, workspace_id: workspaceId },
+        body: { project_id: project.id, workspace_id: workspaceId, threshold, min_cluster_size },
       });
       if (error) {
         let message = error.message;
@@ -1113,6 +1122,43 @@ export default function Clustering({ appState }) {
 
         {/* ── Section 3: AI suggestions ─────────────────────────── */}
         <div style={{ marginBottom: 32 }}>
+
+          {/* Tightness control */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <span style={{ fontSize: 11, color: c.muted, whiteSpace: "nowrap" }}>Clustering</span>
+            <div style={{
+              display: "inline-flex",
+              border: `1px solid ${c.borderMid}`,
+              borderRadius: 7,
+              overflow: "hidden",
+              background: c.white,
+            }}>
+              {[
+                { key: "tight",       label: "Tight" },
+                { key: "balanced",    label: "Balanced" },
+                { key: "exploratory", label: "Exploratory" },
+              ].map(({ key, label }, idx) => (
+                <button
+                  key={key}
+                  onClick={() => setTightness(key)}
+                  style={{
+                    padding: "5px 12px",
+                    fontSize: 11,
+                    fontFamily: "inherit",
+                    cursor: "pointer",
+                    border: "none",
+                    borderLeft: idx > 0 ? `1px solid ${c.borderMid}` : "none",
+                    background: tightness === key ? c.ink : "transparent",
+                    color: tightness === key ? c.white : c.muted,
+                    fontWeight: tightness === key ? 500 : 400,
+                    transition: "background 0.12s, color 0.12s",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <SectionHeader
             title="AI suggestions"
             count={visibleSugs.length || null}

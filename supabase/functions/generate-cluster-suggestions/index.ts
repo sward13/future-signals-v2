@@ -71,10 +71,12 @@ serve(async (req: Request) => {
   );
 
   try {
-    const { project_id } = await req.json();
+    const { project_id, threshold: thresholdParam, min_cluster_size: minSizeParam } = await req.json();
     if (!project_id) {
       return respond({ error: "project_id required" }, 400);
     }
+    const threshold = typeof thresholdParam === "number" ? thresholdParam : SIMILARITY_THRESHOLD;
+    const minClusterSize = typeof minSizeParam === "number" ? minSizeParam : 2;
 
     // ── Step 1: Fetch project context and inputs ───────────────────────────────
     const [{ data: project, error: projectError }, { data: rawInputs, error: inputsError }] =
@@ -113,7 +115,7 @@ serve(async (req: Request) => {
     }
 
     // ── Step 2: Average-linkage agglomerative clustering ──────────────────────
-    const { groups, simMatrix } = averageLinkageClustering(inputs, SIMILARITY_THRESHOLD);
+    const { groups, simMatrix } = averageLinkageClustering(inputs, threshold, minClusterSize);
     const assignedIds = new Set(groups.flatMap((g) => g.ids));
     const horizons = formatHorizons(project as Project);
     const errors: string[] = [];
@@ -237,6 +239,7 @@ function avgIntraSim(indices: number[], sim: number[][]): number {
 function averageLinkageClustering(
   inputs: Input[],
   threshold: number,
+  minClusterSize = 2,
 ): { groups: ClusterGroup[]; simMatrix: number[][] } {
   const n = inputs.length;
 
@@ -276,7 +279,7 @@ function averageLinkageClustering(
   }
 
   const groups: ClusterGroup[] = clusters
-    .filter((c) => c.length >= 2)
+    .filter((c) => c.length >= minClusterSize)
     .map((c) => ({
       ids: c.map((i) => inputs[i].id),
       avgSim: avgIntraSim(c, simMatrix),
