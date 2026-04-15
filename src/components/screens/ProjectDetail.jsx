@@ -313,9 +313,8 @@ export default function ProjectDetail({ appState }) {
   const [filterSteepled,    setFilterSteepled]    = useState(null);
   const [openFilterDropdown,setOpenFilterDropdown]= useState(null);
 
-  const { status: scanStatus, foundCount, dismiss: dismissScan } = useScannerStatus(activeProjectId, inputs);
-
-  const project = projects.find((p) => p.id === activeProjectId);
+  const project = projects.find((p) => p.id === activeProjectId) ?? null;
+  const { status: scanStatus, foundCount, dismiss: dismissScan } = useScannerStatus(project, inputs);
 
   if (!project) {
     return (
