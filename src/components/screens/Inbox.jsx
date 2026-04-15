@@ -571,6 +571,7 @@ export default function Inbox({ appState }) {
     addInput, dismissInput, dismissSuggestedInput, deleteInput,
     saveInputToProject, saveInputsToProject,
     showToast, openInputDetail, openProjectModal,
+    inboxProjectFilter, setInboxProjectFilter,
   } = appState;
 
   const [drawerOpen,        setDrawerOpen]        = useState(false);
@@ -600,10 +601,11 @@ export default function Inbox({ appState }) {
     () => allInboxInputs.filter((i) => !(i.is_seeded && i.metadata?.source === "scanner")),
     [allInboxInputs]
   );
-  const aiInputs = useMemo(
-    () => allInboxInputs.filter((i) => i.is_seeded && i.metadata?.source === "scanner"),
-    [allInboxInputs]
-  );
+  const aiInputs = useMemo(() => {
+    const all = allInboxInputs.filter((i) => i.is_seeded && i.metadata?.source === "scanner");
+    if (!inboxProjectFilter) return all;
+    return all.filter((i) => i.metadata?.suggested_projects?.some((p) => p.id === inboxProjectFilter));
+  }, [allInboxInputs, inboxProjectFilter]);
 
   const activeFilterCount = filters.steepled.length + filters.quality.length + filters.horizon.length;
   const hasActiveSearch = search.length > 0 || activeFilterCount > 0;
@@ -898,7 +900,29 @@ export default function Inbox({ appState }) {
         )}
 
         {/* ── AI Suggested table ───────────────────────────────── */}
-        {aiInputs.length > 0 && (
+        {inboxProjectFilter && (() => {
+          const proj = projects.find((p) => p.id === inboxProjectFilter);
+          return (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                fontSize: 11, padding: "4px 10px", borderRadius: 20,
+                background: c.blue50, color: c.blue700,
+                border: `1px solid ${c.blueBorder}`,
+              }}>
+                Showing suggestions for: <strong>{proj?.name || "project"}</strong>
+                <button
+                  onClick={() => setInboxProjectFilter(null)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: c.blue700, fontSize: 13, lineHeight: 1, padding: "0 0 0 2px", fontFamily: "inherit" }}
+                  title="Clear filter"
+                >
+                  ✕
+                </button>
+              </span>
+            </div>
+          );
+        })()}
+        {(inboxProjectFilter ? true : aiInputs.length > 0) && (
           <>
             <SectionHeader title="AI Suggested" count={filteredAI.length} />
 

@@ -291,7 +291,7 @@ export default function ProjectDetail({ appState }) {
     addInput, saveInputsToProject, showToast, setActiveScreen, setActiveProjectId,
     openInputDetail, openClusterDetail, openScenarioDetail,
     addCluster, addScenario, updateProject, assignInputToCluster, deleteProject,
-    workspaceScanningEnabled,
+    workspaceScanningEnabled, setInboxProjectFilter,
   } = appState;
 
   const [drawerOpen,        setDrawerOpen]        = useState(false);
@@ -491,7 +491,7 @@ export default function ProjectDetail({ appState }) {
           <span>✓</span>
           <span>{foundCount} new signal{foundCount !== 1 ? 's' : ''} found for this project</span>
           <button
-            onClick={() => { setActiveScreen('inbox'); dismissScan(); }}
+            onClick={() => { setInboxProjectFilter(activeProjectId); setActiveScreen('inbox'); dismissScan(); }}
             style={{ marginLeft: 4, fontSize: 12, color: c.green700,
                      background: 'none', border: 'none', cursor: 'pointer',
                      fontFamily: 'inherit', textDecoration: 'underline' }}

@@ -68,6 +68,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [inputDetailId, setInputDetailId] = useState(null);
   const [clusterDetailId, setClusterDetailId] = useState(null);
   const [scenarioDetailId, setScenarioDetailId] = useState(null);
+  const [inboxProjectFilter, setInboxProjectFilter] = useState(null);
 
   const toastTimer = useRef(null);
   const refreshInputsRef = useRef(null);
@@ -1227,5 +1228,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     deleteAnalysis,
     deleteProject,
     showToast,
+    inboxProjectFilter,
+    setInboxProjectFilter,
   };
 }
