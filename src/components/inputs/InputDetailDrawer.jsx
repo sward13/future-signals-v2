@@ -128,7 +128,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
         {!editing && isAiSuggested && (
           <div style={{
             padding: "0 24px 12px",
-            display: "flex", alignItems: "center", gap: 6,
+            display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end",
             borderBottom: `1px solid ${c.border}`,
           }}>
             {onAccept && (
