@@ -65,6 +65,7 @@ export default function App() {
   const [session, setSession] = useState(undefined);
   const [workspaceId, setWorkspaceId] = useState(null);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   // ── Onboarding gate ────────────────────────────────────────────────────────
   // undefined = still loading, true/false = resolved
@@ -174,8 +175,6 @@ export default function App() {
       />
     );
   }
-
-  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const handleCreateProject = (fields) => {
     const newProject = appState.addProject(fields);
