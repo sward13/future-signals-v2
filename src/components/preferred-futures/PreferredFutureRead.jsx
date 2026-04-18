@@ -12,7 +12,7 @@ export default function PreferredFutureRead({ appState }) {
     preferredFutures, scenarios, strategicOptions,
     activePFId, activeProjectId,
     openPreferredFutureEdit, deletePreferredFuture,
-    openScenario, setActiveScreen, showToast,
+    openScenario, openStrategicOption, setActiveScreen, showToast,
   } = appState;
 
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -248,12 +248,20 @@ export default function PreferredFutureRead({ appState }) {
                 <div style={sideLabel}>Connected options</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {connectedOptions.map((opt) => (
-                    <div key={opt.id} style={{
-                      padding: "6px 8px", background: c.fieldBg,
-                      border: `1px solid ${c.border}`, borderRadius: 6,
-                      fontSize: 11, color: c.muted,
-                    }}>
-                      {opt.name}
+                    <div
+                      key={opt.id}
+                      onClick={() => openStrategicOption(opt.id)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 7,
+                        padding: "6px 8px", background: c.fieldBg,
+                        border: `1px solid ${c.border}`, borderRadius: 6,
+                        fontSize: 11, color: c.muted, cursor: "pointer",
+                      }}
+                    >
+                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {opt.name}
+                      </span>
+                      <span style={{ color: c.hint, fontSize: 11 }}>→</span>
                     </div>
                   ))}
                 </div>

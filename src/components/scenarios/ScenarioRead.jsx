@@ -12,6 +12,7 @@ export default function ScenarioRead({ appState }) {
     scenarios, clusters, preferredFutures, strategicOptions,
     activeScenarioId, activeProjectId,
     openScenarioEdit, openClusterDetail, deleteScenario,
+    openPreferredFuture, openStrategicOption,
     setActiveScreen, showToast,
   } = appState;
 
@@ -247,23 +248,37 @@ export default function ScenarioRead({ appState }) {
                 <div style={sideLabel}>Appears in</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {appearingPFs.map((pf) => (
-                    <div key={pf.id} style={{
-                      padding: "5px 8px", background: c.fieldBg,
-                      border: `1px solid ${c.border}`, borderRadius: 6,
-                      fontSize: 11, color: c.muted, cursor: "default",
-                    }}>
-                      {pf.name}
-                      <span style={{ fontSize: 10, color: c.hint, marginLeft: 4 }}>· Preferred future</span>
+                    <div
+                      key={pf.id}
+                      onClick={() => openPreferredFuture(pf.id)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 7,
+                        padding: "6px 8px", background: c.fieldBg,
+                        border: `1px solid ${c.border}`, borderRadius: 6,
+                        fontSize: 11, color: c.muted, cursor: "pointer",
+                      }}
+                    >
+                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {pf.name}
+                      </span>
+                      <span style={{ fontSize: 10, color: c.hint, flexShrink: 0 }}>Preferred future →</span>
                     </div>
                   ))}
                   {appearingOpts.map((opt) => (
-                    <div key={opt.id} style={{
-                      padding: "5px 8px", background: c.fieldBg,
-                      border: `1px solid ${c.border}`, borderRadius: 6,
-                      fontSize: 11, color: c.muted, cursor: "default",
-                    }}>
-                      {opt.name}
-                      <span style={{ fontSize: 10, color: c.hint, marginLeft: 4 }}>· Strategic option</span>
+                    <div
+                      key={opt.id}
+                      onClick={() => openStrategicOption(opt.id)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 7,
+                        padding: "6px 8px", background: c.fieldBg,
+                        border: `1px solid ${c.border}`, borderRadius: 6,
+                        fontSize: 11, color: c.muted, cursor: "pointer",
+                      }}
+                    >
+                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {opt.name}
+                      </span>
+                      <span style={{ fontSize: 10, color: c.hint, flexShrink: 0 }}>Option →</span>
                     </div>
                   ))}
                 </div>
