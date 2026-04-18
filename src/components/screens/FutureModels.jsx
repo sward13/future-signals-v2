@@ -301,7 +301,7 @@ function StrategicOptionRow({ option, index, scenarioName, onClick }) {
 
 // ─── Hub empty states ─────────────────────────────────────────────────────────
 
-function ScenarioEmptyState({ clusterCount, onNew }) {
+function ScenarioEmptyState({ onNew }) {
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 16,
@@ -310,25 +310,11 @@ function ScenarioEmptyState({ clusterCount, onNew }) {
       background: c.surfaceAlt,
     }}>
       <div style={{ flex: 1 }}>
-        <div style={{
-          fontSize: 10, fontWeight: 500, color: c.hint,
-          letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 6,
-        }}>
-          Start from your analysis
+        <div style={{ fontSize: 12, fontWeight: 500, color: c.muted, marginBottom: 4 }}>
+          Draft scenarios based on your analysis
         </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <span style={{
-            fontSize: 11, color: c.muted, background: c.white,
-            border: `1px solid ${c.border}`, borderRadius: 12, padding: "2px 9px",
-          }}>
-            {clusterCount} cluster{clusterCount !== 1 ? "s" : ""}
-          </span>
-          <span style={{
-            fontSize: 11, color: c.muted, background: c.white,
-            border: `1px solid ${c.border}`, borderRadius: 12, padding: "2px 9px",
-          }}>
-            Build from your clusters
-          </span>
+        <div style={{ fontSize: 11, color: c.hint, lineHeight: 1.5 }}>
+          What are the key differences from today that are most relevant?
         </div>
       </div>
       <button onClick={onNew} style={{ ...btnSm, whiteSpace: "nowrap", flexShrink: 0 }}>
@@ -521,16 +507,15 @@ export default function FutureModels({ appState }) {
             <SectionHeader
               title="Scenarios"
               count={projectScenarios.length}
-              action={
+              action={projectScenarios.length > 0 ? (
                 <button onClick={() => openScenarioNew()} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
                   + New scenario
                 </button>
-              }
+              ) : null}
             />
             <div style={{ padding: "16px 20px 20px" }}>
               {projectScenarios.length === 0 ? (
                 <ScenarioEmptyState
-                  clusterCount={projectClusters.length}
                   onNew={() => openScenarioNew()}
                 />
               ) : (
@@ -607,11 +592,11 @@ export default function FutureModels({ appState }) {
             <SectionHeader
               title="Strategic Options"
               count={projectOptions.length}
-              action={
+              action={projectOptions.length > 0 ? (
                 <button onClick={() => openStrategicOptionNew()} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
                   + New option
                 </button>
-              }
+              ) : null}
             />
             <div style={{ padding: "16px 20px 20px" }}>
               {projectOptions.length === 0 ? (
