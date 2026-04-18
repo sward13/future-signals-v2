@@ -12,6 +12,7 @@ import { AppShell } from "./components/layout/AppShell.jsx";
 import { Toast } from "./components/layout/Toast.jsx";
 import { NewProjectModal } from "./components/projects/NewProjectModal.jsx";
 import { ExportModal } from "./components/projects/ExportModal.jsx";
+import { ProjectPickerModal } from "./components/shared/ProjectPickerModal.jsx";
 import { InputDetailDrawer } from "./components/inputs/InputDetailDrawer.jsx";
 import { ClusterDetailDrawer } from "./components/clusters/ClusterDetailDrawer.jsx";
 import Dashboard from "./components/screens/Dashboard.jsx";
@@ -66,6 +67,7 @@ export default function App() {
   const [workspaceId, setWorkspaceId] = useState(null);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [drawerSavingInputId, setDrawerSavingInputId] = useState(null);
 
   // ── Onboarding gate ────────────────────────────────────────────────────────
   // undefined = still loading, true/false = resolved
@@ -218,7 +220,29 @@ export default function App() {
         onClose={closeInputDetail}
         onSave={(id, fields) => { updateInput(id, fields); appState.showToast("Input updated"); closeInputDetail(); }}
         onDelete={() => { deleteInput(inputDetailId); appState.showToast("Input deleted"); closeInputDetail(); }}
+        onAccept={(inp) => {
+          const topProject = inp.metadata?.suggested_projects?.[0];
+          if (!topProject) return;
+          appState.saveInputToProject(inp.id, topProject.id);
+          appState.showToast(`Added to "${topProject.name}"`);
+        }}
+        onSaveToProject={(id) => { setDrawerSavingInputId(id); }}
+        onDismissSuggested={(inp) => { appState.dismissSuggestedInput(inp); appState.showToast("Signal dismissed"); }}
       />
+
+      {drawerSavingInputId && (
+        <ProjectPickerModal
+          projects={projects}
+          onSelect={(project) => {
+            appState.saveInputToProject(drawerSavingInputId, project.id);
+            appState.showToast(`Added to "${project.name}"`);
+            setDrawerSavingInputId(null);
+            closeInputDetail();
+          }}
+          onClose={() => setDrawerSavingInputId(null)}
+          onCreateProject={appState.openProjectModal}
+        />
+      )}
 
       <ClusterDetailDrawer
         clusterId={clusterDetailId}

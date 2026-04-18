@@ -40,7 +40,7 @@ const QUALITY_COLORS = {
   Confirmed:   [c.green700, c.green50, c.greenBorder],
 };
 
-export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], onClose, onSave, onDelete }) {
+export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], onClose, onSave, onDelete, onAccept, onSaveToProject, onDismissSuggested }) {
   const input = inputs.find((i) => i.id === inputId) || null;
 
   const [editing, setEditing] = useState(false);
@@ -64,6 +64,8 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
   }, [inputId]);
 
   if (!input) return null;
+
+  const isAiSuggested = !!(input.is_seeded && input.metadata?.source === 'scanner');
 
   const set = (key, val) => setFields((f) => ({ ...f, [key]: val }));
   const toggleSteeple = (cat) => set("steepled", fields.steepled.includes(cat) ? fields.steepled.filter((x) => x !== cat) : [...fields.steepled, cat]);
@@ -106,12 +108,36 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
         }}>
           <TypeChip typeId={input.subtype} />
           <div style={{ flex: 1 }} />
-          {!editing && (
+          {!editing && isAiSuggested && onAccept && (
+            <button
+              onClick={() => { onAccept(input); onClose(); }}
+              style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: c.ink, color: c.white, border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}
+            >
+              Accept →
+            </button>
+          )}
+          {!editing && isAiSuggested && onSaveToProject && (
+            <button
+              onClick={() => onSaveToProject(input.id)}
+              style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Add to project →
+            </button>
+          )}
+          {!editing && isAiSuggested && onDismissSuggested && (
+            <button
+              onClick={() => { onDismissSuggested(input); onClose(); }}
+              style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: "none", cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Dismiss
+            </button>
+          )}
+          {!editing && !isAiSuggested && (
             <button onClick={() => setEditing(true)} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
               Edit
             </button>
           )}
-          {onDelete && !editing && (
+          {onDelete && !editing && !isAiSuggested && (
             <button
               onClick={() => setConfirmDelete(true)}
               style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
