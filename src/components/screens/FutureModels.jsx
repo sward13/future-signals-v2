@@ -344,6 +344,7 @@ export default function FutureModels({ appState }) {
   const {
     scenarios, preferredFutures, strategicOptions, clusters,
     activeProjectId, projects, setActiveScreen,
+    openScenario, openScenarioNew,
   } = appState;
 
   const project          = projects.find((p) => p.id === activeProjectId);
@@ -394,7 +395,7 @@ export default function FutureModels({ appState }) {
             title="Scenarios"
             count={projectScenarios.length}
             action={
-              <button onClick={handlePlaceholder} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
+              <button onClick={() => openScenarioNew()} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
                 + New scenario
               </button>
             }
@@ -403,7 +404,7 @@ export default function FutureModels({ appState }) {
             {projectScenarios.length === 0 ? (
               <ScenarioEmptyState
                 clusterCount={projectClusters.length}
-                onNew={handlePlaceholder}
+                onNew={() => openScenarioNew()}
               />
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -412,7 +413,7 @@ export default function FutureModels({ appState }) {
                     key={s.id}
                     scenario={s}
                     clusterName={clusterName}
-                    onClick={handlePlaceholder}
+                    onClick={() => openScenario(s.id)}
                   />
                 ))}
               </div>

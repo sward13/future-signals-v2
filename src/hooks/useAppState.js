@@ -70,6 +70,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [inputDetailId, setInputDetailId] = useState(null);
   const [clusterDetailId, setClusterDetailId] = useState(null);
   const [scenarioDetailId, setScenarioDetailId] = useState(null);
+  const [activeScenarioId, setActiveScenarioId] = useState(null);
   const [inboxProjectFilter, setInboxProjectFilter] = useState(null);
 
   const toastTimer = useRef(null);
@@ -743,11 +744,18 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     const newScenario = {
       id,
       workspace_id: workspaceId,
-      name: fields.name,
-      archetype: fields.archetype || "Continuation",
-      horizon: fields.horizon || "H2",
-      cluster_ids: [],
       project_id: fields.project_id || null,
+      name: fields.name,
+      archetype: fields.archetype || null,
+      horizon: fields.horizon || null,
+      description: fields.description || null,
+      narrative: fields.narrative || null,
+      key_differences: fields.key_differences || [],
+      driving_forces: fields.driving_forces || [],
+      suppressed_forces: fields.suppressed_forces || [],
+      confidence: fields.confidence || null,
+      geographic_scope: fields.geographic_scope || null,
+      cluster_ids: [],
       created_at: now,
     };
 
@@ -763,8 +771,15 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
               workspace_id: workspaceId,
               project_id: fields.project_id || null,
               name: fields.name,
-              archetype: fields.archetype || "Continuation",
-              horizon: fields.horizon || "H2",
+              archetype: fields.archetype || null,
+              horizon: fields.horizon || null,
+              description: fields.description || null,
+              narrative: fields.narrative || null,
+              key_differences: fields.key_differences || [],
+              driving_forces: fields.driving_forces || [],
+              suppressed_forces: fields.suppressed_forces || [],
+              confidence: fields.confidence || null,
+              geographic_scope: fields.geographic_scope || null,
             })
             .select()
             .single();
@@ -820,6 +835,21 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       })();
     }
   }, [workspaceId, showToast]);
+
+  const openScenario = useCallback((id) => {
+    setActiveScenarioId(id);
+    setActiveScreen("scenario-read");
+  }, []);
+
+  const openScenarioEdit = useCallback((id) => {
+    setActiveScenarioId(id);
+    setActiveScreen("scenario-edit");
+  }, []);
+
+  const openScenarioNew = useCallback(() => {
+    setActiveScenarioId(null);
+    setActiveScreen("scenario-new");
+  }, []);
 
   // ── Analyses ──────────────────────────────────────────────────────────────
 
@@ -1243,6 +1273,10 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     saveInputsToProject,
     analyses,
     upsertAnalysis,
+    activeScenarioId,
+    openScenario,
+    openScenarioEdit,
+    openScenarioNew,
     addScenario,
     updateScenario,
     deleteScenario,
