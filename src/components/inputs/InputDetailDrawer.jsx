@@ -101,62 +101,67 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
         zIndex: 301, display: "flex", flexDirection: "column",
         animation: "drawerSlideIn 0.28s ease",
       }}>
-        {/* Header */}
+        {/* Header row 1: type badge + panel controls */}
         <div style={{
-          padding: "18px 24px 14px", borderBottom: `1px solid ${c.border}`,
+          padding: "18px 24px 12px",
           display: "flex", alignItems: "center", gap: 10, flexShrink: 0,
         }}>
           <TypeChip typeId={input.subtype} />
           <div style={{ flex: 1 }} />
-          {!editing && isAiSuggested && (
-            <>
-              {onAccept && (
-                <button
-                  onClick={() => { onAccept(input); onClose(); }}
-                  style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: c.ink, color: c.white, border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}
-                >
-                  Accept →
-                </button>
-              )}
-              {onSaveToProject && (
-                <button
-                  onClick={() => onSaveToProject(input.id)}
-                  style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit" }}
-                >
-                  Add to project →
-                </button>
-              )}
-              {onDismissSuggested && (
-                <button
-                  onClick={() => { onDismissSuggested(input); onClose(); }}
-                  style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: "none", cursor: "pointer", fontFamily: "inherit" }}
-                >
-                  Dismiss
-                </button>
-              )}
-              <div style={{ width: 1, height: 18, background: c.border, flexShrink: 0 }} />
-              <button onClick={() => setEditing(true)} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
-                Edit
-              </button>
-            </>
+          {!editing && (
+            <button onClick={() => setEditing(true)} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
+              Edit
+            </button>
           )}
-          {!editing && !isAiSuggested && (
-            <>
-              <button onClick={() => setEditing(true)} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
-                Edit
-              </button>
-              {onDelete && (
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
-                >
-                  Delete
-                </button>
-              )}
-            </>
+          {onDelete && !editing && !isAiSuggested && (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Delete
+            </button>
           )}
           <button onClick={onClose} style={{ ...btnG, fontSize: 16, padding: "2px 6px", color: c.muted }}>×</button>
         </div>
+
+        {/* Header row 2: scanner action buttons (AI suggested only) */}
+        {!editing && isAiSuggested && (
+          <div style={{
+            padding: "0 24px 12px",
+            display: "flex", alignItems: "center", gap: 6,
+            borderBottom: `1px solid ${c.border}`,
+          }}>
+            {onAccept && (
+              <button
+                onClick={() => { onAccept(input); onClose(); }}
+                style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: c.ink, color: c.white, border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}
+              >
+                Accept →
+              </button>
+            )}
+            {onSaveToProject && (
+              <button
+                onClick={() => onSaveToProject(input.id)}
+                style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit" }}
+              >
+                Add to project →
+              </button>
+            )}
+            {onDismissSuggested && (
+              <button
+                onClick={() => { onDismissSuggested(input); onClose(); }}
+                style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: "none", cursor: "pointer", fontFamily: "inherit" }}
+              >
+                Dismiss
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Divider for non-AI inputs (matches visual rhythm) */}
+        {(editing || !isAiSuggested) && (
+          <div style={{ height: 1, background: c.border, flexShrink: 0 }} />
+        )}
 
         {/* Body */}
         <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
