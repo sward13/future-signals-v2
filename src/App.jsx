@@ -22,6 +22,7 @@ import NarrativeCanvas from "./components/screens/NarrativeCanvas.jsx";
 import ScenarioNarrativeCanvas from "./components/screens/ScenarioNarrativeCanvas.jsx";
 import SystemAnalysisCanvas from "./components/screens/SystemAnalysisCanvas.jsx";
 import AccountSettings from "./components/screens/AccountSettings.jsx";
+import FutureModels from "./components/screens/FutureModels.jsx";
 
 function ActiveScreen({ appState, onSignOut }) {
   switch (appState.activeScreen) {
@@ -34,6 +35,7 @@ function ActiveScreen({ appState, onSignOut }) {
     case "narrative": return <NarrativeCanvas appState={appState} />;
     case "scenario_canvas": return <ScenarioNarrativeCanvas appState={appState} />;
     case "analysis": return <SystemAnalysisCanvas appState={appState} />;
+    case "future-models": return <FutureModels appState={appState} />;
     case "settings": return <AccountSettings appState={appState} onSignOut={onSignOut} />;
     default: return <Inbox appState={appState} />;
   }

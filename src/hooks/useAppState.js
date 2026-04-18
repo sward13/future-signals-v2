@@ -41,6 +41,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [inputs, setInputs] = useState([]);
   const [clusters, setClusters] = useState([]);
   const [scenarios, setScenarios] = useState([]);
+  const [preferredFutures, setPreferredFutures] = useState([]);
+  const [strategicOptions, setStrategicOptions] = useState([]);
   const [analyses, setAnalyses] = useState([]);
 
   // Workspace settings
@@ -111,6 +113,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       setInputs([]);
       setClusters([]);
       setScenarios([]);
+      setPreferredFutures([]);
+      setStrategicOptions([]);
       setAnalyses([]);
       setCanvasNodes([]);
       setRelationships([]);
@@ -226,6 +230,34 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       }
     };
 
+    const fetchPreferredFutures = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("preferred_futures")
+          .select("*")
+          .eq("workspace_id", workspaceId)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        setPreferredFutures(data);
+      } catch {
+        showToast("Failed to load preferred futures", "error");
+      }
+    };
+
+    const fetchStrategicOptions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("strategic_options")
+          .select("*")
+          .eq("workspace_id", workspaceId)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        setStrategicOptions(data);
+      } catch {
+        showToast("Failed to load strategic options", "error");
+      }
+    };
+
     const fetchAnalyses = async () => {
       try {
         const { data, error } = await supabase
@@ -256,6 +288,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     fetchInputs();
     fetchClusters();
     fetchScenarios();
+    fetchPreferredFutures();
+    fetchStrategicOptions();
     fetchCanvasNodes();
     fetchRelationships();
     fetchAnalyses();
@@ -1168,6 +1202,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     inputs,
     clusters,
     scenarios,
+    preferredFutures,
+    strategicOptions,
     nodePositions,
     connections,
     projects,

@@ -51,6 +51,7 @@ export function Sidebar({
   clusterCount = 0,
   scenarioCount = 0,
   analysisCount = 0,
+  futureModelsCount = 0,
   hasRelationships = false,
 }) {
   const inProject = !!activeProject;
@@ -60,10 +61,11 @@ export function Sidebar({
   };
 
   const projCounts = {
-    project:    projectInputCount || null,
-    clustering: clusterCount      || null,
-    scenarios:  scenarioCount     || null,
-    analysis:   analysisCount     || null,
+    project:       projectInputCount  || null,
+    clustering:    clusterCount       || null,
+    scenarios:     scenarioCount      || null,
+    analysis:      analysisCount      || null,
+    "future-models": futureModelsCount || null,
   };
 
   const NavButton = ({ icon, label, screen, isActive, count, indented = false }) => (
@@ -210,6 +212,24 @@ export function Sidebar({
                 />
               );
             })}
+
+            {/* Futures section */}
+            <div style={{
+              fontSize: 10,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: c.hint,
+              padding: "10px 16px 4px",
+            }}>
+              Futures
+            </div>
+            <NavButton
+              icon="◇"
+              label="Future Models"
+              screen="future-models"
+              isActive={activeScreen === "future-models"}
+              count={projCounts["future-models"]}
+            />
           </>
         )}
       </div>
