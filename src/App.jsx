@@ -137,7 +137,8 @@ export default function App() {
 
   // ── App state ──────────────────────────────────────────────────────────────
   const appState = useAppState(workspaceId, session ?? null, preferences);
-  const { inputDetailId, clusterDetailId, closeInputDetail, closeClusterDetail, updateInput, updateCluster, assignInputToCluster, removeInputFromCluster, deleteInput, deleteCluster, inputs, clusters, projects } = appState;
+  const { inputDetailId, clusterDetailId, closeInputDetail, closeClusterDetail, updateInput, updateCluster, assignInputToCluster, removeInputFromCluster, deleteInput, deleteCluster, inputs, clusters, projects, activeProjectId } = appState;
+  const projectClusters = activeProjectId ? clusters.filter((cl) => cl.project_id === activeProjectId) : null;
 
   // ── Onboarding handlers ────────────────────────────────────────────────────
   const handleOnboardingProjectCreate = (fields) => {
@@ -228,6 +229,13 @@ export default function App() {
         }}
         onSaveToProject={(id) => { setDrawerSavingInputId(id); }}
         onDismissSuggested={(inp) => { appState.dismissSuggestedInput(inp); appState.showToast("Signal dismissed"); }}
+        projectClusters={projectClusters}
+        onAssignToCluster={(inputId, clusterId) => {
+          assignInputToCluster(inputId, clusterId);
+          const cl = clusters.find((c) => c.id === clusterId);
+          appState.showToast(cl ? `Assigned to "${cl.name}"` : "Input assigned");
+        }}
+        onOpenCluster={(clusterId) => { closeInputDetail(); appState.openClusterDetail(clusterId); }}
       />
 
       {drawerSavingInputId && (

@@ -5,6 +5,7 @@
  * @param {{ appState: object }} props
  */
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { c, inp, ta, btnP, btnSm, btnSec, btnG, fl, badg } from "../../styles/tokens.js";
 import { supabase } from "../../lib/supabase.js";
 import { HorizTag, SubtypeTag, Tag } from "../shared/Tag.jsx";
@@ -69,20 +70,31 @@ function QualityPill({ value }) {
 
 // ─── Cluster assign popover ────────────────────────────────────────────────────
 
-function AssignPicker({ clusters, onAssign, onNewCluster, onClose }) {
-  return (
+function AssignPicker({ clusters, onAssign, onNewCluster, onClose, anchorRect }) {
+  if (!anchorRect) return null;
+  const DROPDOWN_MAX_HEIGHT = 240;
+  const spaceBelow = window.innerHeight - anchorRect.bottom;
+  const openUp = spaceBelow < DROPDOWN_MAX_HEIGHT + 48;
+
+  const style = {
+    position: "fixed",
+    right: window.innerWidth - anchorRect.right,
+    ...(openUp
+      ? { bottom: window.innerHeight - anchorRect.top + 4 }
+      : { top: anchorRect.bottom + 4 }),
+    background: c.white, border: `1px solid ${c.border}`,
+    borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
+    minWidth: 240, zIndex: 9999, overflow: "hidden",
+  };
+
+  return createPortal(
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
-      <div style={{
-        position: "absolute", top: "100%", right: 0, marginTop: 4,
-        background: c.white, border: `1px solid ${c.border}`,
-        borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
-        minWidth: 240, zIndex: 51, overflow: "hidden",
-      }}>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
+      <div style={style}>
         {clusters.length === 0 ? (
           <div style={{ padding: "12px 14px", fontSize: 12, color: c.hint }}>No clusters yet</div>
         ) : (
-          <div style={{ maxHeight: 220, overflowY: "auto" }}>
+          <div style={{ maxHeight: DROPDOWN_MAX_HEIGHT, overflowY: "auto" }}>
             {clusters.map((cl) => (
               <button
                 key={cl.id}
@@ -116,7 +128,8 @@ function AssignPicker({ clusters, onAssign, onNewCluster, onClose }) {
           <span style={{ fontSize: 14 }}>+</span> Build a cluster
         </button>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 
@@ -236,7 +249,9 @@ const SUBTYPE_ICONS = { signal: "◎", issue: "▲", projection: "◆", plan: "�
 
 function InputTableRow({ input, clusters, assignedCluster, onAssign, onNewCluster, onOpenDetail, selected, onToggleSelect, anySelected, isLast }) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [anchorRect, setAnchorRect] = useState(null);
   const [hovered, setHovered] = useState(false);
+  const assignBtnRef = useRef(null);
 
   const cols = "28px 1fr 100px 60px 160px 60px 120px";
 
@@ -309,9 +324,14 @@ function InputTableRow({ input, clusters, assignedCluster, onAssign, onNewCluste
 
       {/* Assign action */}
       {!anySelected && (
-        <div style={{ position: "relative", display: "flex", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <button
-            onClick={(e) => { e.stopPropagation(); setPickerOpen((s) => !s); }}
+            ref={assignBtnRef}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!pickerOpen) setAnchorRect(assignBtnRef.current.getBoundingClientRect());
+              setPickerOpen((s) => !s);
+            }}
             style={{
               fontSize: 10, padding: "4px 10px", borderRadius: 6,
               background: assignedCluster ? "transparent" : c.ink,
@@ -328,6 +348,7 @@ function InputTableRow({ input, clusters, assignedCluster, onAssign, onNewCluste
               onAssign={(cl) => { onAssign(input.id, cl); setPickerOpen(false); }}
               onNewCluster={() => { setPickerOpen(false); onNewCluster(); }}
               onClose={() => setPickerOpen(false)}
+              anchorRect={anchorRect}
             />
           )}
         </div>

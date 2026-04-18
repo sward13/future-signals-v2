@@ -40,12 +40,13 @@ const QUALITY_COLORS = {
   Confirmed:   [c.green700, c.green50, c.greenBorder],
 };
 
-export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], onClose, onSave, onDelete, onAccept, onSaveToProject, onDismissSuggested }) {
+export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], onClose, onSave, onDelete, onAccept, onSaveToProject, onDismissSuggested, projectClusters, onAssignToCluster, onOpenCluster }) {
   const input = inputs.find((i) => i.id === inputId) || null;
 
   const [editing, setEditing] = useState(false);
   const [fields, setFields] = useState({});
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [reassigning, setReassigning] = useState(false);
 
   useEffect(() => {
     if (input) {
@@ -61,6 +62,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
       });
     }
     setEditing(false);
+    setReassigning(false);
   }, [inputId]);
 
   if (!input) return null;
@@ -248,20 +250,61 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
             )}
           </div>
 
-          {/* Cluster membership — read-only; managed in Clustering screen */}
+          {/* Cluster membership */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Cluster</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-              {assignedClusters.length === 0 ? (
-                <span style={{ fontSize: 12, color: c.hint, fontStyle: "italic" }}>Unassigned</span>
+            {projectClusters && onAssignToCluster ? (
+              assignedClusters.length === 0 || reassigning ? (
+                <select
+                  style={{ ...inp, fontSize: 12, appearance: "none" }}
+                  defaultValue=""
+                  onChange={(e) => {
+                    if (!e.target.value) return;
+                    onAssignToCluster(input.id, e.target.value);
+                    setReassigning(false);
+                  }}
+                >
+                  <option value="" disabled>{reassigning ? "— Select a cluster —" : "— Assign to cluster —"}</option>
+                  {projectClusters.map((cl) => (
+                    <option key={cl.id} value={cl.id}>{cl.name}</option>
+                  ))}
+                </select>
               ) : (
-                assignedClusters.map((cl) => (
-                  <span key={cl.id} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 8, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>
-                    {cl.name}
-                  </span>
-                ))
-              )}
-            </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  {assignedClusters.map((cl) => (
+                    <span
+                      key={cl.id}
+                      onClick={() => onOpenCluster?.(cl.id)}
+                      style={{
+                        fontSize: 11, padding: "3px 10px", borderRadius: 8,
+                        background: c.blue50, color: c.blue700, border: `1px solid ${c.blueBorder}`,
+                        cursor: onOpenCluster ? "pointer" : "default",
+                      }}
+                    >
+                      {cl.name} {onOpenCluster && <span style={{ opacity: 0.6 }}>›</span>}
+                    </span>
+                  ))}
+                  <button
+                    onClick={() => setReassigning(true)}
+                    style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                  >
+                    Reassign
+                  </button>
+                </div>
+              )
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                {assignedClusters.length === 0 ? (
+                  <span style={{ fontSize: 12, color: c.hint, fontStyle: "italic" }}>Unassigned</span>
+                ) : (
+                  assignedClusters.map((cl) => (
+                    <span key={cl.id} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 8, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>
+                      {cl.name}
+                    </span>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           {/* Signal quality */}
