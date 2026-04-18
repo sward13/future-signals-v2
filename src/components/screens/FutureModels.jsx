@@ -345,6 +345,7 @@ export default function FutureModels({ appState }) {
     scenarios, preferredFutures, strategicOptions, clusters,
     activeProjectId, projects, setActiveScreen,
     openScenario, openScenarioNew,
+    openPreferredFuture, openPreferredFutureNew,
   } = appState;
 
   const project          = projects.find((p) => p.id === activeProjectId);
@@ -365,7 +366,7 @@ export default function FutureModels({ appState }) {
   }
 
   const handlePlaceholder = () => {
-    appState.showToast("Coming in the next prompt");
+    appState.showToast("Coming soon");
   };
 
   return (
@@ -427,11 +428,7 @@ export default function FutureModels({ appState }) {
             title="Preferred Future"
             count={projectPFs.length}
             action={
-              projectPFs.length > 0 ? (
-                <button onClick={handlePlaceholder} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
-                  Edit
-                </button>
-              ) : null
+              projectPFs.length > 0 ? null : null
             }
           />
           <div style={{ padding: "16px 20px 20px" }}>
@@ -450,7 +447,7 @@ export default function FutureModels({ appState }) {
                     Articulate desired outcomes, guiding principles, and indicators of progress.
                   </div>
                 </div>
-                <button onClick={handlePlaceholder} style={{ ...btnSm, whiteSpace: "nowrap", flexShrink: 0 }}>
+                <button onClick={() => openPreferredFutureNew()} style={{ ...btnSm, whiteSpace: "nowrap", flexShrink: 0 }}>
                   + Define preferred future
                 </button>
               </div>
@@ -461,7 +458,7 @@ export default function FutureModels({ appState }) {
                     key={pf.id}
                     pf={pf}
                     scenarioName={scenarioName}
-                    onClick={handlePlaceholder}
+                    onClick={() => openPreferredFuture(pf.id)}
                   />
                 ))}
               </div>

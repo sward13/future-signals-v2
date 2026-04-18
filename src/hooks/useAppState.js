@@ -71,6 +71,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [clusterDetailId, setClusterDetailId] = useState(null);
   const [scenarioDetailId, setScenarioDetailId] = useState(null);
   const [activeScenarioId, setActiveScenarioId] = useState(null);
+  const [activePFId, setActivePFId] = useState(null);
   const [inboxProjectFilter, setInboxProjectFilter] = useState(null);
 
   const toastTimer = useRef(null);
@@ -851,6 +852,112 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     setActiveScreen("scenario-new");
   }, []);
 
+  // ── Preferred Futures ──────────────────────────────────────────────────────
+
+  const addPreferredFuture = useCallback((fields) => {
+    const id = newId();
+    const now = new Date().toISOString();
+    const newPF = {
+      id,
+      workspace_id: workspaceId,
+      project_id: fields.project_id,
+      name: fields.name,
+      description: fields.description || null,
+      desired_outcomes: fields.desired_outcomes || null,
+      guiding_principles: fields.guiding_principles || [],
+      strategic_priorities: fields.strategic_priorities || [],
+      indicators: fields.indicators || [],
+      horizon: fields.horizon || null,
+      scenario_ids: fields.scenario_ids || [],
+      created_at: now,
+      updated_at: now,
+    };
+
+    setPreferredFutures((prev) => [newPF, ...prev]);
+
+    if (workspaceId) {
+      (async () => {
+        try {
+          const { data, error } = await supabase
+            .from("preferred_futures")
+            .insert({
+              id,
+              workspace_id: workspaceId,
+              project_id: fields.project_id,
+              name: fields.name,
+              description: fields.description || null,
+              desired_outcomes: fields.desired_outcomes || null,
+              guiding_principles: fields.guiding_principles || [],
+              strategic_priorities: fields.strategic_priorities || [],
+              indicators: fields.indicators || [],
+              horizon: fields.horizon || null,
+              scenario_ids: fields.scenario_ids || [],
+            })
+            .select()
+            .single();
+          if (error) throw error;
+          setPreferredFutures((prev) => prev.map((pf) => pf.id === id ? data : pf));
+        } catch {
+          setPreferredFutures((prev) => prev.filter((pf) => pf.id !== id));
+          showToast("Failed to save preferred future", "error");
+        }
+      })();
+    }
+
+    return newPF;
+  }, [workspaceId, showToast]);
+
+  const updatePreferredFuture = useCallback((id, fields) => {
+    setPreferredFutures((prev) => prev.map((pf) => pf.id === id ? { ...pf, ...fields } : pf));
+    if (workspaceId) {
+      (async () => {
+        try {
+          const { error } = await supabase
+            .from("preferred_futures")
+            .update(fields)
+            .eq("id", id)
+            .eq("workspace_id", workspaceId);
+          if (error) throw error;
+        } catch {
+          showToast("Failed to update preferred future", "error");
+        }
+      })();
+    }
+  }, [workspaceId, showToast]);
+
+  const deletePreferredFuture = useCallback((id) => {
+    setPreferredFutures((prev) => prev.filter((pf) => pf.id !== id));
+    if (workspaceId) {
+      (async () => {
+        try {
+          const { error } = await supabase
+            .from("preferred_futures")
+            .delete()
+            .eq("id", id)
+            .eq("workspace_id", workspaceId);
+          if (error) throw error;
+        } catch {
+          showToast("Failed to delete preferred future", "error");
+        }
+      })();
+    }
+  }, [workspaceId, showToast]);
+
+  const openPreferredFuture = useCallback((id) => {
+    setActivePFId(id);
+    setActiveScreen("pf-read");
+  }, []);
+
+  const openPreferredFutureEdit = useCallback((id) => {
+    setActivePFId(id);
+    setActiveScreen("pf-edit");
+  }, []);
+
+  const openPreferredFutureNew = useCallback(() => {
+    setActivePFId(null);
+    setActiveScreen("pf-new");
+  }, []);
+
   // ── Analyses ──────────────────────────────────────────────────────────────
 
   /** Create or update the single analysis record for a project. */
@@ -1280,6 +1387,13 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     addScenario,
     updateScenario,
     deleteScenario,
+    activePFId,
+    openPreferredFuture,
+    openPreferredFutureEdit,
+    openPreferredFutureNew,
+    addPreferredFuture,
+    updatePreferredFuture,
+    deletePreferredFuture,
     updateNodePosition,
     addConnection,
     updateConnection,
