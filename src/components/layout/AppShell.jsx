@@ -5,7 +5,7 @@
  */
 import { Sidebar } from "./Sidebar.jsx";
 
-export function AppShell({ appState, children, scroll = true, onSignOut }) {
+export function AppShell({ appState, children, scroll = true, onSignOut, onExport }) {
   const { activeScreen, setActiveScreen, setActiveProjectId, user, inputs, clusters, scenarios, preferredFutures, strategicOptions, projects, activeProjectId, openProjectModal, analyses, canvasNodes } = appState;
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
@@ -57,6 +57,7 @@ export function AppShell({ appState, children, scroll = true, onSignOut }) {
         futureModelsCount={futureModelsCount}
         hasRelationships={hasRelationships}
         onSignOut={onSignOut}
+        onExport={onExport}
       />
       <div style={{
         flex: 1,

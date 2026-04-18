@@ -11,6 +11,7 @@ import { OnboardingFlow } from "./components/onboarding/OnboardingFlow.jsx";
 import { AppShell } from "./components/layout/AppShell.jsx";
 import { Toast } from "./components/layout/Toast.jsx";
 import { NewProjectModal } from "./components/projects/NewProjectModal.jsx";
+import { ExportModal } from "./components/projects/ExportModal.jsx";
 import { InputDetailDrawer } from "./components/inputs/InputDetailDrawer.jsx";
 import { ClusterDetailDrawer } from "./components/clusters/ClusterDetailDrawer.jsx";
 import Dashboard from "./components/screens/Dashboard.jsx";
@@ -174,6 +175,8 @@ export default function App() {
     );
   }
 
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+
   const handleCreateProject = (fields) => {
     const newProject = appState.addProject(fields);
     appState.closeProjectModal();
@@ -191,7 +194,7 @@ export default function App() {
       color: "#111111",
       WebkitFontSmoothing: "antialiased",
     }}>
-      <AppShell appState={appState} onSignOut={handleSignOut} scroll={!["scenarios", "scenario_canvas", "analysis"].includes(appState.activeScreen)}>
+      <AppShell appState={appState} onSignOut={handleSignOut} onExport={() => setExportModalOpen(true)} scroll={!["scenarios", "scenario_canvas", "analysis"].includes(appState.activeScreen)}>
         <ActiveScreen appState={appState} onSignOut={handleSignOut} />
       </AppShell>
 
@@ -203,6 +206,10 @@ export default function App() {
       />
 
       <Toast toast={appState.toast} />
+
+      {exportModalOpen && (
+        <ExportModal appState={appState} onClose={() => setExportModalOpen(false)} />
+      )}
 
       <InputDetailDrawer
         inputId={inputDetailId}

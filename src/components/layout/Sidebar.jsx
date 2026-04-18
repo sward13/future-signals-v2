@@ -53,6 +53,7 @@ export function Sidebar({
   analysisCount = 0,
   futureModelsCount = 0,
   hasRelationships = false,
+  onExport,
 }) {
   const inProject = !!activeProject;
 
@@ -230,6 +231,25 @@ export function Sidebar({
               isActive={activeScreen === "future-models"}
               count={projCounts["future-models"]}
             />
+
+            {/* Export */}
+            <div style={{ margin: "8px 16px 4px", height: 1, background: c.border }} />
+            <button
+              onClick={onExport}
+              style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "7px 16px", width: "100%",
+                fontSize: 12, color: c.hint, fontWeight: 400,
+                background: "transparent", border: "none", borderRight: "2px solid transparent",
+                textAlign: "left", cursor: "pointer", fontFamily: "inherit",
+                transition: "color 0.1s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = c.muted; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = c.hint; }}
+            >
+              <span style={{ fontSize: 10, width: 14, flexShrink: 0 }}>↓</span>
+              <span>Export</span>
+            </button>
           </>
         )}
       </div>
