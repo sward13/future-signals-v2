@@ -132,12 +132,12 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
               Dismiss
             </button>
           )}
-          {!editing && !isAiSuggested && (
+          {!editing && (
             <button onClick={() => setEditing(true)} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
               Edit
             </button>
           )}
-          {onDelete && !editing && !isAiSuggested && (
+          {onDelete && !editing && (
             <button
               onClick={() => setConfirmDelete(true)}
               style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
