@@ -83,6 +83,7 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
     }
     setEditing(false);
     setPickerOpen(false);
+    setConfirmDelete(false);
   }, [clusterId]);
 
   if (!cluster) return null;
@@ -304,7 +305,7 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
         <ConfirmDialog
           title={`Delete "${cluster.name}"?`}
           message="This will permanently delete the cluster. Inputs linked to it will not be deleted. This cannot be undone."
-          onConfirm={onDelete}
+          onConfirm={() => { setConfirmDelete(false); onDelete(); }}
           onClose={() => setConfirmDelete(false)}
         />
       )}
