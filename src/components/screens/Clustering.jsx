@@ -85,6 +85,7 @@ function AssignPicker({ clusters, onAssign, onNewCluster, onClose, anchorRect })
     background: c.white, border: `1px solid ${c.border}`,
     borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
     minWidth: 240, zIndex: 9999, overflow: "hidden",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
   };
 
   return createPortal(
