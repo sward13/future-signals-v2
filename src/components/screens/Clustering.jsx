@@ -254,7 +254,7 @@ function InputTableRow({ input, clusters, assignedCluster, onAssign, onNewCluste
   const [hovered, setHovered] = useState(false);
   const assignBtnRef = useRef(null);
 
-  const cols = "28px 1fr 100px 60px 160px 60px 120px";
+  const cols = "28px 1fr 100px 60px 160px 120px";
 
   return (
     <div
@@ -306,21 +306,6 @@ function InputTableRow({ input, clusters, assignedCluster, onAssign, onNewCluste
       {/* STEEPLED */}
       <div style={{ paddingRight: 8 }}>
         <SteepleList tags={input.steepled} />
-      </div>
-
-      {/* Cluster status */}
-      <div>
-        {assignedCluster ? (
-          <span style={{
-            fontSize: 9, padding: "2px 6px", borderRadius: 8,
-            background: c.green50, color: c.green700, border: `1px solid ${c.greenBorder}`,
-            whiteSpace: "nowrap",
-          }}>
-            ✓ assigned
-          </span>
-        ) : (
-          <span style={{ fontSize: 10, color: c.hint }}>—</span>
-        )}
       </div>
 
       {/* Assign action */}
@@ -1120,7 +1105,6 @@ export default function Clustering({ appState }) {
                 { label: "Quality", width: "100px" },
                 { label: "Horizon", width: "60px" },
                 { label: "STEEPLED", width: "160px" },
-                { label: "Cluster", width: "60px" },
                 { label: "", width: "120px" },
               ]} />
               {filteredUnassigned.map((inp, idx) => (
