@@ -108,42 +108,52 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
         }}>
           <TypeChip typeId={input.subtype} />
           <div style={{ flex: 1 }} />
-          {!editing && isAiSuggested && onAccept && (
-            <button
-              onClick={() => { onAccept(input); onClose(); }}
-              style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: c.ink, color: c.white, border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}
-            >
-              Accept →
-            </button>
+          {!editing && isAiSuggested && (
+            <>
+              {onAccept && (
+                <button
+                  onClick={() => { onAccept(input); onClose(); }}
+                  style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: c.ink, color: c.white, border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}
+                >
+                  Accept →
+                </button>
+              )}
+              {onSaveToProject && (
+                <button
+                  onClick={() => onSaveToProject(input.id)}
+                  style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  Add to project →
+                </button>
+              )}
+              {onDismissSuggested && (
+                <button
+                  onClick={() => { onDismissSuggested(input); onClose(); }}
+                  style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  Dismiss
+                </button>
+              )}
+              <div style={{ width: 1, height: 18, background: c.border, flexShrink: 0 }} />
+              <button onClick={() => setEditing(true)} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
+                Edit
+              </button>
+            </>
           )}
-          {!editing && isAiSuggested && onSaveToProject && (
-            <button
-              onClick={() => onSaveToProject(input.id)}
-              style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit" }}
-            >
-              Add to project →
-            </button>
-          )}
-          {!editing && isAiSuggested && onDismissSuggested && (
-            <button
-              onClick={() => { onDismissSuggested(input); onClose(); }}
-              style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: "none", cursor: "pointer", fontFamily: "inherit" }}
-            >
-              Dismiss
-            </button>
-          )}
-          {!editing && (
-            <button onClick={() => setEditing(true)} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
-              Edit
-            </button>
-          )}
-          {onDelete && !editing && (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
-            >
-              Delete
-            </button>
+          {!editing && !isAiSuggested && (
+            <>
+              <button onClick={() => setEditing(true)} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
+                Edit
+              </button>
+              {onDelete && (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  Delete
+                </button>
+              )}
+            </>
           )}
           <button onClick={onClose} style={{ ...btnG, fontSize: 16, padding: "2px 6px", color: c.muted }}>×</button>
         </div>
