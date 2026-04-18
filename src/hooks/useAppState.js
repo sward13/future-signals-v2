@@ -958,6 +958,118 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     setActiveScreen("pf-new");
   }, []);
 
+  // ── Strategic Options ──────────────────────────────────────────────────────
+
+  const [activeSOId, setActiveSOId] = useState(null);
+
+  const addStrategicOption = useCallback((fields) => {
+    const id = newId();
+    const now = new Date().toISOString();
+    const newOpt = {
+      id,
+      workspace_id: workspaceId,
+      project_id: fields.project_id,
+      name: fields.name,
+      description: fields.description || null,
+      intended_outcome: fields.intended_outcome || null,
+      actions: fields.actions || null,
+      implications: fields.implications || null,
+      dependencies: fields.dependencies || null,
+      risks: fields.risks || null,
+      horizon: fields.horizon || null,
+      feasibility: fields.feasibility || null,
+      scenario_ids: fields.scenario_ids || [],
+      created_at: now,
+      updated_at: now,
+    };
+
+    setStrategicOptions((prev) => [newOpt, ...prev]);
+
+    if (workspaceId) {
+      (async () => {
+        try {
+          const { data, error } = await supabase
+            .from("strategic_options")
+            .insert({
+              id,
+              workspace_id: workspaceId,
+              project_id: fields.project_id,
+              name: fields.name,
+              description: fields.description || null,
+              intended_outcome: fields.intended_outcome || null,
+              actions: fields.actions || null,
+              implications: fields.implications || null,
+              dependencies: fields.dependencies || null,
+              risks: fields.risks || null,
+              horizon: fields.horizon || null,
+              feasibility: fields.feasibility || null,
+              scenario_ids: fields.scenario_ids || [],
+            })
+            .select()
+            .single();
+          if (error) throw error;
+          setStrategicOptions((prev) => prev.map((o) => o.id === id ? data : o));
+        } catch {
+          setStrategicOptions((prev) => prev.filter((o) => o.id !== id));
+          showToast("Failed to save strategic option", "error");
+        }
+      })();
+    }
+
+    return newOpt;
+  }, [workspaceId, showToast]);
+
+  const updateStrategicOption = useCallback((id, fields) => {
+    setStrategicOptions((prev) => prev.map((o) => o.id === id ? { ...o, ...fields } : o));
+    if (workspaceId) {
+      (async () => {
+        try {
+          const { error } = await supabase
+            .from("strategic_options")
+            .update(fields)
+            .eq("id", id)
+            .eq("workspace_id", workspaceId);
+          if (error) throw error;
+        } catch {
+          showToast("Failed to update strategic option", "error");
+        }
+      })();
+    }
+  }, [workspaceId, showToast]);
+
+  const deleteStrategicOption = useCallback((id) => {
+    setStrategicOptions((prev) => prev.filter((o) => o.id !== id));
+    if (workspaceId) {
+      (async () => {
+        try {
+          const { error } = await supabase
+            .from("strategic_options")
+            .delete()
+            .eq("id", id)
+            .eq("workspace_id", workspaceId);
+          if (error) throw error;
+        } catch {
+          showToast("Failed to delete strategic option", "error");
+        }
+      })();
+    }
+  }, [workspaceId, showToast]);
+
+  const openStrategicOption = useCallback((id) => {
+    setActiveSOId(id);
+    setActiveScreen("so-read");
+  }, []);
+
+  const openStrategicOptionEdit = useCallback((id) => {
+    setActiveSOId(id);
+    setActiveScreen("so-edit");
+  }, []);
+
+  const openStrategicOptionNew = useCallback(() => {
+    setActiveSOId(null);
+    setActiveScreen("so-new");
+  }, []);
+
   // ── Analyses ──────────────────────────────────────────────────────────────
 
   /** Create or update the single analysis record for a project. */
@@ -1394,6 +1506,13 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     addPreferredFuture,
     updatePreferredFuture,
     deletePreferredFuture,
+    activeSOId,
+    openStrategicOption,
+    openStrategicOptionEdit,
+    openStrategicOptionNew,
+    addStrategicOption,
+    updateStrategicOption,
+    deleteStrategicOption,
     updateNodePosition,
     addConnection,
     updateConnection,

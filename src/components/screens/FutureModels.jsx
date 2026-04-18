@@ -346,6 +346,7 @@ export default function FutureModels({ appState }) {
     activeProjectId, projects, setActiveScreen,
     openScenario, openScenarioNew,
     openPreferredFuture, openPreferredFutureNew,
+    openStrategicOption, openStrategicOptionNew,
   } = appState;
 
   const project          = projects.find((p) => p.id === activeProjectId);
@@ -472,7 +473,7 @@ export default function FutureModels({ appState }) {
             title="Strategic Options"
             count={projectOptions.length}
             action={
-              <button onClick={handlePlaceholder} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
+              <button onClick={() => openStrategicOptionNew()} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
                 + New option
               </button>
             }
@@ -493,7 +494,7 @@ export default function FutureModels({ appState }) {
                     What actions, investments, or positions should you consider?
                   </div>
                 </div>
-                <button onClick={handlePlaceholder} style={{ ...btnSm, whiteSpace: "nowrap", flexShrink: 0 }}>
+                <button onClick={() => openStrategicOptionNew()} style={{ ...btnSm, whiteSpace: "nowrap", flexShrink: 0 }}>
                   + New option
                 </button>
               </div>
@@ -505,7 +506,7 @@ export default function FutureModels({ appState }) {
                     option={option}
                     index={i}
                     scenarioName={scenarioName}
-                    onClick={handlePlaceholder}
+                    onClick={() => openStrategicOption(option.id)}
                   />
                 ))}
               </div>

@@ -27,6 +27,8 @@ import ScenarioForm from "./components/scenarios/ScenarioForm.jsx";
 import ScenarioRead from "./components/scenarios/ScenarioRead.jsx";
 import PreferredFutureForm from "./components/preferred-futures/PreferredFutureForm.jsx";
 import PreferredFutureRead from "./components/preferred-futures/PreferredFutureRead.jsx";
+import StrategicOptionForm from "./components/strategic-options/StrategicOptionForm.jsx";
+import StrategicOptionRead from "./components/strategic-options/StrategicOptionRead.jsx";
 
 function ActiveScreen({ appState, onSignOut }) {
   switch (appState.activeScreen) {
@@ -46,6 +48,9 @@ function ActiveScreen({ appState, onSignOut }) {
     case "pf-new":        return <PreferredFutureForm appState={appState} mode="new" />;
     case "pf-read":       return <PreferredFutureRead appState={appState} />;
     case "pf-edit":       return <PreferredFutureForm appState={appState} mode="edit" />;
+    case "so-new":        return <StrategicOptionForm appState={appState} mode="new" />;
+    case "so-read":       return <StrategicOptionRead appState={appState} />;
+    case "so-edit":       return <StrategicOptionForm appState={appState} mode="edit" />;
     case "settings": return <AccountSettings appState={appState} onSignOut={onSignOut} />;
     default: return <Inbox appState={appState} />;
   }
