@@ -290,6 +290,14 @@ export default async function handler(req, res) {
       }
     }
 
+    // Trigger health check — fire and forget so score doesn't share its timeout budget
+    fetch(`${process.env.VITE_SUPABASE_URL}/functions/v1/check-scanner-health`, {
+      method: 'GET',
+      headers: { 'x-cron-secret': process.env.CRON_SECRET },
+    }).catch((e) => {
+      console.error('Health check trigger failed:', e.message);
+    });
+
     return res.status(200).json({ success: true, results });
 
   } catch (error) {
