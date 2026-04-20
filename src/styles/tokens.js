@@ -12,6 +12,7 @@ export const c = {
   surfaceAlt: "#f9f9f7",
   fieldBg: "#fafaf8",
   canvas: "#f7f6f2",
+  brand: "#3B82F6",
   green50: "#EAF3DE",
   green700: "#3B6D11",
   greenBorder: "#C0DD97",
@@ -55,7 +56,7 @@ export const sel = { ...inp, appearance: "none" };
 export const btnP = {
   padding: "10px 22px",
   borderRadius: 8,
-  background: c.ink,
+  background: c.brand,
   color: c.white,
   border: "none",
   fontSize: 13,
@@ -67,7 +68,7 @@ export const btnP = {
 export const btnSm = {
   padding: "7px 16px",
   borderRadius: 7,
-  background: c.ink,
+  background: c.brand,
   color: c.white,
   border: "none",
   fontSize: 12,

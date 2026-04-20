@@ -232,12 +232,12 @@ export function FilterDropdown({ label, value, options, onChange, onClear, isOpe
 
 // ─── Right-column summary card ─────────────────────────────────────────────────
 
-function SummaryCard({ icon, title, count, countLabel, emptyBody, ctaLabel, onCta, addButton, children }) {
+function SummaryCard({ icon, title, count, countLabel, emptyBody, ctaLabel, onCta, addButton, children, showCount = true }) {
   return (
     <div style={{
       background: c.white,
-      border: `1px solid ${c.border}`,
-      borderRadius: 10,
+      border: `0.5px solid ${c.border}`,
+      borderRadius: 8,
       overflow: "hidden",
       marginBottom: 12,
     }}>
@@ -246,19 +246,21 @@ function SummaryCard({ icon, title, count, countLabel, emptyBody, ctaLabel, onCt
         alignItems: "center",
         gap: 8,
         padding: "11px 16px",
-        borderBottom: count > 0 ? `1px solid ${c.border}` : "none",
+        borderBottom: count > 0 ? `0.5px solid ${c.border}` : "none",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, flex: 1, minWidth: 0 }}>
           <span style={{ fontSize: 12, color: c.hint }}>{icon}</span>
           <span style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{title}</span>
-          <span style={{
-            fontSize: 10, padding: "2px 7px", borderRadius: 8,
-            background: count > 0 ? c.ink : "rgba(0,0,0,0.06)",
-            color: count > 0 ? c.white : c.hint,
-            fontWeight: 500,
-          }}>
-            {count} {countLabel}
-          </span>
+          {showCount && (
+            <span style={{
+              fontSize: 10, padding: "2px 7px", borderRadius: 8,
+              background: count > 0 ? c.ink : "rgba(0,0,0,0.06)",
+              color: count > 0 ? c.white : c.hint,
+              fontWeight: 500,
+            }}>
+              {count} {countLabel}
+            </span>
+          )}
         </div>
         {addButton}
       </div>
@@ -833,6 +835,7 @@ export default function ProjectDetail({ appState }) {
               title="Clusters"
               count={projectClusters.length}
               countLabel="built"
+              showCount={false}
               emptyBody={
                 projectInputs.length < 3
                   ? `Add at least 3 inputs before clustering. You have ${projectInputs.length} so far.`
