@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 
 const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
@@ -291,7 +291,7 @@ export default async function handler(req, res) {
     }
 
     // Trigger health check — fire and forget so score doesn't share its timeout budget
-    fetch(`${process.env.VITE_SUPABASE_URL}/functions/v1/check-scanner-health`, {
+    fetch(`${process.env.SUPABASE_URL}/functions/v1/check-scanner-health`, {
       method: 'GET',
       headers: { 'x-cron-secret': process.env.CRON_SECRET },
     }).catch((e) => {
