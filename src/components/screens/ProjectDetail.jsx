@@ -791,7 +791,7 @@ export default function ProjectDetail({ appState }) {
                           {inp.horizon ? <HorizTag h={inp.horizon} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
                         </div>
                         {/* Cluster */}
-                        <div style={{ width: COL.action, flexShrink: 0, display: "flex", flexWrap: "wrap", gap: 3, alignItems: "center", position: "relative" }}>
+                        <div style={{ width: COL.action, flexShrink: 0, display: "flex", alignItems: "center", position: "relative" }}>
                           {assignedClusters.length === 0 ? (
                             <>
                               <button
@@ -813,11 +813,9 @@ export default function ProjectDetail({ appState }) {
                               {assignedClusters[0].name}
                             </span>
                           ) : (
-                            assignedClusters.map((cl) => (
-                              <span key={cl.id} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: c.surfaceAlt, color: c.muted, whiteSpace: "nowrap" }}>
-                                {cl.name}
-                              </span>
-                            ))
+                            <span style={{ fontSize: 10.5, padding: "2px 8px", borderRadius: 4, background: c.bg, color: c.muted, whiteSpace: "nowrap" }}>
+                              {assignedClusters.length} clusters
+                            </span>
                           )}
                         </div>
                       </div>
