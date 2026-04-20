@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(`${process.env.VITE_APP_URL}/api/score`, {
+    const response = await fetch(`${process.env.APP_URL}/api/score`, {
       method: 'GET',
       headers: { 'x-cron-secret': process.env.CRON_SECRET },
     });

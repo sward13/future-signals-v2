@@ -142,7 +142,7 @@ export default async function handler(req, res) {
     }
 
     // Trigger scoring — fire and forget so classify doesn't share its timeout budget
-    fetch(`${process.env.VITE_APP_URL}/api/score`, {
+    fetch(`${process.env.APP_URL}/api/score`, {
       method: 'GET',
       headers: { 'x-cron-secret': process.env.CRON_SECRET },
     }).catch((e) => {

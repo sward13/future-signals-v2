@@ -102,7 +102,7 @@ export default async function handler(req, res) {
 
     // Trigger classify + embed in a separate function — fire and forget so scan
     // doesn't share its timeout budget with the AI classification phase
-    fetch(`${process.env.VITE_APP_URL}/api/classify`, {
+    fetch(`${process.env.APP_URL}/api/classify`, {
       method: 'GET',
       headers: { 'x-cron-secret': process.env.CRON_SECRET },
     }).catch((e) => {
