@@ -196,7 +196,7 @@ export default function App() {
       color: "#111111",
       WebkitFontSmoothing: "antialiased",
     }}>
-      <AppShell appState={appState} onSignOut={handleSignOut} onExport={() => setExportModalOpen(true)} scroll={!["scenarios", "scenario_canvas", "analysis"].includes(appState.activeScreen)}>
+      <AppShell appState={appState} onSignOut={handleSignOut} onExport={() => setExportModalOpen(true)} scroll={!["scenarios", "scenario_canvas", "analysis", "project"].includes(appState.activeScreen)}>
         <ActiveScreen appState={appState} onSignOut={handleSignOut} />
       </AppShell>
 

@@ -76,14 +76,14 @@ export function Sidebar({
         display: "flex",
         alignItems: "center",
         gap: 8,
-        padding: indented ? "6px 16px 6px 32px" : "8px 16px",
+        padding: indented ? "6px 14px 6px 30px" : "7px 14px",
         width: "100%",
         fontSize: indented ? 11 : 12,
-        color: isActive ? c.ink : c.muted,
+        color: isActive ? "#3B82F6" : c.muted,
         fontWeight: isActive ? 500 : 400,
-        background: isActive ? "rgba(0,0,0,0.04)" : "transparent",
+        background: isActive ? "#EFF6FF" : "transparent",
         border: "none",
-        borderRight: isActive ? `2px solid ${c.ink}` : "2px solid transparent",
+        borderLeft: isActive ? "2px solid #3B82F6" : "2px solid transparent",
         textAlign: "left",
         cursor: "pointer",
         fontFamily: "inherit",
@@ -104,8 +104,8 @@ export function Sidebar({
           fontSize: 10,
           padding: "1px 6px",
           borderRadius: 10,
-          background: isActive ? c.ink : "rgba(0,0,0,0.07)",
-          color: isActive ? c.white : c.muted,
+          background: isActive ? "#DBEAFE" : "rgba(0,0,0,0.07)",
+          color: isActive ? "#3B82F6" : c.muted,
           fontWeight: 500,
           flexShrink: 0,
         }}>
@@ -113,7 +113,7 @@ export function Sidebar({
         </span>
       )}
       {indented && isActive && (
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.ink, flexShrink: 0 }} />
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#3B82F6", flexShrink: 0 }} />
       )}
     </button>
   );
@@ -166,18 +166,10 @@ export function Sidebar({
           />
         ))}
 
-        {/* PROJECT section — only when a project is active */}
+        {/* Project nav — only when a project is active */}
         {inProject && (
           <>
-            <div style={{
-              fontSize: 10,
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              color: c.hint,
-              padding: "14px 16px 4px",
-            }}>
-              Project
-            </div>
+            <div style={{ height: 1, background: c.border, margin: "6px 0" }} />
             {PROJECT_ITEMS.map(({ icon, label, screen }) => {
               const disabled = screen === "analysis" && !hasRelationships;
               if (disabled) {
@@ -189,7 +181,7 @@ export function Sidebar({
                       display: "flex",
                       alignItems: "center",
                       gap: 8,
-                      padding: "8px 16px",
+                      padding: "7px 14px 7px 16px",
                       fontSize: 12,
                       color: c.hint,
                       fontWeight: 400,
@@ -213,17 +205,6 @@ export function Sidebar({
                 />
               );
             })}
-
-            {/* Futures section */}
-            <div style={{
-              fontSize: 10,
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-              color: c.hint,
-              padding: "10px 16px 4px",
-            }}>
-              Futures
-            </div>
             <NavButton
               icon="◇"
               label="Future Models"
@@ -231,7 +212,6 @@ export function Sidebar({
               isActive={activeScreen === "future-models"}
               count={projCounts["future-models"]}
             />
-
           </>
         )}
       </div>

@@ -133,20 +133,23 @@ function FilterTab({ label, count, active, onClick }) {
       onClick={onClick}
       style={{
         display: "flex", alignItems: "center", gap: 5,
-        padding: "4px 10px", borderRadius: 20, fontSize: 11,
+        padding: "6px 2px", fontSize: 12,
         cursor: "pointer", fontFamily: "inherit",
-        background: active ? c.ink : "transparent",
-        color: active ? c.white : c.muted,
-        border: `1px solid ${active ? c.ink : c.border}`,
+        background: "transparent",
+        color: active ? c.ink : c.muted,
+        border: "none",
+        borderBottom: active ? `2px solid #3B82F6` : "2px solid transparent",
         fontWeight: active ? 500 : 400,
-        transition: "all 0.1s",
+        transition: "color 0.1s, border-color 0.1s",
+        marginRight: 14,
+        marginBottom: -1,
       }}
     >
       {label}
       <span style={{
         fontSize: 10, padding: "0 4px", borderRadius: 6,
-        background: active ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.06)",
-        color: active ? c.white : c.muted,
+        background: active ? "#EFF6FF" : "rgba(0,0,0,0.06)",
+        color: active ? "#3B82F6" : c.muted,
       }}>
         {count}
       </span>
@@ -162,7 +165,7 @@ function InputTypeBadge({ subtype }) {
   return (
     <span style={{
       fontSize: 10, padding: "2px 6px", borderRadius: 4,
-      background: "#f0f0ee", color: c.muted, whiteSpace: "nowrap",
+      background: c.surfaceAlt, color: c.muted, whiteSpace: "nowrap",
     }}>
       {label}
     </span>
@@ -318,7 +321,7 @@ export default function ProjectDetail({ appState }) {
 
   if (!project) {
     return (
-      <div style={{ padding: "28px 32px", background: c.bg, minHeight: "100%" }}>
+      <div style={{ padding: "28px 32px", background: c.white, minHeight: "100%" }}>
         <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 8 }}>No project selected</div>
         <button onClick={() => setActiveScreen("dashboard")} style={{ ...btnSec, marginTop: 8 }}>
           ← Back to Dashboard
@@ -508,7 +511,7 @@ export default function ProjectDetail({ appState }) {
         </div>
       )}
 
-      <div style={{ padding: "24px 32px", background: c.bg, minHeight: "100%", overflowY: "auto" }}>
+      <div style={{ padding: "24px 32px", background: c.white, height: "100%", overflowY: "auto", boxSizing: "border-box" }}>
 
         {/* ── Breadcrumb ──────────────────────────────────────── */}
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
@@ -536,16 +539,22 @@ export default function ProjectDetail({ appState }) {
                   fontSize: 11, padding: "3px 9px", borderRadius: 6,
                   background: "transparent", color: c.muted, border: `1px solid ${c.border}`,
                   cursor: "pointer", fontFamily: "inherit",
+                  display: "flex", alignItems: "center", gap: 4,
                 }}
               >
-                Edit project
+                <span style={{ fontSize: 10 }}>⚙</span> Project settings
               </button>
               <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 8, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>
                 {project.domain}
               </span>
             </div>
             {project.question && (
-              <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.6, fontStyle: "italic", marginTop: 4, maxWidth: 560 }}>
+              <div style={{
+                fontSize: 13, color: c.ink, lineHeight: 1.6, marginTop: 8,
+                padding: "10px 14px", background: "#F0F7FF",
+                borderLeft: "3px solid #3B82F6", borderRadius: "0 6px 6px 0",
+                maxWidth: 600,
+              }}>
                 "{project.question}"
               </div>
             )}
@@ -573,8 +582,8 @@ export default function ProjectDetail({ appState }) {
           {/* TODO: responsive pass — sidebar min-width is causing overflow at <1200px */}
           <div style={{ minWidth: 0 }}>
             {/* Row 1: tabs left, add actions right */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 10, gap: 12, borderBottom: `1px solid ${c.border}` }}>
+              <div style={{ display: "flex", alignItems: "center" }}>
                 <FilterTab label="All"         count={projectInputs.length} active={inputTab === "all"}        onClick={() => { setInputTab("all");        setSelectedIds(new Set()); }} />
                 <FilterTab label="Unassigned"  count={unassigned.length}    active={inputTab === "unassigned"} onClick={() => { setInputTab("unassigned"); setSelectedIds(new Set()); }} />
                 <FilterTab label="In cluster"  count={inCluster.length}     active={inputTab === "incluster"}  onClick={() => { setInputTab("incluster");  setSelectedIds(new Set()); }} />
@@ -769,7 +778,7 @@ export default function ProjectDetail({ appState }) {
                         {/* STEEPLED */}
                         <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
                           {vis2.map((t) => (
-                            <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: "#f0f0ee", color: c.muted }}>
+                            <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: c.surfaceAlt, color: c.muted }}>
                               {STEEPLED_ABB[t] || t}
                             </span>
                           ))}
@@ -803,7 +812,7 @@ export default function ProjectDetail({ appState }) {
                             </span>
                           ) : (
                             assignedClusters.map((cl) => (
-                              <span key={cl.id} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: "#f0f0ee", color: c.muted, whiteSpace: "nowrap" }}>
+                              <span key={cl.id} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: c.surfaceAlt, color: c.muted, whiteSpace: "nowrap" }}>
                                 {cl.name}
                               </span>
                             ))
@@ -901,48 +910,32 @@ export default function ProjectDetail({ appState }) {
               </div>
             </SummaryCard>
 
-            {/* Metadata strip */}
-            <div
-              onClick={() => openEditDrawer()}
-              style={{ padding: "12px 14px", background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, cursor: "pointer" }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = c.borderMid}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = c.border}
-            >
+            {/* Project details — read-only */}
+            <div style={{ padding: "12px 14px", background: c.white, border: `1px solid ${c.border}`, borderRadius: 10 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>Project details</div>
-                <span style={{ fontSize: 10, color: c.hint }}>Edit ›</span>
+                <button
+                  onClick={() => openEditDrawer()}
+                  style={{ fontSize: 10, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                >
+                  Edit ›
+                </button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {project.geo ? (
-                  <div onClick={(e) => { e.stopPropagation(); openEditDrawer("geo"); }}>
-                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 1 }}>Geography</div>
-                    <div style={{ fontSize: 12, color: c.ink }}>{project.geo}</div>
+                {[
+                  { label: "Domain",       value: project.domain },
+                  { label: "Focus",        value: project.unit || project.focus },
+                  { label: "Geography",    value: project.geo },
+                  { label: "Stakeholders", value: project.stakeholders },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 1 }}>{label}</div>
+                    {value
+                      ? <div style={{ fontSize: 12, color: c.ink }}>{value}</div>
+                      : <div style={{ fontSize: 11, color: c.hint, fontStyle: "italic" }}>Not set</div>
+                    }
                   </div>
-                ) : (
-                  <div onClick={(e) => { e.stopPropagation(); openEditDrawer("geo"); }} style={{ fontSize: 11, color: c.hint, fontStyle: "italic" }}>
-                    + Add geography
-                  </div>
-                )}
-                {project.unit ? (
-                  <div onClick={(e) => { e.stopPropagation(); openEditDrawer("unit"); }}>
-                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 1 }}>Focus</div>
-                    <div style={{ fontSize: 12, color: c.ink }}>{project.unit}</div>
-                  </div>
-                ) : (
-                  <div onClick={(e) => { e.stopPropagation(); openEditDrawer("unit"); }} style={{ fontSize: 11, color: c.hint, fontStyle: "italic" }}>
-                    + Add focus
-                  </div>
-                )}
-                {project.stakeholders ? (
-                  <div onClick={(e) => { e.stopPropagation(); openEditDrawer("stakeholders"); }}>
-                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 1 }}>Stakeholders</div>
-                    <div style={{ fontSize: 12, color: c.ink }}>{project.stakeholders}</div>
-                  </div>
-                ) : (
-                  <div onClick={(e) => { e.stopPropagation(); openEditDrawer("stakeholders"); }} style={{ fontSize: 11, color: c.hint, fontStyle: "italic" }}>
-                    + Add stakeholders
-                  </div>
-                )}
+                ))}
               </div>
             </div>
           </div>
