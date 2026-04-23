@@ -292,7 +292,7 @@ function SummaryCard({ icon, title, count, countLabel, emptyBody, ctaLabel, onCt
  */
 export default function ProjectDetail({ appState }) {
   const {
-    activeProjectId, projects, inputs, clusters, scenarios,
+    activeProjectId, projects, inputs, clusters, scenarios, canvasNodes,
     addInput, saveInputsToProject, showToast, setActiveScreen, setActiveProjectId,
     openInputDetail, openClusterDetail, openScenarioDetail,
     addCluster, addScenario, updateProject, assignInputToCluster, deleteProject,
@@ -334,6 +334,7 @@ export default function ProjectDetail({ appState }) {
 
   const projectClusters  = clusters.filter((cl) => cl.project_id === project.id);
   const projectScenarios = scenarios.filter((s)  => s.project_id === project.id);
+  const projectHasSystemMap = canvasNodes.some((n) => n.projectId === project.id);
   // Include inputs directly assigned to the project AND inputs referenced in
   // any of the project's clusters (cluster assignment does not update project_id).
   const clusterInputIdSet = new Set(projectClusters.flatMap((cl) => cl.input_ids || []));
@@ -884,42 +885,21 @@ export default function ProjectDetail({ appState }) {
             <SummaryCard
               icon="◆"
               title="System Map"
-              count={projectScenarios.length}
-              countLabel="built"
+              count={0}
               showCount={false}
               emptyBody="The System Map is built from clusters. Complete your clustering step first."
-              ctaLabel={projectClusters.length > 0 ? "Go to System Map →" : undefined}
+              ctaLabel={!projectHasSystemMap && projectClusters.length > 0 ? "Go to System Map →" : undefined}
               onCta={() => setActiveScreen("systemMap")}
               addButton={
-                projectScenarios.length === 0 ? (
-                  <button
-                    onClick={() => setActiveScreen("systemMap")}
-                    style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
-                  >
-                    Go to System Map
-                  </button>
-                ) : null
+                <button
+                  onClick={() => setActiveScreen("systemMap")}
+                  style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                >
+                  Go to System Map
+                </button>
               }
             >
-              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                {projectScenarios.map((s) => (
-                  <div
-                    key={s.id}
-                    onClick={() => { openScenarioDetail(s.id); setActiveScreen("scenarios"); }}
-                    style={{
-                      padding: "9px 12px", background: c.surfaceAlt,
-                      border: `1px solid ${c.border}`, borderRadius: 8, cursor: "pointer",
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.borderColor = c.borderMid}
-                    onMouseLeave={(e) => e.currentTarget.style.borderColor = c.border}
-                  >
-                    <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{s.name}</div>
-                    {s.description && (
-                      <div style={{ fontSize: 11, color: c.muted, marginTop: 3 }}>{s.description}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
+              {null}
             </SummaryCard>
 
             {/* Project details — read-only */}
