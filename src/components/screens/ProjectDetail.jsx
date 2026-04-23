@@ -851,7 +851,7 @@ export default function ProjectDetail({ appState }) {
               }
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                {projectClusters.map((cl) => (
+                {projectClusters.slice(0, 5).map((cl) => (
                   <div
                     key={cl.id}
                     onClick={() => openClusterDetail(cl.id)}
@@ -870,6 +870,14 @@ export default function ProjectDetail({ appState }) {
                     <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{cl.name}</div>
                   </div>
                 ))}
+                {projectClusters.length > 5 && (
+                  <button
+                    onClick={() => setActiveScreen("clustering")}
+                    style={{ fontSize: 11, color: c.brand, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", padding: "2px 0" }}
+                  >
+                    View all clusters →
+                  </button>
+                )}
               </div>
             </SummaryCard>
 
@@ -878,15 +886,16 @@ export default function ProjectDetail({ appState }) {
               title="System Map"
               count={projectScenarios.length}
               countLabel="built"
+              showCount={false}
               emptyBody="The System Map is built from clusters. Complete your clustering step first."
               ctaLabel={projectClusters.length > 0 ? "Go to System Map →" : undefined}
-              onCta={() => setActiveScreen("scenarios")}
+              onCta={() => setActiveScreen("systemMap")}
               addButton={
                 <button
-                  onClick={() => setScenarioDrawerOpen(true)}
+                  onClick={() => setActiveScreen("systemMap")}
                   style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
                 >
-                  Map a system
+                  Go to System Map
                 </button>
               }
             >

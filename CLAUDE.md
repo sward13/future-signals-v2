@@ -2,11 +2,13 @@
 
 ## Project overview
 
-Future Signals v2 is a strategic foresight SPA built with React + Vite. It guides practitioners through a Signals → Clusters → Scenarios methodology. The Vercel prototype phase is complete — we are now building the production app with Supabase (Postgres + pgvector + RLS) as the backend.
+Future Signals v2 is a strategic foresight SPA built with React + Vite. It guides practitioners through a structured methodology: Inputs → Clusters → System Map → System Analysis → Future Models. The Vercel prototype phase is complete — we are now building the production app with Supabase (Postgres + pgvector + RLS) as the backend.
 
 **Stack:** React 18, Vite, React Flow (`@xyflow/react`), Supabase (auth + database + storage), Vercel (hosting), inline styles using the design token system below.
 
 **Key principle:** AI supports but does not replace practitioner thinking. The UI should feel like a professional tool, not a consumer app.
+
+**Prototype reference:** `prototypes/future-signals-inputs-redesign_4.html` — use as a visual reference for the Inputs screen and shared layout. Do not copy its code directly.
 
 ---
 
@@ -16,17 +18,54 @@ Always use these exact values. Never introduce new colours or spacing scales wit
 
 ```js
 const c = {
-  bg:"#f5f4f0", white:"#ffffff", ink:"#111111",
-  muted:"#666666", faint:"#aaaaaa", hint:"#c4c3bc",
-  border:"rgba(0,0,0,0.09)", borderMid:"rgba(0,0,0,0.18)",
-  surfaceAlt:"#f9f9f7", fieldBg:"#fafaf8", canvas:"#f7f6f2",
-  green50:"#EAF3DE", green700:"#3B6D11", greenBorder:"#C0DD97",
-  blue50:"#E6F1FB",  blue700:"#185FA5",  blueBorder:"#B5D4F4",
-  amber50:"#FAEEDA", amber700:"#854F0B", amberBorder:"#FAC775",
-  violet50:"#F0EAFA",violet700:"#5B21B6",violetBorder:"#C4B5FD",
-  cyan50:"#E0F9F9",  cyan700:"#0E7490",  cyanBorder:"#A5F3FC",
-  red50:"#FCEBEB",   red800:"#791F1F",   redBorder:"#F7C1C1",
-  teal50:"#E6FFFA",  teal700:"#0F766E",  tealBorder:"#5EEAD4",
+  // Surfaces
+  bg:          "#F7F7F5",   // page background, sidebar
+  white:       "#ffffff",   // main content area, cards
+  surfaceAlt:  "#FAFAF8",   // input field backgrounds
+  canvas:      "#F7F6F2",   // canvas backgrounds
+
+  // Text
+  ink:         "#1A1A1A",   // primary text
+  muted:       "#6B7280",   // secondary text, nav items
+  faint:       "#9CA3AF",   // tertiary text, placeholders, column headers
+
+  // Borders
+  border:      "rgba(0,0,0,0.09)",   // cards, dividers, table rows
+  borderMid:   "rgba(0,0,0,0.16)",   // inputs, buttons, interactive borders
+
+  // Brand — interactive primary
+  brand:       "#3B82F6",   // primary CTAs, active nav, key question accent
+  brandBg:     "#EFF6FF",   // active nav background, hover states
+  brandDeep:   "#F0F7FF",   // key question block background
+  brandBorder: "#BFDBFE",   // active filter pill border
+
+  // Semantic — Signal Quality badges
+  confirmedBg:    "#D1FAE5", confirmedText:    "#065F46",
+  establishedBg:  "#DBEAFE", establishedText:  "#1E40AF",
+  emergingBg:     "#FEF3C7", emergingText:     "#92400E",
+
+  // Semantic — Time horizons (H1/H2/H3)
+  h1Bg: "#DCFCE7", h1Text: "#166534",
+  h2Bg: "#DBEAFE", h2Text: "#1E40AF",
+  h3Bg: "#FEF3C7", h3Text: "#92400E",
+
+  // Semantic — Cluster subtypes
+  driverBg:  "#EDE9FE", driverText:  "#5B21B6",
+  trendBg:   "#EDE9FE", trendText:   "#5B21B6",
+  tensionBg: "#FEF3C7", tensionText: "#92400E",
+
+  // Semantic — System Map relationship edges
+  edgeInhibits:  "#C2813A",
+  edgeDrives:    "#3B82F6",
+  edgeAccelerates:"#0D9488",
+  edgeFeedback:  "#D97706",  // dashed
+
+  // Semantic — status
+  builtBg:    "#DCFCE7", builtText:    "#166534",
+  notBuiltBg: "#FEF3C7", notBuiltText: "#92400E",
+
+  // Alert
+  alertBg:   "#FEE2E2", alertText: "#991B1B",  // Inbox unread badge
 };
 ```
 
@@ -35,14 +74,121 @@ const c = {
 const inp   = { width:"100%", padding:"9px 11px", border:`1px solid ${c.borderMid}`, borderRadius:8, background:c.white, color:c.ink, fontSize:13, fontFamily:"inherit", outline:"none", boxSizing:"border-box" };
 const ta    = { ...inp, resize:"none", lineHeight:1.55 };
 const sel   = { ...inp, appearance:"none" };
-const btnP  = { padding:"10px 22px", borderRadius:8, background:c.ink, color:c.white, border:"none", fontSize:13, fontWeight:500, cursor:"pointer", fontFamily:"inherit" };
-const btnSm = { padding:"7px 16px", borderRadius:7, background:c.ink, color:c.white, border:"none", fontSize:12, fontWeight:500, cursor:"pointer", fontFamily:"inherit" };
+
+// Primary button — brand blue
+const btnP  = { padding:"10px 22px", borderRadius:8, background:c.brand, color:c.white, border:"none", fontSize:13, fontWeight:500, cursor:"pointer", fontFamily:"inherit" };
+const btnSm = { padding:"7px 16px", borderRadius:7, background:c.brand, color:c.white, border:"none", fontSize:12, fontWeight:500, cursor:"pointer", fontFamily:"inherit" };
+
+// Secondary / ghost buttons
 const btnSec= { padding:"9px 18px", borderRadius:8, background:"transparent", color:c.muted, border:`1px solid ${c.borderMid}`, fontSize:13, cursor:"pointer", fontFamily:"inherit" };
 const btnG  = { padding:"7px 12px", borderRadius:7, background:"transparent", color:c.muted, border:"none", fontSize:12, cursor:"pointer", fontFamily:"inherit" };
+
+// Full-width right-panel CTA buttons
+const btnFull = { width:"100%", padding:"7px 12px", borderRadius:6, background:"transparent", color:c.muted, border:`1px solid ${c.borderMid}`, fontSize:11.5, cursor:"pointer", fontFamily:"inherit", textAlign:"center" };
+
 const fl    = { fontSize:12, fontWeight:500, color:c.ink, marginBottom:5, display:"flex", alignItems:"center", gap:6 };
-const fh    = { fontSize:11, color:c.hint, marginBottom:6, fontStyle:"italic", lineHeight:1.45 };
+const fh    = { fontSize:11, color:c.faint, marginBottom:6, fontStyle:"italic", lineHeight:1.45 };
 const badg  = { fontSize:10, padding:"1px 6px", borderRadius:4, background:"#f0f0ee", color:c.faint };
 ```
+
+---
+
+## Typography
+
+**Heading font:** Roboto (Google Fonts)
+**Body / UI font:** Open Sans (Google Fonts)
+**Fallback stack:** `-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif`
+
+Scale:
+- Page title: 22px / weight 500
+- Section heading: 16px / weight 500
+- Body / table rows: 13px / weight 400
+- Labels / nav: 12–12.5px / weight 400
+- Metadata / badges: 10–11px
+- Column headers: 10px / weight 500 / uppercase / letter-spacing 0.07em
+- Micro-labels: 9px / weight 500 / uppercase / letter-spacing 0.08em (e.g. KEY QUESTION)
+
+---
+
+## Sidebar navigation — structure and rules
+
+The sidebar is **196px wide**, `background: c.bg`, with a single `0.5px` border-right.
+
+**Structure (top to bottom):**
+1. Logo mark + "Future Signals" wordmark — no project name subtitle
+2. Nav list — flat, no section labels
+3. Account footer — user avatar, name, plan
+
+**Nav list order:**
+- Dashboard *(global)*
+- Inbox *(global, shows unread count badge in `alertBg/alertText`)*
+- `0.5px` divider
+- Inputs *(project-scoped, shows input count)*
+- Clusters *(project-scoped, shows cluster count)*
+- System Map *(project-scoped)*
+- System Analysis *(project-scoped)*
+- Future Models *(project-scoped)*
+- Export *(project-scoped, last item, download icon)*
+
+**Active state:** `background: c.brandBg`, `color: c.brand`, `border-left: 2px solid c.brand`, `font-weight: 500`
+**Inactive state:** `color: c.muted`, no background
+
+**Visibility rules:**
+- Dashboard and Inbox are always visible.
+- Divider and all project-scoped items (Inputs → Export) are only visible when `activeProjectId` is set.
+- Navigating to Dashboard or Inbox clears the active project context.
+
+---
+
+## Page header — Inputs screen pattern
+
+This pattern applies to all project-scoped screens.
+
+```
+breadcrumb        → "Projects › {project name}"  (11px, c.faint)
+title row         → {Project name} (22px/500) + [Project settings ⚙] + [Domain tag] + CTAs (right-aligned)
+key question block→ blue left-border card (see below)
+time horizon bar  → proportional H1/H2/H3 bar with date labels
+```
+
+**Key question block:**
+```js
+{
+  padding: "9px 14px",
+  borderLeft: `2px solid ${c.brand}`,
+  background: c.brandDeep,
+  borderRadius: "0 6px 6px 0",
+}
+// Label: 9px, uppercase, tracked, c.brand — "KEY QUESTION"
+// Body: 13px, italic, c.ink
+```
+
+**"Project settings" button** (not "Edit project") — opens the full project configuration panel (name, domain, key question, time horizons, focus, geography, stakeholders). Use a gear icon (⚙). Style as `btnSec`.
+
+---
+
+## Right panel — structure and rules
+
+Width: `240px`. Contains three cards separated by `14px` gap.
+
+**1. Clusters card**
+- Title: "Clusters" + built count badge (`builtBg/builtText`)
+- Full-width "Build a cluster" button (`btnFull`)
+- Lists existing clusters (show up to 4, then "View all" affordance)
+- Each cluster shows: subtype badge + horizon badge + input count + name
+
+**2. System Map card**
+- Title: "System Map" + binary status badge: "Built" (`builtBg/builtText`) or "Not built" (`notBuiltBg/notBuiltText`)
+- No count — there is always exactly one System Map per project, or none
+- If built: show canvas thumbnail (SVG/image snapshot), clickable → navigates to System Map. Footer strip shows node count + relationship count + "Open →"
+- If not built: explanatory text + full-width "Go to System Map →" button (`btnFull`)
+
+**3. Project details card**
+- Title: "Project details" — no Edit button
+- Read-only summary: Domain, Focus, Geography, Stakeholders
+- Populated fields: `c.ink`, 11.5px
+- Empty fields: italic, `c.faint` — "Not set"
+- Editing is done via "Project settings" in the page header
 
 ---
 
@@ -56,7 +202,10 @@ const badg  = { fontSize:10, padding:"1px 6px", borderRadius:4, background:"#f0f
 | Focus | Unit of analysis |
 | Inbox | Collection |
 | System Map | Relationship Canvas, Scenario Canvas |
+| System Analysis | Analysis |
+| Future Models | Futures, Scenarios (as a screen label) |
 | Add an input | Add a signal |
+| Project settings | Edit project |
 
 **Nav labels, headings, sidebar items, empty states, and stat cards always use the left-hand column.** Internal variable names, prop names, file names, and database column names use whatever is most stable — do not rename existing code constructs just to match display labels.
 
@@ -67,20 +216,21 @@ const badg  = { fontSize:10, padding:"1px 6px", borderRadius:4, background:"#f0f
 
 ---
 
-## Key product decision — Projects are mandatory
+## Key product decisions
 
 **Projects are mandatory. Clusters and System Maps only exist within a Project.**
 
 - The Inbox holds inputs that have not yet been assigned to a project (`project_id === null`). It is a workspace-level screen.
 - Clustering and System Map are project-scoped screens. They only appear in the sidebar when a project is active.
-- The sidebar PROJECT section (label "PROJECT", items: Inputs / Clustering / System Map) is only visible when `activeProjectId` is set.
-- At workspace level (Dashboard, Inbox, no active project) the sidebar shows only: Dashboard, Inbox, Projects. No Clustering. No System Map.
+- At workspace level (Dashboard, Inbox, no active project) the sidebar shows only: Dashboard, Inbox. No project-scoped items.
 - Navigating to Dashboard or Inbox via the sidebar clears the active project context.
-- The Dashboard stats strip shows workspace-level counts only: Projects and Inputs in Inbox. Per-project cluster/system counts appear on each project card, not in the global strip.
+- The Dashboard stats strip shows workspace-level counts only: Projects and Inputs in Inbox. Per-project counts appear on each project card.
+- There is always exactly one System Map per project (binary: built or not built). Never show a count.
+- Workspace is 1:1 with user account in v2 — no team/org layer yet.
 
 ---
 
-## App architecture — how the SPA must be structured
+## App architecture
 
 ### State
 All app state lives in a single `useAppState` hook (or context) at the root level. Never use prop drilling more than 2 levels deep. State shape:
@@ -88,22 +238,22 @@ All app state lives in a single `useAppState` hook (or context) at the root leve
 ```js
 {
   user: { name, email, level, domains, purpose },
-  inputs: [],        // all inputs across all projects
-  clusters: [],      // all clusters
-  scenarios: [],     // all scenarios
-  projects: [],      // all projects
+  inputs: [],
+  clusters: [],
+  scenarios: [],
+  projects: [],
   activeProjectId: null,
-  activeScreen: 'dashboard',  // 'dashboard' | 'inbox' | 'project' | 'clustering' | 'canvas'
-  drawer: null,      // null | { type: 'newInput' | 'newCluster' | 'inputDetail' | 'clusterDetail', data: {} }
-  toast: null,       // null | { message, type: 'success' | 'error' }
+  activeScreen: 'dashboard',  // 'dashboard' | 'inbox' | 'project' | 'clustering' | 'systemMap' | 'systemAnalysis' | 'futureModels'
+  drawer: null,               // null | { type: 'newInput' | 'newCluster' | 'inputDetail' | 'clusterDetail' | 'projectSettings', data: {} }
+  toast: null,                // null | { message, type: 'success' | 'error' }
 }
 ```
 
 ### Navigation
-The sidebar drives all navigation. Clicking a sidebar item calls `setActiveScreen()`. No URL routing in v2 — navigation is state-driven via setActiveScreen().
+The sidebar drives all navigation. Clicking a sidebar item calls `setActiveScreen()`. No URL routing in v2 — navigation is state-driven via `setActiveScreen()`.
 
 ### Drawers
-Input creation, cluster creation, and detail views all open as slide-over drawers from the right. Never navigate to a separate page for these. The drawer overlays the current content with a semi-transparent backdrop.
+Input creation, cluster creation, project settings, and detail views all open as slide-over drawers from the right. Never navigate to a separate page for these. The drawer overlays the current content with a semi-transparent backdrop.
 
 ### Toast notifications
 Every save/create/delete action shows a brief toast (2 seconds, bottom-right). Use a single `Toast` component driven by `appState.toast`.
@@ -115,90 +265,90 @@ Every save/create/delete action shows a brief toast (2 seconds, bottom-right). U
 ```
 src/
   main.jsx
-  App.jsx                 ← root, holds all state, renders layout
+  App.jsx                   ← root, holds all state, renders layout
   hooks/
-    useAppState.js        ← all state logic
+    useAppState.js          ← all state logic
   components/
     layout/
-      Sidebar.jsx         ← working navigation
-      AppShell.jsx        ← sidebar + main content wrapper
-      Drawer.jsx          ← slide-over drawer shell
-      Toast.jsx           ← success/error notification
+      Sidebar.jsx           ← navigation (flat list, no section labels)
+      AppShell.jsx          ← sidebar + main content wrapper
+      Drawer.jsx            ← slide-over drawer shell
+      Toast.jsx             ← success/error notification
     screens/
       Dashboard.jsx
       Inbox.jsx
-      ProjectDetail.jsx
-      Clustering.jsx
+      ProjectDetail.jsx     ← Inputs screen
+      Clustering.jsx        ← Clusters screen
       SystemMap.jsx
+      SystemAnalysis.jsx
+      FutureModels.jsx
     inputs/
-      InputCard.jsx       ← reusable input display card
-      InputDrawer.jsx     ← new input / edit input form
+      InputCard.jsx
+      InputDrawer.jsx
       SeededSignalCard.jsx
     clusters/
       ClusterCard.jsx
       ClusterDrawer.jsx
     shared/
-      Tag.jsx             ← QualityDot, HorizTag, ArchTag, SubtypeTag
+      Tag.jsx               ← QualityBadge, HorizonTag, SubtypeTag
       EmptyState.jsx
+      RightPanel.jsx        ← shared right panel (Clusters + SystemMap + ProjectDetails cards)
   data/
-    seeds.js              ← SEEDED_SIGNALS_POOL, DOMAIN_META, sample INPUTS/CLUSTERS/SCENARIOS/PROJECTS
+    seeds.js
   styles/
-    tokens.js             ← c{} object and shared style primitives
+    tokens.js               ← c{} object and shared style primitives
+  prototypes/
+    future-signals-inputs-redesign_4.html   ← visual reference only
 ```
 
 ---
 
 ## Frontend design principles
 
-When building UI, always:
-
-- **Commit to the established aesthetic** — warm off-white backgrounds (`#f5f4f0`), ink black (`#111111`), subtle borders. This is a refined minimal tool, not a consumer app.
-- **Typography** — use `-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif`. Avoid importing web fonts.
-- **Density** — information-dense but not cramped. 12–13px for body/labels, 10–11px for metadata, 18–22px for page headings.
-- **No generic AI aesthetics** — no purple gradients, no rounded pill everything, no card shadows on every element.
+- **Light mode only.** All surfaces use the warm off-white / white / light grey token system above. Dark mode is explicitly deferred.
+- **Commit to the aesthetic** — warm off-white backgrounds (`#F7F7F5`), ink black (`#1A1A1A`), brand blue (`#3B82F6`) for interactive elements. Refined and minimal, not a consumer app.
+- **Typography** — Roboto for headings, Open Sans for body/UI. Load via Google Fonts.
+- **Density** — information-dense but not cramped. 12–13px body/labels, 10–11px metadata, 22px page headings.
+- **No generic AI aesthetics** — no purple gradients on white, no pill-everything, no card shadows on every element.
 - **Interactions** — hover states on all clickable elements, smooth drawer transitions (300ms ease), subtle border changes on focus.
-- **Empty states** — every list/section needs a proper empty state with a clear CTA, not just blank space.
+- **Empty states** — every list/section needs a proper empty state with a clear CTA, not blank space.
 
 ---
 
 ## What is deferred to v3
 
-The following are explicitly out of scope for v2. Do not scaffold, stub, or reference these in v2 code:
+Do not scaffold, stub, or reference these in v2 code:
 
-- Preferred Futures screen
-- Strategic Options screen
-- Scenario Narrative screen / Narrative Canvas
 - Real-time collaboration
 - Corpus ingestion
 - Explore / social layer
-- Slide deck generation (explicitly out of scope — not a deferral)
+- Slide deck generation (explicitly out of scope — not a deferral, not coming)
+- Chrome extension (separate surface, handled independently)
 
-The Chrome extension is a separate surface and is handled independently of the main app build.
+**Note:** Preferred Futures, Strategic Options, and Scenario Narratives are **in v2** under the Future Models screen. They are not deferred.
 
 ---
 
 ## Data model — entity schemas
 
-These are the canonical field definitions. Always use these exact field names in state, components, and Supabase columns.
-
-All tables carry `workspace_id` and (where applicable) `project_id` as a dual-key structure. `workspace_id` is 1:1 with the user account in v2 — there is no team/org layer yet.
+All tables carry `workspace_id` and (where applicable) `project_id`. `workspace_id` is 1:1 with the user account in v2.
 
 ### Input
 ```js
 {
-  id: string,              // uuid
-  workspace_id: string,    // uuid — always present
-  project_id: string|null, // null = lives in Inbox
-  name: string,            // required
-  description: string,     // optional
-  source_url: string,      // optional
-  subtype: string,         // 'Signal' | 'Issue' | 'Projection' | 'Plan' | 'Obstacle'
-  steepled: string[],      // subset of ['Social','Technological','Economic','Environmental','Political','Legal','Ethical','Demographic']
-  signal_quality: string,  // 'Emerging' | 'Established' | 'Confirmed'
-  horizon: string,         // 'H1' | 'H2' | 'H3'
-  metadata: object,        // JSONB — subtype-specific fields
-  created_at: string,      // ISO date
-  is_seeded: boolean,      // true = came from onboarding cold-start pool
+  id: string,
+  workspace_id: string,
+  project_id: string|null,   // null = lives in Inbox
+  name: string,
+  description: string,
+  source_url: string,
+  subtype: string,           // 'Signal' | 'Issue' | 'Projection' | 'Plan' | 'Obstacle'
+  steepled: string[],        // subset of ['Social','Technological','Economic','Environmental','Political','Legal','Ethical','Demographic']
+  signal_quality: string,    // 'Emerging' | 'Established' | 'Confirmed'
+  horizon: string,           // 'H1' | 'H2' | 'H3'
+  metadata: object,
+  created_at: string,
+  is_seeded: boolean,
 }
 ```
 
@@ -206,13 +356,13 @@ All tables carry `workspace_id` and (where applicable) `project_id` as a dual-ke
 ```js
 {
   id: string,
-  workspace_id: string,    // uuid — always present
-  name: string,            // required
-  domain: string,          // from DOMAINS list
-  question: string,        // key inquiry question
-  focus: string,           // focus of analysis (formerly 'unit')
-  geo: string,             // geographic scope
-  h1_start: string, h1_end: string,  // e.g. '2025', '2028'
+  workspace_id: string,
+  name: string,
+  domain: string,
+  question: string,          // key inquiry question
+  focus: string,
+  geo: string,
+  h1_start: string, h1_end: string,
   h2_start: string, h2_end: string,
   h3_start: string, h3_end: string,
   assumptions: string,
@@ -225,14 +375,14 @@ All tables carry `workspace_id` and (where applicable) `project_id` as a dual-ke
 ```js
 {
   id: string,
-  workspace_id: string,    // uuid — always present
+  workspace_id: string,
   project_id: string,
   name: string,
-  subtype: string,         // 'Trend' | 'Driver' | 'Tension'
-  horizon: string,         // 'H1' | 'H2' | 'H3'
+  subtype: string,           // 'Trend' | 'Driver' | 'Tension'
+  horizon: string,           // 'H1' | 'H2' | 'H3'
   description: string,
-  input_ids: string[],     // inputs assigned to this cluster
-  likelihood: string,      // 'Possible' | 'Plausible' | 'Probable'
+  input_ids: string[],
+  likelihood: string,        // 'Possible' | 'Plausible' | 'Probable'
   created_at: string,
 }
 ```
@@ -241,10 +391,10 @@ All tables carry `workspace_id` and (where applicable) `project_id` as a dual-ke
 ```js
 {
   id: string,
-  workspace_id: string,    // uuid — always present
+  workspace_id: string,
   project_id: string,
   name: string,
-  archetype: string,       // 'Continuation' | 'Collapse' | 'Constraint' | 'Transformation'
+  archetype: string,         // 'Continuation' | 'Collapse' | 'Constraint' | 'Transformation'
   horizon: string,
   cluster_ids: string[],
   created_at: string,
@@ -268,12 +418,15 @@ The full Product Requirements Document is at:
 **https://docs.google.com/document/d/1enQk44JVvjS4mCF-1gzIBVBPyvAXtoVr20HuddJdako**
 
 Key decisions already made:
-- Cluster subtypes: **Trend, Driver, Tension** (Enabler was removed)
+- Cluster subtypes: **Trend, Driver, Tension** (Enabler removed)
 - Scenario archetypes: **Continuation, Collapse, Constraint, Transformation**
-- Signal Quality: **Emerging, Established, Confirmed** — a single field replacing the previous separate Signal Strength and Source Confidence fields
-- Inbox is the default container — `project_id: null` means "in Inbox"
+- Signal Quality: **Emerging, Established, Confirmed** — single field replacing Signal Strength + Source Confidence
+- Inbox default container — `project_id: null` means "in Inbox"
 - Workspace is 1:1 with user account in v2 — no team/org layer yet
 - Real-time collaboration deferred to v3
 - Analysis mode (Quick Scan / Deep Analysis toggle) removed entirely — do not reference `mode` on Projects
-- Slide deck generation explicitly out of scope (not a deferral)
-- Chrome extension is a separate surface, not part of the main app build
+- Slide deck generation explicitly out of scope
+- Chrome extension is a separate surface
+- System Map is binary per project — built or not built, never a count
+- "Project settings" is the correct label for the project configuration panel (not "Edit project")
+- Preferred Futures, Strategic Options, and Scenario Narratives are v2 features under Future Models
