@@ -891,12 +891,14 @@ export default function ProjectDetail({ appState }) {
               ctaLabel={projectClusters.length > 0 ? "Go to System Map →" : undefined}
               onCta={() => setActiveScreen("systemMap")}
               addButton={
-                <button
-                  onClick={() => setActiveScreen("systemMap")}
-                  style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
-                >
-                  Go to System Map
-                </button>
+                projectScenarios.length === 0 ? (
+                  <button
+                    onClick={() => setActiveScreen("systemMap")}
+                    style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
+                  >
+                    Go to System Map
+                  </button>
+                ) : null
               }
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
