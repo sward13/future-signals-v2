@@ -889,10 +889,10 @@ export default function ProjectDetail({ appState }) {
               showCount={false}
               emptyBody="The System Map is built from clusters. Complete your clustering step first."
               ctaLabel={!projectHasSystemMap && projectClusters.length > 0 ? "Go to System Map →" : undefined}
-              onCta={() => setActiveScreen("systemMap")}
+              onCta={() => setActiveScreen("scenarios")}
               addButton={
                 <button
-                  onClick={() => setActiveScreen("systemMap")}
+                  onClick={() => setActiveScreen("scenarios")}
                   style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
                 >
                   Go to System Map
