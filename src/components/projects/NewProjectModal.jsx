@@ -538,14 +538,14 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
 
             <div style={{ marginBottom: 14 }}>
               <div style={fl}>Audience</div>
-              <div style={fh}>Who will use or act on the outputs of this project?</div>
+              <div style={fh}>Who this work aims to inform.</div>
               <input style={inp} type="text" value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="e.g. Policy makers, researchers" />
             </div>
 
             <div style={{ marginBottom: 8 }}>
               <div style={fl}>Stakeholders</div>
-              <div style={fh}>Who has a stake in the domain or issue being explored?</div>
-              <input style={inp} type="text" value={stakeholders} onChange={(e) => setStakeholders(e.target.value)} placeholder="e.g. Local government, communities affected" />
+              <div style={fh}>Who is impacted by this future.</div>
+              <input style={inp} type="text" value={stakeholders} onChange={(e) => setStakeholders(e.target.value)} placeholder="e.g. Healthcare workers, local government" />
             </div>
           </div>
 
