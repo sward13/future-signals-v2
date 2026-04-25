@@ -174,41 +174,16 @@ export function Sidebar({
         {inProject && (
           <>
             <div style={{ height: 1, background: c.border, margin: "6px 0" }} />
-            {PROJECT_ITEMS.map(({ icon, label, screen }) => {
-              const disabled = screen === "analysis" && !hasRelationships;
-              if (disabled) {
-                return (
-                  <div
-                    key={screen}
-                    title="Build at least one system in the System Map to unlock Scenarios"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "7px 14px 7px 16px",
-                      fontSize: 12,
-                      color: c.hint,
-                      fontWeight: 400,
-                      cursor: "default",
-                      userSelect: "none",
-                    }}
-                  >
-                    <span style={{ width: 16, flexShrink: 0, display: "flex", alignItems: "center" }}>{icon}</span>
-                    <span style={{ flex: 1 }}>{label}</span>
-                  </div>
-                );
-              }
-              return (
-                <NavButton
-                  key={screen}
-                  icon={icon}
-                  label={label}
-                  screen={screen}
-                  isActive={activeScreen === screen}
-                  count={projCounts[screen]}
-                />
-              );
-            })}
+            {PROJECT_ITEMS.map(({ icon, label, screen }) => (
+              <NavButton
+                key={screen}
+                icon={icon}
+                label={label}
+                screen={screen}
+                isActive={activeScreen === screen}
+                count={projCounts[screen]}
+              />
+            ))}
             <NavButton
               icon={<ChartNoAxesCombined size={16} />}
               label="Future Models"
