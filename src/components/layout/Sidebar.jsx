@@ -136,17 +136,6 @@ export function Sidebar({
       {/* Logo / context */}
       <div style={{ padding: "14px 16px 12px", borderBottom: `1px solid ${c.border}` }}>
         <img src={logoLight} alt="Future Signals" style={{ width: 140, height: "auto", display: "block" }} />
-        <div style={{
-          fontSize: 10,
-          color: inProject ? c.muted : c.hint,
-          fontWeight: inProject ? 500 : 400,
-          marginTop: 6,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}>
-          {inProject ? activeProject.name : "Strategic Foresight"}
-        </div>
       </div>
 
       {/* Nav */}
