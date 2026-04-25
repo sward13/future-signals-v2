@@ -16,6 +16,7 @@
  *   analysisCount: number,
  * }} props
  */
+import logoDark from "../../assets/logo_dark.svg";
 import { c } from "../../styles/tokens.js";
 import {
   Home, Inbox as InboxIcon, SquareArrowRight, Boxes,
@@ -133,20 +134,13 @@ export function Sidebar({
       height: "100%",
     }}>
       {/* Logo / context */}
-      <div style={{ padding: "16px", borderBottom: `1px solid ${c.border}` }}>
-        <div style={{
-          display: "flex", alignItems: "center", gap: 7,
-          fontSize: 13, fontWeight: 600, color: c.ink,
-        }}>
-          <div style={{ width: 7, height: 7, borderRadius: "50%", background: c.ink }} />
-          Future Signals
-        </div>
+      <div style={{ padding: "14px 16px 12px", borderBottom: `1px solid ${c.border}` }}>
+        <img src={logoDark} alt="Future Signals" style={{ width: 140, height: "auto", display: "block" }} />
         <div style={{
           fontSize: 10,
           color: inProject ? c.muted : c.hint,
           fontWeight: inProject ? 500 : 400,
-          marginTop: 2,
-          paddingLeft: 14,
+          marginTop: 6,
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
