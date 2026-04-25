@@ -234,7 +234,7 @@ export default function Dashboard({ appState }) {
     try { localStorage.setItem("fs_project_view", v); } catch {}
   };
 
-  const inboxCount   = inputs.filter((i) => i.project_id === null).length;
+  const inboxCount   = inputs.filter((i) => i.project_id === null && !(i.is_seeded && i.metadata?.source === "scanner" && i.metadata?.dismissed)).length;
   const recentInputs = [...inputs.filter((i) => i.project_id === null)]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 3);
