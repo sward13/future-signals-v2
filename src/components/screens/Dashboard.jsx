@@ -264,8 +264,8 @@ export default function Dashboard({ appState }) {
             <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Dashboard</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button onClick={() => setInputDrawerOpen(true)} style={{ ...btnSec, display: "flex", alignItems: "center", gap: 6 }}><CirclePlus size={14} />Add an input</button>
-            <button onClick={openProjectModal} style={btnP}>+ New project</button>
+            <button onClick={() => setInputDrawerOpen(true)} style={btnSec}>Add an input</button>
+            <button onClick={openProjectModal} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}><CirclePlus size={14} />New project</button>
           </div>
         </div>
 

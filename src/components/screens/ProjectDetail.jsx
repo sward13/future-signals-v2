@@ -595,7 +595,7 @@ export default function ProjectDetail({ appState }) {
               {projectInputs.length > 0 && (
                 <div style={{ display: "flex", gap: 6 }}>
                   <button onClick={() => setInboxModalOpen(true)} style={{ ...btnG, fontSize: 11 }}>Add from Inbox</button>
-                  <button onClick={() => setDrawerOpen(true)} style={{ ...btnG, fontSize: 11 }}>+ Add</button>
+                  <button onClick={() => setDrawerOpen(true)} style={{ ...btnG, fontSize: 11 }}>Add</button>
                 </div>
               )}
             </div>

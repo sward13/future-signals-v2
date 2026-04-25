@@ -4,6 +4,7 @@
  * Create/edit/detail views are not built here (Prompt 3+).
  */
 import { useState, useRef, useEffect } from "react";
+import { CirclePlus } from "lucide-react";
 import { c, btnSm, btnSec } from "../../styles/tokens.js";
 import { HorizTag } from "../shared/Tag.jsx";
 
@@ -317,8 +318,8 @@ function ScenarioEmptyState({ onNew }) {
           What are the key differences from today that are most relevant?
         </div>
       </div>
-      <button onClick={onNew} style={{ ...btnSm, whiteSpace: "nowrap", flexShrink: 0 }}>
-        + New scenario
+      <button onClick={onNew} style={{ ...btnSm, whiteSpace: "nowrap", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
+        <CirclePlus size={14} />New scenario
       </button>
     </div>
   );
@@ -509,7 +510,7 @@ export default function FutureModels({ appState }) {
               count={projectScenarios.length}
               action={projectScenarios.length > 0 ? (
                 <button onClick={() => openScenarioNew()} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
-                  + New scenario
+                  New scenario
                 </button>
               ) : null}
             />
@@ -557,8 +558,8 @@ export default function FutureModels({ appState }) {
                       Articulate desired outcomes, guiding principles, and indicators of progress.
                     </div>
                   </div>
-                  <button onClick={() => openPreferredFutureNew()} style={{ ...btnSm, whiteSpace: "nowrap", flexShrink: 0 }}>
-                    + Define preferred future
+                  <button onClick={() => openPreferredFutureNew()} style={{ ...btnSm, whiteSpace: "nowrap", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                    <CirclePlus size={14} />Define preferred future
                   </button>
                 </div>
               ) : (
@@ -578,7 +579,7 @@ export default function FutureModels({ appState }) {
                       alignSelf: "flex-start",
                     }}
                   >
-                    + Add another
+                    Add another
                   </button>
                 </div>
               )}
@@ -594,7 +595,7 @@ export default function FutureModels({ appState }) {
               count={projectOptions.length}
               action={projectOptions.length > 0 ? (
                 <button onClick={() => openStrategicOptionNew()} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
-                  + New option
+                  New option
                 </button>
               ) : null}
             />
@@ -614,8 +615,8 @@ export default function FutureModels({ appState }) {
                       What actions, investments, or positions should you consider?
                     </div>
                   </div>
-                  <button onClick={() => openStrategicOptionNew()} style={{ ...btnSm, whiteSpace: "nowrap", flexShrink: 0 }}>
-                    + New option
+                  <button onClick={() => openStrategicOptionNew()} style={{ ...btnSm, whiteSpace: "nowrap", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                    <CirclePlus size={14} />New option
                   </button>
                 </div>
               ) : (
