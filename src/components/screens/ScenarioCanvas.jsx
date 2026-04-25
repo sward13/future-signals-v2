@@ -12,7 +12,7 @@ import {
   getBezierPath, MarkerType, ConnectionMode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { CirclePlus } from "lucide-react";
+import { CirclePlus, LayoutDashboard, Logs } from "lucide-react";
 import { c, ta, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
@@ -1221,20 +1221,23 @@ export default function ScenarioCanvas({ appState }) {
               >Clear Map</button>
             )}
             <div style={{ display: "flex", border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden" }}>
-              {["canvas", "table"].map((mode) => (
+              {[
+                { mode: "canvas", label: "Canvas", icon: <LayoutDashboard size={13} /> },
+                { mode: "table",  label: "Table",  icon: <Logs size={13} /> },
+              ].map(({ mode, label, icon }) => (
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
                   style={{
-                    padding: "6px 16px",
-                    background: viewMode === mode ? c.ink : c.white,
+                    padding: "6px 14px",
+                    background: viewMode === mode ? c.brand : c.white,
                     color: viewMode === mode ? c.white : c.muted,
                     border: "none", fontSize: 11,
                     fontWeight: viewMode === mode ? 500 : 400,
                     cursor: "pointer", fontFamily: "inherit",
-                    textTransform: "capitalize",
+                    display: "flex", alignItems: "center", gap: 5,
                   }}
-                >{mode}</button>
+                >{icon}{label}</button>
               ))}
             </div>
           </div>

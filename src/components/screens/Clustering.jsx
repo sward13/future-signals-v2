@@ -322,9 +322,9 @@ function InputTableRow({ input, clusters, assignedCluster, onAssign, onNewCluste
             }}
             style={{
               fontSize: 10, padding: "4px 10px", borderRadius: 6,
-              background: assignedCluster ? "transparent" : c.ink,
+              background: assignedCluster ? "transparent" : c.brand,
               color: assignedCluster ? c.muted : c.white,
-              border: `1px solid ${assignedCluster ? c.border : c.ink}`,
+              border: `1px solid ${assignedCluster ? c.border : c.brand}`,
               cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
             }}
           >
@@ -919,8 +919,8 @@ export default function Clustering({ appState }) {
             </div>
             <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Clustering</div>
           </div>
-          <button onClick={() => setNewClusterDrawerOpen(true)} style={btnP}>
-            Build a cluster
+          <button onClick={() => setNewClusterDrawerOpen(true)} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}>
+            <CirclePlus size={14} />Build a cluster
           </button>
         </div>
 
@@ -934,8 +934,8 @@ export default function Clustering({ appState }) {
             title="Clusters"
             count={projectClusters.length || null}
             action={
-              <button onClick={() => setNewClusterDrawerOpen(true)} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
-                <CirclePlus size={13} />New cluster
+              <button onClick={() => setNewClusterDrawerOpen(true)} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit" }}>
+                New cluster
               </button>
             }
           />

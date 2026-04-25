@@ -234,7 +234,6 @@ export default function SystemAnalysisCanvas({ appState }) {
   } = appState;
 
   const [selected,       setSelected]       = useState(null);
-  const [showExport,     setShowExport]     = useState(false);
   const [confirmDelete,  setConfirmDelete]  = useState(false);
   const [localFields,    setLocalFields]    = useState({});
 
@@ -331,40 +330,6 @@ export default function SystemAnalysisCanvas({ appState }) {
           Save
         </button>
 
-        {/* Export */}
-        <div style={{ position: "relative" }}>
-          <button
-            onClick={() => setShowExport((e) => !e)}
-            style={{
-              padding: "5px 11px", borderRadius: 6, background: c.ink,
-              border: "none", color: c.white, fontSize: 11, fontWeight: 500,
-              cursor: "pointer", fontFamily: "inherit",
-            }}
-          >
-            ↓ Export
-          </button>
-          {showExport && (
-            <>
-              <div onClick={() => setShowExport(false)} style={{ position: "fixed", inset: 0, zIndex: 10 }} />
-              <div style={{
-                position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 11,
-                background: c.white, border: `0.5px solid ${c.borderMid}`,
-                borderRadius: 7, padding: 8, minWidth: 130,
-                boxShadow: "0 4px 16px rgba(0,0,0,.1)",
-              }}>
-                {[["↓  Markdown", ".md"], ["↓  PDF", ".pdf"]].map(([label, ext]) => (
-                  <div key={ext} style={{
-                    padding: "7px 10px", borderRadius: 5, cursor: "pointer",
-                    fontSize: 11, color: c.muted, display: "flex", justifyContent: "space-between",
-                  }}>
-                    <span>{label}</span>
-                    <span style={{ color: c.hint }}>{ext}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
         </div>
       </div>
 

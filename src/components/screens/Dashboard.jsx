@@ -188,7 +188,7 @@ function ViewToggle({ value, onChange }) {
       style={{
         padding: "5px 8px",
         border: "none",
-        background: value === v ? c.ink : "transparent",
+        background: value === v ? c.brand : "transparent",
         color: value === v ? c.white : c.muted,
         cursor: "pointer",
         fontFamily: "inherit",
