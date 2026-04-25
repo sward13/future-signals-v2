@@ -51,6 +51,7 @@ create table if not exists projects (
   h3_end       text,
   assumptions  text,
   stakeholders text,
+  audience     text,
   created_at   timestamptz not null default now()
 );
 

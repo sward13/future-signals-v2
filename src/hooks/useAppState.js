@@ -332,6 +332,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       h3_end: fields.h3_end || "",
       assumptions: fields.assumptions || "",
       stakeholders: fields.stakeholders || "",
+      audience: fields.audience || "",
       scanning_enabled: fields.scanning_enabled !== false,
       created_at: now,
     };

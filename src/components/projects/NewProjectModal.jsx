@@ -320,13 +320,14 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
   const [geo, setGeo] = useState("");
   const [assumptions, setAssumptions] = useState("");
   const [stakeholders, setStakeholders] = useState("");
+  const [audience, setAudience] = useState("");
 
   const resetForm = () => {
     setName(""); setDomain(""); setQuestion("");
     setNameError(false); setDomainError(false);
     setStartYear(CURRENT_YEAR); setEndYear(DEFAULT_END_YEAR);
     setH1Pct(0.22); setH2Pct(0.58);
-    setFocus(""); setGeo(""); setAssumptions(""); setStakeholders("");
+    setFocus(""); setGeo(""); setAssumptions(""); setStakeholders(""); setAudience("");
     setScanningEnabled(true);
   };
 
@@ -356,6 +357,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
       geo,
       assumptions,
       stakeholders,
+      audience,
       scanning_enabled: workspaceScanningEnabled && scanningEnabled,
     });
     resetForm();
@@ -534,10 +536,16 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
               <textarea style={ta} rows={2} value={assumptions} onChange={(e) => setAssumptions(e.target.value)} placeholder="Conditions assumed true for this project." />
             </div>
 
+            <div style={{ marginBottom: 14 }}>
+              <div style={fl}>Audience</div>
+              <div style={fh}>Who will use or act on the outputs of this project?</div>
+              <input style={inp} type="text" value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="e.g. Policy makers, researchers" />
+            </div>
+
             <div style={{ marginBottom: 8 }}>
-              <div style={fl}>Stakeholders & audience</div>
-              <div style={fh}>Who this work aims to inform.</div>
-              <input style={inp} type="text" value={stakeholders} onChange={(e) => setStakeholders(e.target.value)} placeholder="e.g. Policy makers, researchers" />
+              <div style={fl}>Stakeholders</div>
+              <div style={fh}>Who has a stake in the domain or issue being explored?</div>
+              <input style={inp} type="text" value={stakeholders} onChange={(e) => setStakeholders(e.target.value)} placeholder="e.g. Local government, communities affected" />
             </div>
           </div>
 

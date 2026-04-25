@@ -36,6 +36,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
   const [geo, setGeo] = useState(project.geo || "");
   const [assumptions, setAssumptions] = useState(project.assumptions || "");
   const [stakeholders, setStakeholders] = useState(project.stakeholders || "");
+  const [audience, setAudience] = useState(project.audience || "");
   const [scanningEnabled, setScanningEnabled] = useState(project.scanning_enabled !== false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [startYear, setStartYear] = useState(initial.startYear);
@@ -77,6 +78,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
       geo,
       assumptions,
       stakeholders,
+      audience,
       h1_start: String(startYear),
       h1_end: h1End,
       h2_start: h1End,
@@ -219,11 +221,18 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
             <textarea style={ta} rows={2} value={assumptions} onChange={(e) => setAssumptions(e.target.value)} placeholder="Conditions assumed true for this project." />
           </div>
 
+          {/* Audience */}
+          <div style={{ marginBottom: 14 }} data-field="audience">
+            <div style={fl}>Audience</div>
+            <div style={fh}>Who will use or act on the outputs of this project?</div>
+            <input style={inp} type="text" value={audience} onChange={(e) => setAudience(e.target.value)} placeholder="e.g. Policy makers, researchers" />
+          </div>
+
           {/* Stakeholders */}
           <div style={{ marginBottom: 14 }} data-field="stakeholders">
-            <div style={fl}>Stakeholders & audience</div>
-            <div style={fh}>Who this work aims to inform.</div>
-            <input style={inp} type="text" value={stakeholders} onChange={(e) => setStakeholders(e.target.value)} placeholder="e.g. Policy makers, researchers" />
+            <div style={fl}>Stakeholders</div>
+            <div style={fh}>Who has a stake in the domain or issue being explored?</div>
+            <input style={inp} type="text" value={stakeholders} onChange={(e) => setStakeholders(e.target.value)} placeholder="e.g. Local government, communities affected" />
           </div>
 
           {/* Signal Scanning */}
