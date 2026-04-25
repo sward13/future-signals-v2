@@ -352,6 +352,8 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
     );
   }
 
+  const unaddedClusters = clusters.filter((cl) => !nodeClusterIds.has(cl.id));
+
   return (
     <div style={{
       width: 222, borderRight: `1px solid ${c.border}`,
@@ -360,16 +362,30 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
       {/* Header */}
       <div style={{
         padding: "13px 14px 10px", borderBottom: `1px solid ${c.border}`, flexShrink: 0,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
-        <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint }}>
-          Clusters &nbsp;·&nbsp; {nodeClusterIds.size} on canvas
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: unaddedClusters.length > 0 ? 8 : 0 }}>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint }}>
+            Clusters &nbsp;·&nbsp; {nodeClusterIds.size} on canvas
+          </div>
+          <button
+            onClick={onToggle}
+            title="Collapse panel"
+            style={{ ...btnG, padding: "3px 6px", fontSize: 13, color: c.hint }}
+          >‹</button>
         </div>
-        <button
-          onClick={onToggle}
-          title="Collapse panel"
-          style={{ ...btnG, padding: "3px 6px", fontSize: 13, color: c.hint }}
-        >‹</button>
+        {unaddedClusters.length > 0 && (
+          <button
+            onClick={() => unaddedClusters.forEach((cl) => onAdd(cl))}
+            style={{
+              width: "100%", padding: "5px 8px", borderRadius: 6,
+              background: "transparent", border: `1px solid ${c.borderMid}`,
+              color: c.muted, fontSize: 11, cursor: "pointer",
+              fontFamily: "inherit", textAlign: "center",
+            }}
+          >
+            Add all clusters
+          </button>
+        )}
       </div>
 
       {/* Cluster list */}
