@@ -59,6 +59,8 @@ export function Sidebar({
   futureModelsCount = 0,
   hasRelationships = false,
   onExport,
+  projects = [],
+  setActiveProjectId,
 }) {
   const inProject = !!activeProject;
 
@@ -152,6 +154,51 @@ export function Sidebar({
             count={navCounts[screen]}
           />
         ))}
+
+        {/* Workspace-level project list — only when no project is active */}
+        {!inProject && projects.length > 0 && (
+          <>
+            <div style={{ height: 1, background: c.border, margin: "6px 0" }} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 14px 4px" }}>
+              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, fontWeight: 500 }}>Projects</div>
+              <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 10, background: "rgba(0,0,0,0.07)", color: c.muted, fontWeight: 500 }}>
+                {projects.length}
+              </span>
+            </div>
+            {projects.slice(0, 8).map((p) => (
+              <button
+                key={p.id}
+                onClick={() => { setActiveProjectId(p.id); setActiveScreen("project"); }}
+                style={{
+                  display: "block", width: "100%", padding: "5px 14px",
+                  textAlign: "left", background: "transparent", border: "none",
+                  borderLeft: "2px solid transparent",
+                  cursor: "pointer", fontFamily: "inherit",
+                  transition: "background 0.1s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.03)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {p.name}
+                </div>
+                {p.domain && (
+                  <div style={{ fontSize: 10, color: c.hint, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {p.domain}
+                  </div>
+                )}
+              </button>
+            ))}
+            {projects.length > 8 && (
+              <button
+                onClick={() => setActiveScreen("dashboard")}
+                style={{ fontSize: 11, color: c.brand, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "4px 14px", textAlign: "left" }}
+              >
+                View all →
+              </button>
+            )}
+          </>
+        )}
 
         {/* Project nav — only when a project is active */}
         {inProject && (

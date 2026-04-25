@@ -58,6 +58,8 @@ export function AppShell({ appState, children, scroll = true, onSignOut, onExpor
         hasRelationships={hasRelationships}
         onSignOut={onSignOut}
         onExport={onExport}
+        projects={projects}
+        setActiveProjectId={setActiveProjectId}
       />
       <div style={{
         flex: 1,
