@@ -933,11 +933,6 @@ export default function Clustering({ appState }) {
           <SectionHeader
             title="Clusters"
             count={projectClusters.length || null}
-            action={
-              <button onClick={() => setNewClusterDrawerOpen(true)} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit" }}>
-                New cluster
-              </button>
-            }
           />
 
           {projectClusters.length === 0 ? (
@@ -1284,25 +1279,16 @@ export default function Clustering({ appState }) {
                   isFadingOut={fadingOutIds.has(sug.id)}
                 />
               ))}
-              {weakSugs.length > 0 && (
-                <>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "4px 0" }}>
-                    <div style={{ height: 1, flex: 1, background: c.border }} />
-                    <span style={{ fontSize: 11, color: c.hint, whiteSpace: "nowrap" }}>Weak Signals</span>
-                    <div style={{ height: 1, flex: 1, background: c.border }} />
-                  </div>
-                  {weakSugs.map((sug) => (
-                    <SuggestionCard
-                      key={sug.id}
-                      suggestion={sug}
-                      inputs={projectInputs}
-                      onAccept={handleAcceptSuggestion}
-                      onDismiss={handleDismissSuggestion}
-                      isFadingOut={fadingOutIds.has(sug.id)}
-                    />
-                  ))}
-                </>
-              )}
+              {weakSugs.map((sug) => (
+                <SuggestionCard
+                  key={sug.id}
+                  suggestion={sug}
+                  inputs={projectInputs}
+                  onAccept={handleAcceptSuggestion}
+                  onDismiss={handleDismissSuggestion}
+                  isFadingOut={fadingOutIds.has(sug.id)}
+                />
+              ))}
             </div>
           )}
         </div>

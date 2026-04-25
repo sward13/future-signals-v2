@@ -13,13 +13,11 @@ import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { HorizTag } from "../shared/Tag.jsx";
 import { ProjectPickerModal } from "../shared/ProjectPickerModal.jsx";
+import { FilterDropdown } from "./ProjectDetail.jsx";
+import { STEEPLED } from "../../data/seeds.js";
 
-const STEEPLED_CATS = ["Social","Technological","Economic","Environmental","Political","Legal","Ethical","Demographic"];
 const STEEPLED_ABB  = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
-const QUALITY_OPTS  = ["Emerging","Established","Confirmed"];
-const HORIZON_OPTS  = ["H1","H2","H3"];
-
-const EMPTY_FILTERS = { steepled: [], quality: [], horizon: [] };
+const INPUT_TYPE_OPTS = ["Signal", "Issue", "Projection", "Plan", "Obstacle"];
 
 const QUALITY_COLORS = {
   Emerging:    [c.amber700, c.amber50, c.amberBorder],
@@ -70,73 +68,6 @@ function RowCheckbox({ checked, visible }) {
 }
 
 // ─── Filter pill ──────────────────────────────────────────────────────────────
-
-function FilterPill({ label, active, onClick }) {
-  return (
-    <button onClick={onClick} style={{
-      padding: "3px 10px", borderRadius: 10, fontSize: 11,
-      border: `1px solid ${active ? c.ink : c.border}`,
-      background: active ? c.ink : c.white,
-      color: active ? c.white : c.muted,
-      cursor: "pointer", fontFamily: "inherit", fontWeight: active ? 500 : 400,
-      whiteSpace: "nowrap",
-    }}>
-      {label}
-    </button>
-  );
-}
-
-// ─── Filter panel ─────────────────────────────────────────────────────────────
-
-function FilterPanel({ filters, onChange, onClear, activeCount }) {
-  const toggle = (key, val) => {
-    const arr = filters[key];
-    onChange({ ...filters, [key]: arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val] });
-  };
-  return (
-    <div style={{
-      padding: "12px 16px 14px", background: c.white,
-      border: `1px solid ${c.border}`, borderRadius: 9, marginBottom: 14,
-    }}>
-      <div style={{ marginBottom: 11 }}>
-        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 7 }}>
-          STEEPLED
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-          {STEEPLED_CATS.map((cat) => (
-            <FilterPill key={cat} label={cat} active={filters.steepled.includes(cat)} onClick={() => toggle("steepled", cat)} />
-          ))}
-        </div>
-      </div>
-      <div style={{ display: "flex", gap: 28, alignItems: "flex-end", flexWrap: "wrap" }}>
-        <div>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 7 }}>Signal Quality</div>
-          <div style={{ display: "flex", gap: 5 }}>
-            {QUALITY_OPTS.map((s) => (
-              <FilterPill key={s} label={s} active={filters.quality.includes(s)} onClick={() => toggle("quality", s)} />
-            ))}
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 7 }}>Horizon</div>
-          <div style={{ display: "flex", gap: 5 }}>
-            {HORIZON_OPTS.map((h) => (
-              <FilterPill key={h} label={h} active={filters.horizon.includes(h)} onClick={() => toggle("horizon", h)} />
-            ))}
-          </div>
-        </div>
-        {activeCount > 0 && (
-          <button onClick={onClear} style={{
-            fontSize: 11, color: c.muted, background: "none", border: "none",
-            cursor: "pointer", fontFamily: "inherit",
-          }}>
-            Clear all
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ─── Project picker popover ───────────────────────────────────────────────────
 
@@ -499,21 +430,6 @@ function FullCard({ input, isScannerSuggested, suggestedProjects, projects, save
 
 // ─── Shared filter function ────────────────────────────────────────────────────
 
-function applyFilters(items, search, filters) {
-  return items.filter((inp) => {
-    if (search) {
-      const q = search.toLowerCase();
-      const inTitle = (inp.name || "").toLowerCase().includes(q);
-      const inDesc  = (inp.description || inp.desc || "").toLowerCase().includes(q);
-      if (!inTitle && !inDesc) return false;
-    }
-    if (filters.steepled.length > 0 && !filters.steepled.some((s) => (inp.steepled || []).includes(s))) return false;
-    if (filters.quality.length  > 0 && !filters.quality.includes(inp.signal_quality))                   return false;
-    if (filters.horizon.length  > 0 && !filters.horizon.includes(inp.horizon))                          return false;
-    return true;
-  });
-}
-
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function Inbox({ appState }) {
@@ -528,8 +444,10 @@ export default function Inbox({ appState }) {
   const [drawerOpen,        setDrawerOpen]        = useState(false);
   const [viewMode,          setViewMode]          = useState("list");
   const [search,            setSearch]            = useState("");
-  const [filtersOpen,       setFiltersOpen]       = useState(false);
-  const [filters,           setFilters]           = useState(EMPTY_FILTERS);
+  const [filterType,        setFilterType]        = useState(null);
+  const [filterHorizon,     setFilterHorizon]     = useState(null);
+  const [filterSteepled,    setFilterSteepled]    = useState(null);
+  const [openFilterDropdown,setOpenFilterDropdown]= useState(null);
   const [savedToProject,    setSavedToProject]    = useState({});
   const [savingInputId,     setSavingInputId]     = useState(null);
   const [selectedManualIds, setSelectedManualIds] = useState([]);
@@ -558,12 +476,26 @@ export default function Inbox({ appState }) {
     return all.filter((i) => i.metadata?.suggested_projects?.some((p) => p.id === inboxProjectFilter));
   }, [allInboxInputs, inboxProjectFilter]);
 
-  const activeFilterCount = filters.steepled.length + filters.quality.length + filters.horizon.length;
-  const hasActiveSearch = search.length > 0 || activeFilterCount > 0;
+  const anyFilterActive = !!(search.trim() || filterType || filterHorizon || filterSteepled);
+  const hasActiveSearch = anyFilterActive;
 
   // Apply search + filters independently
-  const filteredManual = useMemo(() => applyFilters(manualInputs, search, filters), [manualInputs, search, filters]);
-  const filteredAI     = useMemo(() => applyFilters(aiInputs, search, filters),     [aiInputs, search, filters]);
+  const filteredManual = useMemo(() =>
+    manualInputs
+      .filter((i) => !search || (i.name || "").toLowerCase().includes(search.toLowerCase()) || (i.description || "").toLowerCase().includes(search.toLowerCase()))
+      .filter((i) => !filterType     || i.subtype === filterType)
+      .filter((i) => !filterHorizon  || i.horizon === filterHorizon)
+      .filter((i) => !filterSteepled || (i.steepled || []).includes(filterSteepled)),
+    [manualInputs, search, filterType, filterHorizon, filterSteepled]
+  );
+  const filteredAI = useMemo(() =>
+    aiInputs
+      .filter((i) => !search || (i.name || "").toLowerCase().includes(search.toLowerCase()) || (i.description || "").toLowerCase().includes(search.toLowerCase()))
+      .filter((i) => !filterType     || i.subtype === filterType)
+      .filter((i) => !filterHorizon  || i.horizon === filterHorizon)
+      .filter((i) => !filterSteepled || (i.steepled || []).includes(filterSteepled)),
+    [aiInputs, search, filterType, filterHorizon, filterSteepled]
+  );
 
   // AI items to display (collapsed = first 10)
   const visibleAI = aiExpanded ? filteredAI : filteredAI.slice(0, AI_PREVIEW_COUNT);
@@ -632,7 +564,7 @@ export default function Inbox({ appState }) {
     clearAiSelection();
   };
 
-  const clearFilters = () => setFilters(EMPTY_FILTERS);
+  const clearFilters = () => { setFilterType(null); setFilterHorizon(null); setFilterSteepled(null); };
 
   const handleAccept = (inp) => {
     const topProject = inp.metadata?.suggested_projects?.[0];
@@ -739,58 +671,54 @@ export default function Inbox({ appState }) {
         </div>
 
         {/* ── Search + Filter bar ──────────────────────────────── */}
-        <div style={{ display: "flex", gap: 8, marginBottom: filtersOpen ? 10 : 16, alignItems: "center" }}>
-          <div style={{ position: "relative", flex: 1 }}>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by title or description…"
-              style={{
-                width: "100%", padding: "8px 32px 8px 10px",
-                border: `1px solid ${c.borderMid}`, borderRadius: 8,
-                background: c.white, color: c.ink, fontSize: 12,
-                fontFamily: "inherit", outline: "none", boxSizing: "border-box",
-              }}
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                style={{
-                  position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
-                  background: "none", border: "none", cursor: "pointer",
-                  color: c.hint, fontSize: 15, lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
-            )}
-          </div>
-
-          <button
-            onClick={() => setFiltersOpen((s) => !s)}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search inputs…"
             style={{
-              ...btnSec, fontSize: 11, padding: "7px 12px",
-              background: filtersOpen ? c.surfaceAlt : "transparent",
-              display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
+              ...inp, width: 240, padding: "5px 10px", fontSize: 12,
+              border: `1px solid ${c.border}`, borderRadius: 6,
             }}
-          >
-            Filter
-            {activeFilterCount > 0 && (
-              <span style={{
-                fontSize: 10, padding: "1px 5px", borderRadius: 8,
-                background: c.ink, color: c.white, fontWeight: 600,
-                minWidth: 16, textAlign: "center",
-              }}>
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
+            <FilterDropdown
+              label="Type"
+              value={filterType}
+              options={INPUT_TYPE_OPTS.map((v) => ({ value: v, label: v }))}
+              onChange={setFilterType}
+              onClear={() => setFilterType(null)}
+              isOpen={openFilterDropdown === "type"}
+              onToggle={() => setOpenFilterDropdown(openFilterDropdown === "type" ? null : "type")}
+            />
+            <FilterDropdown
+              label="Horizon"
+              value={filterHorizon}
+              options={["H1", "H2", "H3"].map((v) => ({ value: v, label: v }))}
+              onChange={setFilterHorizon}
+              onClear={() => setFilterHorizon(null)}
+              isOpen={openFilterDropdown === "horizon"}
+              onToggle={() => setOpenFilterDropdown(openFilterDropdown === "horizon" ? null : "horizon")}
+            />
+            <FilterDropdown
+              label="STEEPLED"
+              value={filterSteepled}
+              options={STEEPLED.map((v) => ({ value: v, label: v }))}
+              onChange={setFilterSteepled}
+              onClear={() => setFilterSteepled(null)}
+              isOpen={openFilterDropdown === "steepled"}
+              onToggle={() => setOpenFilterDropdown(openFilterDropdown === "steepled" ? null : "steepled")}
+            />
+          </div>
+          {anyFilterActive && (
+            <button
+              onClick={() => { setSearch(""); clearFilters(); }}
+              style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+            >
+              Clear all
+            </button>
+          )}
         </div>
-
-        {/* ── Inline filter panel ──────────────────────────────── */}
-        {filtersOpen && (
-          <FilterPanel filters={filters} onChange={setFilters} onClear={clearFilters} activeCount={activeFilterCount} />
-        )}
 
         {/* ── My Inputs table ──────────────────────────────────── */}
         <SectionHeader title="My Inputs" count={filteredManual.length} />
