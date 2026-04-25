@@ -16,7 +16,7 @@
  *   analysisCount: number,
  * }} props
  */
-import logoDark from "../../assets/logo_dark.svg";
+import logoLight from "../../assets/logo_light.svg";
 import { c } from "../../styles/tokens.js";
 import {
   Home, Inbox as InboxIcon, SquareArrowRight, Boxes,
@@ -135,7 +135,7 @@ export function Sidebar({
     }}>
       {/* Logo / context */}
       <div style={{ padding: "14px 16px 12px", borderBottom: `1px solid ${c.border}` }}>
-        <img src={logoDark} alt="Future Signals" style={{ width: 140, height: "auto", display: "block" }} />
+        <img src={logoLight} alt="Future Signals" style={{ width: 140, height: "auto", display: "block" }} />
         <div style={{
           fontSize: 10,
           color: inProject ? c.muted : c.hint,
