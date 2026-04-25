@@ -17,6 +17,10 @@
  * }} props
  */
 import { c } from "../../styles/tokens.js";
+import {
+  Home, Inbox as InboxIcon, SquareArrowRight, Boxes,
+  Network, LayoutDashboard, ChartNoAxesCombined, Download,
+} from "lucide-react";
 
 function getInitials(user) {
   if (user?.name) {
@@ -29,15 +33,15 @@ function getInitials(user) {
 }
 
 const NAV_ITEMS = [
-  { icon: "⌂", label: "Dashboard", screen: "dashboard" },
-  { icon: "◎", label: "Inbox",     screen: "inbox" },
+  { icon: <Home size={16} />,    label: "Dashboard", screen: "dashboard" },
+  { icon: <InboxIcon size={16} />, label: "Inbox",   screen: "inbox" },
 ];
 
 const PROJECT_ITEMS = [
-  { icon: "◎", label: "Inputs",       screen: "project" },
-  { icon: "◈", label: "Clusters",     screen: "clustering" },
-  { icon: "◆", label: "System Map",   screen: "scenarios" },
-  { icon: "◑", label: "System Analysis", screen: "analysis" },
+  { icon: <SquareArrowRight size={16} />, label: "Inputs",          screen: "project" },
+  { icon: <Boxes size={16} />,            label: "Clusters",        screen: "clustering" },
+  { icon: <Network size={16} />,          label: "System Map",      screen: "scenarios" },
+  { icon: <LayoutDashboard size={16} />,  label: "System Analysis", screen: "analysis" },
 ];
 
 export function Sidebar({
@@ -91,7 +95,7 @@ export function Sidebar({
       }}
     >
       {!indented && (
-        <span style={{ fontSize: 11, width: 14, flexShrink: 0 }}>{icon}</span>
+        <span style={{ width: 16, flexShrink: 0, display: "flex", alignItems: "center" }}>{icon}</span>
       )}
       {indented && (
         <span style={{ fontSize: 9, width: 14, flexShrink: 0, color: c.hint }}>↳</span>
@@ -189,7 +193,7 @@ export function Sidebar({
                       userSelect: "none",
                     }}
                   >
-                    <span style={{ fontSize: 11, width: 14, flexShrink: 0 }}>{icon}</span>
+                    <span style={{ width: 16, flexShrink: 0, display: "flex", alignItems: "center" }}>{icon}</span>
                     <span style={{ flex: 1 }}>{label}</span>
                   </div>
                 );
@@ -206,7 +210,7 @@ export function Sidebar({
               );
             })}
             <NavButton
-              icon="◇"
+              icon={<ChartNoAxesCombined size={16} />}
               label="Future Models"
               screen="future-models"
               isActive={activeScreen === "future-models"}
@@ -232,7 +236,7 @@ export function Sidebar({
             onMouseEnter={(e) => { e.currentTarget.style.color = c.muted; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = c.hint; }}
           >
-            <span style={{ fontSize: 10, width: 14, flexShrink: 0 }}>↓</span>
+            <span style={{ width: 16, flexShrink: 0, display: "flex", alignItems: "center" }}><Download size={16} /></span>
             <span>Export</span>
           </button>
         </div>

@@ -3,6 +3,7 @@
  */
 import { useState } from "react";
 import { c, btnP, btnSec, btnG, btnSm } from "../../styles/tokens.js";
+import { LayoutGrid, Logs, CirclePlus } from "lucide-react";
 import { StrengthDot, HorizTag, ConfidenceBadge } from "../shared/Tag.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
@@ -205,8 +206,8 @@ function ViewToggle({ value, onChange }) {
       borderRadius: 6,
       overflow: "hidden",
     }}>
-      {btn("cards", "▦")}
-      {btn("table", "☰")}
+      {btn("cards", <LayoutGrid size={14} />)}
+      {btn("table", <Logs size={14} />)}
     </div>
   );
 }
@@ -263,7 +264,7 @@ export default function Dashboard({ appState }) {
             <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Dashboard</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button onClick={() => setInputDrawerOpen(true)} style={btnSec}>Add an input</button>
+            <button onClick={() => setInputDrawerOpen(true)} style={{ ...btnSec, display: "flex", alignItems: "center", gap: 6 }}><CirclePlus size={14} />Add an input</button>
             <button onClick={openProjectModal} style={btnP}>+ New project</button>
           </div>
         </div>

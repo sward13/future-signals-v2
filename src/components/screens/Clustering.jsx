@@ -6,6 +6,7 @@
  */
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { CirclePlus, Sparkles } from "lucide-react";
 import { c, inp, ta, btnP, btnSm, btnSec, btnG, fl, badg } from "../../styles/tokens.js";
 import { supabase } from "../../lib/supabase.js";
 import { HorizTag, SubtypeTag, Tag } from "../shared/Tag.jsx";
@@ -198,13 +199,14 @@ function ClusterCard({ cluster, inputs, onClick }) {
 
 // ─── Section header ────────────────────────────────────────────────────────────
 
-function SectionHeader({ title, count, action }) {
+function SectionHeader({ title, count, action, icon }) {
   return (
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
       marginBottom: 12,
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {icon && <span style={{ display: "flex", alignItems: "center", color: c.muted }}>{icon}</span>}
         <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>{title}</div>
         {count != null && (
           <span style={{
@@ -932,8 +934,8 @@ export default function Clustering({ appState }) {
             title="Clusters"
             count={projectClusters.length || null}
             action={
-              <button onClick={() => setNewClusterDrawerOpen(true)} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit" }}>
-                + New cluster
+              <button onClick={() => setNewClusterDrawerOpen(true)} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
+                <CirclePlus size={13} />New cluster
               </button>
             }
           />
@@ -970,8 +972,8 @@ export default function Clustering({ appState }) {
             title="Unassigned inputs"
             count={unassignedInputs.length || null}
             action={
-              <button onClick={() => setInputDrawerOpen(true)} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit" }}>
-                + Add an input
+              <button onClick={() => setInputDrawerOpen(true)} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
+                <CirclePlus size={13} />Add an input
               </button>
             }
           />
@@ -1167,6 +1169,7 @@ export default function Clustering({ appState }) {
           </div>
           <SectionHeader
             title="AI suggestions"
+            icon={<Sparkles size={16} />}
             count={visibleSugs.length || null}
             action={
               projectInputs.length >= 3 && visibleSugs.length > 0 && (

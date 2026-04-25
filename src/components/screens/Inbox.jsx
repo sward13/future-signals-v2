@@ -8,6 +8,7 @@
  */
 import { useState, useMemo } from "react";
 import { c, inp, btnP, btnSm, btnSec, btnG } from "../../styles/tokens.js";
+import { CirclePlus, Sparkles } from "lucide-react";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { HorizTag } from "../shared/Tag.jsx";
@@ -188,9 +189,10 @@ function ProjectPickerPopover({ projects, onSelect, onClose, onCreateProject }) 
 
 // ─── Table section header ─────────────────────────────────────────────────────
 
-function SectionHeader({ title, count }) {
+function SectionHeader({ title, count, icon }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+      {icon && <span style={{ display: "flex", alignItems: "center", color: c.muted }}>{icon}</span>}
       <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>{title}</div>
       {count > 0 && (
         <span style={{
@@ -732,7 +734,7 @@ export default function Inbox({ appState }) {
                 );
               })}
             </div>
-            <button onClick={() => setDrawerOpen(true)} style={btnP}>Add an input</button>
+            <button onClick={() => setDrawerOpen(true)} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}><CirclePlus size={14} />Add an input</button>
           </div>
         </div>
 
@@ -873,7 +875,7 @@ export default function Inbox({ appState }) {
         })()}
         {(inboxProjectFilter ? true : aiInputs.length > 0) && (
           <>
-            <SectionHeader title="AI Suggested" count={filteredAI.length} />
+            <SectionHeader title="AI Suggested" count={filteredAI.length} icon={<Sparkles size={16} />} />
 
             {/* AI Suggested inline action bar */}
             {selectedAiIds.length > 0 && (

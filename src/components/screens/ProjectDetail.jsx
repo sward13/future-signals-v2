@@ -3,6 +3,7 @@
  * left = inputs table with filter tabs, right = clusters/systems summary.
  */
 import { useState, useRef } from "react";
+import { CirclePlus } from "lucide-react";
 import { useScannerStatus } from "../../hooks/useScannerStatus.js";
 import { c, inp, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { STEEPLED } from "../../data/seeds.js";
@@ -566,7 +567,7 @@ export default function ProjectDetail({ appState }) {
             <button onClick={() => setInboxModalOpen(true)} style={{ ...btnSec, fontSize: 12, padding: "8px 16px" }}>
               Add from Inbox
             </button>
-            <button onClick={() => setDrawerOpen(true)} style={btnP}>Add an input</button>
+            <button onClick={() => setDrawerOpen(true)} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}><CirclePlus size={14} />Add an input</button>
           </div>
         </div>
 
@@ -610,7 +611,7 @@ export default function ProjectDetail({ appState }) {
                   No inputs yet — add one to get started.
                 </div>
                 <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                  <button onClick={() => setDrawerOpen(true)} style={btnP}>Add an input</button>
+                  <button onClick={() => setDrawerOpen(true)} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}><CirclePlus size={14} />Add an input</button>
                   <button onClick={() => setInboxModalOpen(true)} style={{ ...btnSec, fontSize: 13 }}>Add from Inbox</button>
                 </div>
               </div>
