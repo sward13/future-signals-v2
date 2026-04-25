@@ -3,7 +3,7 @@
  * Preferred Future, and Strategic Options in stacked section cards.
  * Create/edit/detail views are not built here (Prompt 3+).
  */
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { CirclePlus } from "lucide-react";
 import { c, btnSm, btnSec } from "../../styles/tokens.js";
 import { HorizTag } from "../shared/Tag.jsx";
@@ -325,84 +325,6 @@ function ScenarioEmptyState({ onNew }) {
   );
 }
 
-// ─── Workflow strip ───────────────────────────────────────────────────────────
-
-function WorkflowStrip({ scenarioCount, pfCount, optionCount, activeStep, onStep }) {
-  const noneCreated = scenarioCount === 0 && pfCount === 0 && optionCount === 0;
-
-  const steps = [
-    {
-      key: "scenarios",
-      label: "Scenarios",
-      sub: scenarioCount === 0
-        ? (noneCreated ? "Start here" : "None yet")
-        : `${scenarioCount} created`,
-      starter: noneCreated,
-    },
-    {
-      key: "pf",
-      label: "Preferred Future",
-      sub: pfCount > 0 ? "1 defined" : "Not started",
-      dim: noneCreated,
-    },
-    {
-      key: "options",
-      label: "Strategic Options",
-      sub: optionCount === 0 ? "Not started" : `${optionCount} created`,
-      dim: noneCreated,
-    },
-  ];
-
-  return (
-    <div style={{
-      display: "flex",
-      background: c.white,
-      border: `1px solid ${c.border}`,
-      borderRadius: 10,
-      overflow: "hidden",
-      marginBottom: 24,
-    }}>
-      {steps.map((step, i) => {
-        const isActive = activeStep === step.key;
-        return (
-          <button
-            key={step.key}
-            onClick={() => onStep(step.key)}
-            style={{
-              flex: 1,
-              padding: "12px 16px",
-              background: "transparent",
-              border: "none",
-              borderRight: i < steps.length - 1 ? `1px solid ${c.border}` : "none",
-              borderBottom: isActive ? `2px solid ${c.ink}` : "2px solid transparent",
-              cursor: "pointer",
-              textAlign: "left",
-              fontFamily: "inherit",
-              opacity: step.dim ? 0.4 : 1,
-              transition: "border-color 0.15s, opacity 0.15s",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-              <span style={{
-                fontSize: 11, fontWeight: isActive ? 600 : 500,
-                color: isActive ? c.ink : c.muted,
-              }}>
-                {step.label}
-              </span>
-            </div>
-            <div style={{
-              fontSize: 11, color: step.starter ? c.ink : c.hint,
-              fontWeight: step.starter ? 500 : 400,
-            }}>
-              {step.sub}
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function FutureModels({ appState }) {
@@ -422,47 +344,6 @@ export default function FutureModels({ appState }) {
 
   const clusterName = (id) => projectClusters.find((cl) => cl.id === id)?.name || "Unknown cluster";
   const scenarioName = (id) => projectScenarios.find((s) => s.id === id)?.name || "Unknown scenario";
-
-  // ── Section refs for scroll + active tracking ─────────────────���────────────
-  const scenariosRef = useRef(null);
-  const pfRef        = useRef(null);
-  const optionsRef   = useRef(null);
-  const [activeStep, setActiveStep] = useState("scenarios");
-
-  useEffect(() => {
-    const refs = [
-      { key: "scenarios", el: scenariosRef.current },
-      { key: "pf",        el: pfRef.current },
-      { key: "options",   el: optionsRef.current },
-    ];
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // Pick the entry with highest intersection ratio that is intersecting
-        let best = null;
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            if (!best || entry.intersectionRatio > best.intersectionRatio) {
-              best = entry;
-            }
-          }
-        }
-        if (best) {
-          const found = refs.find((r) => r.el === best.target);
-          if (found) setActiveStep(found.key);
-        }
-      },
-      { threshold: [0.2, 0.5], rootMargin: "0px 0px -30% 0px" }
-    );
-
-    refs.forEach(({ el }) => { if (el) observer.observe(el); });
-    return () => observer.disconnect();
-  }, []);
-
-  const scrollTo = (key) => {
-    const map = { scenarios: scenariosRef, pf: pfRef, options: optionsRef };
-    map[key]?.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
 
   if (!project) {
     return (
@@ -493,148 +374,128 @@ export default function FutureModels({ appState }) {
 
       <div style={{ maxWidth: 960 }}>
 
-        {/* ── Workflow strip ──────────────────���───────────────────────── */}
-        <WorkflowStrip
-          scenarioCount={projectScenarios.length}
-          pfCount={projectPFs.length}
-          optionCount={projectOptions.length}
-          activeStep={activeStep}
-          onStep={scrollTo}
-        />
-
-        {/* ── Scenarios ─────────────────────────────────��─────────────── */}
-        <div ref={scenariosRef} style={{ scrollMarginTop: 16 }}>
-          <SectionCard>
-            <SectionHeader
-              title="Scenarios"
-              count={projectScenarios.length}
-              action={projectScenarios.length > 0 ? (
-                <button onClick={() => openScenarioNew()} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
-                  New scenario
-                </button>
-              ) : null}
-            />
-            <div style={{ padding: "16px 20px 20px" }}>
-              {projectScenarios.length === 0 ? (
-                <ScenarioEmptyState
-                  onNew={() => openScenarioNew()}
-                />
-              ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  {projectScenarios.map((s) => (
-                    <ScenarioCard
-                      key={s.id}
-                      scenario={s}
-                      clusterName={clusterName}
-                      onClick={() => openScenario(s.id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </SectionCard>
-        </div>
-
         {/* ── Preferred Future ─────────────────────────────────────────── */}
-        <div ref={pfRef} style={{ scrollMarginTop: 16 }}>
-          <SectionCard>
-            <SectionHeader
-              title="Preferred Future"
-              count={projectPFs.length}
-            />
-            <div style={{ padding: "16px 20px 20px" }}>
-              {projectPFs.length === 0 ? (
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 16,
-                  padding: "16px 18px",
-                  border: `1px dashed ${c.border}`, borderRadius: 9,
-                  background: c.surfaceAlt,
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: c.muted, marginBottom: 4 }}>
-                      Define the future you want to move toward
-                    </div>
-                    <div style={{ fontSize: 11, color: c.hint, lineHeight: 1.5 }}>
-                      Articulate desired outcomes, guiding principles, and indicators of progress.
-                    </div>
+        <SectionCard>
+          <SectionHeader
+            title="Preferred Future"
+            count={projectPFs.length}
+          />
+          <div style={{ padding: "16px 20px 20px" }}>
+            {projectPFs.length === 0 ? (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 16,
+                padding: "16px 18px",
+                border: `1px dashed ${c.border}`, borderRadius: 9,
+                background: c.surfaceAlt,
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: c.muted, marginBottom: 4 }}>
+                    Define the future you want to move toward
                   </div>
-                  <button onClick={() => openPreferredFutureNew()} style={{ ...btnSm, whiteSpace: "nowrap", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
-                    <CirclePlus size={14} />Define preferred future
-                  </button>
+                  <div style={{ fontSize: 11, color: c.hint, lineHeight: 1.5 }}>
+                    Articulate desired outcomes, guiding principles, and indicators of progress.
+                  </div>
                 </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {projectPFs.map((pf) => (
-                    <PreferredFutureCard
-                      key={pf.id}
-                      pf={pf}
-                      scenarioName={scenarioName}
-                      onClick={() => openPreferredFuture(pf.id)}
-                    />
-                  ))}
-                  <button
-                    onClick={() => openPreferredFutureNew()}
-                    style={{
-                      ...btnSec, fontSize: 11, padding: "7px 16px",
-                      alignSelf: "flex-start",
-                    }}
-                  >
-                    Add another
-                  </button>
-                </div>
-              )}
-            </div>
-          </SectionCard>
-        </div>
+                <button onClick={() => openPreferredFutureNew()} style={{ ...btnSm, whiteSpace: "nowrap", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                  <CirclePlus size={14} />Define preferred future
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {projectPFs.map((pf) => (
+                  <PreferredFutureCard
+                    key={pf.id}
+                    pf={pf}
+                    scenarioName={scenarioName}
+                    onClick={() => openPreferredFuture(pf.id)}
+                  />
+                ))}
+                <button
+                  onClick={() => openPreferredFutureNew()}
+                  style={{ ...btnSec, fontSize: 11, padding: "7px 16px", alignSelf: "flex-start" }}
+                >
+                  Add another
+                </button>
+              </div>
+            )}
+          </div>
+        </SectionCard>
 
         {/* ── Strategic Options ─────────────────────────────────────────── */}
-        <div ref={optionsRef} style={{ scrollMarginTop: 16 }}>
-          <SectionCard>
-            <SectionHeader
-              title="Strategic Options"
-              count={projectOptions.length}
-              action={projectOptions.length > 0 ? (
-                <button onClick={() => openStrategicOptionNew()} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
-                  New option
-                </button>
-              ) : null}
-            />
-            <div style={{ padding: "16px 20px 20px" }}>
-              {projectOptions.length === 0 ? (
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 16,
-                  padding: "16px 18px",
-                  border: `1px dashed ${c.border}`, borderRadius: 9,
-                  background: c.surfaceAlt,
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: c.muted, marginBottom: 4 }}>
-                      Develop strategic responses to your scenarios
-                    </div>
-                    <div style={{ fontSize: 11, color: c.hint, lineHeight: 1.5 }}>
-                      What actions, investments, or positions should you consider?
-                    </div>
+        <SectionCard>
+          <SectionHeader
+            title="Strategic Options"
+            count={projectOptions.length}
+            action={projectOptions.length > 0 ? (
+              <button onClick={() => openStrategicOptionNew()} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
+                New option
+              </button>
+            ) : null}
+          />
+          <div style={{ padding: "16px 20px 20px" }}>
+            {projectOptions.length === 0 ? (
+              <div style={{
+                display: "flex", alignItems: "center", gap: 16,
+                padding: "16px 18px",
+                border: `1px dashed ${c.border}`, borderRadius: 9,
+                background: c.surfaceAlt,
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: c.muted, marginBottom: 4 }}>
+                    Develop strategic responses to your scenarios
                   </div>
-                  <button onClick={() => openStrategicOptionNew()} style={{ ...btnSm, whiteSpace: "nowrap", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
-                    <CirclePlus size={14} />New option
-                  </button>
+                  <div style={{ fontSize: 11, color: c.hint, lineHeight: 1.5 }}>
+                    What actions, investments, or positions should you consider?
+                  </div>
                 </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {projectOptions.map((option, i) => (
-                    <StrategicOptionRow
-                      key={option.id}
-                      option={option}
-                      index={i}
-                      scenarioName={scenarioName}
-                      onClick={() => openStrategicOption(option.id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </SectionCard>
-        </div>
+                <button onClick={() => openStrategicOptionNew()} style={{ ...btnSm, whiteSpace: "nowrap", flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                  <CirclePlus size={14} />New option
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {projectOptions.map((option, i) => (
+                  <StrategicOptionRow
+                    key={option.id}
+                    option={option}
+                    index={i}
+                    scenarioName={scenarioName}
+                    onClick={() => openStrategicOption(option.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </SectionCard>
+
+        {/* ── Scenarios ────────────────────────────────────────────────── */}
+        <SectionCard>
+          <SectionHeader
+            title="Scenarios"
+            count={projectScenarios.length}
+            action={projectScenarios.length > 0 ? (
+              <button onClick={() => openScenarioNew()} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
+                New scenario
+              </button>
+            ) : null}
+          />
+          <div style={{ padding: "16px 20px 20px" }}>
+            {projectScenarios.length === 0 ? (
+              <ScenarioEmptyState onNew={() => openScenarioNew()} />
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                {projectScenarios.map((s) => (
+                  <ScenarioCard
+                    key={s.id}
+                    scenario={s}
+                    clusterName={clusterName}
+                    onClick={() => openScenario(s.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </SectionCard>
 
       </div>
     </div>
