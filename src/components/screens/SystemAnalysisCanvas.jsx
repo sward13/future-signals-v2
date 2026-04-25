@@ -298,8 +298,8 @@ export default function SystemAnalysisCanvas({ appState }) {
         flexShrink: 0,
       }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>System Analysis</div>
-          <div style={{ fontSize: 10, color: c.hint, marginTop: 1 }}>{project.name}</div>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 2 }}>{project.name}</div>
+          <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>System Analysis</div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

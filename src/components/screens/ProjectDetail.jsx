@@ -517,51 +517,16 @@ export default function ProjectDetail({ appState }) {
 
       <div style={{ padding: "24px 32px", background: c.white, height: "100%", overflowY: "auto", boxSizing: "border-box" }}>
 
-        {/* ── Breadcrumb ──────────────────────────────────────── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
-          <button
-            onClick={() => setActiveScreen("dashboard")}
-            style={{ ...btnG, padding: "3px 0", fontSize: 11, color: c.hint }}
-          >
-            Projects
-          </button>
-          <span style={{ fontSize: 11, color: c.hint }}>›</span>
-          <span style={{ fontSize: 11, color: c.muted }}>{project.name}</span>
-        </div>
-
         {/* ── Header ──────────────────────────────────────────── */}
         <div style={{
           display: "flex", alignItems: "flex-start", justifyContent: "space-between",
           marginBottom: 16, gap: 16,
         }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
-              <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>{project.name}</div>
-              <button
-                onClick={() => openEditDrawer()}
-                style={{
-                  fontSize: 11, padding: "3px 9px", borderRadius: 6,
-                  background: "transparent", color: c.muted, border: `1px solid ${c.border}`,
-                  cursor: "pointer", fontFamily: "inherit",
-                  display: "flex", alignItems: "center", gap: 4,
-                }}
-              >
-                <span style={{ fontSize: 10 }}>⚙</span> Project settings
-              </button>
-              <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 8, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>
-                {project.domain}
-              </span>
+          <div>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
+              {project.name}
             </div>
-            {project.question && (
-              <div style={{
-                fontSize: 13, color: c.ink, lineHeight: 1.6, marginTop: 8,
-                padding: "10px 14px", background: "#F0F7FF",
-                borderLeft: "3px solid #3B82F6", borderRadius: "0 6px 6px 0",
-                maxWidth: 600,
-              }}>
-                "{project.question}"
-              </div>
-            )}
+            <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Inputs</div>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
             <button onClick={() => setInboxModalOpen(true)} style={{ ...btnSec, fontSize: 12, padding: "8px 16px" }}>

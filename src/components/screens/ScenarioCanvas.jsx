@@ -1206,7 +1206,7 @@ export default function ScenarioCanvas({ appState }) {
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <div style={{ fontSize: 19, fontWeight: 500, color: c.ink }}>System Map</div>
+            <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>System Map</div>
             <div style={{ fontSize: 11, color: c.muted, marginTop: 1 }}>
               {projectNodes.length} cluster{projectNodes.length !== 1 ? "s" : ""} on canvas
               &nbsp;·&nbsp;

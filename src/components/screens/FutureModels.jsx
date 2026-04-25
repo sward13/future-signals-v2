@@ -481,10 +481,10 @@ export default function FutureModels({ appState }) {
           fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em",
           color: c.hint, marginBottom: 4,
         }}>
-          Future Models
+          {project.name}
         </div>
         <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
-          {project.name}
+          Future Models
         </div>
         <div style={{ fontSize: 13, color: c.muted, maxWidth: 520, lineHeight: 1.6 }}>
           Build scenarios from your analysis, articulate a preferred future, and develop strategic options.
