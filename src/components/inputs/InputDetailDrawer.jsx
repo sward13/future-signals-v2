@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { c, inp, ta, btnP, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { INPUT_TYPES, ThreeCardSelector, SteepleSelector, HorizonSelector, TypeSwitcherChip } from "./InputFormFields.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
+import { sanitizeUrl } from "../../utils/sanitizeUrl.js";
 
 const HORIZON_COLORS = {
   H1: [c.green700, c.green50, c.greenBorder],
@@ -221,7 +222,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
             {editing ? (
               <input style={inp} type="url" value={fields.source_url} onChange={(e) => set("source_url", e.target.value)} placeholder="https://…" />
             ) : input.source_url ? (
-              <a href={input.source_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: c.blue700, wordBreak: "break-all" }}>
+              <a href={sanitizeUrl(input.source_url)} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: c.blue700, wordBreak: "break-all" }}>
                 {input.source_url}
               </a>
             ) : (
