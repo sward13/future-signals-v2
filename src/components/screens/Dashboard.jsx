@@ -63,22 +63,28 @@ function ProjectPickerPopover({ projects, onSelect, onClose, onCreateProject }) 
 
 // ─── Project card ─────────────────────────────────────────────────────────────
 
-function ProjectCard({ project, inputCount, clusterCount, scenarioCount, analysisCount, onClick }) {
+function ProjectCard({ project, inputCount, clusterCount, systemMapCount, analysisCount, futuresTotal, onClick }) {
   const [hovered, setHovered] = useState(false);
 
-  const q = project.question || null;
-  const displayQ = q ? (q.length > 100 ? q.slice(0, 100) + "…" : q) : null;
+  // Derive time horizon from h1_start / h3_end if no dedicated field
+  const timeHorizon = project.time_horizon ||
+    (project.h1_start && project.h3_end ? `${project.h1_start}–${project.h3_end}` : null);
 
-  const cta =
-    inputCount    === 0 ? "Add an input →" :
-    clusterCount  === 0 ? "Build a cluster →" :
-    scenarioCount === 0 ? "Map a system →" :
-    analysisCount === 0 ? "Start analysis →" :
-    "Open project →";
+  // Active stage: furthest stage with content
+  const activeStage =
+    futuresTotal > 0   ? "futures"   :
+    analysisCount > 0  ? "analysis"  :
+    systemMapCount > 0 ? "systemmap" :
+    clusterCount > 0   ? "clusters"  :
+                         "inputs";
 
-  const nodeColor  = (n) => n > 0 ? c.ink : "rgba(0,0,0,0.12)";
-  const lineColor  = (n) => n > 0 ? c.ink : "rgba(0,0,0,0.10)";
-  const labelColor = (n) => n > 0 ? c.muted : c.hint;
+  const STAGES = [
+    { key: "inputs",    label: "Inputs",     filled: inputCount > 0,    display: String(inputCount) },
+    { key: "clusters",  label: "Clusters",   filled: clusterCount > 0,  display: String(clusterCount) },
+    { key: "systemmap", label: "System Map", filled: systemMapCount > 0, display: systemMapCount > 0 ? "✓" : "—" },
+    { key: "analysis",  label: "Analysis",   filled: analysisCount > 0,  display: analysisCount > 0 ? "✓" : "—" },
+    { key: "futures",   label: "Futures",    filled: futuresTotal > 0,   display: futuresTotal > 0 ? "✓" : "—" },
+  ];
 
   return (
     <div
@@ -87,91 +93,96 @@ function ProjectCard({ project, inputCount, clusterCount, scenarioCount, analysi
       onMouseLeave={() => setHovered(false)}
       style={{
         background: c.white,
-        border: `1px solid ${c.border}`,
+        border: `1px solid ${hovered ? c.borderMid : c.border}`,
         borderRadius: 10,
         padding: "16px",
         cursor: "pointer",
         boxShadow: hovered ? "0 2px 14px rgba(0,0,0,0.07)" : "none",
-        transition: "box-shadow 0.15s",
+        transition: "border-color 0.15s, box-shadow 0.15s",
         display: "flex",
         flexDirection: "column",
-        gap: 10,
+        gap: 12,
       }}
     >
-      {/* Header: name + mode badge */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.3, minWidth: 0, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {project.name}
+      {/* Header: title + domain left, time horizon pill right */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {project.name}
+          </div>
+          {project.domain && (
+            <div style={{ fontSize: 11, color: c.muted, marginTop: 2 }}>
+              {project.domain}
+            </div>
+          )}
         </div>
+        {timeHorizon && (
+          <span style={{
+            fontSize: 10, padding: "2px 8px", borderRadius: 10, flexShrink: 0,
+            background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}`,
+            whiteSpace: "nowrap",
+          }}>
+            {timeHorizon}
+          </span>
+        )}
       </div>
 
-      {/* Domain */}
-      {project.domain && (
-        <div style={{ fontSize: 11, color: c.muted, marginTop: -6 }}>
-          {project.domain}
-        </div>
-      )}
-
-      {/* Key question */}
+      {/* Key question — 3-line clamp */}
       <div style={{
-        borderLeft: displayQ ? "2px solid rgba(0,0,0,0.10)" : "2px dashed rgba(0,0,0,0.15)",
-        paddingLeft: 10,
         fontSize: 12,
-        fontStyle: "italic",
-        color: displayQ ? c.muted : c.hint,
+        color: project.question ? c.muted : c.hint,
+        fontStyle: project.question ? "normal" : "italic",
         lineHeight: 1.5,
         overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
+        display: "-webkit-box",
+        WebkitLineClamp: 3,
+        WebkitBoxOrient: "vertical",
       }}>
-        {displayQ || "No key question set"}
+        {project.question || "No key question set"}
       </div>
 
-      {/* Pipeline */}
-      <div style={{ display: "flex", alignItems: "center" }}>
-        {/* Inputs node */}
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: nodeColor(inputCount) }} />
-          <span style={{ fontSize: 11, color: labelColor(inputCount), whiteSpace: "nowrap" }}>{inputCount} Inputs</span>
-        </div>
-        {/* Line 1 */}
-        <div style={{ flex: 1, height: 1, background: lineColor(clusterCount), margin: "0 8px" }} />
-        {/* Clusters node */}
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: nodeColor(clusterCount) }} />
-          <span style={{ fontSize: 11, color: labelColor(clusterCount), whiteSpace: "nowrap" }}>{clusterCount} Clusters</span>
-        </div>
-        {/* Line 2 */}
-        <div style={{ flex: 1, height: 1, background: lineColor(scenarioCount), margin: "0 8px" }} />
-        {/* Systems node */}
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: nodeColor(scenarioCount) }} />
-          <span style={{ fontSize: 11, color: labelColor(scenarioCount), whiteSpace: "nowrap" }}>{scenarioCount} System maps</span>
-        </div>
-        {/* Line 3 */}
-        <div style={{ flex: 1, height: 1, background: lineColor(analysisCount), margin: "0 8px" }} />
-        {/* Analysis node */}
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: nodeColor(analysisCount) }} />
-          <span style={{ fontSize: 11, color: labelColor(analysisCount), whiteSpace: "nowrap" }}>{analysisCount} Analysis</span>
-        </div>
+      {/* 5-stage pipeline */}
+      <div style={{ display: "flex", gap: 6 }}>
+        {STAGES.map((stage) => {
+          const isActive = stage.key === activeStage;
+          const barBg = stage.filled
+            ? isActive ? "rgba(17,17,17,0.45)" : c.ink
+            : "rgba(0,0,0,0.08)";
+          return (
+            <div key={stage.key} style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ height: 4, borderRadius: 2, background: barBg, marginBottom: 5 }} />
+              <div style={{
+                fontSize: 10, color: isActive ? c.ink : stage.filled ? c.muted : c.hint,
+                fontWeight: isActive ? 500 : 400,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                marginBottom: 2,
+              }}>
+                {stage.label}
+              </div>
+              <div style={{ fontSize: 10, color: isActive ? c.ink : stage.filled ? c.muted : c.hint }}>
+                {isActive ? "→" : stage.display}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Footer */}
       <div style={{
-        borderTop: "0.5px solid rgba(0,0,0,0.10)",
+        borderTop: `0.5px solid ${c.border}`,
         paddingTop: 10,
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        marginTop: 2,
       }}>
-        <span style={{ fontSize: 11, color: c.hint }}>Created {formatDate(project.created_at)}</span>
+        <span style={{ fontSize: 11, color: c.hint }}>
+          Updated {formatDate(project.updated_at || project.created_at)}
+        </span>
         <button
           onClick={(e) => { e.stopPropagation(); onClick(); }}
           style={{ background: "none", border: "none", fontSize: 11, color: c.muted, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", padding: 0 }}
         >
-          {cta}
+          Open project →
         </button>
       </div>
     </div>
@@ -217,7 +228,8 @@ function ViewToggle({ value, onChange }) {
  */
 export default function Dashboard({ appState }) {
   const {
-    inputs, clusters, scenarios, projects, analyses, canvasNodes,
+    inputs, clusters, scenarios, preferredFutures, strategicOptions,
+    projects, analyses, canvasNodes,
     setActiveScreen, openProjectModal, openProject,
     addInput, saveInputToProject, openInputDetail, showToast,
   } = appState;
@@ -305,14 +317,18 @@ export default function Dashboard({ appState }) {
               const pClusters  = clusters.filter((cl) => cl.project_id === p.id);
               const hasCanvas  = canvasNodes.some((n) => n.projectId   === p.id);
               const pAnalyses  = analyses.filter((a)  => a.project_id  === p.id);
+              const pScenarios = (scenarios       || []).filter((s)  => s.project_id === p.id);
+              const pPFs       = (preferredFutures || []).filter((pf) => pf.project_id === p.id);
+              const pOptions   = (strategicOptions || []).filter((o)  => o.project_id === p.id);
               return (
                 <ProjectCard
                   key={p.id}
                   project={p}
                   inputCount={pInputs.length}
                   clusterCount={pClusters.length}
-                  scenarioCount={hasCanvas ? 1 : 0}
+                  systemMapCount={hasCanvas ? 1 : 0}
                   analysisCount={pAnalyses.length}
+                  futuresTotal={pScenarios.length + pPFs.length + pOptions.length}
                   onClick={() => openProject(p.id)}
                 />
               );
