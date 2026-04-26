@@ -907,7 +907,6 @@ export default function Clustering({ appState }) {
         <div style={{ marginBottom: 36 }}>
           <SectionHeader
             title="Clusters"
-            count={projectClusters.length || null}
           />
 
           {projectClusters.length === 0 ? (

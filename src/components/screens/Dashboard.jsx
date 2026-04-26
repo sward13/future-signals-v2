@@ -278,12 +278,7 @@ export default function Dashboard({ appState }) {
 
         {/* Projects section */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>Projects</div>
-            {projects.length > 0 && (
-              <div style={{ fontSize: 11, color: c.hint }}>{projects.length} active</div>
-            )}
-          </div>
+          <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>Projects</div>
           {projects.length > 0 && (
             <ViewToggle value={projectView} onChange={handleSetProjectView} />
           )}

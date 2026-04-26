@@ -365,7 +365,7 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: unaddedClusters.length > 0 ? 8 : 0 }}>
           <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint }}>
-            Clusters &nbsp;·&nbsp; {nodeClusterIds.size} on canvas
+            Clusters
           </div>
           <button
             onClick={onToggle}
