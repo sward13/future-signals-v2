@@ -348,16 +348,21 @@ export default function Dashboard({ appState }) {
                   <div style={{ width: 80, textAlign: "right", ...cell }}>Clusters</div>
                   <div style={{ width: 80, textAlign: "right", ...cell }}>System Map</div>
                   <div style={{ width: 80, textAlign: "right", ...cell }}>Analysis</div>
+                  <div style={{ width: 80, textAlign: "right", ...cell }}>Futures</div>
                   <div style={{ width: 32, ...cell }} />
                 </div>
               );
             })()}
             {/* Data rows */}
             {projects.map((p) => {
-              const pInputs   = inputs.filter((i)   => i.project_id === p.id);
-              const pClusters = clusters.filter((cl) => cl.project_id === p.id);
-              const hasCanvas = canvasNodes.some((n) => n.projectId  === p.id);
-              const pAnalyses = analyses.filter((a)  => a.project_id === p.id);
+              const pInputs    = inputs.filter((i)   => i.project_id === p.id);
+              const pClusters  = clusters.filter((cl) => cl.project_id === p.id);
+              const hasCanvas  = canvasNodes.some((n) => n.projectId  === p.id);
+              const pAnalyses  = analyses.filter((a)  => a.project_id === p.id);
+              const pFutures   =
+                (scenarios        || []).filter((s)  => s.project_id  === p.id).length +
+                (preferredFutures || []).filter((pf) => pf.project_id === p.id).length +
+                (strategicOptions || []).filter((o)  => o.project_id  === p.id).length;
               return (
                 <div
                   key={p.id}
@@ -383,6 +388,9 @@ export default function Dashboard({ appState }) {
                   </div>
                   <div style={{ width: 80, flexShrink: 0, textAlign: "right", fontSize: 11, color: c.muted }}>
                     {pAnalyses.length}
+                  </div>
+                  <div style={{ width: 80, flexShrink: 0, textAlign: "right", fontSize: 11, color: c.muted }}>
+                    {pFutures > 0 ? "✓" : <span style={{ color: c.hint }}>—</span>}
                   </div>
                   <div style={{ width: 32, flexShrink: 0, textAlign: "right", fontSize: 12, color: c.hint }}>→</div>
                 </div>
