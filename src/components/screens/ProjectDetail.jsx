@@ -648,7 +648,7 @@ export default function ProjectDetail({ appState }) {
                         onClick={() => setBatchPickerOpen((p) => !p)}
                         style={{ ...btnSm, fontSize: 11, padding: "4px 10px", background: c.white, color: c.ink }}
                       >
-                        Assign to cluster →
+                        Assign →
                       </button>
                       {batchPickerOpen && (
                         <ClusterAssignPopover
@@ -765,7 +765,7 @@ export default function ProjectDetail({ appState }) {
                                 onClick={(e) => { e.stopPropagation(); setAssignPickerFor(assignPickerFor === inp.id ? null : inp.id); }}
                                 style={{ ...btnSm, fontSize: 10, padding: "3px 8px", whiteSpace: "nowrap" }}
                               >
-                                Assign to cluster →
+                                Assign →
                               </button>
                               {assignPickerFor === inp.id && (
                                 <ClusterAssignPopover
