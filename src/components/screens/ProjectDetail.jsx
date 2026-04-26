@@ -16,7 +16,7 @@ import { ScenarioDrawer } from "../scenarios/ScenarioDrawer.jsx";
 import { EditProjectDrawer } from "../projects/EditProjectDrawer.jsx";
 
 const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
-const COL = { check: 28, type: 80, quality: 100, steepled: 100, horizon: 55, action: 160 };
+const COL = { check: 28, type: 80, quality: 100, steepled: 100, horizon: 55, action: 90 };
 
 const QUALITY_COLORS = {
   Emerging:    [c.amber700, c.amber50, c.amberBorder],
