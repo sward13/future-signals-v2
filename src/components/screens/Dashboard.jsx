@@ -384,10 +384,10 @@ export default function Dashboard({ appState }) {
                     {pClusters.length}
                   </div>
                   <div style={{ width: 80, flexShrink: 0, textAlign: "right", fontSize: 11, color: c.muted }}>
-                    {hasCanvas ? 1 : 0}
+                    {hasCanvas ? "✓" : <span style={{ color: c.hint }}>—</span>}
                   </div>
                   <div style={{ width: 80, flexShrink: 0, textAlign: "right", fontSize: 11, color: c.muted }}>
-                    {pAnalyses.length}
+                    {pAnalyses.length > 0 ? "✓" : <span style={{ color: c.hint }}>—</span>}
                   </div>
                   <div style={{ width: 80, flexShrink: 0, textAlign: "right", fontSize: 11, color: c.muted }}>
                     {pFutures > 0 ? "✓" : <span style={{ color: c.hint }}>—</span>}
