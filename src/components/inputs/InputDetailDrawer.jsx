@@ -74,7 +74,12 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
   const toggleSteeple = (cat) => set("steepled", fields.steepled.includes(cat) ? fields.steepled.filter((x) => x !== cat) : [...fields.steepled, cat]);
 
   const handleSave = () => {
-    onSave(input.id, fields);
+    // Sanitize before sending: omit project_id if empty string (project
+    // assignment is managed separately via saveInputToProject, and sending
+    // "" for a UUID column causes a 400 from Supabase).
+    const { project_id, ...editableFields } = fields;
+    const payload = project_id ? { ...editableFields, project_id } : editableFields;
+    onSave(input.id, payload);
     setEditing(false);
   };
 

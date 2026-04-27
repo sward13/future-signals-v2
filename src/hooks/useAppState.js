@@ -440,7 +440,11 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   }, [workspaceId, showToast]);
 
   const updateInput = useCallback((id, fields) => {
-    setInputs((prev) => prev.map((inp) => inp.id === id ? { ...inp, ...fields } : inp));
+    let prevSnapshot;
+    setInputs((prev) => {
+      prevSnapshot = prev;
+      return prev.map((inp) => inp.id === id ? { ...inp, ...fields } : inp);
+    });
     if (workspaceId) {
       (async () => {
         try {
@@ -455,6 +459,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
             supabase.functions.invoke("embed-input", { body: { input_id: id } }).catch(() => {});
           }
         } catch {
+          // Roll back optimistic update so the row stays visible
+          if (prevSnapshot) setInputs(prevSnapshot);
           showToast("Failed to update input", "error");
         }
       })();
