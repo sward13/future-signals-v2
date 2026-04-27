@@ -33,19 +33,20 @@ function LikelihoodTag({ l }) {
 
 // ─── STEEPLED pills ────────────────────────────────────────────────────────────
 
+const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
+
 function SteepleList({ tags = [] }) {
   if (!tags.length) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
+  const vis2     = tags.slice(0, 2);
+  const overflow = tags.length - 2;
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-      {tags.map((t) => (
-        <span key={t} style={{
-          fontSize: 9, padding: "1px 5px", borderRadius: 8,
-          background: c.surfaceAlt, color: c.muted,
-          border: `1px solid ${c.border}`,
-        }}>
-          {t}
+    <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+      {vis2.map((t) => (
+        <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: c.surfaceAlt, color: c.muted }}>
+          {STEEPLED_ABB[t] || t}
         </span>
       ))}
+      {overflow > 0 && <span style={{ fontSize: 9, color: c.hint }}>+{overflow}</span>}
     </div>
   );
 }
