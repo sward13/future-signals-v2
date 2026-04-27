@@ -161,20 +161,20 @@ function ProjectCard({ project, inputCount, clusterCount, systemMapCount, analys
         {STAGES.map((stage) => {
           const isActive = stage.key === activeStage;
           const barBg = stage.filled
-            ? isActive ? "rgba(17,17,17,0.45)" : c.ink
+            ? isActive ? "#C7D2FE" : "#6366F1"
             : "rgba(0,0,0,0.08)";
           return (
             <div key={stage.key} style={{ flex: 1, minWidth: 0 }}>
               <div style={{ height: 4, borderRadius: 2, background: barBg, marginBottom: 5 }} />
               <div style={{
-                fontSize: 10, color: isActive ? c.ink : stage.filled ? c.muted : c.hint,
+                fontSize: 10, color: isActive ? "#6366F1" : stage.filled ? c.muted : c.hint,
                 fontWeight: isActive ? 500 : 400,
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 marginBottom: 2,
               }}>
                 {stage.label}
               </div>
-              <div style={{ fontSize: 10, color: isActive ? c.ink : stage.filled ? c.muted : c.hint }}>
+              <div style={{ fontSize: 10, color: isActive ? "#6366F1" : stage.filled ? c.muted : c.hint }}>
                 {isActive ? "→" : stage.display}
               </div>
             </div>
