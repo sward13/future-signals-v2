@@ -68,7 +68,10 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
 
   if (!input) return null;
 
-  const isAiSuggested = !!(input.is_seeded && input.metadata?.source === 'scanner');
+  // Only treat as AI-suggested while still in the Inbox (no project assigned).
+  // Once accepted into a project the input is a regular project input and
+  // should show the Delete button like any other.
+  const isAiSuggested = !!(input.is_seeded && input.metadata?.source === 'scanner' && !input.project_id);
 
   const set = (key, val) => setFields((f) => ({ ...f, [key]: val }));
   const toggleSteeple = (cat) => set("steepled", fields.steepled.includes(cat) ? fields.steepled.filter((x) => x !== cat) : [...fields.steepled, cat]);
