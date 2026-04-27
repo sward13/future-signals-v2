@@ -28,7 +28,7 @@ const QUALITY_COLORS = {
 const AI_PREVIEW_COUNT = 10;
 
 // Column widths for list/table layout
-const COL = { actions: 310 };
+const COL = { type: 76, quality: 94, horizon: 52, steepled: 100, date: 55, cta: 220 };
 
 function QualityPill({ value }) {
   if (!value) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
@@ -149,7 +149,12 @@ function ListHeader() {
     }}>
       <div style={{ width: 15, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0, ...cell }}>Title</div>
-      <div style={{ width: COL.actions, flexShrink: 0 }} />
+      <div style={{ width: COL.type,     ...cell }}>Type</div>
+      <div style={{ width: COL.quality,  ...cell }}>Quality</div>
+      <div style={{ width: COL.horizon,  ...cell }}>Horizon</div>
+      <div style={{ width: COL.steepled, ...cell }}>STEEPLED</div>
+      <div style={{ width: COL.date,     ...cell }}>Date</div>
+      <div style={{ width: COL.cta, flexShrink: 0 }} />
     </div>
   );
 }
@@ -158,6 +163,9 @@ function ListHeader() {
 
 function ListRow({ input, isScannerSuggested, suggestedProjects, onSaveToProject, onAccept, onDismissSuggested, onOpen, selected, onToggle, anySelected }) {
   const [hovered, setHovered] = useState(false);
+  const steepled = input.steepled || [];
+  const vis2     = steepled.slice(0, 2);
+  const overflow = steepled.length - 2;
 
   return (
     <div
@@ -179,10 +187,7 @@ function ListRow({ input, isScannerSuggested, suggestedProjects, onSaveToProject
 
       {/* Title + suggested projects hint */}
       <div style={{ flex: 1, minWidth: 0, paddingTop: 8, paddingBottom: 8 }}>
-        <div style={{
-          fontSize: 12, fontWeight: 500, color: c.ink,
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {input.name}
         </div>
         {isScannerSuggested && suggestedProjects.length > 0 && (
@@ -192,9 +197,40 @@ function ListRow({ input, isScannerSuggested, suggestedProjects, onSaveToProject
         )}
       </div>
 
-      {/* Date + actions */}
-      <div style={{ width: COL.actions, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 10, color: c.hint }}>{formatDate(input.created_at)}</span>
+      {/* Type */}
+      <div style={{ width: COL.type, flexShrink: 0, fontSize: 11, color: c.muted }}>
+        {input.subtype
+          ? input.subtype.charAt(0).toUpperCase() + input.subtype.slice(1)
+          : <span style={{ color: c.hint }}>—</span>}
+      </div>
+
+      {/* Quality */}
+      <div style={{ width: COL.quality, flexShrink: 0 }}>
+        <QualityPill value={input.signal_quality} />
+      </div>
+
+      {/* Horizon */}
+      <div style={{ width: COL.horizon, flexShrink: 0, fontSize: 11, color: input.horizon ? c.muted : c.hint }}>
+        {input.horizon || "—"}
+      </div>
+
+      {/* STEEPLED */}
+      <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
+        {vis2.map((t) => (
+          <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: c.surfaceAlt, color: c.muted }}>
+            {STEEPLED_ABB[t] || t}
+          </span>
+        ))}
+        {overflow > 0 && <span style={{ fontSize: 9, color: c.hint }}>+{overflow}</span>}
+      </div>
+
+      {/* Date */}
+      <div style={{ width: COL.date, flexShrink: 0, fontSize: 10, color: c.hint }}>
+        {formatDate(input.created_at)}
+      </div>
+
+      {/* CTA */}
+      <div style={{ width: COL.cta, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
         {isScannerSuggested && suggestedProjects.length > 0 ? (
           <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
             <button
