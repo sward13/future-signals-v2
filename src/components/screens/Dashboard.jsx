@@ -2,14 +2,29 @@
  * Dashboard screen — workspace overview with stats, projects list, and recent inputs.
  */
 import { useState } from "react";
-import { c, btnP, btnSec, btnG, btnSm } from "../../styles/tokens.js";
+import { c, btnP, btnSec, btnG } from "../../styles/tokens.js";
 import { LayoutGrid, Logs, CirclePlus } from "lucide-react";
-import { StrengthDot, HorizTag, ConfidenceBadge } from "../shared/Tag.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 
 const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
-const COL = { curated: 32, strength: 90, confidence: 90, steepled: 120, horizon: 60, actions: 200 };
+const COL = { type: 80, quality: 100, horizon: 55, steepled: 120 };
+
+const QUALITY_COLORS = {
+  Emerging:    [c.amber700, c.amber50,  c.amberBorder],
+  Established: [c.blue700,  c.blue50,   c.blueBorder],
+  Confirmed:   [c.green700, c.green50,  c.greenBorder],
+};
+
+function QualityPill({ value }) {
+  if (!value) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
+  const [col, bg, brd] = QUALITY_COLORS[value] || [c.hint, c.surfaceAlt, c.border];
+  return (
+    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 8, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap" }}>
+      {value}
+    </span>
+  );
+}
 
 function formatDate(str) {
   if (!str) return "—";
@@ -231,11 +246,10 @@ export default function Dashboard({ appState }) {
     inputs, clusters, scenarios, preferredFutures, strategicOptions,
     projects, analyses, canvasNodes,
     setActiveScreen, openProjectModal, openProject,
-    addInput, saveInputToProject, openInputDetail, showToast,
+    addInput, openInputDetail, showToast,
   } = appState;
 
   const [inputDrawerOpen, setInputDrawerOpen] = useState(false);
-  const [pickerForId,     setPickerForId]     = useState(null);
   const [projectView,     setProjectView]     = useState(() => {
     try { return localStorage.getItem("fs_project_view") || "cards"; }
     catch { return "cards"; }
@@ -255,12 +269,6 @@ export default function Dashboard({ appState }) {
     addInput(fields);
     showToast("Input saved to Inbox");
     setInputDrawerOpen(false);
-  };
-
-  const handleAddToProject = (inp, project) => {
-    saveInputToProject(inp.id, project.id);
-    showToast(`"${inp.name}" added to "${project.name}"`);
-    setPickerForId(null);
   };
 
   return (
@@ -415,33 +423,30 @@ export default function Dashboard({ appState }) {
                 return (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", height: 30, borderBottom: "0.5px solid rgba(0,0,0,0.09)" }}>
                     <div style={{ flex: 1, minWidth: 0, ...cell }}>Title</div>
-                    <div style={{ width: COL.curated,    flexShrink: 0 }} />
-                    <div style={{ width: COL.strength,   ...cell }}>Strength</div>
-                    <div style={{ width: COL.confidence, ...cell }}>Confidence</div>
-                    <div style={{ width: COL.steepled,   ...cell }}>STEEPLED</div>
-                    <div style={{ width: COL.horizon,    ...cell }}>Horizon</div>
-                    <div style={{ width: COL.actions,    flexShrink: 0 }} />
+                    <div style={{ width: COL.type,     ...cell }}>Type</div>
+                    <div style={{ width: COL.quality,  ...cell }}>Quality</div>
+                    <div style={{ width: COL.horizon,  ...cell }}>Horizon</div>
+                    <div style={{ width: COL.steepled, ...cell }}>STEEPLED</div>
                   </div>
                 );
               })()}
               {/* Data rows */}
               {recentInputs.map((inp) => {
-                const steepled  = inp.steepled || [];
-                const visible2  = steepled.slice(0, 2);
-                const overflow  = steepled.length - 2;
+                const steepled = inp.steepled || [];
+                const visible2 = steepled.slice(0, 2);
+                const overflow = steepled.length - 2;
                 return (
                   <div
                     key={inp.id}
                     onClick={() => openInputDetail(inp.id)}
                     onMouseEnter={(e) => e.currentTarget.style.background = "rgba(0,0,0,0.02)"}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = c.white; setPickerForId(null); }}
+                    onMouseLeave={(e) => e.currentTarget.style.background = c.white}
                     style={{
                       display: "flex", alignItems: "center", gap: 10,
                       padding: "0 14px", height: 38,
                       borderBottom: `1px solid ${c.border}`,
                       background: c.white,
                       transition: "background 0.08s",
-                      position: "relative",
                       cursor: "pointer",
                     }}
                   >
@@ -449,52 +454,28 @@ export default function Dashboard({ appState }) {
                     <div style={{ flex: 1, fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
                       {inp.name}
                     </div>
-                    {/* Curated indicator */}
-                    <div style={{ width: COL.curated, flexShrink: 0, textAlign: "center" }}>
-                      {inp.is_seeded && (
-                        <span title="Surfaced by Future Signals" style={{ fontSize: 11, color: c.hint }}>✦</span>
-                      )}
+                    {/* Type */}
+                    <div style={{ width: COL.type, flexShrink: 0, fontSize: 11, color: c.muted }}>
+                      {inp.subtype
+                        ? inp.subtype.charAt(0).toUpperCase() + inp.subtype.slice(1)
+                        : <span style={{ color: c.hint }}>—</span>}
                     </div>
-                    {/* Strength */}
-                    <div style={{ width: COL.strength, flexShrink: 0 }}>
-                      {inp.strength ? <StrengthDot str={inp.strength} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+                    {/* Quality */}
+                    <div style={{ width: COL.quality, flexShrink: 0 }}>
+                      <QualityPill value={inp.signal_quality} />
                     </div>
-                    {/* Confidence */}
-                    <div style={{ width: COL.confidence, flexShrink: 0 }}>
-                      <ConfidenceBadge conf={inp.source_confidence} />
+                    {/* Horizon */}
+                    <div style={{ width: COL.horizon, flexShrink: 0, fontSize: 11, color: inp.horizon ? c.muted : c.hint }}>
+                      {inp.horizon || "—"}
                     </div>
                     {/* STEEPLED */}
                     <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
                       {visible2.map((t) => (
-                        <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: "#f0f0ee", color: c.muted }}>
+                        <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: c.surfaceAlt, color: c.muted }}>
                           {STEEPLED_ABB[t] || t}
                         </span>
                       ))}
                       {overflow > 0 && <span style={{ fontSize: 9, color: c.hint }}>+{overflow}</span>}
-                    </div>
-                    {/* Horizon */}
-                    <div style={{ width: COL.horizon, flexShrink: 0 }}>
-                      {inp.horizon ? <HorizTag h={inp.horizon} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
-                    </div>
-                    {/* Date + Add to project */}
-                    <div style={{ width: COL.actions, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 10, color: c.hint }}>{formatDate(inp.created_at)}</span>
-                      <div style={{ position: "relative" }}>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setPickerForId(pickerForId === inp.id ? null : inp.id); }}
-                          style={{ ...btnSm, fontSize: 10, padding: "3px 8px", whiteSpace: "nowrap" }}
-                        >
-                          Add to project →
-                        </button>
-                        {pickerForId === inp.id && (
-                          <ProjectPickerPopover
-                            projects={projects}
-                            onSelect={(p) => handleAddToProject(inp, p)}
-                            onClose={() => setPickerForId(null)}
-                            onCreateProject={openProjectModal}
-                          />
-                        )}
-                      </div>
                     </div>
                   </div>
                 );
