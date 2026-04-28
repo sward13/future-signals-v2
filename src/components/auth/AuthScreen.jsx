@@ -138,11 +138,7 @@ export function AuthScreen({ initialMode = "signin" }) {
       }}>
         {/* Logo */}
         <div style={{ marginBottom: 28 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: c.ink }} />
-            <span style={{ fontSize: 14, fontWeight: 600, color: c.ink }}>Future Signals</span>
-          </div>
-          <div style={{ fontSize: 11, color: c.hint, paddingLeft: 14 }}>Strategic Foresight</div>
+          <img src="/src/assets/logo_light.svg" alt="Future Signals" style={{ width: 160, height: "auto", display: "block" }} />
         </div>
 
         {/* Back link (forgot / reset) */}
