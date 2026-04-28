@@ -50,6 +50,8 @@ type Project = {
   workspace_id: string;
   question: string | null;
   focus: string | null;
+  scope_in: string[] | null;
+  scope_out: string[] | null;
   h1_start: string | null;
   h1_end: string | null;
   h2_start: string | null;
@@ -57,6 +59,13 @@ type Project = {
   h3_start: string | null;
   h3_end: string | null;
 };
+
+function formatScopeLines(project: Project): string {
+  const lines: string[] = [];
+  if (project.scope_in?.length) lines.push(`In scope: ${project.scope_in.join(", ")}`);
+  if (project.scope_out?.length) lines.push(`Out of scope (exclude): ${project.scope_out.join(", ")}`);
+  return lines.length ? "\n" + lines.join("\n") : "";
+}
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
@@ -83,7 +92,7 @@ serve(async (req: Request) => {
       await Promise.all([
         supabase
           .from("projects")
-          .select("workspace_id, question, focus, h1_start, h1_end, h2_start, h2_end, h3_start, h3_end")
+          .select("workspace_id, question, focus, scope_in, scope_out, h1_start, h1_end, h2_start, h2_end, h3_start, h3_end")
           .eq("id", project_id)
           .single(),
         supabase
@@ -356,7 +365,7 @@ This is for a foresight project investigating the following question:
 
 "${project.question ?? "Not specified"}"
 
-The project's focus is: ${project.focus ?? "Not specified"}
+The project's focus is: ${project.focus ?? "Not specified"}${formatScopeLines(project)}
 Time horizons: ${horizons}
 
 ## Your Task
@@ -443,7 +452,7 @@ async function reviewWeakSignals(
 ## Context
 
 This is for a foresight project investigating: "${project.question ?? "Not specified"}"
-Focus: ${project.focus ?? "Not specified"}
+Focus: ${project.focus ?? "Not specified"}${formatScopeLines(project)}
 Time horizons: ${horizons}${clusterContext}
 
 ## Your Task

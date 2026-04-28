@@ -249,6 +249,61 @@ export function YearInput({ label, value, onChange, min, max }) {
   );
 }
 
+// ─── Chip (tag) input ─────────────────────────────────────────────────────────
+
+export function ChipInput({ values, onChange, placeholder }) {
+  const [text, setText] = useState("");
+
+  const addChip = () => {
+    const v = text.trim();
+    if (v && !values.includes(v)) onChange([...values, v]);
+    setText("");
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") { e.preventDefault(); addChip(); }
+    if (e.key === "Backspace" && !text && values.length) onChange(values.slice(0, -1));
+  };
+
+  return (
+    <div style={{
+      border: `1px solid ${c.borderMid}`, borderRadius: 8, background: c.white,
+      padding: "5px 8px", minHeight: 38, cursor: "text",
+    }}
+      onClick={(e) => e.currentTarget.querySelector("input")?.focus()}
+    >
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center" }}>
+        {values.map((v, i) => (
+          <span key={i} style={{
+            display: "inline-flex", alignItems: "center", gap: 3,
+            padding: "2px 7px 2px 8px", borderRadius: 4,
+            background: "#f0f0ee", color: c.ink, fontSize: 12,
+          }}>
+            {v}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onChange(values.filter((_, j) => j !== i)); }}
+              style={{ border: "none", background: "none", cursor: "pointer", padding: "0 0 0 2px", color: c.muted, fontSize: 14, lineHeight: 1, fontFamily: "inherit" }}
+            >×</button>
+          </span>
+        ))}
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={addChip}
+          placeholder={values.length === 0 ? placeholder : ""}
+          style={{
+            border: "none", outline: "none", background: "transparent",
+            fontSize: 13, color: c.ink, fontFamily: "inherit",
+            flex: 1, minWidth: 140, padding: "2px 2px",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── Mode selector ─────────────────────────────────────────────────────────────
 
 function _ModeSelector_removed({ value, onChange }) {
@@ -317,6 +372,8 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
 
   // ── Optional methodology fields (shown only for deep_analysis) ──────
   const [focus, setFocus] = useState("");
+  const [scopeIn, setScopeIn] = useState([]);
+  const [scopeOut, setScopeOut] = useState([]);
   const [geo, setGeo] = useState("");
   const [assumptions, setAssumptions] = useState("");
   const [stakeholders, setStakeholders] = useState("");
@@ -327,7 +384,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
     setNameError(false); setDomainError(false);
     setStartYear(CURRENT_YEAR); setEndYear(DEFAULT_END_YEAR);
     setH1Pct(0.22); setH2Pct(0.58);
-    setFocus(""); setGeo(""); setAssumptions(""); setStakeholders(""); setAudience("");
+    setFocus(""); setScopeIn([]); setScopeOut([]); setGeo(""); setAssumptions(""); setStakeholders(""); setAudience("");
     setScanningEnabled(true);
   };
 
@@ -354,6 +411,8 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
       h3_start: h2End,
       h3_end: String(endYear),
       focus,
+      scope_in: scopeIn,
+      scope_out: scopeOut,
       geo,
       assumptions,
       stakeholders,
@@ -517,17 +576,30 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
               Methodology <div style={{ flex: 1, height: 1, background: c.border }} />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-              <div>
+            {/* Project Scope group */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 10 }}>
+                Project scope
+              </div>
+              <div style={{ marginBottom: 10 }}>
                 <div style={fl}>Focus</div>
                 <div style={fh}>The specific thing being examined.</div>
                 <input style={inp} type="text" value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="e.g. Global supply chains" />
               </div>
-              <div>
-                <div style={fl}>Geographic scope</div>
-                <div style={fh}>Where does this research focus?</div>
-                <input style={inp} type="text" value={geo} onChange={(e) => setGeo(e.target.value)} placeholder="e.g. North America, Global" />
+              <div style={{ marginBottom: 10 }}>
+                <div style={fl}>In Scope</div>
+                <ChipInput values={scopeIn} onChange={setScopeIn} placeholder="e.g. Relationship between misinformation and voter turnout" />
               </div>
+              <div>
+                <div style={fl}>Out of Scope</div>
+                <ChipInput values={scopeOut} onChange={setScopeOut} placeholder="e.g. Electoral College reform" />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <div style={fl}>Geographic scope</div>
+              <div style={fh}>Where does this research focus?</div>
+              <input style={inp} type="text" value={geo} onChange={(e) => setGeo(e.target.value)} placeholder="e.g. North America, Global" />
             </div>
 
             <div style={{ marginBottom: 14 }}>

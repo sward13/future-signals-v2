@@ -6,7 +6,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { c, inp, ta, sel, btnP, btnSec, btnG, fl, fh } from "../../styles/tokens.js";
 import { DOMAINS } from "../../data/seeds.js";
-import { HorizonSlider, YearInput } from "./NewProjectModal.jsx";
+import { HorizonSlider, YearInput, ChipInput } from "./NewProjectModal.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -33,6 +33,8 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
   const [domain, setDomain] = useState(project.domain || "");
   const [question, setQuestion] = useState(project.question || "");
   const [focus, setFocus] = useState(project.focus || "");
+  const [scopeIn, setScopeIn] = useState(project.scope_in || []);
+  const [scopeOut, setScopeOut] = useState(project.scope_out || []);
   const [geo, setGeo] = useState(project.geo || "");
   const [assumptions, setAssumptions] = useState(project.assumptions || "");
   const [stakeholders, setStakeholders] = useState(project.stakeholders || "");
@@ -75,6 +77,8 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
       domain,
       question,
       focus: focus,  // was: unit
+      scope_in: scopeIn,
+      scope_out: scopeOut,
       geo,
       assumptions,
       stakeholders,
@@ -200,18 +204,31 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
             Methodology <div style={{ flex: 1, height: 1, background: c.border }} />
           </div>
 
-          {/* Unit + Geography */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
-            <div data-field="unit">
+          {/* Project Scope group */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 10 }}>
+              Project scope
+            </div>
+            <div style={{ marginBottom: 10 }} data-field="unit">
               <div style={fl}>Focus</div>
               <div style={fh}>The specific thing being examined.</div>
               <input style={inp} type="text" value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="e.g. Global supply chains" />
             </div>
-            <div data-field="geo">
-              <div style={fl}>Geographic scope</div>
-              <div style={fh}>Where does this research focus?</div>
-              <input style={inp} type="text" value={geo} onChange={(e) => setGeo(e.target.value)} placeholder="e.g. North America, Global" />
+            <div style={{ marginBottom: 10 }}>
+              <div style={fl}>In Scope</div>
+              <ChipInput values={scopeIn} onChange={setScopeIn} placeholder="e.g. Relationship between misinformation and voter turnout" />
             </div>
+            <div>
+              <div style={fl}>Out of Scope</div>
+              <ChipInput values={scopeOut} onChange={setScopeOut} placeholder="e.g. Electoral College reform" />
+            </div>
+          </div>
+
+          {/* Geography */}
+          <div style={{ marginBottom: 14 }} data-field="geo">
+            <div style={fl}>Geographic scope</div>
+            <div style={fh}>Where does this research focus?</div>
+            <input style={inp} type="text" value={geo} onChange={(e) => setGeo(e.target.value)} placeholder="e.g. North America, Global" />
           </div>
 
           {/* Assumptions */}

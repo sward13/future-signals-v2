@@ -333,6 +333,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       assumptions: fields.assumptions || "",
       stakeholders: fields.stakeholders || "",
       audience: fields.audience || "",
+      scope_in: fields.scope_in || [],
+      scope_out: fields.scope_out || [],
       scanning_enabled: fields.scanning_enabled !== false,
       created_at: now,
     };
