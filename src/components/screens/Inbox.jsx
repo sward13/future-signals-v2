@@ -8,7 +8,7 @@
  */
 import { useState, useMemo } from "react";
 import { c, inp, btnP, btnSm, btnSec, btnG } from "../../styles/tokens.js";
-import { CirclePlus, Sparkles } from "lucide-react";
+import { CirclePlus, Sparkles, List, LayoutGrid } from "lucide-react";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { HorizTag } from "../shared/Tag.jsx";
@@ -265,111 +265,6 @@ function ListRow({ input, isScannerSuggested, suggestedProjects, onSaveToProject
   );
 }
 
-// ─── Compact card (2-col grid) ────────────────────────────────────────────────
-
-function CompactCard({ input, isSeeded, isScannerSuggested, suggestedProjects, projects, savedProjectId, onSaveToProject, onAccept, onDismissSuggested, onOpen, selected, onToggle, anySelected }) {
-  const [hovered, setHovered] = useState(false);
-  const project = savedProjectId ? projects.find((p) => p.id === savedProjectId) : null;
-  const steepled = input.steepled || [];
-
-  return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        background: c.white,
-        border: `1px solid ${selected ? c.borderMid : c.border}`,
-        borderRadius: 9, padding: "11px 13px",
-        cursor: "pointer", transition: "border-color 0.12s",
-      }}
-    >
-      {/* Top: checkbox + quality + date */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div onClick={(e) => { e.stopPropagation(); onToggle(input.id); }} style={{ cursor: "pointer" }}>
-            <RowCheckbox checked={selected} visible={anySelected || hovered} />
-          </div>
-          <QualityPill value={input.signal_quality} />
-        </div>
-        <span style={{ fontSize: 10, color: c.hint }}>{formatDate(input.created_at)}</span>
-      </div>
-
-      {/* Title */}
-      <div
-        onClick={() => anySelected ? onToggle(input.id) : onOpen()}
-        style={{
-          fontSize: 12, fontWeight: 500, color: c.ink, lineHeight: 1.4, marginBottom: 3,
-          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-        }}
-      >
-        {input.name}
-      </div>
-
-      {isScannerSuggested && suggestedProjects.length > 0 && (
-        <div style={{ fontSize: 11, color: c.hint, marginBottom: 5 }}>
-          {suggestedProjects.slice(0, 2).map((p) => p.name).join(", ")}
-        </div>
-      )}
-
-      {/* Description snippet */}
-      {(input.description || input.desc) && (
-        <div style={{
-          fontSize: 11, color: c.muted, lineHeight: 1.5, marginBottom: 8,
-          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-        }}>
-          {input.description || input.desc}
-        </div>
-      )}
-
-      {/* Tags */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4, marginBottom: 8 }}>
-        {steepled.slice(0, 3).map((t) => (
-          <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: "#f0f0ee", color: c.muted }}>
-            {STEEPLED_ABB[t] || t}
-          </span>
-        ))}
-        {steepled.length > 3 && <span style={{ fontSize: 9, color: c.hint }}>+{steepled.length - 3}</span>}
-        <HorizTag h={input.horizon} />
-      </div>
-
-      {/* Actions */}
-      {!anySelected && (
-        savedProjectId ? (
-          <span style={{ fontSize: 10, color: c.green700 }}>✓ {project?.name || "Saved"}</span>
-        ) : isScannerSuggested && suggestedProjects.length > 0 ? (
-          <div style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap" }}>
-            <button
-              onClick={(e) => { e.stopPropagation(); onAccept(); }}
-              style={{ fontSize: 10, padding: "3px 10px", borderRadius: 5, background: c.ink, color: c.white, border: "none", cursor: "pointer", fontFamily: "inherit" }}
-            >
-              Accept →
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }}
-              style={{ fontSize: 10, padding: "3px 10px", borderRadius: 5, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit" }}
-            >
-              Add to project →
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onDismissSuggested(); }}
-              style={{ fontSize: 10, padding: "3px 6px", background: "none", border: "none", color: c.hint, cursor: "pointer", fontFamily: "inherit" }}
-            >
-              Dismiss
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }}
-            style={{ fontSize: 10, padding: "3px 10px", borderRadius: 5, background: c.ink, color: c.white, border: "none", cursor: "pointer", fontFamily: "inherit" }}
-          >
-            Add to project →
-          </button>
-        )
-      )}
-    </div>
-  );
-}
-
 // ─── Full card (Card view) ────────────────────────────────────────────────────
 
 function FullCard({ input, isScannerSuggested, suggestedProjects, projects, savedProjectId, onSaveToProject, onAccept, onDismissSuggested, onDismiss, onOpen, selected, onToggle, anySelected }) {
@@ -452,7 +347,7 @@ function FullCard({ input, isScannerSuggested, suggestedProjects, projects, save
                   </button>
                 </>
               ) : (
-                <button onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }} style={{ padding: "4px 12px", borderRadius: 7, background: c.ink, color: c.white, border: "none", fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
+                <button onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }} style={{ padding: "4px 12px", borderRadius: 7, background: c.brand, color: c.white, border: "none", fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
                   Add to project →
                 </button>
               )}
@@ -637,12 +532,6 @@ export default function Inbox({ appState }) {
     </div>
   );
 
-  const renderCompact = (items, getProps) => (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-      {items.map((inp) => <CompactCard key={inp.id} {...getProps(inp)} />)}
-    </div>
-  );
-
   const renderCards = (items, getProps) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {items.map((inp) => <FullCard key={inp.id} {...getProps(inp)} />)}
@@ -650,8 +539,7 @@ export default function Inbox({ appState }) {
   );
 
   const renderItems = (items, getProps) => {
-    if (viewMode === "list")    return renderList(items, getProps);
-    if (viewMode === "compact") return renderCompact(items, getProps);
+    if (viewMode === "list") return renderList(items, getProps);
     return renderCards(items, getProps);
   };
 
@@ -681,23 +569,22 @@ export default function Inbox({ appState }) {
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
             {/* View toggle */}
             <div style={{ display: "flex", border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden" }}>
-              {["List", "Compact", "Card"].map((v, i) => {
-                const active = viewMode === v.toLowerCase();
+              {[{ mode: "list", Icon: List }, { mode: "card", Icon: LayoutGrid }].map(({ mode, Icon }, i) => {
+                const active = viewMode === mode;
                 return (
                   <button
-                    key={v}
-                    onClick={() => setViewMode(v.toLowerCase())}
+                    key={mode}
+                    onClick={() => setViewMode(mode)}
                     style={{
-                      padding: "5px 11px", fontSize: 11,
-                      background: active ? c.ink : c.white,
+                      padding: "5px 9px", display: "flex", alignItems: "center",
+                      background: active ? c.brand : c.white,
                       color: active ? c.white : c.muted,
                       border: "none",
                       borderLeft: i > 0 ? `1px solid ${c.border}` : "none",
-                      fontWeight: active ? 500 : 400,
-                      cursor: "pointer", fontFamily: "inherit",
+                      cursor: "pointer",
                     }}
                   >
-                    {v}
+                    <Icon size={14} />
                   </button>
                 );
               })}
