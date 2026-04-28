@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { c, inp, btnP } from "../../styles/tokens.js";
+import logoLight from "../../assets/logo_light.svg";
 
 const linkBtn = {
   background: "none", border: "none", cursor: "pointer",
@@ -138,7 +139,7 @@ export function AuthScreen({ initialMode = "signin" }) {
       }}>
         {/* Logo */}
         <div style={{ marginBottom: 28 }}>
-          <img src="/src/assets/logo_light.svg" alt="Future Signals" style={{ width: 160, height: "auto", display: "block" }} />
+          <img src={logoLight} alt="Future Signals" style={{ width: 160, height: "auto", display: "block" }} />
         </div>
 
         {/* Back link (forgot / reset) */}
