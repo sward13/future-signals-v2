@@ -9,6 +9,7 @@
 import { useState, useMemo } from "react";
 import { c, inp, btnP, btnSm, btnSec, btnG } from "../../styles/tokens.js";
 import { CirclePlus, Sparkles, List, LayoutGrid } from "lucide-react";
+import { ViewToggle } from "../ViewToggle.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { HorizTag } from "../shared/Tag.jsx";
@@ -631,27 +632,14 @@ export default function Inbox({ appState }) {
               </span>
             )}
           </div>
-          <div style={{ display: "flex", border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden" }}>
-            {[{ mode: "list", Icon: List }, { mode: "card", Icon: LayoutGrid }].map(({ mode, Icon }, i) => {
-              const active = viewMode === mode;
-              return (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  style={{
-                    padding: "5px 9px", display: "flex", alignItems: "center",
-                    background: active ? c.brand : c.white,
-                    color: active ? c.white : c.muted,
-                    border: "none",
-                    borderLeft: i > 0 ? `1px solid ${c.border}` : "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  <Icon size={14} />
-                </button>
-              );
-            })}
-          </div>
+          <ViewToggle
+            view={viewMode}
+            onChange={setViewMode}
+            options={[
+              { value: "list", icon: <List size={14} />, title: "List view" },
+              { value: "card", icon: <LayoutGrid size={14} />, title: "Card view" },
+            ]}
+          />
         </div>
 
         {/* My Inputs inline action bar */}

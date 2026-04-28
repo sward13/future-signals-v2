@@ -3,8 +3,9 @@
  */
 import { useState } from "react";
 import { c, btnP, btnSec, btnG } from "../../styles/tokens.js";
-import { LayoutGrid, Logs, CirclePlus } from "lucide-react";
+import { LayoutGrid, List, CirclePlus } from "lucide-react";
 import { EmptyState } from "../shared/EmptyState.jsx";
+import { ViewToggle } from "../ViewToggle.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 
 const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
@@ -204,39 +205,6 @@ function ProjectCard({ project, inputCount, clusterCount, systemMapCount, analys
   );
 }
 
-// ─── View toggle ──────────────────────────────────────────────────────────────
-
-function ViewToggle({ value, onChange }) {
-  const btn = (v, icon) => (
-    <button
-      onClick={() => onChange(v)}
-      title={v === "cards" ? "Card view" : "Table view"}
-      style={{
-        padding: "5px 8px",
-        border: "none",
-        background: value === v ? c.brand : "transparent",
-        color: value === v ? c.white : c.muted,
-        cursor: "pointer",
-        fontFamily: "inherit",
-        fontSize: 12,
-        lineHeight: 1,
-      }}
-    >
-      {icon}
-    </button>
-  );
-  return (
-    <div style={{
-      display: "flex",
-      border: "0.5px solid rgba(0,0,0,0.18)",
-      borderRadius: 6,
-      overflow: "hidden",
-    }}>
-      {btn("cards", <LayoutGrid size={14} />)}
-      {btn("table", <Logs size={14} />)}
-    </div>
-  );
-}
 
 /**
  * @param {{ appState: object }} props
@@ -300,7 +268,14 @@ export default function Dashboard({ appState }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>Projects</div>
           {projects.length > 0 && (
-            <ViewToggle value={projectView} onChange={handleSetProjectView} />
+            <ViewToggle
+              view={projectView}
+              onChange={handleSetProjectView}
+              options={[
+                { value: "cards", icon: <LayoutGrid size={14} />, title: "Card view" },
+                { value: "table", icon: <List size={14} />, title: "List view" },
+              ]}
+            />
           )}
         </div>
 
