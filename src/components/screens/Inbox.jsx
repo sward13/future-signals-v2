@@ -567,28 +567,6 @@ export default function Inbox({ appState }) {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            {/* View toggle */}
-            <div style={{ display: "flex", border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden" }}>
-              {[{ mode: "list", Icon: List }, { mode: "card", Icon: LayoutGrid }].map(({ mode, Icon }, i) => {
-                const active = viewMode === mode;
-                return (
-                  <button
-                    key={mode}
-                    onClick={() => setViewMode(mode)}
-                    style={{
-                      padding: "5px 9px", display: "flex", alignItems: "center",
-                      background: active ? c.brand : c.white,
-                      color: active ? c.white : c.muted,
-                      border: "none",
-                      borderLeft: i > 0 ? `1px solid ${c.border}` : "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <Icon size={14} />
-                  </button>
-                );
-              })}
-            </div>
             <button onClick={() => setDrawerOpen(true)} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}><CirclePlus size={14} />Add an input</button>
           </div>
         </div>
@@ -644,7 +622,37 @@ export default function Inbox({ appState }) {
         </div>
 
         {/* ── My Inputs table ──────────────────────────────────── */}
-        <SectionHeader title="My Inputs" count={filteredManual.length} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>My Inputs</div>
+            {filteredManual.length > 0 && (
+              <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500 }}>
+                {filteredManual.length}
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden" }}>
+            {[{ mode: "list", Icon: List }, { mode: "card", Icon: LayoutGrid }].map(({ mode, Icon }, i) => {
+              const active = viewMode === mode;
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  style={{
+                    padding: "5px 9px", display: "flex", alignItems: "center",
+                    background: active ? c.brand : c.white,
+                    color: active ? c.white : c.muted,
+                    border: "none",
+                    borderLeft: i > 0 ? `1px solid ${c.border}` : "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Icon size={14} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {/* My Inputs inline action bar */}
         {selectedManualIds.length > 0 && (
