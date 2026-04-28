@@ -272,8 +272,8 @@ export default function Dashboard({ appState }) {
               view={projectView}
               onChange={handleSetProjectView}
               options={[
-                { value: "cards", icon: <LayoutGrid size={14} />, title: "Card view" },
                 { value: "table", icon: <List size={14} />, title: "List view" },
+                { value: "cards", icon: <LayoutGrid size={14} />, title: "Card view" },
               ]}
             />
           )}
