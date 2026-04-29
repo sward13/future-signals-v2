@@ -78,6 +78,10 @@ serve(async (req: Request) => {
 
     const linkedInputIds = new Set((memberRows ?? []).map((r) => r.input_id));
 
+    if (linkedInputIds.size === 0) {
+      return respond({ likely: [], possible: [], challenges: [], empty: true });
+    }
+
     // ── 3. Fetch all project inputs (filter embeddings in TS) ──────────────────
     const { data: rawInputs, error: inputsError } = await supabase
       .from("inputs")

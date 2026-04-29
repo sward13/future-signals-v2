@@ -350,26 +350,27 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
                   </span>
                 )}
               </div>
-              {relatedResults !== null && !loadingRelated ? (
-                <button
-                  onClick={handleFindRelated}
-                  style={{ ...btnG, fontSize: 11 }}
-                >
-                  Re-run
-                </button>
-              ) : (
-                <button
-                  onClick={handleFindRelated}
-                  disabled={loadingRelated}
-                  style={{ ...btnSec, fontSize: 11, padding: "4px 10px" }}
-                >
-                  Find related
-                </button>
+              {linkedInputs.length > 0 && (
+                relatedResults !== null && !loadingRelated ? (
+                  <button onClick={handleFindRelated} style={{ ...btnG, fontSize: 11 }}>Re-run</button>
+                ) : (
+                  <button
+                    onClick={handleFindRelated}
+                    disabled={loadingRelated}
+                    style={{ ...btnSec, fontSize: 11, padding: "4px 10px" }}
+                  >
+                    Find related
+                  </button>
+                )
               )}
             </div>
 
             {/* Body */}
-            {loadingRelated ? (
+            {linkedInputs.length === 0 ? (
+              <div style={{ fontSize: 11, color: c.hint, fontStyle: "italic" }}>
+                Add inputs to this cluster before finding related ones.
+              </div>
+            ) : loadingRelated ? (
               <div style={{
                 padding: "18px 14px",
                 background: c.surfaceAlt, border: `1px solid ${c.border}`, borderRadius: 8,
