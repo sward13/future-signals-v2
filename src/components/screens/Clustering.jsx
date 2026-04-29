@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { CirclePlus, Sparkles } from "lucide-react";
+import { CirclePlus } from "lucide-react";
 import { c, inp, ta, btnP, btnSm, btnSec, btnG, fl, badg } from "../../styles/tokens.js";
 import { supabase } from "../../lib/supabase.js";
 import { HorizTag, SubtypeTag, Tag } from "../shared/Tag.jsx";
@@ -631,6 +631,81 @@ function TableContainer({ children }) {
   );
 }
 
+// ─── Assignment recommendation card ──────────────────────────────────────────
+
+function AssignmentCard({ suggestion, inputs, clusters, onAdd, onDismiss, isFadingOut }) {
+  const targetCluster = clusters.find((cl) => cl.id === suggestion.target_cluster_id);
+  const clusterName   = targetCluster?.name || suggestion.name || "cluster";
+  const sugInputs     = (suggestion.input_ids || [])
+    .map((id) => inputs.find((i) => i.id === id))
+    .filter(Boolean);
+  const n          = sugInputs.length;
+  const confidence = suggestion.confidence || "moderate";
+
+  const confidenceBadge = confidence === "high"
+    ? { background: c.green50,  color: c.green700,  border: `1px solid ${c.greenBorder}` }
+    : { background: c.amber50, color: c.amber700, border: `1px solid ${c.amberBorder}` };
+
+  return (
+    <div style={{
+      background: c.white, border: `1px solid ${c.border}`,
+      borderRadius: 11, overflow: "hidden",
+      opacity: isFadingOut ? 0 : 1, transition: "opacity 0.25s ease",
+    }}>
+      <div style={{ padding: "14px 18px" }}>
+
+        {/* Title + meta */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>
+            Add to <span style={{ color: c.brand }}>{clusterName}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, paddingTop: 1 }}>
+            <span style={{ fontSize: 11, color: c.muted }}>{n} input{n !== 1 ? "s" : ""}</span>
+            <span style={{ fontSize: 10, color: c.hint }}>·</span>
+            <span style={{ fontSize: 11, color: c.muted }}>Confidence:</span>
+            <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, fontWeight: 500, ...confidenceBadge }}>
+              {confidence === "high" ? "High" : "Moderate"}
+            </span>
+          </div>
+        </div>
+
+        {/* Inputs box */}
+        {sugInputs.length > 0 && (
+          <div style={{
+            background: c.surfaceAlt, border: `1px solid ${c.border}`,
+            borderRadius: 7, marginBottom: 12, overflow: "hidden",
+          }}>
+            <div style={{
+              fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em",
+              color: c.hint, padding: "5px 11px",
+              borderBottom: `1px solid ${c.border}`,
+            }}>
+              Inputs
+            </div>
+            {sugInputs.map((inp, idx) => (
+              <div key={inp.id} style={{
+                padding: "7px 11px",
+                borderTop: idx > 0 ? `1px solid ${c.border}` : "none",
+                display: "flex", alignItems: "flex-start", gap: 7,
+              }}>
+                <span style={{ color: c.hint, fontSize: 10, flexShrink: 0, marginTop: 2 }}>•</span>
+                <span style={{ fontSize: 12, color: c.ink }}>{inp.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div style={{ display: "flex", gap: 6 }}>
+          <button onClick={() => onAdd(suggestion)} style={{ ...btnSm, fontSize: 11 }}>Add</button>
+          <button onClick={() => onDismiss(suggestion.id)} style={{ ...btnSec, fontSize: 11, padding: "6px 14px" }}>Dismiss</button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function Clustering({ appState }) {
@@ -654,19 +729,24 @@ export default function Clustering({ appState }) {
   const [filterSteepled,        setFilterSteepled]        = useState(null);
   const [openFilterDropdown,    setOpenFilterDropdown]    = useState(null);
 
-  // Tightness setting for AI clustering
+  // Sensitivity setting for new-cluster generation (Panel 2)
   const [tightness, setTightness] = useState("balanced");
 
-  // AI suggestions state
-  const [dbSuggestions,       setDbSuggestions]       = useState([]);
-  const [loadingSuggestions,  setLoadingSuggestions]  = useState(false);
-  const [generatingSugs,      setGeneratingSugs]      = useState(false);
-  const [suggestionsError,    setSuggestionsError]    = useState(null);
-  const [regenCooldownUntil,  setRegenCooldownUntil]  = useState(null);
-  const [inputCountAtRegen,   setInputCountAtRegen]   = useState(null);
-  const [lastRegenReason,     setLastRegenReason]     = useState(null);
-  const [dismissedSuggestions, setDismissedSuggestions] = useState([]);
-  const [fadingOutIds,         setFadingOutIds]         = useState(new Set());
+  // Panel 1 — assignment matching
+  const [assignmentSugs,        setAssignmentSugs]        = useState([]);
+  const [runningAssignments,    setRunningAssignments]    = useState(false);
+  const [assignmentsError,      setAssignmentsError]      = useState(null);
+  const [assignFadingOutIds,    setAssignFadingOutIds]    = useState(new Set());
+  const [totalAssignmentsFound, setTotalAssignmentsFound] = useState(null);  // null = never run
+  const [acceptedAssignCount,   setAcceptedAssignCount]   = useState(0);
+
+  // Panel 2 — new cluster suggestions
+  const [newClusterSugs,       setNewClusterSugs]       = useState([]);
+  const [runningNewClusters,   setRunningNewClusters]   = useState(false);
+  const [newClustersError,     setNewClustersError]     = useState(null);
+  const [newClusterFadingIds,  setNewClusterFadingIds]  = useState(new Set());
+  const [dismissedNewClusters, setDismissedNewClusters] = useState([]);
+  const [loadingDbSugs,        setLoadingDbSugs]        = useState(false);
 
   const project         = activeProjectId ? projects.find((p) => p.id === activeProjectId) : null;
   const projectInputs   = project ? inputs.filter((i)  => i.project_id  === project.id) : [];
@@ -700,26 +780,22 @@ export default function Clustering({ appState }) {
 
   const anyFilterActive = !!(inputSearch.trim() || filterType || filterHorizon || filterSteepled);
 
-  const visibleSugs = useMemo(() =>
-    dbSuggestions.filter((sug) => {
-      if (fadingOutIds.has(sug.id)) return true; // keep in DOM during fade
-      return !dismissedSuggestions.some(
+  const visibleNewClusterSugs = useMemo(() =>
+    newClusterSugs.filter((sug) => {
+      if (newClusterFadingIds.has(sug.id)) return true;
+      return !dismissedNewClusters.some(
         (dis) => overlapRatio(sug.input_ids, dis.input_ids) > 0.8
       );
     }),
-    [dbSuggestions, dismissedSuggestions, fadingOutIds]
+    [newClusterSugs, dismissedNewClusters, newClusterFadingIds]
   );
-
-  const mainSugs = useMemo(() => visibleSugs.filter((s) => !s.is_weak_signal), [visibleSugs]);
-  const weakSugs = useMemo(() => visibleSugs.filter((s) =>  s.is_weak_signal), [visibleSugs]);
 
   const clearAllFilters = () => {
     setInputSearch(""); setFilterType(null); setFilterHorizon(null); setFilterSteepled(null);
   };
 
   const loadSuggestions = useCallback(async (projectId, wsId) => {
-    setLoadingSuggestions(true);
-    setSuggestionsError(null);
+    setLoadingDbSugs(true);
     try {
       const { data, error } = await supabase
         .from("cluster_suggestions")
@@ -729,12 +805,13 @@ export default function Clustering({ appState }) {
         .eq("status", "pending")
         .order("generated_at", { ascending: false });
       if (error) throw error;
-      setDbSuggestions(data || []);
-    } catch (err) {
-      setSuggestionsError(err.message || "Failed to load suggestions.");
-      setDbSuggestions([]);
+      const all = data || [];
+      setAssignmentSugs(all.filter((s) => s.type === "assignment"));
+      setNewClusterSugs(all.filter((s) => s.type !== "assignment"));
+    } catch {
+      // silent — panels show errors when the user actively runs them
     } finally {
-      setLoadingSuggestions(false);
+      setLoadingDbSugs(false);
     }
   }, []);
 
@@ -743,9 +820,6 @@ export default function Clustering({ appState }) {
     loadSuggestions(project.id, workspaceId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id]);
-
-  const regenOnCooldown = regenCooldownUntil != null && Date.now() < regenCooldownUntil;
-  const newInputsSinceRegen = inputCountAtRegen != null && projectInputs.length > inputCountAtRegen;
 
   const getInputCluster = (inputId) =>
     projectClusters.find((cl) => cl.input_ids?.includes(inputId)) || null;
@@ -776,24 +850,117 @@ export default function Clustering({ appState }) {
     );
   };
 
-  const handleAcceptSuggestion = (sug, editedName, editedDesc, editedInputIds) => {
+  // ── Panel 1 handlers ─────────────────────────────────────────────────────────
+
+  const handleRunAssignments = async () => {
+    if (!project || runningAssignments) return;
+    setRunningAssignments(true);
+    setAssignmentsError(null);
+    setTotalAssignmentsFound(null);
+    setAcceptedAssignCount(0);
+    try {
+      const { error } = await supabase.functions.invoke("compute-cluster-suggestions", {
+        body: { project_id: project.id, mode: "assignments" },
+      });
+      if (error) throw new Error(error.message);
+      const { data: sugs, error: fetchErr } = await supabase
+        .from("cluster_suggestions")
+        .select("*")
+        .eq("project_id", project.id)
+        .eq("status", "pending")
+        .eq("type", "assignment")
+        .order("generated_at", { ascending: false });
+      if (fetchErr) throw fetchErr;
+      const results = sugs || [];
+      setAssignmentSugs(results);
+      setTotalAssignmentsFound(results.length);
+    } catch (err) {
+      setAssignmentsError(err.message || "Failed to find assignments.");
+    } finally {
+      setRunningAssignments(false);
+    }
+  };
+
+  const handleAcceptAssignment = (sug) => {
+    (sug.input_ids || []).forEach((inputId) => {
+      assignInputToCluster(inputId, sug.target_cluster_id);
+    });
+    supabase
+      .from("cluster_suggestions")
+      .update({ status: "accepted", acted_on_at: new Date().toISOString() })
+      .eq("id", sug.id)
+      .then();
+    setAssignmentSugs((prev) => prev.filter((s) => s.id !== sug.id));
+    setAcceptedAssignCount((n) => n + 1);
+    const cl = projectClusters.find((c) => c.id === sug.target_cluster_id);
+    showToast(`Input assigned to "${cl?.name || "cluster"}"`);
+  };
+
+  const handleDismissAssignment = (id) => {
+    setAssignFadingOutIds((prev) => new Set([...prev, id]));
+    setTimeout(() => {
+      setAssignmentSugs((prev) => prev.filter((s) => s.id !== id));
+      setAssignFadingOutIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+    }, 280);
+    supabase
+      .from("cluster_suggestions")
+      .update({ status: "dismissed", acted_on_at: new Date().toISOString() })
+      .eq("id", id)
+      .then();
+  };
+
+  const handleAcceptAllAssignments = () => {
+    const pending = [...assignmentSugs];
+    pending.forEach((sug) => {
+      (sug.input_ids || []).forEach((inputId) => assignInputToCluster(inputId, sug.target_cluster_id));
+    });
+    supabase
+      .from("cluster_suggestions")
+      .update({ status: "accepted", acted_on_at: new Date().toISOString() })
+      .in("id", pending.map((s) => s.id))
+      .then();
+    setAcceptedAssignCount((n) => n + pending.length);
+    setAssignmentSugs([]);
+    showToast(`${pending.length} assignment${pending.length !== 1 ? "s" : ""} accepted`);
+  };
+
+  // ── Panel 2 handlers ─────────────────────────────────────────────────────────
+
+  const handleGenerateNewClusters = async () => {
+    if (!project || runningNewClusters) return;
+    setRunningNewClusters(true);
+    setNewClustersError(null);
+    try {
+      const { error } = await supabase.functions.invoke("compute-cluster-suggestions", {
+        body: { project_id: project.id, mode: "new_clusters", clustering_sensitivity: tightness },
+      });
+      if (error) throw new Error(error.message);
+      const { data: sugs, error: fetchErr } = await supabase
+        .from("cluster_suggestions")
+        .select("*")
+        .eq("project_id", project.id)
+        .eq("status", "pending")
+        .eq("type", "new_cluster")
+        .order("generated_at", { ascending: false });
+      if (fetchErr) throw fetchErr;
+      setNewClusterSugs(sugs || []);
+      setDismissedNewClusters([]);
+    } catch (err) {
+      setNewClustersError(err.message || "Failed to generate suggestions.");
+    } finally {
+      setRunningNewClusters(false);
+    }
+  };
+
+  const handleAcceptNewCluster = (sug, editedName, editedDesc, editedInputIds) => {
     const name     = editedName?.trim() || sug.name;
     const desc     = editedDesc ?? sug.description ?? "";
     const inputIds = editedInputIds ?? sug.input_ids ?? [];
     const subtype  = sug.subtype
       ? sug.subtype.charAt(0).toUpperCase() + sug.subtype.slice(1)
       : "Trend";
-    setDbSuggestions((prev) => prev.filter((s) => s.id !== sug.id));
-    addCluster({
-      name,
-      subtype,
-      horizon: "H1",
-      likelihood: "Plausible",
-      description: desc,
-      project_id: project.id,
-      input_ids: inputIds,
-    });
-    // Mark accepted in DB — fire and forget
+    setNewClusterSugs((prev) => prev.filter((s) => s.id !== sug.id));
+    addCluster({ name, subtype, horizon: "H1", likelihood: "Plausible", description: desc, project_id: project.id, input_ids: inputIds });
     supabase
       .from("cluster_suggestions")
       .update({ status: "accepted", acted_on_at: new Date().toISOString() })
@@ -803,65 +970,19 @@ export default function Clustering({ appState }) {
     showToast(`Cluster "${name}" created with ${n} input${n !== 1 ? "s" : ""}`);
   };
 
-  const handleDismissSuggestion = (id) => {
-    const sug = dbSuggestions.find((s) => s.id === id);
-    if (sug) {
-      setDismissedSuggestions((prev) => [...prev, { id: sug.id, input_ids: sug.input_ids || [] }]);
-    }
-    setFadingOutIds((prev) => new Set([...prev, id]));
+  const handleDismissNewCluster = (id) => {
+    const sug = newClusterSugs.find((s) => s.id === id);
+    if (sug) setDismissedNewClusters((prev) => [...prev, { id: sug.id, input_ids: sug.input_ids || [] }]);
+    setNewClusterFadingIds((prev) => new Set([...prev, id]));
     setTimeout(() => {
-      setDbSuggestions((prev) => prev.filter((s) => s.id !== id));
-      setFadingOutIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+      setNewClusterSugs((prev) => prev.filter((s) => s.id !== id));
+      setNewClusterFadingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
     }, 280);
     supabase
       .from("cluster_suggestions")
       .update({ status: "dismissed", acted_on_at: new Date().toISOString() })
       .eq("id", id)
       .then();
-  };
-
-  const handleRegen = async () => {
-    if (!project || regenOnCooldown || generatingSugs) return;
-    setGeneratingSugs(true);
-    setSuggestionsError(null);
-    try {
-      const TIGHTNESS_MAP = {
-        tight:       { threshold: 0.82, min_cluster_size: 3 },
-        balanced:    { threshold: 0.72, min_cluster_size: 2 },
-        exploratory: { threshold: 0.62, min_cluster_size: 2 },
-      };
-      const { threshold, min_cluster_size } = TIGHTNESS_MAP[tightness] || TIGHTNESS_MAP.balanced;
-      const { data, error } = await supabase.functions.invoke("generate-cluster-suggestions", {
-        body: { project_id: project.id, workspace_id: workspaceId, threshold, min_cluster_size },
-      });
-      if (error) {
-        let message = error.message;
-        try {
-          const text = await error.context?.text?.();
-          console.error("generate-cluster-suggestions error body:", text);
-          const body = text ? JSON.parse(text) : null;
-          if (body?.error) message = body.error;
-          else if (text) message = text;
-        } catch (e) {
-          console.error("generate-cluster-suggestions error:", error);
-        }
-        throw new Error(message);
-      }
-      // Use the rows returned by the Edge Function directly — avoids a second
-      // round-trip and any RLS timing issues on the immediate re-fetch.
-      if (Array.isArray(data?.suggestions)) {
-        setDbSuggestions(data.suggestions.filter((s) => s.status === "pending"));
-      } else {
-        await loadSuggestions(project.id, workspaceId);
-      }
-      setLastRegenReason(data?.reason ?? null);
-      setRegenCooldownUntil(Date.now() + 60_000);
-      setInputCountAtRegen(projectInputs.length);
-    } catch (err) {
-      setSuggestionsError(err.message || "Failed to generate suggestions.");
-    } finally {
-      setGeneratingSugs(false);
-    }
   };
 
   const handleCreateCluster = (fields) => {
@@ -1098,101 +1219,176 @@ export default function Clustering({ appState }) {
           )}
         </div>
 
-        {/* ── Section 3: AI suggestions ─────────────────────────── */}
-        <div style={{ marginBottom: 32 }}>
+        {/* ── Panel 1: Match to existing clusters ──────────────── */}
+        <div style={{ marginBottom: 20 }}>
 
-          {/* Tightness control */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <span style={{ fontSize: 11, color: c.muted, whiteSpace: "nowrap" }}>Clustering</span>
-            <div style={{
-              display: "inline-flex",
-              border: `1px solid ${c.borderMid}`,
-              borderRadius: 7,
-              overflow: "hidden",
-              background: c.white,
-            }}>
-              {[
-                { key: "tight",       label: "Tight" },
-                { key: "balanced",    label: "Balanced" },
-                { key: "exploratory", label: "Exploratory" },
-              ].map(({ key, label }, idx) => (
-                <button
-                  key={key}
-                  onClick={() => setTightness(key)}
-                  style={{
-                    padding: "5px 12px",
-                    fontSize: 11,
-                    fontFamily: "inherit",
-                    cursor: "pointer",
-                    border: "none",
-                    borderLeft: idx > 0 ? `1px solid ${c.borderMid}` : "none",
-                    background: tightness === key ? c.ink : "transparent",
-                    color: tightness === key ? c.white : c.muted,
-                    fontWeight: tightness === key ? 500 : 400,
-                    transition: "background 0.12s, color 0.12s",
-                  }}
-                >
-                  {label}
+          {/* Panel 1 header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>Match to existing clusters</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {runningAssignments ? (
+                <button disabled style={{
+                  fontSize: 11, padding: "4px 12px", borderRadius: 6,
+                  background: "transparent", color: c.hint,
+                  border: `1px solid ${c.border}`, cursor: "default",
+                  fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6,
+                }}>
+                  <span style={{
+                    display: "inline-block", width: 10, height: 10, borderRadius: "50%",
+                    border: `1.5px solid ${c.border}`, borderTopColor: c.muted,
+                    animation: "clusterSpinner 0.7s linear infinite",
+                  }} />
+                  Scanning…
                 </button>
-              ))}
+              ) : totalAssignmentsFound === null ? (
+                <button onClick={handleRunAssignments} style={{ ...btnSec, fontSize: 11, padding: "4px 12px", borderRadius: 6 }}>
+                  Find assignments
+                </button>
+              ) : (
+                <>
+                  {totalAssignmentsFound > 0 && (
+                    <span style={{ fontSize: 11, color: c.muted }}>
+                      {acceptedAssignCount} of {totalAssignmentsFound} accepted
+                    </span>
+                  )}
+                  {assignmentSugs.length > 0 && (
+                    <button onClick={handleAcceptAllAssignments} style={{ ...btnG, fontSize: 11 }}>
+                      Accept all
+                    </button>
+                  )}
+                  <button onClick={handleRunAssignments} style={{ ...btnSec, fontSize: 11, padding: "4px 12px", borderRadius: 6 }}>
+                    Re-run
+                  </button>
+                </>
+              )}
             </div>
           </div>
-          <SectionHeader
-            title="AI suggestions"
-            icon={<Sparkles size={16} />}
-            count={visibleSugs.length || null}
-            action={
-              projectInputs.length >= 3 && visibleSugs.length > 0 && (
+
+          {/* Panel 1 body */}
+          {assignmentsError ? (
+            <div style={{
+              padding: "13px 16px", background: c.red50,
+              border: `1px solid ${c.redBorder}`, borderRadius: 9,
+              fontSize: 12, color: c.red800,
+            }}>
+              {assignmentsError}
+            </div>
+          ) : assignmentSugs.length === 0 ? (
+            <div style={{
+              padding: "32px 24px", background: c.surfaceAlt,
+              border: `1px solid ${c.border}`, borderRadius: 9, textAlign: "center",
+            }}>
+              <div style={{ fontSize: 12, color: c.muted, marginBottom: 14 }}>
+                {totalAssignmentsFound === 0
+                  ? "No assignment matches found."
+                  : "Find unassigned inputs that match your existing clusters."}
+              </div>
+              {!runningAssignments && (
+                <button onClick={handleRunAssignments} style={{ ...btnSec, fontSize: 12 }}>
+                  Find assignments
+                </button>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {assignmentSugs.map((sug) => (
+                <AssignmentCard
+                  key={sug.id}
+                  suggestion={sug}
+                  inputs={projectInputs}
+                  clusters={projectClusters}
+                  onAdd={handleAcceptAssignment}
+                  onDismiss={handleDismissAssignment}
+                  isFadingOut={assignFadingOutIds.has(sug.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Panel 2: New cluster suggestions ─────────────────── */}
+        <div style={{ marginBottom: 32 }}>
+
+          {/* Panel 2 header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>New cluster suggestions</div>
+              <span style={{
+                fontSize: 10, padding: "1px 7px", borderRadius: 4,
+                background: c.blue50, color: c.blue700, border: `1px solid ${c.blueBorder}`,
+              }}>
+                ✨ New
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {visibleNewClusterSugs.length > 0 && (
                 <button
-                  onClick={handleRegen}
-                  disabled={regenOnCooldown || generatingSugs || loadingSuggestions}
-                  style={{
-                    fontSize: 11, padding: "4px 12px", borderRadius: 6,
-                    background: "transparent", color: regenOnCooldown ? c.hint : c.muted,
-                    border: `1px solid ${regenOnCooldown ? c.border : c.borderMid}`,
-                    cursor: regenOnCooldown || generatingSugs ? "default" : "pointer",
-                    fontFamily: "inherit",
-                    opacity: regenOnCooldown ? 0.5 : 1,
-                  }}
+                  onClick={handleGenerateNewClusters}
+                  disabled={runningNewClusters}
+                  style={{ ...btnG, fontSize: 11 }}
                 >
                   Regenerate
                 </button>
-              )
-            }
-          />
-
-          {/* New-inputs nudge */}
-          {newInputsSinceRegen && visibleSugs.length > 0 && (
-            <div style={{
-              fontSize: 11, color: c.blue700,
-              background: c.blue50, border: `1px solid ${c.blueBorder}`,
-              borderRadius: 7, padding: "8px 14px", marginBottom: 10,
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-            }}>
-              <span>
-                You&apos;ve added {projectInputs.length - inputCountAtRegen} input{projectInputs.length - inputCountAtRegen !== 1 ? "s" : ""} since your last suggestions were generated.
-              </span>
+              )}
+              {/* Tight / Balanced / Exploratory tabs */}
+              <div style={{
+                display: "inline-flex",
+                border: `1px solid ${c.borderMid}`,
+                borderRadius: 7, overflow: "hidden", background: c.white,
+              }}>
+                {[
+                  { key: "tight", label: "Tight" },
+                  { key: "balanced", label: "Balanced" },
+                  { key: "exploratory", label: "Exploratory" },
+                ].map(({ key, label }, idx) => (
+                  <button
+                    key={key}
+                    onClick={() => setTightness(key)}
+                    style={{
+                      padding: "4px 10px", fontSize: 11, fontFamily: "inherit",
+                      cursor: "pointer", border: "none",
+                      borderLeft: idx > 0 ? `1px solid ${c.borderMid}` : "none",
+                      background: tightness === key ? c.ink : "transparent",
+                      color: tightness === key ? c.white : c.muted,
+                      fontWeight: tightness === key ? 500 : 400,
+                      transition: "background 0.12s, color 0.12s",
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
               <button
-                onClick={handleRegen}
-                disabled={regenOnCooldown || generatingSugs}
-                style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 11, color: c.blue700, fontWeight: 500, padding: 0 }}
+                onClick={handleGenerateNewClusters}
+                disabled={runningNewClusters}
+                style={{ ...btnSec, fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "flex", alignItems: "center", gap: 6 }}
               >
-                Regenerate?
+                {runningNewClusters ? (
+                  <>
+                    <span style={{
+                      display: "inline-block", width: 10, height: 10, borderRadius: "50%",
+                      border: `1.5px solid ${c.border}`, borderTopColor: c.muted,
+                      animation: "clusterSpinner 0.7s linear infinite",
+                    }} />
+                    Generating…
+                  </>
+                ) : "Generate suggestions"}
               </button>
             </div>
-          )}
+          </div>
 
-          {projectInputs.length < 3 ? (
+          {/* Panel 2 body */}
+          {newClustersError ? (
             <div style={{
-              padding: "16px 18px", background: c.white,
-              border: `1px solid ${c.border}`, borderRadius: 9,
-              fontSize: 12, color: c.hint,
+              padding: "13px 16px", background: c.red50,
+              border: `1px solid ${c.redBorder}`, borderRadius: 9,
+              fontSize: 12, color: c.red800,
             }}>
-              Add at least 3 inputs with descriptions to generate cluster suggestions.
+              {newClustersError}
             </div>
-          ) : loadingSuggestions || generatingSugs ? (
+          ) : runningNewClusters ? (
             <div style={{
-              padding: "32px 18px", background: c.white,
+              padding: "36px 24px", background: c.surfaceAlt,
               border: `1px solid ${c.border}`, borderRadius: 9,
               display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
             }}>
@@ -1201,71 +1397,38 @@ export default function Clustering({ appState }) {
                 border: `2px solid ${c.border}`, borderTopColor: c.ink,
                 animation: "clusterSpinner 0.7s linear infinite",
               }} />
-              <div style={{ fontSize: 12, color: c.muted }}>
-                {generatingSugs ? "Analysing your inputs…" : "Loading suggestions…"}
-              </div>
-              <style>{`@keyframes clusterSpinner { to { transform: rotate(360deg); } }`}</style>
+              <div style={{ fontSize: 12, color: c.muted }}>Generating suggestions…</div>
             </div>
-          ) : suggestionsError ? (
+          ) : visibleNewClusterSugs.length === 0 ? (
             <div style={{
-              padding: "14px 18px", background: c.red50,
-              border: `1px solid ${c.redBorder}`, borderRadius: 9,
-              fontSize: 12, color: c.red800,
+              padding: "32px 24px", background: c.surfaceAlt,
+              border: `1px solid ${c.border}`, borderRadius: 9, textAlign: "center",
             }}>
-              {suggestionsError}
+              <div style={{ fontSize: 12, color: c.muted, marginBottom: 14 }}>
+                {newClusterSugs.length === 0 && dismissedNewClusters.length > 0
+                  ? "No new patterns found in unassigned inputs."
+                  : "Group remaining unassigned inputs into new cluster patterns."}
+              </div>
+              <button onClick={handleGenerateNewClusters} style={{ ...btnSec, fontSize: 12 }}>
+                Generate suggestions
+              </button>
             </div>
-          ) : visibleSugs.length === 0 ? (
-            lastRegenReason === "no_clusters" ? (
-              <div style={{
-                padding: "16px 18px", background: c.white,
-                border: `1px solid ${c.border}`, borderRadius: 9,
-                fontSize: 12, color: c.hint,
-              }}>
-                Your inputs are too varied to suggest clear clusters yet. Try adding more inputs on a focused topic.
-              </div>
-            ) : (
-              <div style={{
-                padding: "28px 24px", background: c.white,
-                border: `1px solid ${c.border}`, borderRadius: 9,
-                textAlign: "center",
-              }}>
-                <div style={{ fontSize: 13, color: c.muted, marginBottom: 6 }}>No AI suggestions yet.</div>
-                <div style={{ fontSize: 11, color: c.hint, marginBottom: 18 }}>
-                  Run the AI to group your inputs by semantic similarity.
-                </div>
-                <button
-                  onClick={handleRegen}
-                  disabled={regenOnCooldown}
-                  style={{ ...btnP, opacity: regenOnCooldown ? 0.5 : 1 }}
-                >
-                  Generate suggestions
-                </button>
-              </div>
-            )
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {mainSugs.map((sug) => (
+              {visibleNewClusterSugs.map((sug) => (
                 <SuggestionCard
                   key={sug.id}
                   suggestion={sug}
                   inputs={projectInputs}
-                  onAccept={handleAcceptSuggestion}
-                  onDismiss={handleDismissSuggestion}
-                  isFadingOut={fadingOutIds.has(sug.id)}
-                />
-              ))}
-              {weakSugs.map((sug) => (
-                <SuggestionCard
-                  key={sug.id}
-                  suggestion={sug}
-                  inputs={projectInputs}
-                  onAccept={handleAcceptSuggestion}
-                  onDismiss={handleDismissSuggestion}
-                  isFadingOut={fadingOutIds.has(sug.id)}
+                  onAccept={handleAcceptNewCluster}
+                  onDismiss={handleDismissNewCluster}
+                  isFadingOut={newClusterFadingIds.has(sug.id)}
                 />
               ))}
             </div>
           )}
+
+          <style>{`@keyframes clusterSpinner { to { transform: rotate(360deg); } }`}</style>
         </div>
 
       </div>
