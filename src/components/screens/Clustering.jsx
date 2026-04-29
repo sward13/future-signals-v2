@@ -1005,6 +1005,8 @@ export default function Clustering({ appState }) {
 
   const anySelected = selectedInputIds.length > 0;
 
+  if (!project) return null;
+
   // ── Canvas ─────────────────────────────────────────────────────────
   return (
     <>
