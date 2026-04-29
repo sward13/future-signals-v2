@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { c, inp, ta, btnP, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { SubtypeTag, HorizTag, Tag } from "../shared/Tag.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
+import { supabase } from "../../lib/supabase.js";
 
 const SUBTYPES = ["Trend", "Driver", "Tension"];
 const HORIZONS  = ["H1", "H2", "H3"];
@@ -63,6 +64,12 @@ function AssignPicker({ availableInputs, onAssign, onClose }) {
   );
 }
 
+const RELATED_CATEGORIES = [
+  { key: "likely",     label: "Likely matches",  dot: c.green700,  desc: "Supports or extends"     },
+  { key: "possible",   label: "Possible matches", dot: c.blue700,   desc: "Partial or ambiguous"   },
+  { key: "challenges", label: "Challenges",       dot: c.amber700,  desc: "Complicates or strains" },
+];
+
 export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSave, onRemoveInput, onAssignInput, onDelete }) {
   const cluster = clusters.find((cl) => cl.id === clusterId) || null;
 
@@ -70,6 +77,12 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
   const [fields, setFields] = useState({});
   const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Related inputs panel state
+  const [relatedResults,    setRelatedResults]    = useState(null);   // null = never run
+  const [loadingRelated,    setLoadingRelated]    = useState(false);
+  const [relatedError,      setRelatedError]      = useState(null);
+  const [dismissedIds,      setDismissedIds]      = useState(new Set());
 
   useEffect(() => {
     if (cluster) {
@@ -84,6 +97,11 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
     setEditing(false);
     setPickerOpen(false);
     setConfirmDelete(false);
+    // Reset related panel when a different cluster is opened
+    setRelatedResults(null);
+    setLoadingRelated(false);
+    setRelatedError(null);
+    setDismissedIds(new Set());
   }, [clusterId]);
 
   if (!cluster) return null;
@@ -99,6 +117,39 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
     setFields({ name: cluster.name || "", subtype: cluster.subtype || "Trend", horizon: cluster.horizon || "H1", likelihood: cluster.likelihood || "Plausible", description: cluster.description || "" });
     setEditing(false);
   };
+
+  const handleFindRelated = async () => {
+    if (loadingRelated) return;
+    setLoadingRelated(true);
+    setRelatedError(null);
+    setDismissedIds(new Set());
+    try {
+      const { data, error } = await supabase.functions.invoke("find-related-inputs", {
+        body: { cluster_id: cluster.id, project_id: cluster.project_id },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      setRelatedResults(data);
+    } catch (err) {
+      setRelatedError(err.message || "Failed to find related inputs.");
+    } finally {
+      setLoadingRelated(false);
+    }
+  };
+
+  const handleAddFromRelated = (result) => {
+    onAssignInput(result.input_id, cluster.id);
+    setDismissedIds((prev) => new Set([...prev, result.input_id]));
+  };
+
+  const handleDismissFromRelated = (inputId) => {
+    setDismissedIds((prev) => new Set([...prev, inputId]));
+  };
+
+  const totalRelatedVisible = relatedResults
+    ? RELATED_CATEGORIES.flatMap((cat) => relatedResults[cat.key] || [])
+        .filter((r) => !dismissedIds.has(r.input_id)).length
+    : 0;
 
   return (
     <>
@@ -227,7 +278,7 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
           <div style={{ height: 1, background: c.border, marginBottom: 16 }} />
 
           {/* Linked inputs */}
-          <div style={{ marginBottom: 8 }}>
+          <div style={{ marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>
                 Linked inputs ({linkedInputs.length})
@@ -274,6 +325,153 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: c.border, margin: "4px 0 14px" }} />
+
+          {/* ── Related inputs ──────────────────────────────────── */}
+          <div style={{ marginBottom: 8 }}>
+
+            {/* Section header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>
+                  🔍 Related inputs
+                </div>
+                {relatedResults !== null && totalRelatedVisible > 0 && (
+                  <span style={{
+                    fontSize: 10, padding: "1px 6px", borderRadius: 8,
+                    background: "rgba(0,0,0,0.06)", color: c.muted,
+                  }}>
+                    {totalRelatedVisible}
+                  </span>
+                )}
+              </div>
+              {relatedResults !== null && !loadingRelated ? (
+                <button
+                  onClick={handleFindRelated}
+                  style={{ ...btnG, fontSize: 11 }}
+                >
+                  Re-run
+                </button>
+              ) : (
+                <button
+                  onClick={handleFindRelated}
+                  disabled={loadingRelated}
+                  style={{ ...btnSec, fontSize: 11, padding: "4px 10px" }}
+                >
+                  Find related
+                </button>
+              )}
+            </div>
+
+            {/* Body */}
+            {loadingRelated ? (
+              <div style={{
+                padding: "18px 14px",
+                background: c.surfaceAlt, border: `1px solid ${c.border}`, borderRadius: 8,
+                display: "flex", alignItems: "center", gap: 8,
+              }}>
+                <div style={{
+                  width: 14, height: 14, borderRadius: "50%", flexShrink: 0,
+                  border: `2px solid ${c.border}`, borderTopColor: c.muted,
+                  animation: "relatedSpinner 0.7s linear infinite",
+                }} />
+                <span style={{ fontSize: 12, color: c.muted }}>Searching…</span>
+                <style>{`@keyframes relatedSpinner { to { transform: rotate(360deg); } }`}</style>
+              </div>
+            ) : relatedError ? (
+              <div style={{
+                padding: "10px 12px", background: c.red50,
+                border: `1px solid ${c.redBorder}`, borderRadius: 8,
+                fontSize: 11, color: c.red800,
+              }}>
+                {relatedError}
+              </div>
+            ) : relatedResults === null ? (
+              <div style={{
+                padding: "20px 16px", background: c.surfaceAlt,
+                border: `1px solid ${c.border}`, borderRadius: 8,
+                textAlign: "center",
+              }}>
+                <div style={{ fontSize: 11, color: c.muted, lineHeight: 1.55, marginBottom: 12 }}>
+                  Search across all project inputs to find what supports, extends, or challenges this cluster.
+                </div>
+                <button onClick={handleFindRelated} style={{ ...btnP, fontSize: 11, padding: "6px 16px" }}>
+                  Find related inputs
+                </button>
+              </div>
+            ) : totalRelatedVisible === 0 ? (
+              <div style={{
+                padding: "12px 14px", background: c.surfaceAlt,
+                border: `1px solid ${c.border}`, borderRadius: 8,
+                fontSize: 12, color: c.muted, textAlign: "center",
+              }}>
+                ✓ All suggestions reviewed.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {RELATED_CATEGORIES.map(({ key, label, dot, desc }) => {
+                  const items = (relatedResults[key] || []).filter((r) => !dismissedIds.has(r.input_id));
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={key}>
+                      {/* Category header */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
+                        <span style={{
+                          width: 7, height: 7, borderRadius: "50%",
+                          background: dot, display: "inline-block", flexShrink: 0,
+                        }} />
+                        <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.ink, fontWeight: 500 }}>
+                          {label}
+                        </span>
+                        <span style={{ fontSize: 10, color: c.hint, fontStyle: "italic", marginLeft: "auto" }}>
+                          {desc}
+                        </span>
+                      </div>
+                      {/* Result cards */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {items.map((result) => (
+                          <div key={result.input_id} style={{
+                            padding: "10px 12px",
+                            background: c.white, border: `1px solid ${c.border}`, borderRadius: 8,
+                          }}>
+                            <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 4, lineHeight: 1.35 }}>
+                              {result.title}
+                            </div>
+                            <div style={{
+                              fontSize: 11, color: c.muted, lineHeight: 1.55, marginBottom: 9,
+                              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                            }}>
+                              {result.rationale}
+                            </div>
+                            <div style={{ display: "flex", gap: 5 }}>
+                              <button
+                                onClick={() => handleAddFromRelated(result)}
+                                style={{
+                                  fontSize: 11, padding: "3px 11px", borderRadius: 5,
+                                  background: c.brand, color: c.white, border: "none",
+                                  cursor: "pointer", fontFamily: "inherit", fontWeight: 500,
+                                }}
+                              >
+                                Add
+                              </button>
+                              <button
+                                onClick={() => handleDismissFromRelated(result.input_id)}
+                                style={{ ...btnG, fontSize: 11, padding: "3px 9px" }}
+                              >
+                                Dismiss
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
