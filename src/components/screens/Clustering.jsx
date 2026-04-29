@@ -816,7 +816,11 @@ export default function Clustering({ appState }) {
   }, []);
 
   useEffect(() => {
-    if (!project || !workspaceId) { setDbSuggestions([]); return; }
+    if (!project || !workspaceId) {
+      setAssignmentSugs([]);
+      setNewClusterSugs([]);
+      return;
+    }
     loadSuggestions(project.id, workspaceId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id]);
