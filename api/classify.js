@@ -20,8 +20,13 @@ const STEEPLED = [
 const BATCH_SIZE = 100;           // reduced from 200 — safer within 60s budget
 const CLASSIFY_CONCURRENCY = 25;
 
-const SYSTEM_PROMPT = `You are a strategic foresight analyst. Given a news item, return JSON only with two fields:
-- "steepled": array of applicable categories from [${STEEPLED.join(', ')}] (1-3 categories)
+const SYSTEM_PROMPT = `You are a strategic foresight analyst. Given a news item, first determine whether it is relevant to strategic foresight — evidence of structural change in society, technology, economics, policy, environment, or culture that a professional analyst would track.
+
+If it is NOT relevant (commercial content, deals, product promotions, sponsored content, lifestyle content with no structural implications): return exactly: {"relevant": false}
+
+If it IS relevant, return JSON with three fields:
+- "relevant": true
+- "steepled": array of 1-3 categories from [${STEEPLED.join(', ')}]
 - "summary": 2-3 sentence summary focusing on future implications
 
 Return only valid JSON, no markdown.`;
@@ -66,9 +71,10 @@ export default async function handler(req, res) {
         classifyResults.push(...chunkResults);
       }
 
-      // Parse classify results — split into classified vs failed
-      const classified = [];
-      const failedIds = [];
+      // Parse classify results — split into classified, rejected, and failed
+      const classified  = [];
+      const rejectedIds = [];
+      const failedIds   = [];
 
       candidates.forEach((candidate, i) => {
         const result = classifyResults[i];
@@ -77,23 +83,38 @@ export default async function handler(req, res) {
           failedIds.push(candidate.id);
           return;
         }
-        let steepled = [];
+        let steepled  = [];
         let summaryAi = null;
         try {
           const parsed = JSON.parse(result.value.choices[0].message.content);
-          steepled = parsed.steepled || [];
-          summaryAi = parsed.summary || null;
+          // Change 2: check relevant flag before processing
+          if (parsed.relevant === false) {
+            rejectedIds.push(candidate.id);
+            return; // skip embedding and scored update
+          }
+          // relevant === true or field absent (backwards compat with old prompt) — proceed
+          steepled  = parsed.steepled || [];
+          summaryAi = parsed.summary  || null;
         } catch {
-          // JSON parse failed — continue with empty steepled
+          // JSON parse failed — proceed with empty steepled (fail open)
         }
         classified.push({ ...candidate, steepled, summaryAi, classifyUsage: result.value.usage });
       });
 
-      // Mark failed candidates as expired so they don't block the queue
+      // Mark API-failed candidates as expired so they don't block the queue
       if (failedIds.length > 0) {
         await Promise.allSettled(
           failedIds.map((id) =>
             supabase.from('candidates').update({ status: 'expired' }).eq('id', id)
+          )
+        );
+      }
+
+      // Mark relevance-rejected candidates — no embedding needed
+      if (rejectedIds.length > 0) {
+        await Promise.allSettled(
+          rejectedIds.map((id) =>
+            supabase.from('candidates').update({ status: 'rejected' }).eq('id', id)
           )
         );
       }
