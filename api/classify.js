@@ -17,7 +17,7 @@ const STEEPLED = [
   'Political', 'Legal', 'Ethical', 'Demographic'
 ];
 
-const BATCH_SIZE = 100;           // reduced from 200 — safer within 60s budget
+const BATCH_SIZE = 50;            // reduced from 100 — conservative limit given longer relevance prompt
 const CLASSIFY_CONCURRENCY = 25;
 
 const SYSTEM_PROMPT = `You are a strategic foresight analyst. Given a news item, first determine whether it is relevant to strategic foresight — evidence of structural change in society, technology, economics, policy, environment, or culture that a professional analyst would track.
