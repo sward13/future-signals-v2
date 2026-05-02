@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import { cosineSimilarity, CREDIBILITY_SCORES } from './lib/scoring.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -9,19 +10,6 @@ const supabase = createClient(
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const SCORE_THRESHOLD = 40;
-const CREDIBILITY_SCORES = {
-  institutional: 100,
-  specialist: 75,
-  general: 50,
-  unvetted: 25,
-};
-
-function cosineSimilarity(a, b) {
-  const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
-  const magA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
-  const magB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
-  return dot / (magA * magB);
-}
 
 function averageSimilarity(embedding, corpus) {
   if (!corpus.length) return 0;

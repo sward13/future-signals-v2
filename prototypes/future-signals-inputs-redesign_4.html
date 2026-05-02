@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Future Signals — Inputs (Light Mode Redesign)</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --color-bg: #ffffff;
+    --color-bg-secondary: #F7F7F5;
+    --color-text-primary: #1a1a1a;
+    --color-text-secondary: #6b7280;
+    --color-text-tertiary: #9ca3af;
+    --color-border: rgba(0,0,0,0.09);
+    --color-border-mid: rgba(0,0,0,0.16);
+    --brand: #3B82F6;
+    --brand-bg: #EFF6FF;
+    --brand-bg-deep: #F0F7FF;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+
+  html, body { height: 100%; font-family: var(--font); background: var(--color-bg-secondary); overflow: hidden; }
+
+  .layout { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+
+  /* ─── Sidebar ─── */
+  .sidebar {
+    width: 196px; flex-shrink: 0;
+    background: var(--color-bg-secondary);
+    border-right: 0.5px solid var(--color-border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .sidebar-logo {
+    padding: 14px 16px 12px;
+    border-bottom: 0.5px solid var(--color-border);
+    display: flex; align-items: center; gap: 9px;
+  }
+  .logo-mark { width: 24px; height: 24px; border-radius: 6px; background: linear-gradient(135deg, #3B82F6, #A78BFA); flex-shrink: 0; }
+  .logo-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+  .sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+  .nav-global { padding: 2px 8px; }
+  .nav-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 8px; font-size: 12.5px; color: var(--color-text-secondary);
+    border-radius: 6px; cursor: default; margin-bottom: 1px;
+  }
+  .nav-item-inner { display: flex; align-items: center; gap: 8px; }
+  .nav-active {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 8px 6px 6px; font-size: 12.5px; color: var(--brand);
+    background: var(--brand-bg); border-radius: 6px; font-weight: 500;
+    border-left: 2px solid var(--brand); cursor: default; margin-bottom: 1px;
+  }
+  .nav-divider { height: 0.5px; background: var(--color-border); margin: 8px 0; }
+  .nav-project { padding: 2px 8px; }
+  .badge-red { font-size: 10px; background: #FEE2E2; color: #991B1B; padding: 1px 6px; border-radius: 9px; font-weight: 500; }
+  .count { font-size: 11px; color: var(--color-text-tertiary); }
+  .count-blue { font-size: 11px; color: var(--brand); font-weight: 500; }
+  .sidebar-footer { border-top: 0.5px solid var(--color-border); padding: 11px 16px; }
+  .user-row { display: flex; align-items: center; gap: 8px; }
+  .user-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--brand); display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: 500; flex-shrink: 0; }
+  .user-name { font-size: 11.5px; font-weight: 500; color: var(--color-text-primary); }
+  .user-plan { font-size: 10px; color: var(--color-text-tertiary); }
+
+  /* ─── Main ─── */
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--color-bg); overflow: hidden; }
+  .main-header { padding: 18px 28px 0; border-bottom: 0.5px solid var(--color-border); flex-shrink: 0; }
+  .breadcrumb { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 7px; }
+  .title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 11px; }
+  .page-title { font-size: 22px; font-weight: 500; color: var(--color-text-primary); line-height: 1.2; margin-right: 10px; }
+  .title-chips { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chip-btn { font-size: 11px; padding: 3px 10px; border: 0.5px solid var(--color-border-mid); border-radius: 5px; background: transparent; color: var(--color-text-secondary); cursor: default; }
+  .chip-info { font-size: 11px; padding: 3px 10px; border-radius: 5px; background: #DBEAFE; color: #1E40AF; }
+  .key-question { padding: 9px 14px; border-left: 2px solid var(--brand); background: var(--brand-bg-deep); border-radius: 0 6px 6px 0; margin-bottom: 14px; display: inline-block; max-width: 640px; }
+  .kq-label { font-size: 9px; font-weight: 500; color: var(--brand); letter-spacing: 0.09em; text-transform: uppercase; margin-bottom: 3px; }
+  .kq-text { font-size: 13px; color: var(--color-text-primary); font-style: italic; line-height: 1.5; }
+  .cta-row { display: flex; gap: 8px; flex-shrink: 0; padding-top: 2px; }
+  .btn-secondary { font-size: 12px; padding: 8px 16px; border: 0.5px solid var(--color-border-mid); border-radius: 6px; background: transparent; color: var(--color-text-secondary); cursor: default; white-space: nowrap; }
+  .btn-primary { font-size: 12px; padding: 8px 16px; border: none; border-radius: 6px; background: var(--brand); color: white; cursor: default; white-space: nowrap; font-weight: 500; }
+  .horizons-wrap { margin-bottom: 14px; }
+  .horizons-label { font-size: 9px; font-weight: 500; color: var(--color-text-tertiary); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+  .horizons-bar { display: flex; border-radius: 6px; overflow: hidden; border: 0.5px solid var(--color-border); height: 34px; }
+  .h1-seg { flex: 1; background: #DCFCE7; display: flex; align-items: center; justify-content: center; border-right: 0.5px solid var(--color-border); }
+  .h2-seg { flex: 2.4; background: #DBEAFE; display: flex; align-items: center; justify-content: center; border-right: 0.5px solid var(--color-border); }
+  .h3-seg { flex: 1.3; background: #FEF3C7; display: flex; align-items: center; justify-content: center; }
+  .h-label { font-size: 12px; font-weight: 500; }
+  .horizons-dates { display: flex; margin-top: 4px; font-size: 10px; color: var(--color-text-tertiary); }
+
+  /* Filter bar */
+  .filter-bar { padding: 0 28px; display: flex; align-items: center; gap: 8px; border-bottom: 0.5px solid var(--color-border); flex-shrink: 0; }
+  .tab-active { font-size: 13px; padding: 9px 14px; border: none; border-bottom: 2px solid var(--brand); background: transparent; color: var(--brand); font-weight: 500; cursor: default; white-space: nowrap; }
+  .tab-inactive { font-size: 13px; padding: 9px 14px; border: none; border-bottom: 2px solid transparent; background: transparent; color: var(--color-text-secondary); cursor: default; white-space: nowrap; }
+  .filter-spacer { flex: 1; }
+  .search-input { font-size: 12px; padding: 6px 12px; width: 180px; border: 0.5px solid var(--color-border-mid); border-radius: 5px; background: transparent; color: var(--color-text-primary); outline: none; }
+  .filter-btn { font-size: 11.5px; padding: 6px 12px; border: 0.5px solid var(--color-border-mid); border-radius: 5px; background: transparent; color: var(--color-text-secondary); cursor: default; white-space: nowrap; }
+  .filter-btn-active { font-size: 11.5px; padding: 6px 12px; border: 0.5px solid #BFDBFE; border-radius: 5px; background: var(--brand-bg); color: var(--brand); cursor: default; white-space: nowrap; font-weight: 500; }
+
+  /* Table */
+  .table-wrap { flex: 1; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  thead { position: sticky; top: 0; background: var(--color-bg); z-index: 1; }
+  th { text-align: left; padding: 10px 8px; font-weight: 500; font-size: 10px; color: var(--color-text-tertiary); letter-spacing: 0.07em; text-transform: uppercase; border-bottom: 0.5px solid var(--color-border); }
+  th:first-child { padding-left: 28px; width: 40px; }
+  th:last-child { padding-right: 28px; }
+  td { padding: 10px 8px; vertical-align: middle; border-bottom: 0.5px solid var(--color-border); }
+  td:first-child { padding-left: 28px; }
+  td:last-child { padding-right: 28px; }
+  .td-title { color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; }
+  tr:hover td { background: #FAFAFA; }
+  .badge-confirmed { font-size: 11.5px; padding: 3px 9px; border-radius: 10px; background: #D1FAE5; color: #065F46; white-space: nowrap; }
+  .badge-established { font-size: 11.5px; padding: 3px 9px; border-radius: 10px; background: #DBEAFE; color: #1E40AF; white-space: nowrap; }
+  .badge-emerging { font-size: 11.5px; padding: 3px 9px; border-radius: 10px; background: #FEF3C7; color: #92400E; white-space: nowrap; }
+  .type-tag { font-size: 11.5px; padding: 2px 8px; border-radius: 4px; background: var(--color-bg-secondary); color: var(--color-text-secondary); }
+  .steepled-wrap { display: flex; gap: 4px; flex-wrap: nowrap; align-items: center; }
+  .steepled-tag { font-size: 10.5px; padding: 2px 6px; border-radius: 4px; background: var(--color-bg-secondary); color: var(--color-text-secondary); white-space: nowrap; }
+  .assign-btn { font-size: 11px; padding: 4px 11px; border: 0.5px solid var(--color-border-mid); border-radius: 5px; background: transparent; color: var(--color-text-secondary); cursor: default; white-space: nowrap; }
+
+  /* Right panel */
+  .right-panel { width: 240px; flex-shrink: 0; border-left: 0.5px solid var(--color-border); background: var(--color-bg); padding: 16px 14px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+  .right-card { border: 0.5px solid var(--color-border); border-radius: 8px; padding: 12px; }
+  .right-card-header { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .right-card-title { font-size: 12px; font-weight: 500; color: var(--color-text-primary); display: flex; align-items: center; gap: 6px; flex: 1; }
+  .badge-built { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: #DCFCE7; color: #166534; }
+  .badge-zero  { font-size: 9px; padding: 2px 6px; border-radius: 4px; background: var(--color-bg-secondary); color: var(--color-text-tertiary); }
+  .right-btn { font-size: 10px; padding: 4px 9px; border: 0.5px solid var(--color-border-mid); border-radius: 4px; background: transparent; color: var(--color-text-secondary); cursor: default; white-space: nowrap; }
+  .cluster-inner { border: 0.5px solid var(--color-border); border-radius: 6px; padding: 10px; background: var(--color-bg-secondary); }
+  .cluster-chips { display: flex; gap: 5px; margin-bottom: 6px; align-items: center; }
+  .chip-driver { font-size: 10px; padding: 2px 7px; border-radius: 4px; background: #EDE9FE; color: #5B21B6; }
+  .chip-h1 { font-size: 10px; padding: 2px 7px; border-radius: 4px; background: #DCFCE7; color: #166534; }
+  .chip-inputs-ct { font-size: 10px; color: var(--color-text-tertiary); margin-left: auto; }
+  .cluster-name { font-size: 12px; color: var(--color-text-primary); line-height: 1.35; }
+  .right-body { font-size: 11px; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 9px; }
+  .right-link { font-size: 11px; color: var(--brand); cursor: default; }
+  .details-item { font-size: 11px; color: var(--color-text-tertiary); padding: 3px 0; }
+  svg { display: inline-block; vertical-align: middle; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark"></div>
+      <span class="logo-name">Future Signals</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-global">
+        <div class="nav-item">
+          <div class="nav-item-inner">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.2"/></svg>
+            Dashboard
+          </div>
+        </div>
+        <div class="nav-item">
+          <div class="nav-item-inner">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 8.5L4 4H9L11.5 8.5V12H1.5V8.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+            Inbox
+          </div>
+          <span class="badge-red">18</span>
+        </div>
+      </div>
+      <div class="nav-divider"></div>
+      <div class="nav-project">
+        <div class="nav-active">
+          <div class="nav-item-inner">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="0.5" y="0.5" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M3.5 4.5H9.5M3.5 6.5H9.5M3.5 8.5H7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            Inputs
+          </div>
+          <span class="count-blue">84</span>
+        </div>
+        <div class="nav-item">
+          <div class="nav-item-inner">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1L8.5 5H12L9.5 7.5L10.5 11L6.5 9L2.5 11L3.5 7.5L1 5H4.5L6.5 1Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+            Clusters
+          </div>
+          <span class="count">1</span>
+        </div>
+        <div class="nav-item">
+          <div class="nav-item-inner">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1L12 6.5L6.5 12L1 6.5L6.5 1Z" stroke="currentColor" stroke-width="1.2"/></svg>
+            System Map
+          </div>
+          <span class="count">1</span>
+        </div>
+        <div class="nav-item">
+          <div class="nav-item-inner">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 10C3.5 7 5.5 6 7 7C8.5 8 10 5 11 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            System Analysis
+          </div>
+        </div>
+        <div class="nav-item">
+          <div class="nav-item-inner">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5L11.5 6.5L6.5 11.5L1.5 6.5L6.5 1.5Z" stroke="currentColor" stroke-width="1.2"/><circle cx="6.5" cy="6.5" r="2" stroke="currentColor" stroke-width="1.1"/></svg>
+            Future Models
+          </div>
+        </div>
+        <div class="nav-item" style="margin-top:1px;">
+          <div class="nav-item-inner">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 2V9M3.5 6.5L6.5 9.5L9.5 6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 11H11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            Export
+          </div>
+        </div>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="user-avatar">S</div>
+        <div style="min-width:0;">
+          <div class="user-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">sam@aldermanandw...</div>
+          <div class="user-plan">Beginner</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="main-header">
+      <div class="breadcrumb">Projects › Future of data centers</div>
+      <div class="title-row">
+        <div style="flex:1;min-width:0;">
+          <div class="title-chips">
+            <span class="page-title">Future of data centers</span>
+            <button class="chip-btn" style="display:flex;align-items:center;gap:5px;">
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="5.5" r="2" stroke="currentColor" stroke-width="1.1"/><path d="M5.5 1V2M5.5 9V10M1 5.5H2M9 5.5H10M2.1 2.1L2.8 2.8M8.2 8.2L8.9 8.9M8.9 2.1L8.2 2.8M2.8 8.2L2.1 8.9" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+              Project settings
+            </button>
+            <span class="chip-info">Technology & AI</span>
+          </div>
+          <div class="key-question">
+            <div class="kq-label">Key question</div>
+            <div class="kq-text">"What impact will the increasing regulation of data centers have on AI adoption?"</div>
+          </div>
+        </div>
+        <div class="cta-row">
+          <button class="btn-secondary">Add from Inbox</button>
+          <button class="btn-primary">Add an input</button>
+        </div>
+      </div>
+      <div class="horizons-wrap">
+        <div class="horizons-label">Time horizons</div>
+        <div class="horizons-bar">
+          <div class="h1-seg"><span class="h-label" style="color:#166534;">H1</span></div>
+          <div class="h2-seg"><span class="h-label" style="color:#1E40AF;">H2</span></div>
+          <div class="h3-seg"><span class="h-label" style="color:#92400E;">H3</span></div>
+        </div>
+        <div class="horizons-dates">
+          <span style="flex:1;">2026–2029</span>
+          <span style="flex:2.4;text-align:center;">2029–2035</span>
+          <span style="flex:1.3;text-align:right;">2035–2041</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <button class="tab-active">All <span style="font-weight:400;opacity:0.65;">84</span></button>
+      <button class="tab-inactive">Unassigned <span style="opacity:0.65;">81</span></button>
+      <button class="tab-inactive">In cluster <span style="opacity:0.65;">3</span></button>
+      <div class="filter-spacer"></div>
+      <input class="search-input" placeholder="Search inputs…" />
+      <button class="filter-btn">Type ↓</button>
+      <button class="filter-btn">Horizon ↓</button>
+      <button class="filter-btn-active">STEEPLED ↓</button>
+      <button class="filter-btn">+ Add</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th><input type="checkbox" style="width:13px;height:13px;" /></th>
+            <th>Title</th>
+            <th style="width:74px;">Type</th>
+            <th style="width:114px;">Quality</th>
+            <th style="width:118px;">STEEPLED</th>
+            <th style="width:38px;">H</th>
+            <th style="width:168px;">Cluster</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <aside class="right-panel">
+    <div class="right-card">
+      <div class="right-card-header">
+        <div class="right-card-title">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1L8.5 5H12L9.5 7.5L10.5 11L6.5 9L2.5 11L3.5 7.5L1 5H4.5L6.5 1Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+          Clusters
+        </div>
+      </div>
+      <button style="width:100%;font-size:11.5px;padding:7px 12px;border:0.5px solid var(--color-border-mid);border-radius:6px;background:transparent;color:var(--color-text-secondary);cursor:default;margin-bottom:10px;text-align:center;">+ Build a cluster</button>
+      <div class="cluster-inner">
+        <div class="cluster-chips">
+          <span class="chip-driver">Driver</span>
+          <span class="chip-h1">H1</span>
+          <span class="chip-inputs-ct">3 inputs</span>
+        </div>
+        <div class="cluster-name">Ethics and Practicality in AI Development</div>
+      </div>
+    </div>
+    <div class="right-card" style="padding:10px;">
+      <div class="right-card-header" style="margin-bottom:8px;">
+        <div class="right-card-title">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1L12 6.5L6.5 12L1 6.5L6.5 1Z" stroke="currentColor" stroke-width="1.2"/></svg>
+          System Map
+          <span style="font-size:9px;padding:2px 6px;border-radius:4px;background:#DCFCE7;color:#166534;">Built</span>
+        </div>
+      </div>
+      <!-- Thumbnail: clickable, navigates to map -->
+      <div style="border:0.5px solid var(--color-border);border-radius:6px;overflow:hidden;cursor:pointer;background:#FAF9F7;">
+        <svg viewBox="0 0 212 130" width="100%" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+
+          <!-- Connection lines (behind nodes) -->
+          <!-- Inhibits: tension-top → trend-mid (brown curve) -->
+          <path d="M 68 38 C 80 60, 85 68, 95 72" stroke="#C2813A" stroke-width="1.2" fill="none" marker-end="url(#arr-brown)"/>
+          <!-- Inhibits: tension-left → trend-mid2 (brown) -->
+          <path d="M 42 78 C 58 78, 72 82, 82 86" stroke="#C2813A" stroke-width="1.2" fill="none" marker-end="url(#arr-brown)"/>
+          <!-- Drives: trend-mid → tension-right (blue) -->
+          <path d="M 130 66 C 148 58, 155 55, 162 56" stroke="#3B82F6" stroke-width="1.2" fill="none" marker-end="url(#arr-blue)"/>
+          <!-- Accelerates: trend-mid2 → tension-right (teal) -->
+          <path d="M 130 88 C 148 82, 158 72, 162 66" stroke="#0D9488" stroke-width="1.2" fill="none" marker-end="url(#arr-teal)"/>
+          <!-- Accelerates: trend-bottom → tension-right (teal) -->
+          <path d="M 110 108 C 138 108, 158 90, 165 76" stroke="#0D9488" stroke-width="1.2" fill="none" marker-end="url(#arr-teal)"/>
+          <!-- Feedback loop: tension-right self-loop (dashed orange) -->
+          <path d="M 194 72 C 208 80, 210 96, 196 100" stroke="#D97706" stroke-width="1" fill="none" stroke-dasharray="3,2" marker-end="url(#arr-orange)"/>
+
+          <!-- Edge labels -->
+          <text x="72" y="57" font-size="6" fill="#C2813A" font-family="-apple-system,sans-serif">Inhibits</text>
+          <text x="50" y="75" font-size="6" fill="#C2813A" font-family="-apple-system,sans-serif">Inhibits</text>
+          <text x="141" y="56" font-size="6" fill="#3B82F6" font-family="-apple-system,sans-serif">Drives</text>
+          <text x="139" y="82" font-size="6" fill="#0D9488" font-family="-apple-system,sans-serif">Accelerates</text>
+          <text x="124" y="113" font-size="6" fill="#0D9488" font-family="-apple-system,sans-serif">Accelerates</text>
+          <text x="196" y="90" font-size="5.5" fill="#D97706" font-family="-apple-system,sans-serif">Feedback</text>
+
+          <!-- Arrowhead markers -->
+          <defs>
+            <marker id="arr-brown" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" fill="#C2813A"/></marker>
+            <marker id="arr-blue"  markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" fill="#3B82F6"/></marker>
+            <marker id="arr-teal"  markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" fill="#0D9488"/></marker>
+            <marker id="arr-orange" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3 z" fill="#D97706"/></marker>
+          </defs>
+
+          <!-- Node: Tension top-left -->
+          <rect x="18" y="16" width="52" height="30" rx="4" fill="white" stroke="#E5E7EB" stroke-width="0.5"/>
+          <rect x="22" y="20" width="22" height="8" rx="3" fill="#FEF3C7"/>
+          <text x="24" y="26.5" font-size="5" fill="#92400E" font-family="-apple-system,sans-serif" font-weight="500">Tension</text>
+          <rect x="46" y="20" width="14" height="8" rx="3" fill="#DCFCE7"/>
+          <text x="48" y="26.5" font-size="5" fill="#166534" font-family="-apple-system,sans-serif" font-weight="500">H1</text>
+          <text x="22" y="35" font-size="5.5" fill="#1a1a1a" font-family="-apple-system,sans-serif">Infrastructure &amp;</text>
+          <text x="22" y="42" font-size="5.5" fill="#1a1a1a" font-family="-apple-system,sans-serif">Sentiment</text>
+
+          <!-- Node: Tension left-mid -->
+          <rect x="4" y="62" width="40" height="28" rx="4" fill="white" stroke="#E5E7EB" stroke-width="0.5"/>
+          <rect x="8" y="66" width="22" height="8" rx="3" fill="#FEF3C7"/>
+          <text x="10" y="72.5" font-size="5" fill="#92400E" font-family="-apple-system,sans-serif" font-weight="500">Tension</text>
+          <rect x="32" y="66" width="8" height="8" rx="3" fill="#DCFCE7"/>
+          <text x="33.5" y="72.5" font-size="5" fill="#166534" font-family="-apple-system,sans-serif" font-weight="500">H1</text>
+          <text x="8" y="80" font-size="5.5" fill="#1a1a1a" font-family="-apple-system,sans-serif">Geopolitical</text>
+          <text x="8" y="86" font-size="5.5" fill="#1a1a1a" font-family="-apple-system,sans-serif">Influence</text>
+
+          <!-- Node: Trend center-top -->
+          <rect x="84" y="58" width="48" height="28" rx="4" fill="white" stroke="#E5E7EB" stroke-width="0.5"/>
+          <rect x="88" y="62" width="18" height="8" rx="3" fill="#EDE9FE"/>
+          <text x="90" y="68.5" font-size="5" fill="#5B21B6" font-family="-apple-system,sans-serif" font-weight="500">Trend</text>
+          <rect x="108" y="62" width="14" height="8" rx="3" fill="#DCFCE7"/>
+          <text x="110" y="68.5" font-size="5" fill="#166534" font-family="-apple-system,sans-serif" font-weight="500">H1</text>
+          <text x="88" y="76" font-size="5.5" fill="#1a1a1a" font-family="-apple-system,sans-serif">EV Infrastructure</text>
+          <text x="88" y="82" font-size="5.5" fill="#1a1a1a" font-family="-apple-system,sans-serif">&amp; Experience</text>
+
+          <!-- Node: Trend center-bottom -->
+          <rect x="84" y="92" width="48" height="22" rx="4" fill="white" stroke="#E5E7EB" stroke-width="0.5"/>
+          <rect x="88" y="96" width="18" height="8" rx="3" fill="#EDE9FE"/>
+          <text x="90" y="102.5" font-size="5" fill="#5B21B6" font-family="-apple-system,sans-serif" font-weight="500">Trend</text>
+          <rect x="108" y="96" width="14" height="8" rx="3" fill="#DBEAFE"/>
+          <text x="110" y="102.5" font-size="5" fill="#1E40AF" font-family="-apple-system,sans-serif" font-weight="500">H2</text>
+          <text x="88" y="110" font-size="5.5" fill="#1a1a1a" font-family="-apple-system,sans-serif">Falling battery prices</text>
+
+          <!-- Node: Trend bottom -->
+          <rect x="66" y="116" width="48" height="12" rx="4" fill="white" stroke="#E5E7EB" stroke-width="0.5"/>
+          <rect x="70" y="119" width="18" height="7" rx="3" fill="#EDE9FE"/>
+          <text x="72" y="124.5" font-size="5" fill="#5B21B6" font-family="-apple-system,sans-serif" font-weight="500">Trend</text>
+          <rect x="90" y="119" width="14" height="7" rx="3" fill="#DCFCE7"/>
+          <text x="92" y="124.5" font-size="5" fill="#166534" font-family="-apple-system,sans-serif" font-weight="500">H1</text>
+          <text x="106" y="124.5" font-size="5.5" fill="#1a1a1a" font-family="-apple-system,sans-serif">Fuel Costs</text>
+
+          <!-- Node: Tension right (main) -->
+          <rect x="158" y="46" width="50" height="36" rx="4" fill="white" stroke="#E5E7EB" stroke-width="0.5"/>
+          <rect x="162" y="50" width="22" height="8" rx="3" fill="#FEF3C7"/>
+          <text x="164" y="56.5" font-size="5" fill="#92400E" font-family="-apple-system,sans-serif" font-weight="500">Tension</text>
+          <rect x="186" y="50" width="14" height="8" rx="3" fill="#DCFCE7"/>
+          <text x="188" y="56.5" font-size="5" fill="#166534" font-family="-apple-system,sans-serif" font-weight="500">H1</text>
+          <text x="162" y="65" font-size="5.5" fill="#1a1a1a" font-family="-apple-system,sans-serif">Shifting Consumer</text>
+          <text x="162" y="72" font-size="5.5" fill="#1a1a1a" font-family="-apple-system,sans-serif">Preferences</text>
+          <text x="162" y="79" font-size="5.5" fill="#1a1a1a" font-family="-apple-system,sans-serif">&amp; Sentiments</text>
+
+        </svg>
+        <!-- Hover overlay -->
+        <div style="padding:7px 10px;border-top:0.5px solid var(--color-border);background:white;font-size:11px;color:var(--color-text-secondary);display:flex;align-items:center;justify-content:space-between;">
+          <span>6 nodes · 6 relationships</span>
+          <span style="color:var(--brand);">Open →</span>
+        </div>
+      </div>
+    </div>
+    <div class="right-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <span style="font-size:12px;font-weight:500;color:var(--color-text-primary);">Project details</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div>
+          <div style="font-size:9px;font-weight:500;color:var(--color-text-tertiary);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:2px;">Domain</div>
+          <div style="font-size:11.5px;color:var(--color-text-primary);">Technology & AI</div>
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:500;color:var(--color-text-tertiary);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:2px;">Focus</div>
+          <div style="font-size:11px;color:var(--color-text-tertiary);font-style:italic;">Not set</div>
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:500;color:var(--color-text-tertiary);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:2px;">Geography</div>
+          <div style="font-size:11px;color:var(--color-text-tertiary);font-style:italic;">Not set</div>
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:500;color:var(--color-text-tertiary);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:2px;">Stakeholders</div>
+          <div style="font-size:11px;color:var(--color-text-tertiary);font-style:italic;">Not set</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+const rows = [
+  { title: "Navigating the EU's AI and health regulation",       quality: "Confirmed",   steepled: ["Tech","Pol","+1"] },
+  { title: "What to Know About AI and Mental Health",            quality: "Established", steepled: ["Soc","Tech","+1"] },
+  { title: "Southeast Asia's AI Dilemma",                        quality: "Established", steepled: ["Soc","Eco","+1"] },
+  { title: "Big Tech Shouldn't Be Writing the Rules for AI",     quality: "Confirmed",   steepled: ["Pol","Eth","+1"] },
+  { title: "White-collar industries bet on a secret weapon",     quality: "Confirmed",   steepled: ["Soc","Tech","+1"] },
+  { title: "Gen Z's fading AI hype",                             quality: "Established", steepled: ["Soc","Tech","+1"] },
+  { title: "xAI sues Colorado over first state AI anti-dis.",    quality: "Confirmed",   steepled: ["Leg","Pol","+1"] },
+  { title: "Advice for economics graduate students",             quality: "Established", steepled: ["Tech","Eco","+1"] },
+  { title: "Datadog's Expanding Portfolio Drives ARR",           quality: "Established", steepled: ["Tech","Eco","+1"] },
+  { title: "From Compliance to Coherence: A Global Survey",      quality: "Established", steepled: ["Pol","Leg","+1"] },
+  { title: "Sam Altman's 'New Deal' for superintelligence",      quality: "Established", steepled: ["Soc","Tech","+1"] },
+  { title: "OpenAI Buys TBPN, Tech and the Token Tsunami",       quality: "Confirmed",   steepled: ["Tech","Eco","+1"] },
+  { title: "White House to roll back Biden AI chip rules",       quality: "Emerging",    steepled: ["Pol","Tech","+1"] },
+  { title: "The Hidden Cost of AI Infrastructure Buildout",      quality: "Established", steepled: ["Eco","Env","+1"] },
+];
+const badgeClass = q => q === "Confirmed" ? "badge-confirmed" : q === "Established" ? "badge-established" : "badge-emerging";
+const tbody = document.getElementById("table-body");
+rows.forEach(r => {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input type="checkbox" style="width:13px;height:13px;" /></td>
+    <td class="td-title">${r.title}</td>
+    <td><span class="type-tag">Signal</span></td>
+    <td><span class="${badgeClass(r.quality)}">${r.quality}</span></td>
+    <td><div class="steepled-wrap">${r.steepled.map(s=>`<span class="steepled-tag">${s}</span>`).join("")}</div></td>
+    <td style="color:var(--color-text-tertiary);">—</td>
+    <td><button class="assign-btn">Assign to cluster →</button></td>
+  `;
+  tbody.appendChild(tr);
+});
+</script>
+</body>
+</html>

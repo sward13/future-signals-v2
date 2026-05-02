@@ -112,7 +112,7 @@ export function AuthScreen({ initialMode = "signin" }) {
   // ── Headings per mode ─────────────────────────────────────────────────────
   const HEADINGS = {
     signin:  ["Sign in",           "Enter your email and password to continue."],
-    signup:  ["Create account",    "Enter your details to get started."],
+    signup:  ["Welcome to Future Signals", "The structured foresight workspace for strategic practitioners."],
     forgot:  ["Reset password",    "Enter your email and we'll send a reset link."],
     reset:   ["Choose a new password", "Enter and confirm your new password."],
   };

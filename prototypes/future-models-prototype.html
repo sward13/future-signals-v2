@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Future Models — Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f5f4f0;
+  --surface: #fff;
+  --border: #e0ddd6;
+  --border-light: #ece9e3;
+  --ink: #111;
+  --ink-secondary: #555;
+  --ink-muted: #888;
+  --ink-ghost: #bbb;
+  --ink-faint: #ccc;
+  --accent-green: #2d7a4f;
+  --accent-green-bg: #e8f5ee;
+  --accent-blue: #2966a3;
+  --accent-blue-bg: #deeaf7;
+  --accent-amber: #8a6820;
+  --accent-amber-bg: #faf0db;
+  --accent-red: #993535;
+  --accent-red-bg: #fceaea;
+  --accent-purple: #5c4fa3;
+  --accent-purple-bg: #f0eef7;
+  --font: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.04);
+  --shadow-hover: 0 8px 28px rgba(0,0,0,0.09);
+  --transition: 0.15s ease;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.5;
+}
+
+/* ── Prototype nav bar ── */
+.proto-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+  background: var(--ink); display: flex; align-items: center; justify-content: center;
+  gap: 6px; padding: 8px 16px; font-size: 11px; color: rgba(255,255,255,0.5);
+}
+.proto-bar-label { margin-right: 4px; }
+.proto-toggle {
+  display: flex; background: rgba(255,255,255,0.08); border-radius: 6px;
+  overflow: hidden; border: 0.5px solid rgba(255,255,255,0.12);
+}
+.proto-btn {
+  padding: 4px 11px; font-size: 11px; font-family: var(--font); color: rgba(255,255,255,0.5);
+  background: none; border: none; cursor: pointer; font-weight: 500; transition: var(--transition);
+  white-space: nowrap;
+}
+.proto-btn.active { background: #fff; color: var(--ink); border-radius: 5px; }
+.proto-btn:hover:not(.active) { color: rgba(255,255,255,0.8); }
+
+/* ── Layout shell ── */
+.app { display: flex; flex-direction: column; min-height: 100vh; margin-top: 36px; }
+
+.topbar {
+  height: 46px; background: var(--surface); border-bottom: 0.5px solid var(--border);
+  display: flex; align-items: center; padding: 0 20px; gap: 14px;
+  position: sticky; top: 36px; z-index: 100; flex-shrink: 0;
+}
+.topbar-brand { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.brand-dot { width: 6px; height: 6px; background: var(--ink); border-radius: 50%; }
+.topbar-breadcrumb { font-size: 12px; color: var(--ink-ghost); flex: 1; }
+.topbar-breadcrumb b { color: var(--ink); font-weight: 500; }
+.topbar-sep { color: var(--ink-faint); font-size: 11px; }
+.topbar-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+.app-body { display: flex; flex: 1; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 192px; flex-shrink: 0; background: var(--surface); border-right: 0.5px solid var(--border);
+  padding: 16px 0; position: sticky; top: 82px; height: calc(100vh - 82px); overflow-y: auto;
+}
+.sidebar-project { padding: 0 14px 14px; border-bottom: 0.5px solid var(--border-light); margin-bottom: 10px; }
+.sidebar-project-label { font-size: 10px; font-weight: 500; color: var(--ink-ghost); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 2px; }
+.sidebar-project-name { font-size: 13px; font-weight: 500; }
+.sidebar-section-label { font-size: 10px; font-weight: 500; color: var(--ink-ghost); letter-spacing: 0.07em; text-transform: uppercase; padding: 0 14px; margin-bottom: 4px; margin-top: 10px; }
+.nav-item {
+  display: flex; align-items: center; gap: 7px; padding: 5px 14px; font-size: 12px;
+  color: var(--ink-muted); cursor: pointer; transition: var(--transition); text-decoration: none; border-radius: 0;
+}
+.nav-item:hover { color: var(--ink); background: var(--bg); }
+.nav-item.active { color: var(--ink); font-weight: 500; }
+.nav-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.nav-count { margin-left: auto; font-size: 10px; color: var(--ink-ghost); background: var(--bg); padding: 1px 5px; border-radius: 8px; }
+
+/* ── Main content ── */
+.main { flex: 1; overflow-y: auto; }
+
+/* ── Buttons ── */
+.btn { font-family: var(--font); font-size: 12px; font-weight: 500; border-radius: var(--radius-sm); cursor: pointer; transition: var(--transition); padding: 6px 13px; }
+.btn-primary { background: var(--ink); color: #fff; border: none; }
+.btn-primary:hover { opacity: 0.85; }
+.btn-outline { background: none; border: 0.5px solid var(--ink-faint); color: var(--ink-secondary); }
+.btn-outline:hover { border-color: var(--ink-muted); color: var(--ink); }
+.btn-ghost { background: none; border: none; color: var(--ink-muted); padding: 6px 8px; }
+.btn-ghost:hover { color: var(--ink); background: var(--bg); }
+
+/* ── Screen management ── */
+.screen { display: none; }
+.screen.visible { display: flex; flex-direction: column; min-height: calc(100vh - 82px); }
+
+/* ════════════════════════════════════════
+   HUB PAGE
+════════════════════════════════════════ */
+.hub-content { padding: 28px 36px 60px; max-width: 1000px; }
+
+.hub-header { margin-bottom: 28px; }
+.hub-eyebrow { font-size: 10px; font-weight: 500; color: var(--ink-ghost); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+.hub-title { font-family: var(--font-display); font-size: 24px; font-weight: 400; letter-spacing: -0.01em; margin-bottom: 6px; }
+.hub-sub { font-size: 13px; color: var(--ink-muted); max-width: 520px; line-height: 1.6; }
+
+/* Workflow steps */
+.workflow-strip {
+  display: flex; gap: 2px; margin-bottom: 32px; background: var(--surface);
+  border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden;
+}
+.workflow-step {
+  flex: 1; padding: 12px 14px; cursor: pointer; transition: var(--transition);
+  position: relative; border-right: 0.5px solid var(--border-light);
+}
+.workflow-step:last-child { border-right: none; }
+.workflow-step:hover { background: var(--bg); }
+.workflow-step-num { font-size: 10px; font-weight: 500; color: var(--ink-faint); margin-bottom: 2px; }
+.workflow-step-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+.workflow-step-desc { font-size: 11px; color: var(--ink-muted); line-height: 1.5; }
+.workflow-step-count { font-size: 10px; color: var(--ink-ghost); margin-top: 6px; }
+.workflow-step-count b { color: var(--ink); font-weight: 500; }
+.workflow-step.wf-active { background: var(--bg); }
+.workflow-step.wf-active::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--ink);
+}
+
+/* Section cards */
+.section-card {
+  background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg);
+  margin-bottom: 20px; overflow: hidden;
+}
+.section-card-header {
+  padding: 16px 20px 14px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 0.5px solid var(--border-light);
+}
+.section-card-title { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.section-card-count { font-size: 11px; color: var(--ink-ghost); background: var(--bg); padding: 1px 7px; border-radius: 8px; }
+.section-card-body { padding: 16px 20px 20px; }
+
+/* Empty state */
+.empty-state {
+  display: flex; align-items: center; gap: 16px; padding: 18px 20px;
+  border: 0.5px dashed #d4d0c8; border-radius: var(--radius); background: #fafaf8;
+}
+.empty-state-context { flex: 1; }
+.empty-state-label { font-size: 10px; font-weight: 500; color: var(--ink-ghost); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 5px; }
+.empty-state-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.context-chip {
+  font-size: 11px; color: var(--ink-secondary); background: var(--surface);
+  border: 0.5px solid var(--border); border-radius: 14px; padding: 2px 9px;
+}
+
+/* Scenario cards in hub — grid layout matching project/cluster cards */
+.scenario-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+}
+
+.scenario-card {
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px 18px; cursor: pointer;
+  transition: box-shadow var(--transition), border-color var(--transition);
+  display: flex; flex-direction: column;
+}
+.scenario-card:hover { box-shadow: var(--shadow-hover); border-color: var(--ink-ghost); }
+
+.sc-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.sc-name { font-size: 14px; font-weight: 500; line-height: 1.3; }
+.sc-badges { display: flex; gap: 4px; flex-shrink: 0; }
+
+.sc-desc { font-size: 12px; color: var(--ink-muted); line-height: 1.5; margin-bottom: 10px; }
+
+.sc-diffs { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; flex: 1; }
+.sc-diff { font-size: 11px; color: var(--ink-secondary); line-height: 1.4; padding-left: 10px; border-left: 2px solid var(--border-light); }
+
+.sc-footer { display: flex; gap: 4px; flex-wrap: wrap; padding-top: 10px; border-top: 0.5px solid var(--border-light); }
+.force-chip { font-size: 10px; color: var(--ink-muted); background: var(--bg); border-radius: 3px; padding: 1px 5px; border: 0.5px solid var(--border-light); }
+
+/* Scenario Set in hub */
+.set-card {
+  display: flex; gap: 16px; align-items: flex-start; padding: 14px 16px;
+  background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius);
+  cursor: pointer; transition: box-shadow var(--transition), border-color var(--transition);
+}
+.set-card:hover { box-shadow: var(--shadow-card); border-color: var(--ink-ghost); }
+.set-card-content { flex: 1; }
+.set-card-name { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+.set-card-desc { font-size: 12px; color: var(--ink-muted); line-height: 1.5; margin-bottom: 6px; }
+.set-card-structure { font-size: 11px; color: var(--ink-ghost); font-style: italic; }
+.set-card-pills { display: flex; gap: 4px; flex-wrap: wrap; max-width: 180px; flex-shrink: 0; }
+.set-pill { font-size: 10px; background: var(--bg); border: 0.5px solid var(--border); border-radius: 3px; padding: 2px 7px; color: var(--ink-secondary); }
+
+/* Preferred future in hub */
+.pf-card {
+  background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg);
+  cursor: pointer; transition: box-shadow var(--transition), border-color var(--transition);
+  overflow: hidden;
+}
+.pf-card:hover { box-shadow: var(--shadow-hover); border-color: var(--ink-ghost); }
+.pf-card-top { padding: 16px 20px 14px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.pf-card-name { font-family: var(--font-display); font-size: 18px; font-weight: 400; line-height: 1.3; }
+.pf-card-desc { font-size: 12px; color: var(--ink-muted); line-height: 1.6; margin-top: 6px; max-width: 480px; }
+.pf-card-fields { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; padding: 14px 20px; border-top: 0.5px solid var(--border-light); }
+.pf-field-label { font-size: 10px; font-weight: 500; color: var(--ink-ghost); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; }
+.pf-field-value { font-size: 12px; color: var(--ink-secondary); line-height: 1.5; }
+.pf-card-sources { padding: 10px 20px; border-top: 0.5px solid var(--border-light); display: flex; gap: 6px; align-items: center; }
+.pf-source-label { font-size: 10px; color: var(--ink-ghost); }
+.pf-source-chip { font-size: 10px; color: var(--ink-secondary); background: var(--bg); border: 0.5px solid var(--border); border-radius: 3px; padding: 1px 6px; }
+
+/* Strategic options in hub */
+.so-list { display: flex; flex-direction: column; gap: 6px; }
+.so-card {
+  display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px;
+  background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius);
+  cursor: pointer; transition: box-shadow var(--transition), border-color var(--transition);
+}
+.so-card:hover { box-shadow: var(--shadow-card); border-color: var(--ink-ghost); }
+.so-num { font-size: 11px; font-weight: 500; color: var(--ink-faint); min-width: 18px; padding-top: 1px; }
+.so-content { flex: 1; }
+.so-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+.so-desc { font-size: 12px; color: var(--ink-muted); line-height: 1.5; margin-bottom: 6px; }
+.so-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.so-linked { font-size: 10px; color: var(--ink-ghost); }
+
+/* Badges */
+.horizon-badge { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 10px; white-space: nowrap; }
+.h1-badge { background: var(--accent-green-bg); color: var(--accent-green); }
+.h2-badge { background: var(--accent-blue-bg); color: var(--accent-blue); }
+.h3-badge { background: var(--accent-amber-bg); color: var(--accent-amber); }
+.feasibility-badge { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 10px; margin-left: auto; }
+.feas-high { background: var(--accent-green-bg); color: var(--accent-green); }
+.feas-med { background: var(--accent-amber-bg); color: var(--accent-amber); }
+.feas-low { background: var(--accent-red-bg); color: var(--accent-red); }
+
+/* Color accents for scenario detail */
+
+/* ════════════════════════════════════════
+   DETAIL PAGES
+════════════════════════════════════════ */
+.detail-content { max-width: 760px; margin: 0 auto; padding: 32px 32px 80px; }
+
+.detail-header { margin-bottom: 28px; }
+.detail-eyebrow { font-size: 10px; font-weight: 500; color: var(--ink-ghost); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.detail-title { font-family: var(--font-display); font-size: 26px; font-weight: 400; letter-spacing: -0.01em; margin-bottom: 8px; line-height: 1.25; }
+.detail-desc { font-size: 14px; color: var(--ink-secondary); line-height: 1.7; max-width: 580px; }
+
+/* Form fields */
+.form-field { margin-bottom: 20px; }
+.form-label { font-size: 11px; font-weight: 500; color: var(--ink-ghost); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 5px; }
+.form-hint { font-size: 11px; color: var(--ink-faint); line-height: 1.5; margin-bottom: 6px; }
+.form-input {
+  width: 100%; border: 0.5px solid var(--border); border-radius: 7px; font-family: var(--font);
+  font-size: 13px; color: var(--ink); padding: 9px 11px; outline: none; background: var(--surface);
+  transition: border-color var(--transition); line-height: 1.5; resize: none;
+}
+.form-input:focus { border-color: var(--ink-muted); box-shadow: 0 0 0 3px rgba(0,0,0,0.03); }
+.form-input::placeholder { color: var(--ink-faint); }
+.form-input-title {
+  width: 100%; font-size: 22px; font-weight: 500; font-family: var(--font-display);
+  color: var(--ink); border: none; background: transparent; outline: none; padding: 0;
+  letter-spacing: -0.01em;
+}
+.form-input-title::placeholder { color: #d4d0c8; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+
+.form-select {
+  width: 100%; border: 0.5px solid var(--border); border-radius: 7px; font-family: var(--font);
+  font-size: 13px; color: var(--ink); padding: 9px 11px; outline: none; background: var(--surface);
+  -webkit-appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23bbb' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 11px center;
+}
+
+/* Zone dividers (Frame → Story pattern) */
+.zone-divider {
+  display: flex; align-items: center; gap: 10px; margin: 28px 0 24px;
+  padding-top: 24px; border-top: 0.5px solid var(--border-light);
+}
+.zone-divider-label { font-size: 10px; font-weight: 500; color: var(--ink-ghost); letter-spacing: 0.08em; text-transform: uppercase; }
+.zone-divider-line { flex: 1; height: 0.5px; background: var(--border-light); }
+
+/* Diff inputs */
+.diff-list { display: flex; flex-direction: column; gap: 6px; }
+.diff-row { display: flex; gap: 8px; align-items: center; }
+.diff-row .form-input { flex: 1; }
+.diff-num { font-size: 10px; font-weight: 500; color: var(--ink-faint); min-width: 16px; }
+.btn-add-diff {
+  background: none; border: 0.5px dashed #d4d0c8; border-radius: 6px;
+  padding: 7px 12px; font-size: 11px; color: var(--ink-ghost); cursor: pointer;
+  font-family: var(--font); transition: var(--transition); margin-top: 4px;
+}
+.btn-add-diff:hover { border-color: var(--ink-muted); color: var(--ink-secondary); }
+
+/* AI assist bar */
+.ai-bar {
+  display: flex; align-items: center; gap: 8px; padding: 8px 11px;
+  background: var(--bg); border: 0.5px solid var(--border); border-radius: 7px;
+  cursor: pointer; transition: var(--transition); margin-bottom: 20px;
+}
+.ai-bar:hover { border-color: var(--ink-ghost); background: var(--surface); }
+.ai-sparkle { font-size: 11px; color: var(--accent-purple); }
+.ai-bar-text { font-size: 11px; color: var(--ink-muted); flex: 1; }
+.ai-bar-cta { font-size: 11px; font-weight: 500; color: var(--accent-purple); }
+
+/* Cluster multi-select */
+.chip-select {
+  border: 0.5px solid var(--border); border-radius: 7px; background: var(--surface); overflow: hidden;
+}
+.chip-select-chosen { display: flex; flex-wrap: wrap; gap: 4px; padding: 7px 9px; min-height: 36px; }
+.chip-select-chosen:empty::before { content: 'Select…'; color: var(--ink-faint); font-size: 12px; }
+.selected-chip {
+  display: flex; align-items: center; gap: 4px; font-size: 11px; background: var(--bg);
+  border: 0.5px solid var(--border); border-radius: 3px; padding: 2px 7px; color: var(--ink-secondary);
+}
+.chip-remove { background: none; border: none; color: var(--ink-ghost); cursor: pointer; font-size: 12px; padding: 0; line-height: 1; }
+.chip-remove:hover { color: var(--accent-red); }
+.chip-select-options { border-top: 0.5px solid var(--border-light); background: #fafaf8; }
+.chip-option {
+  padding: 7px 10px; font-size: 11px; color: var(--ink-secondary); cursor: pointer;
+  border-bottom: 0.5px solid var(--border-light); transition: background var(--transition);
+}
+.chip-option:last-child { border-bottom: none; }
+.chip-option:hover { background: var(--bg); }
+.chip-option.selected { background: var(--accent-purple-bg); font-weight: 500; }
+.chip-option.selected::after { content: ' ✓'; float: right; color: var(--ink-muted); font-weight: 400; font-size: 10px; }
+
+/* Populated detail sections */
+.read-section { margin-bottom: 28px; }
+.read-label {
+  font-size: 10px; font-weight: 500; color: var(--ink-ghost); letter-spacing: 0.07em;
+  text-transform: uppercase; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 0.5px solid var(--border-light);
+}
+.read-text { font-size: 13px; color: var(--ink-secondary); line-height: 1.7; }
+
+.read-list { display: flex; flex-direction: column; gap: 6px; }
+.read-list-item {
+  display: flex; gap: 10px; align-items: flex-start; padding: 9px 12px;
+  background: #fafaf8; border: 0.5px solid var(--border-light); border-radius: 7px;
+}
+.read-list-item.accented { border-left: 3px solid var(--accent-green); }
+.read-list-num { font-size: 10px; font-weight: 500; color: var(--ink-faint); min-width: 16px; padding-top: 1px; }
+.read-list-text { font-size: 12px; color: var(--ink-secondary); line-height: 1.5; }
+
+.read-indicator { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; }
+.read-indicator-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-green); flex-shrink: 0; margin-top: 5px; }
+.read-indicator-text { font-size: 12px; color: var(--ink-secondary); line-height: 1.5; }
+
+/* Sidebar metadata for detail */
+.detail-layout { display: grid; grid-template-columns: 1fr 240px; max-width: 960px; margin: 0 auto; }
+.detail-main { padding: 32px 32px 80px; }
+.detail-sidebar {
+  padding: 32px 20px; border-left: 0.5px solid var(--border-light);
+  display: flex; flex-direction: column; gap: 20px;
+}
+.side-label { font-size: 10px; font-weight: 500; color: var(--ink-ghost); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 8px; }
+.side-divider { border: none; border-top: 0.5px solid var(--border-light); margin-bottom: 10px; }
+.side-link {
+  display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--ink-secondary);
+  padding: 6px 8px; background: #fafaf8; border: 0.5px solid var(--border-light); border-radius: 5px;
+  text-decoration: none; cursor: pointer; transition: border-color var(--transition); margin-bottom: 4px;
+}
+.side-link:hover { border-color: var(--ink-ghost); color: var(--ink); }
+.side-link-dot { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; }
+.side-link-arrow { color: var(--ink-faint); margin-left: auto; font-size: 11px; }
+.side-text { font-size: 12px; color: var(--ink-muted); line-height: 1.5; }
+
+/* Scenario set — comparative grid */
+.comp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.comp-card {
+  background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg);
+  cursor: pointer; transition: box-shadow var(--transition), border-color var(--transition);
+}
+.comp-card:hover { box-shadow: var(--shadow-hover); border-color: var(--ink-ghost); }
+.comp-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.comp-desc { font-size: 11px; color: var(--ink-muted); line-height: 1.5; }
+.comp-diffs { display: flex; flex-direction: column; gap: 4px; }
+.comp-diff { font-size: 11px; color: var(--ink-secondary); padding-left: 8px; border-left: 2px solid var(--border-light); line-height: 1.4; }
+
+/* Set header special */
+.set-header-card {
+  background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg);
+  padding: 24px; margin-bottom: 20px;
+}
+.set-logic { margin-top: 12px; padding-top: 12px; border-top: 0.5px solid var(--border-light); }
+.set-logic-label { font-size: 10px; font-weight: 500; color: var(--ink-ghost); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; }
+.set-logic-text { font-size: 12px; color: var(--ink-secondary); line-height: 1.5; }
+.axis-chips { display: flex; gap: 6px; margin-top: 6px; }
+.axis-chip { font-size: 11px; color: var(--ink-secondary); background: var(--bg); border: 0.5px solid var(--border); border-radius: 3px; padding: 3px 9px; }
+
+/* Toast */
+#toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(16px);
+  background: var(--ink); color: #fff; font-size: 11px; font-family: var(--font);
+  padding: 7px 14px; border-radius: 16px; opacity: 0; transition: all 0.2s;
+  pointer-events: none; z-index: 9000; white-space: nowrap;
+}
+
+/* Animations */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.3s ease both; }
+.fade-up-1 { animation-delay: 0.05s; }
+.fade-up-2 { animation-delay: 0.1s; }
+.fade-up-3 { animation-delay: 0.15s; }
+.fade-up-4 { animation-delay: 0.2s; }
+</style>
+</head>
+<body>
+
+<!-- Prototype navigation -->
+<div class="proto-bar">
+  <span class="proto-bar-label">Screen:</span>
+  <div class="proto-toggle">
+    <button class="proto-btn active" data-screen="hub-populated">Hub</button>
+    <button class="proto-btn" data-screen="hub-empty">Hub (empty)</button>
+    <button class="proto-btn" data-screen="scenario-edit">Scenario: Edit</button>
+    <button class="proto-btn" data-screen="scenario-read">Scenario: View</button>
+    <button class="proto-btn" data-screen="set-read">Set: View</button>
+    <button class="proto-btn" data-screen="pf-edit">Preferred Future: Edit</button>
+    <button class="proto-btn" data-screen="pf-read">Preferred Future: View</button>
+    <button class="proto-btn" data-screen="so-edit">Option: Edit</button>
+    <button class="proto-btn" data-screen="so-read">Option: View</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SCREEN: HUB — POPULATED
+════════════════════════════════════════ -->
+<div class="screen visible" id="screen-hub-populated">
+  <div class="app">
+    <div class="topbar">
+      <div class="topbar-brand"><div class="brand-dot"></div>Future Signals</div>
+      <span class="topbar-sep">›</span>
+      <div class="topbar-breadcrumb"><b>Synthetic relationships</b> · Future Models</div>
+      <div class="topbar-actions">
+        <button class="btn btn-outline">Export</button>
+      </div>
+    </div>
+    <div class="app-body">
+      <div class="sidebar">
+        <div class="sidebar-project">
+          <div class="sidebar-project-label">Project</div>
+          <div class="sidebar-project-name">Synthetic relationships</div>
+        </div>
+        <div class="sidebar-section-label">Build</div>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink-ghost);"></div>Inputs<span class="nav-count">22</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--accent-purple);"></div>Clusters<span class="nav-count">6</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>System Map</a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>Analysis</a>
+        <div class="sidebar-section-label">Futures</div>
+        <a class="nav-item active"><div class="nav-dot" style="background:var(--ink);"></div>Future Models</a>
+      </div>
+      <div class="main">
+        <div class="hub-content">
+          <div class="hub-header fade-up">
+            <div class="hub-eyebrow">Future Models</div>
+            <div class="hub-title">Synthetic relationships</div>
+            <div class="hub-sub">Build scenarios from your analysis, articulate a preferred future, and develop strategic options.</div>
+          </div>
+
+          <!-- Workflow strip -->
+          <div class="workflow-strip fade-up fade-up-1">
+            <div class="workflow-step wf-active" onclick="goScreen('hub-populated')">
+              <div class="workflow-step-num">1</div>
+              <div class="workflow-step-name">Scenarios</div>
+              <div class="workflow-step-desc">Possible futures</div>
+              <div class="workflow-step-count"><b>4</b> created</div>
+            </div>
+            <div class="workflow-step" onclick="goScreen('set-read')">
+              <div class="workflow-step-num">2</div>
+              <div class="workflow-step-name">Scenario Sets</div>
+              <div class="workflow-step-desc">How they relate</div>
+              <div class="workflow-step-count"><b>1</b> set</div>
+            </div>
+            <div class="workflow-step" onclick="goScreen('pf-read')">
+              <div class="workflow-step-num">3</div>
+              <div class="workflow-step-name">Preferred Future</div>
+              <div class="workflow-step-desc">The future you want</div>
+              <div class="workflow-step-count"><b>1</b> defined</div>
+            </div>
+            <div class="workflow-step" onclick="goScreen('so-read')">
+              <div class="workflow-step-num">4</div>
+              <div class="workflow-step-name">Strategic Options</div>
+              <div class="workflow-step-desc">What to do about it</div>
+              <div class="workflow-step-count"><b>3</b> options</div>
+            </div>
+          </div>
+
+          <!-- Scenarios -->
+          <div class="section-card fade-up fade-up-2">
+            <div class="section-card-header">
+              <div class="section-card-title">Scenarios <span class="section-card-count">4</span></div>
+              <button class="btn btn-outline" onclick="goScreen('scenario-edit')">+ New scenario</button>
+            </div>
+            <div class="section-card-body">
+              <div class="scenario-grid">
+                <div class="scenario-card" onclick="goScreen('scenario-read')">
+                  <div class="sc-card-top">
+                    <div class="sc-name">The companion state</div>
+                    <div class="sc-badges"><span class="horizon-badge h3-badge">H3</span></div>
+                  </div>
+                  <div class="sc-diffs">
+                    <div class="sc-diff">Governments fund AI companion infrastructure as public care</div>
+                    <div class="sc-diff">Loneliness reclassified as a public health condition</div>
+                    <div class="sc-diff">Human care workers shift to oversight and escalation roles</div>
+                  </div>
+                  <div class="sc-footer"><span class="force-chip">Synthetic companionship</span><span class="force-chip">Regulation</span></div>
+                </div>
+                <div class="scenario-card" onclick="goScreen('scenario-read')">
+                  <div class="sc-card-top">
+                    <div class="sc-name">The intimacy market</div>
+                    <div class="sc-badges"><span class="horizon-badge h2-badge">H2</span></div>
+                  </div>
+                  <div class="sc-diffs">
+                    <div class="sc-diff">AI relationships commodified — tiered subscriptions determine depth</div>
+                    <div class="sc-diff">Human relationships decline in frequency, increase in perceived value</div>
+                    <div class="sc-diff">Divorce rates fall; relationship satisfaction surveys show complex results</div>
+                  </div>
+                  <div class="sc-footer"><span class="force-chip">Intimate relationships</span><span class="force-chip">Legal frameworks</span></div>
+                </div>
+                <div class="scenario-card" onclick="goScreen('scenario-read')">
+                  <div class="sc-card-top">
+                    <div class="sc-name">The unresolved dead</div>
+                    <div class="sc-badges"><span class="horizon-badge h2-badge">H2</span></div>
+                  </div>
+                  <div class="sc-diffs">
+                    <div class="sc-diff">AI simulations of deceased become legally contested estates</div>
+                    <div class="sc-diff">Grief prolonged by persistent digital presences</div>
+                    <div class="sc-diff">New funeral industries emerge around AI legacy management</div>
+                  </div>
+                  <div class="sc-footer"><span class="force-chip">The dead don't disappear</span><span class="force-chip">Legal personhood</span></div>
+                </div>
+                <div class="scenario-card" onclick="goScreen('scenario-read')">
+                  <div class="sc-card-top">
+                    <div class="sc-name">Fractured selves</div>
+                    <div class="sc-badges"><span class="horizon-badge h3-badge">H3</span></div>
+                  </div>
+                  <div class="sc-diffs">
+                    <div class="sc-diff">Multi-self systems allow parallel social identities</div>
+                    <div class="sc-diff">Accountability and authenticity become legally contested</div>
+                    <div class="sc-diff">Singular, continuous self is culturally destabilised</div>
+                  </div>
+                  <div class="sc-footer"><span class="force-chip">Cognitive authority</span><span class="force-chip">Identity governance</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Scenario Sets -->
+          <div class="section-card fade-up fade-up-3">
+            <div class="section-card-header">
+              <div class="section-card-title">Scenario Sets <span class="section-card-count">1</span></div>
+              <button class="btn btn-outline">+ New set</button>
+            </div>
+            <div class="section-card-body">
+              <div class="set-card" onclick="goScreen('set-read')">
+                <div class="set-card-content">
+                  <div class="set-card-name">Relationship futures — four worlds</div>
+                  <div class="set-card-desc">How synthetic relationships might reshape care, intimacy, mortality, and identity under different conditions.</div>
+                  <div class="set-card-structure">Organized around: regulatory legitimation × displacement vs. complement</div>
+                </div>
+                <div class="set-card-pills">
+                  <span class="set-pill">The companion state</span>
+                  <span class="set-pill">The intimacy market</span>
+                  <span class="set-pill">The unresolved dead</span>
+                  <span class="set-pill">Fractured selves</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Preferred Future -->
+          <div class="section-card fade-up fade-up-3">
+            <div class="section-card-header">
+              <div class="section-card-title">Preferred Future</div>
+              <button class="btn btn-ghost" onclick="goScreen('pf-edit')">Edit</button>
+            </div>
+            <div class="section-card-body">
+              <div class="pf-card" onclick="goScreen('pf-read')">
+                <div class="pf-card-top">
+                  <div>
+                    <div class="pf-card-name">Relationships that remain genuinely chosen</div>
+                    <div class="pf-card-desc">A future in which synthetic relationships are available and normalised, but human relationships retain distinct value — not by legal protection, but because they are irreplaceable.</div>
+                  </div>
+                  <span class="horizon-badge h2-badge" style="flex-shrink:0;">H2–H3</span>
+                </div>
+                <div class="pf-card-fields">
+                  <div><div class="pf-field-label">Desired outcomes</div><div class="pf-field-value">People retain agency over the role AI plays. Regulation ensures transparency and exit rights.</div></div>
+                  <div><div class="pf-field-label">Guiding principles</div><div class="pf-field-value">Genuine choice. Transparency of synthetic nature. Human irreplaceability.</div></div>
+                  <div><div class="pf-field-label">Indicators</div><div class="pf-field-value">Disclosure regulation appears. No significant displacement of human relationships.</div></div>
+                </div>
+                <div class="pf-card-sources">
+                  <span class="pf-source-label">Draws from:</span>
+                  <span class="pf-source-chip">The companion state</span>
+                  <span class="pf-source-chip">The intimacy market</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Strategic Options -->
+          <div class="section-card fade-up fade-up-4">
+            <div class="section-card-header">
+              <div class="section-card-title">Strategic Options <span class="section-card-count">3</span></div>
+              <button class="btn btn-outline" onclick="goScreen('so-edit')">+ New option</button>
+            </div>
+            <div class="section-card-body">
+              <div class="so-list">
+                <div class="so-card" onclick="goScreen('so-read')">
+                  <div class="so-num">01</div>
+                  <div class="so-content">
+                    <div class="so-name">Establish an AI relationship disclosure standard</div>
+                    <div class="so-desc">Develop a regulatory standard requiring AI companions to disclose their synthetic nature. Pilot in healthcare and eldercare.</div>
+                    <div class="so-meta">
+                      <span class="horizon-badge h1-badge">H1</span>
+                      <span class="so-linked">→ The intimacy market, The companion state</span>
+                      <span class="feasibility-badge feas-high">High feasibility</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="so-card" onclick="goScreen('so-read')">
+                  <div class="so-num">02</div>
+                  <div class="so-content">
+                    <div class="so-name">Fund longitudinal research on AI relationship displacement</div>
+                    <div class="so-desc">Commission 10-year studies tracking AI companion adoption effects on relationship formation and social cohesion.</div>
+                    <div class="so-meta">
+                      <span class="horizon-badge h2-badge">H2</span>
+                      <span class="so-linked">→ All scenarios</span>
+                      <span class="feasibility-badge feas-med">Medium</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="so-card" onclick="goScreen('so-read')">
+                  <div class="so-num">03</div>
+                  <div class="so-content">
+                    <div class="so-name">Create a legal framework for digital legacy and AI-simulated persons</div>
+                    <div class="so-desc">Legal infrastructure for ownership, control, and retirement of AI simulations of deceased individuals.</div>
+                    <div class="so-meta">
+                      <span class="horizon-badge h2-badge">H2</span>
+                      <span class="so-linked">→ The unresolved dead</span>
+                      <span class="feasibility-badge feas-low">Low feasibility</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCREEN: HUB — EMPTY
+════════════════════════════════════════ -->
+<div class="screen" id="screen-hub-empty">
+  <div class="app">
+    <div class="topbar">
+      <div class="topbar-brand"><div class="brand-dot"></div>Future Signals</div>
+      <span class="topbar-sep">›</span>
+      <div class="topbar-breadcrumb"><b>Synthetic relationships</b> · Future Models</div>
+    </div>
+    <div class="app-body">
+      <div class="sidebar">
+        <div class="sidebar-project">
+          <div class="sidebar-project-label">Project</div>
+          <div class="sidebar-project-name">Synthetic relationships</div>
+        </div>
+        <div class="sidebar-section-label">Build</div>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink-ghost);"></div>Inputs<span class="nav-count">22</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--accent-purple);"></div>Clusters<span class="nav-count">6</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>System Map</a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>Analysis</a>
+        <div class="sidebar-section-label">Futures</div>
+        <a class="nav-item active"><div class="nav-dot" style="background:var(--ink);"></div>Future Models</a>
+      </div>
+      <div class="main">
+        <div class="hub-content">
+          <div class="hub-header">
+            <div class="hub-eyebrow">Future Models</div>
+            <div class="hub-title">Synthetic relationships</div>
+            <div class="hub-sub">What might happen next? Build scenarios from your analysis, articulate a preferred future, and develop strategic options.</div>
+          </div>
+
+          <div class="workflow-strip" style="margin-bottom:32px;">
+            <div class="workflow-step wf-active">
+              <div class="workflow-step-num">1</div>
+              <div class="workflow-step-name">Scenarios</div>
+              <div class="workflow-step-desc">Possible futures</div>
+              <div class="workflow-step-count" style="color:var(--ink-ghost);">Start here</div>
+            </div>
+            <div class="workflow-step" style="opacity:0.5;">
+              <div class="workflow-step-num">2</div>
+              <div class="workflow-step-name">Scenario Sets</div>
+              <div class="workflow-step-desc">How they relate</div>
+            </div>
+            <div class="workflow-step" style="opacity:0.5;">
+              <div class="workflow-step-num">3</div>
+              <div class="workflow-step-name">Preferred Future</div>
+              <div class="workflow-step-desc">The future you want</div>
+            </div>
+            <div class="workflow-step" style="opacity:0.5;">
+              <div class="workflow-step-num">4</div>
+              <div class="workflow-step-name">Strategic Options</div>
+              <div class="workflow-step-desc">What to do about it</div>
+            </div>
+          </div>
+
+          <!-- Scenarios empty -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <div class="section-card-title">Scenarios</div>
+              <button class="btn btn-primary" onclick="goScreen('scenario-edit')">+ New scenario</button>
+            </div>
+            <div class="section-card-body">
+              <div class="empty-state">
+                <div class="empty-state-context">
+                  <div class="empty-state-label">Start from your analysis</div>
+                  <div class="empty-state-chips">
+                    <span class="context-chip">Direction of regulatory evolution</span>
+                    <span class="context-chip">Rate of trust growth</span>
+                    <span class="context-chip">5 clusters mapped</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sets empty -->
+          <div class="section-card" style="opacity:0.5;">
+            <div class="section-card-header">
+              <div class="section-card-title">Scenario Sets</div>
+              <button class="btn btn-outline" disabled style="opacity:0.4;cursor:not-allowed;">+ New set</button>
+            </div>
+            <div class="section-card-body">
+              <div class="empty-state">
+                <div class="empty-state-context">
+                  <div class="empty-state-label">Create scenarios first</div>
+                  <div class="empty-state-chips"><span class="context-chip" style="color:var(--ink-ghost);border-color:var(--border-light);">No scenarios yet</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PF empty -->
+          <div class="section-card" style="opacity:0.5;">
+            <div class="section-card-header">
+              <div class="section-card-title">Preferred Future</div>
+              <button class="btn btn-outline" onclick="goScreen('pf-edit')">+ Define</button>
+            </div>
+            <div class="section-card-body">
+              <div class="empty-state">
+                <div class="empty-state-context">
+                  <div class="empty-state-label">Grounded in</div>
+                  <div class="empty-state-chips"><span class="context-chip">Your analysis</span><span class="context-chip">Project key question</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SO empty -->
+          <div class="section-card" style="opacity:0.5;">
+            <div class="section-card-header">
+              <div class="section-card-title">Strategic Options</div>
+              <button class="btn btn-outline" onclick="goScreen('so-edit')">+ New option</button>
+            </div>
+            <div class="section-card-body">
+              <div class="empty-state">
+                <div class="empty-state-context">
+                  <div class="empty-state-label">Draws from</div>
+                  <div class="empty-state-chips"><span class="context-chip">System analysis implications</span><span class="context-chip">Scenario outcomes</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCREEN: SCENARIO — EDIT (Frame → Story)
+════════════════════════════════════════ -->
+<div class="screen" id="screen-scenario-edit">
+  <div class="app">
+    <div class="topbar">
+      <div class="topbar-brand"><div class="brand-dot"></div>Future Signals</div>
+      <span class="topbar-sep">›</span>
+      <a class="topbar-breadcrumb" style="cursor:pointer;text-decoration:none;" onclick="goScreen('hub-populated')">← Future Models</a>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="goScreen('hub-populated')">Discard</button>
+        <button class="btn btn-primary" onclick="goScreen('scenario-read'); toast('Scenario saved')">Save</button>
+      </div>
+    </div>
+    <div class="app-body">
+      <div class="sidebar">
+        <div class="sidebar-project"><div class="sidebar-project-label">Project</div><div class="sidebar-project-name">Synthetic relationships</div></div>
+        <div class="sidebar-section-label">Build</div>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink-ghost);"></div>Inputs<span class="nav-count">22</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--accent-purple);"></div>Clusters<span class="nav-count">6</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>System Map</a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>Analysis</a>
+        <div class="sidebar-section-label">Futures</div>
+        <a class="nav-item active" onclick="goScreen('hub-populated')"><div class="nav-dot" style="background:var(--ink);"></div>Future Models</a>
+      </div>
+      <div class="main">
+        <div class="detail-content">
+          <div class="detail-eyebrow">New Scenario</div>
+          <input class="form-input-title" type="text" placeholder="Name this scenario" style="margin-bottom:24px;" />
+
+          <!-- AI assist -->
+          <div class="ai-bar">
+            <span class="ai-sparkle">✦</span>
+            <span class="ai-bar-text">Use AI to draft a scenario from your analysis and clusters</span>
+            <span class="ai-bar-cta">Generate</span>
+          </div>
+
+          <!-- ZONE: Frame -->
+          <div class="zone-divider">
+            <span class="zone-divider-label">Frame</span>
+            <span class="zone-divider-line"></span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-field">
+              <div class="form-label">Time horizon</div>
+              <select class="form-select"><option>Select…</option><option>H1 — Near</option><option>H2 — Transition</option><option>H3 — Emerging</option></select>
+            </div>
+            <div class="form-field">
+              <div class="form-label">Archetype <span style="color:var(--ink-faint);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;">optional</span></div>
+              <select class="form-select"><option>Select…</option><option>Continuation</option><option>Collapse</option><option>Constraint</option><option>Transformation</option></select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-field">
+              <div class="form-label">Driving forces</div>
+              <div class="form-hint">Which clusters are most active in this scenario?</div>
+              <div class="chip-select">
+                <div class="chip-select-chosen">
+                  <div class="selected-chip">Synthetic companionship <button class="chip-remove">×</button></div>
+                </div>
+                <div class="chip-select-options">
+                  <div class="chip-option selected">Synthetic companionship</div>
+                  <div class="chip-option">Trust erosion dynamics</div>
+                  <div class="chip-option">Regulatory landscape</div>
+                  <div class="chip-option">Cognitive authority</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-field">
+              <div class="form-label">Suppressed forces</div>
+              <div class="form-hint">Which clusters are weakened or absent?</div>
+              <div class="chip-select">
+                <div class="chip-select-chosen"></div>
+                <div class="chip-select-options">
+                  <div class="chip-option">Synthetic companionship</div>
+                  <div class="chip-option">Trust erosion dynamics</div>
+                  <div class="chip-option">Regulatory landscape</div>
+                  <div class="chip-option">Cognitive authority</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ZONE: Story -->
+          <div class="zone-divider">
+            <span class="zone-divider-label">Story</span>
+            <span class="zone-divider-line"></span>
+          </div>
+
+          <div class="form-field">
+            <div class="form-label">Description</div>
+            <div class="form-hint">A brief summary — what is this scenario and what makes it distinct?</div>
+            <textarea class="form-input" rows="2" placeholder="A world in which…"></textarea>
+          </div>
+
+          <div class="form-field">
+            <div class="form-label">Key differences from today</div>
+            <div class="form-hint">Concrete, present-tense statements. What has structurally changed?</div>
+            <div class="diff-list">
+              <div class="diff-row"><span class="diff-num">1</span><input type="text" class="form-input" placeholder="In this world…" /></div>
+              <div class="diff-row"><span class="diff-num">2</span><input type="text" class="form-input" placeholder="In this world…" /></div>
+              <div class="diff-row"><span class="diff-num">3</span><input type="text" class="form-input" placeholder="In this world…" /></div>
+            </div>
+            <button class="btn-add-diff">+ Add another</button>
+          </div>
+
+          <div class="form-field">
+            <div class="form-label">Narrative <span style="color:var(--ink-faint);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;">optional</span></div>
+            <div class="form-hint">How does this world come to be? Write as much or as little as is useful.</div>
+            <textarea class="form-input" rows="5" placeholder="By the early 2030s…"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCREEN: SCENARIO — READ
+════════════════════════════════════════ -->
+<div class="screen" id="screen-scenario-read">
+  <div class="app">
+    <div class="topbar">
+      <div class="topbar-brand"><div class="brand-dot"></div>Future Signals</div>
+      <span class="topbar-sep">›</span>
+      <a class="topbar-breadcrumb" style="cursor:pointer;" onclick="goScreen('hub-populated')">← Future Models</a>
+      <div class="topbar-actions">
+        <button class="btn btn-outline" onclick="goScreen('scenario-edit')">Edit</button>
+      </div>
+    </div>
+    <div class="app-body">
+      <div class="sidebar">
+        <div class="sidebar-project"><div class="sidebar-project-label">Project</div><div class="sidebar-project-name">Synthetic relationships</div></div>
+        <div class="sidebar-section-label">Build</div>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink-ghost);"></div>Inputs<span class="nav-count">22</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--accent-purple);"></div>Clusters<span class="nav-count">6</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>System Map</a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>Analysis</a>
+        <div class="sidebar-section-label">Futures</div>
+        <a class="nav-item active" onclick="goScreen('hub-populated')"><div class="nav-dot" style="background:var(--ink);"></div>Future Models</a>
+      </div>
+      <div class="main">
+        <div class="detail-layout">
+          <div class="detail-main">
+            <!-- Header with color bar -->
+            <div style="height:4px;border-radius:2px;background:linear-gradient(135deg, #1a2e22, #4a8a5e);margin-bottom:20px;"></div>
+            <div class="detail-eyebrow">Scenario <span class="horizon-badge h3-badge" style="margin-left:4px;">H3</span> <span class="horizon-badge" style="background:var(--bg);color:var(--ink-muted);margin-left:2px;">Transformation</span></div>
+            <div class="detail-title">The companion state</div>
+            <div class="detail-desc" style="margin-bottom:32px;">A world in which governments embrace AI companions as public infrastructure — treating loneliness as a medical condition and synthetic care as a legitimate response.</div>
+
+            <div class="read-section">
+              <div class="read-label">Key differences from today</div>
+              <div class="read-list">
+                <div class="read-list-item"><div class="read-list-num">1</div><div class="read-list-text">Governments fund AI companion infrastructure as a public care service</div></div>
+                <div class="read-list-item"><div class="read-list-num">2</div><div class="read-list-text">Loneliness is reclassified as a public health condition with AI-mediated treatment pathways</div></div>
+                <div class="read-list-item"><div class="read-list-num">3</div><div class="read-list-text">Human care workers shift to oversight and emotional escalation roles</div></div>
+              </div>
+            </div>
+
+            <div class="read-section">
+              <div class="read-label">Narrative</div>
+              <div class="read-text">By the early 2030s, demographic pressure and care worker shortages force governments to experiment with AI-mediated care programmes. Initial pilots in eldercare show measurable improvements in reported wellbeing and reduced emergency admissions. Loneliness is formally reclassified as a public health condition in several jurisdictions, creating the policy basis for state-funded companion AI. Human care workers don't disappear — they shift into oversight, assessment, and emotional escalation roles that AI systems aren't designed to handle. The question is no longer whether synthetic care is legitimate, but how to govern it.</div>
+            </div>
+          </div>
+
+          <div class="detail-sidebar">
+            <div>
+              <div class="side-label">Driving forces</div>
+              <hr class="side-divider" />
+              <div class="side-link"><span class="side-link-dot" style="background:var(--accent-purple);"></span>Synthetic companionship<span class="side-link-arrow">›</span></div>
+              <div class="side-link"><span class="side-link-dot" style="background:var(--accent-purple);"></span>Regulatory landscape<span class="side-link-arrow">›</span></div>
+            </div>
+            <div>
+              <div class="side-label">Appears in sets</div>
+              <hr class="side-divider" />
+              <div class="side-link" onclick="goScreen('set-read')"><span class="side-link-dot" style="background:var(--ink);"></span>Relationship futures — four worlds<span class="side-link-arrow">›</span></div>
+            </div>
+            <div>
+              <div class="side-label">Informs</div>
+              <hr class="side-divider" />
+              <div class="side-link" onclick="goScreen('pf-read')"><span class="side-link-dot" style="background:var(--accent-green);"></span>Preferred future<span class="side-link-arrow">›</span></div>
+              <div class="side-link" onclick="goScreen('so-read')"><span class="side-link-dot" style="background:var(--ink);"></span>Disclosure standard<span class="side-link-arrow">›</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCREEN: SCENARIO SET — READ
+════════════════════════════════════════ -->
+<div class="screen" id="screen-set-read">
+  <div class="app">
+    <div class="topbar">
+      <div class="topbar-brand"><div class="brand-dot"></div>Future Signals</div>
+      <span class="topbar-sep">›</span>
+      <a class="topbar-breadcrumb" style="cursor:pointer;" onclick="goScreen('hub-populated')">← Future Models</a>
+      <div class="topbar-actions"><button class="btn btn-outline">Edit</button></div>
+    </div>
+    <div class="app-body">
+      <div class="sidebar">
+        <div class="sidebar-project"><div class="sidebar-project-label">Project</div><div class="sidebar-project-name">Synthetic relationships</div></div>
+        <div class="sidebar-section-label">Build</div>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink-ghost);"></div>Inputs<span class="nav-count">22</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--accent-purple);"></div>Clusters<span class="nav-count">6</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>System Map</a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>Analysis</a>
+        <div class="sidebar-section-label">Futures</div>
+        <a class="nav-item active" onclick="goScreen('hub-populated')"><div class="nav-dot" style="background:var(--ink);"></div>Future Models</a>
+      </div>
+      <div class="main">
+        <div class="detail-content" style="max-width:900px;">
+          <div class="set-header-card">
+            <div class="detail-eyebrow">Scenario Set · 4 scenarios</div>
+            <div class="detail-title" style="margin-bottom:6px;">Relationship futures — four worlds</div>
+            <div class="detail-desc" style="margin-bottom:0;">Four scenarios exploring how synthetic relationships might reshape care, intimacy, mortality, and identity under different conditions.</div>
+            <div class="set-logic">
+              <div class="set-logic-label">Organizing logic</div>
+              <div class="set-logic-text">Structured around two axes of uncertainty:</div>
+              <div class="axis-chips">
+                <span class="axis-chip">Degree of regulatory legitimation</span>
+                <span class="axis-chip">Displacement vs. complement of human relationships</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="comp-grid">
+            <div class="comp-card" onclick="goScreen('scenario-read')">
+              <div class="comp-body">
+                <div class="sc-card-top">
+                  <div style="font-size:13px;font-weight:500;">The intimacy market</div>
+                  <span class="horizon-badge h2-badge">H2</span>
+                </div>
+                <div class="comp-diffs">
+                  <div class="comp-diff">AI relationships commodified via tiered subscriptions</div>
+                  <div class="comp-diff">Human relationships rarer but more valued</div>
+                </div>
+              </div>
+            </div>
+            <div class="comp-card" onclick="goScreen('scenario-read')">
+              <div class="comp-body">
+                <div class="sc-card-top">
+                  <div style="font-size:13px;font-weight:500;">The unresolved dead</div>
+                  <span class="horizon-badge h2-badge">H2</span>
+                </div>
+                <div class="comp-diffs">
+                  <div class="comp-diff">AI simulations of deceased become legally contested</div>
+                  <div class="comp-diff">Grief prolonged by persistent digital presences</div>
+                </div>
+              </div>
+            </div>
+            <div class="comp-card" onclick="goScreen('scenario-read')">
+              <div class="comp-body">
+                <div class="sc-card-top">
+                  <div style="font-size:13px;font-weight:500;">The companion state</div>
+                  <span class="horizon-badge h3-badge">H3</span>
+                </div>
+                <div class="comp-diffs">
+                  <div class="comp-diff">Governments fund AI companion infrastructure</div>
+                  <div class="comp-diff">Loneliness reclassified as public health condition</div>
+                </div>
+              </div>
+            </div>
+            <div class="comp-card" onclick="goScreen('scenario-read')">
+              <div class="comp-body">
+                <div class="sc-card-top">
+                  <div style="font-size:13px;font-weight:500;">Fractured selves</div>
+                  <span class="horizon-badge h3-badge">H3</span>
+                </div>
+                <div class="comp-diffs">
+                  <div class="comp-diff">Multi-self systems allow parallel social identities</div>
+                  <div class="comp-diff">Singular continuous self culturally destabilised</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCREEN: PREFERRED FUTURE — EDIT
+════════════════════════════════════════ -->
+<div class="screen" id="screen-pf-edit">
+  <div class="app">
+    <div class="topbar">
+      <div class="topbar-brand"><div class="brand-dot"></div>Future Signals</div>
+      <span class="topbar-sep">›</span>
+      <a class="topbar-breadcrumb" style="cursor:pointer;" onclick="goScreen('hub-populated')">← Future Models</a>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="goScreen('hub-populated')">Discard</button>
+        <button class="btn btn-primary" onclick="goScreen('pf-read'); toast('Preferred future saved')">Save</button>
+      </div>
+    </div>
+    <div class="app-body">
+      <div class="sidebar">
+        <div class="sidebar-project"><div class="sidebar-project-label">Project</div><div class="sidebar-project-name">Synthetic relationships</div></div>
+        <div class="sidebar-section-label">Build</div>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink-ghost);"></div>Inputs<span class="nav-count">22</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--accent-purple);"></div>Clusters<span class="nav-count">6</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>System Map</a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>Analysis</a>
+        <div class="sidebar-section-label">Futures</div>
+        <a class="nav-item active" onclick="goScreen('hub-populated')"><div class="nav-dot" style="background:var(--ink);"></div>Future Models</a>
+      </div>
+      <div class="main">
+        <div class="detail-content">
+          <div class="detail-eyebrow">Preferred Future</div>
+          <input class="form-input-title" type="text" placeholder="Name this preferred future" style="margin-bottom:24px;" />
+
+          <div class="ai-bar">
+            <span class="ai-sparkle">✦</span>
+            <span class="ai-bar-text">Draft a preferred future from your analysis, scenarios, and strategic options</span>
+            <span class="ai-bar-cta">Draft</span>
+          </div>
+
+          <div class="form-field">
+            <div class="form-label">Description</div>
+            <div class="form-hint">What is this preferred future and what makes it distinct from the scenarios?</div>
+            <textarea class="form-input" rows="2" placeholder="A future in which…"></textarea>
+          </div>
+
+          <div class="form-field">
+            <div class="form-label">Desired outcomes</div>
+            <div class="form-hint">What conditions or results define this future?</div>
+            <textarea class="form-input" rows="3" placeholder="People retain meaningful agency…"></textarea>
+          </div>
+
+          <div class="zone-divider"><span class="zone-divider-label">Values and direction</span><span class="zone-divider-line"></span></div>
+
+          <div class="form-field">
+            <div class="form-label">Guiding principles</div>
+            <div class="form-hint">What values shape this future? Commitments that should hold even when difficult.</div>
+            <textarea class="form-input" rows="3" placeholder="Genuine choice. Transparency…"></textarea>
+          </div>
+
+          <div class="form-field">
+            <div class="form-label">Strategic priorities</div>
+            <div class="form-hint">What broad areas of action move toward this future? Directions, not plans.</div>
+            <textarea class="form-input" rows="3" placeholder="Invest in disclosure standards…"></textarea>
+          </div>
+
+          <div class="form-field">
+            <div class="form-label">Indicators of progress</div>
+            <div class="form-hint">Observable signals that this future is beginning to emerge.</div>
+            <textarea class="form-input" rows="3" placeholder="Disclosure regulation appears…"></textarea>
+          </div>
+
+          <div class="zone-divider"><span class="zone-divider-label">Scope and provenance</span><span class="zone-divider-line"></span></div>
+
+          <div class="form-row">
+            <div class="form-field">
+              <div class="form-label">Time horizon</div>
+              <select class="form-select"><option>Select…</option><option>H1</option><option selected>H2</option><option>H3</option></select>
+            </div>
+            <div class="form-field">
+              <div class="form-label">Informed by scenarios</div>
+              <div class="chip-select">
+                <div class="chip-select-chosen">
+                  <div class="selected-chip">The companion state <button class="chip-remove">×</button></div>
+                  <div class="selected-chip">The intimacy market <button class="chip-remove">×</button></div>
+                </div>
+                <div class="chip-select-options">
+                  <div class="chip-option selected">The companion state</div>
+                  <div class="chip-option selected">The intimacy market</div>
+                  <div class="chip-option">The unresolved dead</div>
+                  <div class="chip-option">Fractured selves</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCREEN: PREFERRED FUTURE — READ
+════════════════════════════════════════ -->
+<div class="screen" id="screen-pf-read">
+  <div class="app">
+    <div class="topbar">
+      <div class="topbar-brand"><div class="brand-dot"></div>Future Signals</div>
+      <span class="topbar-sep">›</span>
+      <a class="topbar-breadcrumb" style="cursor:pointer;" onclick="goScreen('hub-populated')">← Future Models</a>
+      <div class="topbar-actions"><button class="btn btn-outline" onclick="goScreen('pf-edit')">Edit</button></div>
+    </div>
+    <div class="app-body">
+      <div class="sidebar">
+        <div class="sidebar-project"><div class="sidebar-project-label">Project</div><div class="sidebar-project-name">Synthetic relationships</div></div>
+        <div class="sidebar-section-label">Build</div>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink-ghost);"></div>Inputs<span class="nav-count">22</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--accent-purple);"></div>Clusters<span class="nav-count">6</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>System Map</a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>Analysis</a>
+        <div class="sidebar-section-label">Futures</div>
+        <a class="nav-item active" onclick="goScreen('hub-populated')"><div class="nav-dot" style="background:var(--ink);"></div>Future Models</a>
+      </div>
+      <div class="main">
+        <div class="detail-layout">
+          <div class="detail-main">
+            <div style="height:3px;border-radius:2px;background:linear-gradient(to right, #2d7a4f, #378ADD, #8a6820);opacity:0.5;margin-bottom:20px;"></div>
+            <div class="detail-eyebrow">Preferred Future <span class="horizon-badge h2-badge" style="margin-left:4px;">H2–H3</span></div>
+            <div class="detail-title">Relationships that remain genuinely chosen</div>
+            <div class="detail-desc" style="margin-bottom:32px;">A future in which synthetic relationships are available, normalised, and regulated — but human relationships retain distinct value not by legal protection or scarcity, but because they are irreplaceable for things AI cannot provide.</div>
+
+            <div class="read-section">
+              <div class="read-label">Desired outcomes</div>
+              <div class="read-text">People retain meaningful agency over the role synthetic relationships play in their lives. AI companionship supplements rather than substitutes for human connection. Regulation ensures transparency about synthetic nature and meaningful exit rights. Human relationships are valued on their own terms.</div>
+            </div>
+
+            <div class="read-section">
+              <div class="read-label">Guiding principles</div>
+              <div class="read-list">
+                <div class="read-list-item accented"><div class="read-list-text">Genuine choice — people should be able to opt out without social or material penalty</div></div>
+                <div class="read-list-item accented"><div class="read-list-text">Transparency — synthetic nature disclosed clearly, not buried in terms of service</div></div>
+                <div class="read-list-item accented"><div class="read-list-text">Human irreplaceability — some things should remain the province of human relationship</div></div>
+              </div>
+            </div>
+
+            <div class="read-section">
+              <div class="read-label">Strategic priorities</div>
+              <div class="read-list">
+                <div class="read-list-item"><div class="read-list-num">01</div><div class="read-list-text">Develop and advocate for disclosure standards across all AI relationship contexts</div></div>
+                <div class="read-list-item"><div class="read-list-num">02</div><div class="read-list-text">Fund longitudinal research on effects of AI companion adoption</div></div>
+                <div class="read-list-item"><div class="read-list-num">03</div><div class="read-list-text">Develop governance frameworks that protect exit rights and informed consent</div></div>
+              </div>
+            </div>
+
+            <div class="read-section">
+              <div class="read-label">Indicators of progress</div>
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <div class="read-indicator"><div class="read-indicator-dot"></div><div class="read-indicator-text">Disclosure requirements appear in regulation in two or more major jurisdictions</div></div>
+                <div class="read-indicator"><div class="read-indicator-dot"></div><div class="read-indicator-text">No significant displacement of human relationship formation in high-adoption populations</div></div>
+                <div class="read-indicator"><div class="read-indicator-dot"></div><div class="read-indicator-text">Public literacy around AI companions is high and increasing</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-sidebar">
+            <div>
+              <div class="side-label">Informed by</div>
+              <hr class="side-divider" />
+              <div class="side-link" onclick="goScreen('scenario-read')"><span class="side-link-dot" style="background:#4a8a5e;"></span>The companion state<span class="side-link-arrow">›</span></div>
+              <div class="side-link"><span class="side-link-dot" style="background:#3d5fa3;"></span>The intimacy market<span class="side-link-arrow">›</span></div>
+              <div class="side-text" style="margin-top:8px;">Draws on elements from these scenarios without being derived from any single one.</div>
+            </div>
+            <div>
+              <div class="side-label">Connected options</div>
+              <hr class="side-divider" />
+              <div class="side-link" onclick="goScreen('so-read')"><span class="side-link-dot" style="background:var(--ink);"></span>Disclosure standard<span class="side-link-arrow">›</span></div>
+              <div class="side-link"><span class="side-link-dot" style="background:var(--ink);"></span>Longitudinal research<span class="side-link-arrow">›</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCREEN: STRATEGIC OPTION — EDIT
+════════════════════════════════════════ -->
+<div class="screen" id="screen-so-edit">
+  <div class="app">
+    <div class="topbar">
+      <div class="topbar-brand"><div class="brand-dot"></div>Future Signals</div>
+      <span class="topbar-sep">›</span>
+      <a class="topbar-breadcrumb" style="cursor:pointer;" onclick="goScreen('hub-populated')">← Future Models</a>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="goScreen('hub-populated')">Discard</button>
+        <button class="btn btn-primary" onclick="goScreen('so-read'); toast('Strategic option saved')">Save</button>
+      </div>
+    </div>
+    <div class="app-body">
+      <div class="sidebar">
+        <div class="sidebar-project"><div class="sidebar-project-label">Project</div><div class="sidebar-project-name">Synthetic relationships</div></div>
+        <div class="sidebar-section-label">Build</div>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink-ghost);"></div>Inputs<span class="nav-count">22</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--accent-purple);"></div>Clusters<span class="nav-count">6</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>System Map</a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>Analysis</a>
+        <div class="sidebar-section-label">Futures</div>
+        <a class="nav-item active" onclick="goScreen('hub-populated')"><div class="nav-dot" style="background:var(--ink);"></div>Future Models</a>
+      </div>
+      <div class="main">
+        <div class="detail-content">
+          <div class="detail-eyebrow">New Strategic Option</div>
+          <input class="form-input-title" type="text" placeholder="Name this option" style="margin-bottom:24px;" />
+
+          <div class="ai-bar">
+            <span class="ai-sparkle">✦</span>
+            <span class="ai-bar-text">Generate strategic options from your scenarios and analysis</span>
+            <span class="ai-bar-cta">Generate</span>
+          </div>
+
+          <div class="form-field">
+            <div class="form-label">Description</div>
+            <div class="form-hint">What this option is. Enough to identify it clearly.</div>
+            <textarea class="form-input" rows="2" placeholder="Develop and advocate for a standard…"></textarea>
+          </div>
+
+          <div class="form-field">
+            <div class="form-label">Intended outcome</div>
+            <div class="form-hint">What are you trying to achieve? A direction to orient around.</div>
+            <textarea class="form-input" rows="3" placeholder="Increase resilience of care infrastructure…"></textarea>
+          </div>
+
+          <div class="zone-divider"><span class="zone-divider-label">Detail</span><span class="zone-divider-line"></span></div>
+
+          <div class="form-field">
+            <div class="form-label">What this involves</div>
+            <div class="form-hint">What would this option entail? Orientation, not a project plan.</div>
+            <textarea class="form-input" rows="4" placeholder="Develop a model disclosure standard in partnership with…"></textarea>
+          </div>
+
+          <div class="form-field">
+            <div class="form-label">Implications</div>
+            <div class="form-hint">What does choosing this foreclose or make harder? Trade-offs?</div>
+            <textarea class="form-input" rows="3" placeholder="Prioritising AI-mediated care may reduce political pressure…"></textarea>
+          </div>
+
+          <div class="zone-divider"><span class="zone-divider-label">Conditions and scope</span><span class="zone-divider-line"></span></div>
+
+          <div class="form-row">
+            <div class="form-field">
+              <div class="form-label">Time horizon</div>
+              <select class="form-select"><option>Select…</option><option>H1</option><option>H2</option><option>H3</option></select>
+            </div>
+            <div class="form-field">
+              <div class="form-label">Feasibility</div>
+              <select class="form-select"><option>Select…</option><option>High</option><option>Medium</option><option>Low</option></select>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <div class="form-label">Responds to scenarios</div>
+            <div class="chip-select">
+              <div class="chip-select-chosen"></div>
+              <div class="chip-select-options">
+                <div class="chip-option">The companion state</div>
+                <div class="chip-option">The intimacy market</div>
+                <div class="chip-option">The unresolved dead</div>
+                <div class="chip-option">Fractured selves</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <div class="form-label">Dependencies <span style="color:var(--ink-faint);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;">optional</span></div>
+            <textarea class="form-input" rows="2" placeholder="What conditions must hold for this to succeed?"></textarea>
+          </div>
+
+          <div class="form-field">
+            <div class="form-label">Risks <span style="color:var(--ink-faint);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;">optional</span></div>
+            <textarea class="form-input" rows="2" placeholder="What could go wrong?"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCREEN: STRATEGIC OPTION — READ
+════════════════════════════════════════ -->
+<div class="screen" id="screen-so-read">
+  <div class="app">
+    <div class="topbar">
+      <div class="topbar-brand"><div class="brand-dot"></div>Future Signals</div>
+      <span class="topbar-sep">›</span>
+      <a class="topbar-breadcrumb" style="cursor:pointer;" onclick="goScreen('hub-populated')">← Future Models</a>
+      <div class="topbar-actions"><button class="btn btn-outline" onclick="goScreen('so-edit')">Edit</button></div>
+    </div>
+    <div class="app-body">
+      <div class="sidebar">
+        <div class="sidebar-project"><div class="sidebar-project-label">Project</div><div class="sidebar-project-name">Synthetic relationships</div></div>
+        <div class="sidebar-section-label">Build</div>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink-ghost);"></div>Inputs<span class="nav-count">22</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--accent-purple);"></div>Clusters<span class="nav-count">6</span></a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>System Map</a>
+        <a class="nav-item"><div class="nav-dot" style="background:var(--ink);"></div>Analysis</a>
+        <div class="sidebar-section-label">Futures</div>
+        <a class="nav-item active" onclick="goScreen('hub-populated')"><div class="nav-dot" style="background:var(--ink);"></div>Future Models</a>
+      </div>
+      <div class="main">
+        <div class="detail-layout">
+          <div class="detail-main">
+            <div class="detail-eyebrow">Strategic Option <span class="horizon-badge h1-badge" style="margin-left:4px;">H1</span> <span class="feasibility-badge feas-high" style="margin-left:2px;">High feasibility</span></div>
+            <div class="detail-title" style="font-family:var(--font);font-weight:500;font-size:22px;">Establish an AI relationship disclosure standard</div>
+            <div class="detail-desc" style="margin-bottom:32px;">Develop and advocate for a regulatory standard requiring AI companions to disclose their synthetic nature at initiation and at regular intervals. Pilot in healthcare and eldercare settings first.</div>
+
+            <div class="read-section">
+              <div class="read-label">What this involves</div>
+              <div class="read-text">Develop a model disclosure standard in partnership with AI companion developers, care providers, and consumer advocacy groups. Pilot in eldercare settings across three jurisdictions and measure effect on user trust, engagement, and wellbeing. Use pilot data to inform advocacy for regulatory adoption.</div>
+            </div>
+
+            <div class="read-section">
+              <div class="read-label">Intended outcome</div>
+              <div class="read-text">Users of AI companion services understand that they are interacting with a synthetic entity. This knowledge is not buried in terms of service but communicated clearly and repeated at appropriate intervals. The goal is informed consent as default, not informed consent as exception.</div>
+            </div>
+
+            <div class="read-section">
+              <div class="read-label">Implications</div>
+              <div class="read-text" style="padding:10px 12px;background:#fafaf8;border-left:3px solid var(--accent-amber);border-radius:0 7px 7px 0;">Mandatory disclosure may reduce engagement metrics in early adoption — providers may resist. Setting a disclosure standard early could also create a precedent that shapes the entire regulatory landscape for AI relationships, for better or worse.</div>
+            </div>
+
+            <div class="read-section">
+              <div class="read-label">Dependencies</div>
+              <div class="read-text">Willing pilot partners in the eldercare sector. At least one jurisdiction with an open regulatory process. Sufficient AI companion providers operating under terms that allow research collaboration.</div>
+            </div>
+          </div>
+
+          <div class="detail-sidebar">
+            <div>
+              <div class="side-label">Responds to</div>
+              <hr class="side-divider" />
+              <div class="side-link" onclick="goScreen('scenario-read')"><span class="side-link-dot" style="background:#4a8a5e;"></span>The companion state<span class="side-link-arrow">›</span></div>
+              <div class="side-link"><span class="side-link-dot" style="background:#3d5fa3;"></span>The intimacy market<span class="side-link-arrow">›</span></div>
+            </div>
+            <div>
+              <div class="side-label">Supports</div>
+              <hr class="side-divider" />
+              <div class="side-link" onclick="goScreen('pf-read')"><span class="side-link-dot" style="background:var(--accent-green);"></span>Preferred future<span class="side-link-arrow">›</span></div>
+            </div>
+            <div>
+              <div class="side-label">Character</div>
+              <hr class="side-divider" />
+              <div class="side-text">Advocacy + standards development. Low resource intensity, high strategic leverage. Largely reversible — a standard can be revised.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div id="toast"></div>
+
+<script>
+// Screen navigation
+function goScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
+  var target = document.getElementById('screen-' + id);
+  if (target) {
+    target.classList.add('visible');
+    window.scrollTo(0, 0);
+  }
+  // Update proto bar
+  document.querySelectorAll('.proto-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.screen === id);
+  });
+}
+
+// Proto bar buttons
+document.querySelectorAll('.proto-btn').forEach(btn => {
+  btn.addEventListener('click', () => goScreen(btn.dataset.screen));
+});
+
+// Toast
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.opacity = '1';
+  t.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(-50%) translateY(16px)';
+  }, 2000);
+}
+
+// Chip select toggle (simple demo)
+document.querySelectorAll('.chip-option').forEach(opt => {
+  opt.addEventListener('click', () => {
+    opt.classList.toggle('selected');
+  });
+});
+</script>
+</body>
+</html>

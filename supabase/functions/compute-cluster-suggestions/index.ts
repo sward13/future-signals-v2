@@ -175,6 +175,29 @@ serve(async (req: Request) => {
         return respond({ assignments: 0, message: "No clusters with embeddings found." });
       }
 
+      // ── DEBUG: score every unassigned input against every cluster centroid ───
+      const debugScores = unassignedInputs.map((input) => {
+        const scores = clustersWithCentroids.map((cluster) => ({
+          cluster_id:   cluster.id,
+          cluster_name: cluster.name,
+          similarity:   Math.round(cosineSim(input.embedding, cluster.centroid) * 10000) / 10000,
+        }));
+        const best = scores.reduce((a, b) => (a.similarity > b.similarity ? a : b));
+        console.log(
+          `[debug] "${input.name}" → best match "${best.cluster_name}" @ ${best.similarity}` +
+          (best.similarity >= ASSIGNMENT_THRESHOLD ? " ✓ ABOVE threshold" : " ✗ below threshold"),
+        );
+        return {
+          input_id:    input.id,
+          input_name:  input.name,
+          best_similarity: best.similarity,
+          best_cluster:    best.cluster_name,
+          all_scores:  scores,
+          would_match: best.similarity >= ASSIGNMENT_THRESHOLD,
+        };
+      });
+      // ────────────────────────────────────────────────────────────────────────
+
       const rows = buildAssignmentRows(
         unassignedInputs,
         clustersWithCentroids,
@@ -183,7 +206,7 @@ serve(async (req: Request) => {
       );
 
       if (rows.length === 0) {
-        return respond({ assignments: 0 });
+        return respond({ assignments: 0, debug: debugScores });
       }
 
       await supabase
@@ -199,7 +222,7 @@ serve(async (req: Request) => {
 
       if (insertError) throw insertError;
 
-      return respond({ assignments: rows.length });
+      return respond({ assignments: rows.length, debug: debugScores });
     }
 
     // ─────────────────────────────────────────────────────────────────────────

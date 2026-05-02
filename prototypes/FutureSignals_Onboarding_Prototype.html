@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Future Signals — Onboarding Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Open+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Open Sans',sans-serif;background:#F7F7F5;color:#1A1A1A;font-size:13px;line-height:1.5;min-height:100vh}
+h2,h3{font-family:'Roboto',sans-serif}
+
+/* Top bar */
+.top-bar{background:#fff;border-bottom:0.5px solid rgba(0,0,0,0.09);padding:0 32px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-mark{width:28px;height:28px;border-radius:6px;background:#3B82F6;display:flex;align-items:center;justify-content:center}
+.logo-text{font-family:'Roboto',sans-serif;font-size:14px;font-weight:500;color:#1A1A1A}
+.step-dots{display:flex;gap:6px;align-items:center}
+.dot{width:6px;height:6px;border-radius:50%;background:rgba(0,0,0,0.15);transition:all 0.2s}
+.dot.active{background:#3B82F6;width:20px;border-radius:3px}
+.dot.done{background:#3B82F6;opacity:0.4}
+
+/* Layout */
+.screen{min-height:calc(100vh - 52px);display:flex;flex-direction:column}
+.body{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:40px 24px 32px}
+.card{background:#fff;border:0.5px solid rgba(0,0,0,0.09);border-radius:12px;padding:32px 36px;width:100%;max-width:520px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.card-wide{max-width:740px}
+
+/* Typography */
+.tag{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;color:#3B82F6;margin-bottom:8px}
+.card h2{font-size:22px;font-weight:500;margin-bottom:7px;color:#1A1A1A}
+.sub{font-size:13px;color:#6B7280;margin-bottom:22px;line-height:1.6}
+
+/* Form elements */
+.field{margin-bottom:15px}
+.field label{display:block;font-size:12px;font-weight:500;color:#1A1A1A;margin-bottom:5px}
+.field .hint{font-size:11px;color:#9CA3AF;font-style:italic;margin-top:5px;line-height:1.5}
+input[type=text],input[type=email],textarea{width:100%;padding:9px 12px;border:1px solid rgba(0,0,0,0.16);border-radius:8px;font-size:13px;font-family:'Open Sans',sans-serif;outline:none;color:#1A1A1A;transition:border-color 0.15s}
+input[type=text]:focus,input[type=email]:focus,textarea:focus{border-color:#3B82F6}
+textarea{resize:none;line-height:1.55}
+
+/* Buttons */
+.btn-primary{padding:10px 22px;border-radius:8px;background:#3B82F6;color:#fff;border:none;font-size:13px;font-weight:500;cursor:pointer;font-family:'Open Sans',sans-serif;transition:background 0.15s}
+.btn-primary:hover{background:#2563EB}
+.btn-primary:disabled{opacity:0.4;cursor:default}
+.btn-ghost{background:none;border:none;color:#6B7280;font-size:12px;cursor:pointer;font-family:'Open Sans',sans-serif;padding:4px 0;transition:color 0.15s}
+.btn-ghost:hover{color:#1A1A1A}
+.actions{display:flex;align-items:center;justify-content:space-between;margin-top:24px}
+.divider-or{display:flex;align-items:center;gap:12px;margin:14px 0;color:#9CA3AF;font-size:12px}
+.divider-or::before,.divider-or::after{content:'';flex:1;height:0.5px;background:rgba(0,0,0,0.09)}
+.google-btn{width:100%;padding:9px;border-radius:8px;border:1px solid rgba(0,0,0,0.16);background:#fff;font-size:13px;cursor:pointer;font-family:'Open Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 0.15s}
+.google-btn:hover{background:#F7F7F5}
+
+/* Experience level options */
+.exp-opts{display:flex;flex-direction:column;gap:9px}
+.exp-opt{border:1px solid rgba(0,0,0,0.16);border-radius:8px;padding:13px 15px;cursor:pointer;display:flex;align-items:flex-start;gap:11px;transition:border-color 0.15s,background 0.15s}
+.exp-opt:hover{border-color:#3B82F6;background:#F8FBFF}
+.exp-opt.selected{border-color:#3B82F6;background:#EFF6FF}
+.exp-radio{width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(0,0,0,0.2);flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;transition:border-color 0.15s}
+.exp-opt.selected .exp-radio{border-color:#3B82F6}
+.exp-radio-inner{width:8px;height:8px;border-radius:50%;background:#3B82F6;display:none}
+.exp-opt.selected .exp-radio-inner{display:block}
+.exp-text strong{display:block;font-size:13px;font-weight:500;color:#1A1A1A;margin-bottom:2px}
+.exp-text span{font-size:12px;color:#6B7280}
+
+/* Domain grid */
+.domain-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.domain-btn{padding:10px 13px;border-radius:8px;border:1px solid rgba(0,0,0,0.16);background:#fff;font-size:12px;font-family:'Open Sans',sans-serif;text-align:left;color:#1A1A1A;display:flex;align-items:center;gap:7px;cursor:default}
+.domain-btn.selected{border-color:#3B82F6;background:#EFF6FF;font-weight:500;color:#1E40AF}
+
+/* Enhanced toggle */
+.toggle-btn{background:none;border:none;color:#3B82F6;font-size:12px;cursor:pointer;font-family:'Open Sans',sans-serif;padding:0;display:flex;align-items:center;gap:5px;margin-top:8px}
+.chevron{display:inline-block;transition:transform 0.15s;font-size:9px}
+.open .chevron{transform:rotate(90deg)}
+.enhanced-fields{margin-top:12px;padding-top:12px;border-top:0.5px solid rgba(0,0,0,0.09)}
+
+/* Creating transition */
+.creating-screen{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 24px}
+.creating-inner{text-align:center;max-width:400px}
+.pulse-ring{width:60px;height:60px;border-radius:50%;background:#EFF6FF;border:2px solid #BFDBFE;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.06);opacity:0.85}}
+.pulse-inner{width:30px;height:30px;border-radius:50%;background:#3B82F6;border:2px solid #93C5FD}
+.creating-title{font-family:'Roboto',sans-serif;font-size:18px;font-weight:500;margin-bottom:7px;color:#1A1A1A}
+.creating-sub{font-size:13px;color:#6B7280;line-height:1.6;margin-bottom:22px}
+.creating-steps{display:flex;flex-direction:column;gap:9px;text-align:left;background:#F7F7F5;border-radius:10px;padding:16px 18px}
+.creating-step{display:flex;align-items:center;gap:10px;font-size:12px;color:#9CA3AF;transition:color 0.3s}
+.creating-step.done{color:#065F46}
+.creating-step.active{color:#1A1A1A;font-weight:500}
+.step-icon{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;transition:background 0.3s}
+.done-icon{background:#D1FAE5;color:#065F46}
+.active-icon{background:#DBEAFE;border:1.5px solid #3B82F6}
+.pending-icon{background:#E5E7EB}
+@keyframes spin{to{transform:rotate(360deg)}}
+.mini-spin{width:10px;height:10px;border:1.5px solid #BFDBFE;border-top-color:#3B82F6;border-radius:50%;animation:spin 0.7s linear infinite}
+
+/* KQ block */
+.kq-block{padding:9px 14px;border-left:2px solid #3B82F6;background:#F0F7FF;border-radius:0 7px 7px 0}
+.kq-label{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:#3B82F6;margin-bottom:3px}
+.kq-text{font-size:12px;font-style:italic;color:#374151;line-height:1.55}
+
+/* Progress bar */
+.progress-wrap{background:#F7F7F5;border:0.5px solid rgba(0,0,0,0.09);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.progress-track{flex:1;height:5px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:#3B82F6;border-radius:3px;transition:width 0.3s ease}
+.progress-text{font-size:11px;color:#6B7280;white-space:nowrap;min-width:190px;text-align:right}
+
+/* Candidate cards */
+.candidates-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px;max-height:340px;overflow-y:auto;padding-right:2px}
+.cand{background:#fff;border:1px solid rgba(0,0,0,0.09);border-radius:8px;padding:11px 12px;cursor:pointer;position:relative;transition:border-color 0.15s,background 0.15s}
+.cand:hover{border-color:rgba(59,130,246,0.5)}
+.cand.selected{border-color:#3B82F6;background:#F8FBFF}
+.cand-check{position:absolute;top:10px;right:10px;width:16px;height:16px;border-radius:4px;border:1.5px solid rgba(0,0,0,0.18);display:flex;align-items:center;justify-content:center;font-size:9px;transition:all 0.15s}
+.cand.selected .cand-check{background:#3B82F6;border-color:#3B82F6;color:#fff}
+.cand-source{font-size:10px;color:#9CA3AF;margin-bottom:3px;display:flex;align-items:center;gap:5px}
+.cred{font-size:9px;padding:1px 5px;border-radius:3px;background:#D1FAE5;color:#065F46}
+.cred.spec{background:#FEF3C7;color:#92400E}
+.cand-title{font-size:11.5px;font-weight:500;margin-bottom:4px;line-height:1.4;padding-right:20px;color:#1A1A1A}
+.cand-summary{font-size:11px;color:#6B7280;line-height:1.5;margin-bottom:6px}
+.cand-tags{display:flex;gap:3px;flex-wrap:wrap}
+.cand-tag{font-size:9px;padding:1px 5px;border-radius:3px;background:#F3F4F6;color:#6B7280}
+
+/* Clustering */
+.big-spinner{width:44px;height:44px;border:3px solid #DBEAFE;border-top-color:#3B82F6;border-radius:50%;animation:spin 0.9s linear infinite;margin:0 auto 18px}
+.clustering-loading{text-align:center;padding:40px 20px}
+
+/* Success banner */
+.success-banner{background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:11px 15px;margin-bottom:20px;font-size:12px;color:#065F46;display:flex;align-items:center;gap:8px}
+
+/* Cluster result cards */
+.result-cluster{border-radius:10px;padding:18px 20px;margin-bottom:12px;border:1px solid transparent}
+.result-cluster.trend{background:#FAF8FF;border-color:#DDD6FE}
+.result-cluster.driver{background:#EFF8FF;border-color:#BFDBFE}
+.result-cluster.tension{background:#FFFBEB;border-color:#FDE68A}
+.rc-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:9px}
+.rc-pill-wrap{display:flex;flex-direction:column;gap:4px}
+.cluster-pill{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;padding:2px 7px;border-radius:4px;display:inline-block}
+.pill-trend{background:#EDE9FE;color:#5B21B6}
+.pill-driver{background:#DBEAFE;color:#1E40AF}
+.pill-tension{background:#FEF3C7;color:#92400E}
+.rc-type-def{font-size:10px;font-style:italic;line-height:1.4;max-width:380px}
+.rc-type-def.trend{color:#6D28D9}
+.rc-type-def.driver{color:#1E40AF}
+.rc-type-def.tension{color:#92400E}
+.rc-signal-count{font-size:10px;color:#9CA3AF;white-space:nowrap;margin-top:2px}
+.rc-name{font-size:14px;font-weight:500;margin-bottom:5px;color:#1A1A1A}
+.rc-summary{font-size:12px;color:#6B7280;line-height:1.6;margin-bottom:9px}
+.rc-signals{display:flex;flex-direction:column;gap:4px}
+.rc-signal{font-size:11px;color:#6B7280;display:flex;align-items:flex-start;gap:6px;line-height:1.45}
+.rc-signal::before{content:'↳';color:#9CA3AF;flex-shrink:0}
+
+/* Prototype note */
+.proto-note{position:fixed;bottom:16px;right:16px;background:rgba(0,0,0,0.7);color:#fff;font-size:11px;padding:6px 12px;border-radius:20px;pointer-events:none;opacity:0.8}
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+<div class="proto-note">Prototype — Future Signals Onboarding v5</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const {useState, useEffect} = React;
+const e = React.createElement;
+
+const DOMAINS = [
+  {id:'tech',    label:'Technology & AI',        icon:'⚡'},
+  {id:'climate', label:'Climate & Energy',        icon:'🌍'},
+  {id:'health',  label:'Health & Life Sciences',  icon:'🧬'},
+  {id:'gov',     label:'Government & Policy',     icon:'🏛'},
+  {id:'econ',    label:'Economy & Finance',       icon:'📈'},
+  {id:'edu',     label:'Education & Learning',    icon:'📚'},
+  {id:'media',   label:'Media & Culture',         icon:'🎭'},
+  {id:'defence', label:'Defence & Security',      icon:'🛡'},
+];
+
+const USER_PROJECT = {
+  name: 'Future of Urban Mobility 2035',
+  domain: 'climate',
+  domainLabel: 'Climate & Energy',
+  kq: 'How will the shift to electric and autonomous vehicles reshape cities and transport infrastructure over the next decade?',
+};
+
+const CANDIDATES = [
+  {id:1,  source:'BloombergNEF',                cred:'Institutional', title:'EV adoption is accelerating faster than grid infrastructure can accommodate',                          summary:'Global EV sales are outpacing utility investment in charging infrastructure, creating bottlenecks in dense urban corridors.',                                                                          tags:['Technological','Economic']},
+  {id:2,  source:'The Guardian',                cred:'Specialist',    title:'Cities are redesigning streets as car ownership declines among under-35s',                             summary:'A generational shift away from car ownership is prompting urban planners to reclaim road space for cycling, transit, and public life.',                                                               tags:['Social','Political']},
+  {id:3,  source:'McKinsey Mobility',           cred:'Specialist',    title:'Autonomous vehicle deployment timelines slip again as regulatory consensus stalls',                    summary:'Multiple AV manufacturers are pulling back on 2025 deployment targets, citing regulatory fragmentation across state and national jurisdictions.',                                                      tags:['Technological','Political']},
+  {id:4,  source:'IEA',                         cred:'Institutional', title:'Critical mineral supply chains for EV batteries face long-term geopolitical risk',                    summary:'Lithium, cobalt, and nickel supply is concentrated in politically unstable regions, creating systemic risk for the EV transition at scale.',                                                          tags:['Economic','Political']},
+  {id:5,  source:'Nature Cities',               cred:'Institutional', title:'Public transit ridership has not recovered to pre-pandemic levels in most OECD cities',               summary:'Sustained remote work and micro-mobility adoption are structurally reshaping urban transit demand, threatening funding models.',                                                                        tags:['Social','Economic']},
+  {id:6,  source:'FT',                          cred:'Specialist',    title:'Ride-hailing platforms are quietly becoming the dominant first-mile solution in mid-sized cities',    summary:'Uber and Lyft are expanding beyond major metros, partnering with transit agencies to fill coverage gaps left by declining bus networks.',                                                               tags:['Technological','Economic']},
+  {id:7,  source:'Transport & Environment',     cred:'Institutional', title:'Charging deserts are emerging in low-income urban neighbourhoods',                                    summary:'EV infrastructure investment is concentrating in wealthier suburbs and highway corridors, reproducing existing transport inequities.',                                                                 tags:['Social','Political']},
+  {id:8,  source:'MIT Urban Mobility Lab',      cred:'Institutional', title:'Shared autonomous vehicles could reduce urban car fleets by 90% — but only with coordinated policy', summary:'Modelling shows dramatic fleet reduction is technically possible, but requires integrated land-use and pricing policy that few cities have attempted.',                                                    tags:['Technological','Political']},
+  {id:9,  source:'Reuters',                     cred:'Specialist',    title:'Automakers are lobbying to delay EV mandates as consumer demand softens',                             summary:'After two years of rapid growth, EV sales growth is slowing in key markets, with range anxiety and charging uncertainty cited by buyers.',                                                           tags:['Economic','Political']},
+  {id:10, source:'World Resources Institute',   cred:'Institutional', title:'Developing cities are leapfrogging personal cars with e-moto and e-bus transitions',                 summary:'Cities across Southeast Asia and Sub-Saharan Africa are adopting electric two-wheelers and buses, bypassing the Western car-centric model.',                                                          tags:['Technological','Social']},
+  {id:11, source:'Wired',                       cred:'Specialist',    title:'Smart traffic systems are cutting urban congestion — but raising surveillance concerns',               summary:'AI-driven signal optimisation is proving effective at reducing journey times, but the sensor infrastructure required is drawing civil liberties scrutiny.',                                             tags:['Technological','Social']},
+  {id:12, source:'IPCC Transport Working Group',cred:'Institutional', title:'Transport sector emissions reductions are lagging all other sectors',                                 summary:'Despite EV growth, overall transport emissions are still rising due to freight, aviation, and continued ICE vehicle sales in emerging markets.',                                                      tags:['Environmental','Political']},
+];
+
+const CLUSTERS = [
+  {
+    type:'Trend', typeClass:'trend',
+    typeDef:'A pattern of change already underway and gathering momentum.',
+    name:'Electric Mobility is Scaling — but Unevenly',
+    summary:'EV adoption is accelerating globally, but infrastructure investment, supply chain resilience, and consumer readiness are lagging capability — creating a patchwork transition with widening geographic and economic disparities.',
+    signals:[
+      'EV adoption is accelerating faster than grid infrastructure can accommodate',
+      'Automakers are lobbying to delay EV mandates as consumer demand softens',
+      'Developing cities are leapfrogging personal cars with e-moto and e-bus transitions',
+      'Critical mineral supply chains for EV batteries face long-term geopolitical risk',
+    ],
+  },
+  {
+    type:'Driver', typeClass:'driver',
+    typeDef:'A force actively shaping how this trend develops — accelerating, directing, or enabling change.',
+    name:'Urban Space is Being Contested and Reprogrammed',
+    summary:'Declining car ownership among younger generations, combined with post-pandemic transit shifts and micro-mobility growth, is creating political and planning pressure to fundamentally redesign how cities allocate street space.',
+    signals:[
+      'Cities are redesigning streets as car ownership declines among under-35s',
+      'Public transit ridership has not recovered to pre-pandemic levels in most OECD cities',
+      'Ride-hailing platforms are quietly becoming the dominant first-mile solution in mid-sized cities',
+      'Shared autonomous vehicles could reduce urban car fleets by 90% — but only with coordinated policy',
+    ],
+  },
+  {
+    type:'Tension', typeClass:'tension',
+    typeDef:'A friction point where competing forces, values, or interests are pulling against each other.',
+    name:'The Equity Gap in the Mobility Transition',
+    summary:'The infrastructure and opportunity benefits of the mobility transition are concentrating in wealthy corridors, while low-income urban areas face charging deserts, reduced transit coverage, and exclusion from AV deployment.',
+    signals:[
+      'Charging deserts are emerging in low-income urban neighbourhoods',
+      'Transport sector emissions reductions are lagging all other sectors',
+      'Smart traffic systems are cutting urban congestion — but raising surveillance concerns',
+    ],
+  },
+];
+
+// ── Logo ────────────────────────────────────────────────────────────
+function LogoMark() {
+  return e('div', {className:'logo-mark'},
+    e('svg', {viewBox:'0 0 16 16', width:16, height:16},
+      e('circle', {cx:4,  cy:8,  r:2, fill:'#fff'}),
+      e('circle', {cx:8,  cy:4,  r:2, fill:'rgba(255,255,255,0.6)'}),
+      e('circle', {cx:12, cy:8,  r:2, fill:'rgba(255,255,255,0.85)'}),
+      e('circle', {cx:8,  cy:12, r:2, fill:'rgba(255,255,255,0.4)'})
+    )
+  );
+}
+
+// ── Top bar ─────────────────────────────────────────────────────────
+function TopBar({step}) {
+  return e('div', {className:'top-bar'},
+    e('div', {className:'logo'}, e(LogoMark), e('span', {className:'logo-text'}, 'Future Signals')),
+    e('div', {className:'step-dots'},
+      [0,1,2,3,4].map(i => e('div', {key:i, className:'dot'+(i===step?' active':i<step?' done':'')}))
+    )
+  );
+}
+
+// ── Step 1: Sign up ─────────────────────────────────────────────────
+function Step1({onNext}) {
+  return e('div', {className:'screen'},
+    e(TopBar, {step:0}),
+    e('div', {className:'body'},
+      e('div', {className:'card'},
+        e('div', {className:'tag'}, 'Create your account'),
+        e('h2', null, 'Welcome to Future Signals'),
+        e('p', {className:'sub'}, 'The structured foresight workspace for strategic practitioners.'),
+        e('button', {className:'google-btn'},
+          e('svg', {width:16, height:16, viewBox:'0 0 48 48'},
+            e('path', {d:'M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z', fill:'#9CA3AF'})
+          ),
+          'Continue with Google'
+        ),
+        e('div', {className:'divider-or'}, 'or'),
+        e('div', {className:'field'},
+          e('label', null, 'Work email'),
+          e('input', {type:'email', placeholder:'you@organisation.com'})
+        ),
+        e('div', {className:'field'},
+          e('label', null, 'Password'),
+          e('input', {type:'text', placeholder:'Min. 8 characters', style:{color:'#9CA3AF'}})
+        ),
+        e('div', {className:'actions'},
+          e('button', {className:'btn-ghost'}, 'Already have an account? Sign in'),
+          e('button', {className:'btn-primary', onClick:onNext}, 'Create account')
+        )
+      )
+    )
+  );
+}
+
+// ── Step 2: Experience level ─────────────────────────────────────────
+function Step2({onNext, setLevel}) {
+  const [sel, setSel] = useState(null);
+  const opts = [
+    {id:'new-user', label:"I'm new to structured foresight",             sub:"I'll learn the methodology as I go"},
+    {id:'regular',  label:"I use foresight methods regularly",           sub:"I have a practice but want better structure"},
+    {id:'expert',   label:"I'm an experienced practitioner or consultant", sub:"I know what I'm doing — just give me the tools"},
+  ];
+  return e('div', {className:'screen'},
+    e(TopBar, {step:1}),
+    e('div', {className:'body'},
+      e('div', {className:'card'},
+        e('div', {className:'tag'}, 'One quick question'),
+        e('h2', null, 'How do you practise foresight?'),
+        e('p', {className:'sub'}, 'Helps us calibrate guidance levels. You can change this any time.'),
+        e('div', {className:'exp-opts'},
+          opts.map(o => e('div', {key:o.id, className:'exp-opt'+(sel===o.id?' selected':''), onClick:()=>setSel(o.id)},
+            e('div', {className:'exp-radio'}, e('div', {className:'exp-radio-inner'})),
+            e('div', {className:'exp-text'}, e('strong', null, o.label), e('span', null, o.sub))
+          ))
+        ),
+        e('div', {className:'actions'}, e('span'),
+          e('button', {className:'btn-primary', disabled:!sel, onClick:()=>{setLevel(sel); onNext();}}, 'Continue')
+        )
+      )
+    )
+  );
+}
+
+// ── Step 3: Project creation ─────────────────────────────────────────
+function Step3({onNext}) {
+  const [open, setOpen] = useState(false);
+  return e('div', {className:'screen'},
+    e(TopBar, {step:2}),
+    e('div', {className:'body'},
+      e('div', {className:'card'},
+        e('div', {className:'tag'}, 'Create your first project'),
+        e('h2', null, 'What are you trying to understand?'),
+        e('p', {className:'sub', style:{marginBottom:16}}, 'Three fields to get started. Your scanner starts finding signals as soon as you hit create.'),
+        e('div', {className:'field'},
+          e('label', null, 'Project name'),
+          e('input', {type:'text', value:USER_PROJECT.name, readOnly:true, style:{background:'#F9FAFB', color:'#374151'}})
+        ),
+        e('div', {className:'field'},
+          e('label', null, 'Domain'),
+          e('div', {className:'domain-grid'},
+            DOMAINS.map(d => e('div', {key:d.id, className:'domain-btn'+(d.id===USER_PROJECT.domain?' selected':'')},
+              e('span', null, d.icon), d.label
+            ))
+          )
+        ),
+        e('div', {className:'field'},
+          e('label', null, 'Key question'),
+          e('textarea', {rows:3, value:USER_PROJECT.kq, readOnly:true, style:{background:'#F9FAFB', color:'#374151'}}),
+          e('p', {className:'hint'}, "A starting point — you'll refine this as your project develops.")
+        ),
+        e('button', {className:'toggle-btn'+(open?' open':''), onClick:()=>setOpen(!open)},
+          e('span', {className:'chevron'}, '►'), '+ Add more detail (optional for now)'
+        ),
+        open && e('div', {className:'enhanced-fields'},
+          e('div', {className:'field'},
+            e('label', null, 'Focus area'),
+            e('input', {type:'text', placeholder:'e.g. Urban freight and last-mile delivery'})
+          ),
+          e('div', {className:'field', style:{marginBottom:0}},
+            e('label', null, 'Geographic scope'),
+            e('input', {type:'text', placeholder:'e.g. OECD cities / Global South'})
+          )
+        ),
+        e('div', {className:'actions'}, e('span'),
+          e('button', {className:'btn-primary', onClick:onNext}, 'Create project')
+        )
+      )
+    )
+  );
+}
+
+// ── Creating transition ──────────────────────────────────────────────
+function Creating({onNext}) {
+  const [stepIdx, setStepIdx] = useState(0);
+  const steps = [
+    'Creating your project',
+    'Connecting to Climate & Energy sources',
+    'Scanning for relevant signals',
+    'Signals ready',
+  ];
+  useEffect(() => {
+    const delays = [450, 800, 950];
+    const cumulative = delays.map((_, i) => delays.slice(0, i+1).reduce((a,b)=>a+b, 0));
+    const timers = cumulative.map((delay, i) => setTimeout(() => setStepIdx(i+1), delay));
+    const done = setTimeout(onNext, cumulative[cumulative.length-1] + 650);
+    return () => { timers.forEach(clearTimeout); clearTimeout(done); };
+  }, []);
+
+  return e('div', {className:'screen'},
+    e(TopBar, {step:2}),
+    e('div', {className:'creating-screen'},
+      e('div', {className:'creating-inner'},
+        e('div', {className:'pulse-ring'}, e('div', {className:'pulse-inner'})),
+        e('div', {className:'creating-title'}, 'Setting up your project'),
+        e('div', {className:'creating-sub'}, "We're connecting to sources in your domain and scanning for signals matched to your key question."),
+        e('div', {className:'creating-steps'},
+          steps.map((s, i) => e('div', {key:i, className:'creating-step'+(i<stepIdx?' done':i===stepIdx?' active':'')},
+            e('div', {className:'step-icon '+(i<stepIdx?'done-icon':i===stepIdx?'active-icon':'pending-icon')},
+              i < stepIdx ? '✓' : i === stepIdx ? e('div', {className:'mini-spin'}) : ''
+            ),
+            s
+          ))
+        )
+      )
+    )
+  );
+}
+
+// ── Step 4: Scanner inbox ────────────────────────────────────────────
+function Step4({onNext}) {
+  const [sel, setSel] = useState(new Set());
+  const n = sel.size;
+  const pct = Math.min((n / 10) * 100, 100);
+  function toggle(id) {
+    setSel(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  }
+  return e('div', {className:'screen'},
+    e(TopBar, {step:3}),
+    e('div', {className:'body'},
+      e('div', {className:'card card-wide'},
+        e('div', {className:'tag'}, 'Your scanner found signals'),
+        e('h2', {style:{marginBottom:5}}, 'Signals arrived while you were setting up'),
+        e('p', {className:'sub', style:{marginBottom:14}}, 'We scanned Climate & Energy sources for signals matching your key question. Select the ones that look relevant — you can review the rest from the Scanner tab any time.'),
+        e('div', {className:'kq-block', style:{marginBottom:14}},
+          e('div', {className:'kq-label'}, 'Matched to — ' + USER_PROJECT.name),
+          e('div', {className:'kq-text'}, USER_PROJECT.kq)
+        ),
+        e('div', {className:'progress-wrap'},
+          e('div', {className:'progress-track'}, e('div', {className:'progress-fill', style:{width:pct+'%'}})),
+          e('div', {className:'progress-text'},
+            n === 0 ? 'Select signals to add to your project' :
+            n < 10  ? e('span', null, e('strong', null, n), ' selected — add ', e('strong', null, 10-n), ' more to unlock AI clustering') :
+                      e('span', {style:{color:'#065F46'}}, e('strong', null, n + ' selected — ready to cluster'))
+          )
+        ),
+        e('div', {className:'candidates-grid'},
+          CANDIDATES.map(c => e('div', {key:c.id, className:'cand'+(sel.has(c.id)?' selected':''), onClick:()=>toggle(c.id)},
+            e('div', {className:'cand-check'}, sel.has(c.id) ? '✓' : ''),
+            e('div', {className:'cand-source'}, c.source,
+              e('span', {className:'cred'+(c.cred==='Specialist'?' spec':'')}, c.cred)
+            ),
+            e('div', {className:'cand-title'}, c.title),
+            e('div', {className:'cand-summary'}, c.summary),
+            e('div', {className:'cand-tags'}, c.tags.map(t => e('span', {key:t, className:'cand-tag'}, t)))
+          ))
+        ),
+        e('div', {className:'actions'},
+          e('button', {className:'btn-ghost', onClick:onNext}, 'Skip — review from the Scanner tab later'),
+          e('button', {className:'btn-primary', disabled:n===0, onClick:onNext},
+            n > 0 ? 'Add ' + n + ' signal' + (n!==1?'s':'') + ' to my project' : 'Select signals to add'
+          )
+        )
+      )
+    )
+  );
+}
+
+// ── Step 5: Clustering results ───────────────────────────────────────
+function Step5({onNext}) {
+  const [phase, setPhase] = useState('loading');
+  useEffect(() => {
+    const t = setTimeout(() => setPhase('results'), 1900);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (phase === 'loading') return e('div', {className:'screen'},
+    e(TopBar, {step:4}),
+    e('div', {className:'body'},
+      e('div', {className:'card'},
+        e('div', {className:'clustering-loading'},
+          e('div', {className:'big-spinner'}),
+          e('h2', {style:{marginBottom:9}}, 'Finding patterns...'),
+          e('p', {style:{fontSize:13, color:'#6B7280'}}, 'AI is grouping your signals into clusters. This takes a few seconds.')
+        )
+      )
+    )
+  );
+
+  return e('div', {className:'screen'},
+    e(TopBar, {step:4}),
+    e('div', {className:'body'},
+      e('div', {className:'card card-wide'},
+        e('div', {className:'success-banner'},
+          '✓  3 clusters found in ' + USER_PROJECT.name + ' — a Trend, a Driver, and a Tension'
+        ),
+        e('div', {className:'tag'}, 'Your first clusters'),
+        e('h2', {style:{marginBottom:6}}, 'Here are the patterns in your signals'),
+        e('p', {className:'sub', style:{marginBottom:18}},
+          'Clusters come in three types — each tells you something different about how change is unfolding in your domain. These are AI suggestions: rename, merge, or reassign signals as you see fit.'
+        ),
+        CLUSTERS.map(c => e('div', {key:c.type, className:'result-cluster ' + c.typeClass},
+          e('div', {className:'rc-header'},
+            e('div', {className:'rc-pill-wrap'},
+              e('div', {className:'cluster-pill pill-' + c.typeClass}, c.type),
+              e('div', {className:'rc-type-def ' + c.typeClass}, c.typeDef)
+            ),
+            e('div', {className:'rc-signal-count'}, c.signals.length + ' signals')
+          ),
+          e('div', {className:'rc-name'}, c.name),
+          e('div', {className:'rc-summary'}, c.summary),
+          e('div', {className:'rc-signals'},
+            c.signals.map((s, i) => e('div', {key:i, className:'rc-signal'}, s))
+          )
+        )),
+        e('div', {className:'actions', style:{marginTop:20}},
+          e('button', {className:'btn-ghost', onClick:onNext}, 'I will refine these later'),
+          e('button', {className:'btn-primary', onClick:onNext}, 'Open my project')
+        )
+      )
+    )
+  );
+}
+
+// ── Done ─────────────────────────────────────────────────────────────
+function Done() {
+  return e('div', {className:'screen'},
+    e(TopBar, {step:4}),
+    e('div', {className:'body'},
+      e('div', {className:'card', style:{textAlign:'center', padding:'48px 36px'}},
+        e('div', {style:{width:52, height:52, borderRadius:'50%', background:'#D1FAE5', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px', fontSize:22}}, '✓'),
+        e('h2', {style:{marginBottom:9}}, "You're in"),
+        e('p', {className:'sub', style:{marginBottom:24}},
+          USER_PROJECT.name + ' is ready. The scanner will keep finding new signals — you\'ll see a weekly digest in your inbox.'
+        ),
+        e('button', {className:'btn-primary', style:{fontSize:13, padding:'11px 28px'}}, 'Open my project')
+      )
+    )
+  );
+}
+
+// ── App shell ────────────────────────────────────────────────────────
+function App() {
+  const [step, setStep] = useState(0);
+  const [level, setLevel] = useState('regular');
+  const [showCreating, setShowCreating] = useState(false);
+
+  const next = () => setStep(s => s + 1);
+
+  // After project form submit, show creating animation before scanner
+  if (step === 3 && !showCreating) {
+    return e(Creating, {onNext: () => { setShowCreating(true); setStep(4); }});
+  }
+
+  const screens = [
+    e(Step1, {key:0, onNext:next}),
+    e(Step2, {key:1, onNext:next, setLevel}),
+    e(Step3, {key:2, onNext:() => setStep(3)}),
+    null,
+    e(Step4, {key:4, onNext:next}),
+    e(Step5, {key:5, onNext:next}),
+    e(Done,  {key:6}),
+  ];
+
+  return screens[step] || screens[screens.length - 1];
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(e(App));
+</script>
+</body>
+</html>

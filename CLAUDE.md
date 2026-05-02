@@ -6,9 +6,43 @@ Future Signals v2 is a strategic foresight SPA built with React + Vite. It guide
 
 **Stack:** React 18, Vite, React Flow (`@xyflow/react`), Supabase (auth + database + storage), Vercel (hosting), inline styles using the design token system below.
 
+**AI model stack:** OpenAI only — `text-embedding-3-small` for embeddings, `gpt-4o-mini` for classification/tagging, `gpt-4o` for enrichment and synthesis. Do NOT reference or use any Anthropic/Claude API in implementation.
+
 **Key principle:** AI supports but does not replace practitioner thinking. The UI should feel like a professional tool, not a consumer app.
 
 **Prototype reference:** `prototypes/future-signals-inputs-redesign_4.html` — use as a visual reference for the Inputs screen and shared layout. Do not copy its code directly.
+
+---
+
+## Design principles — read before any UX or form decision
+
+**`docs/design-principles.md`** is the authoritative source for all design and UX decisions. Read it before making any decision involving forms, fields, AI outputs, nudges, navigation, or empty states.
+
+Key rules extracted here for fast access — but the full document has the reasoning behind each one:
+
+1. **Zero required fields.** No entity creation form should block on an empty field. Every field must have a sensible default or be skippable.
+2. **Quick Start is the default.** Enhanced fields live behind a `+ Add more detail` toggle. Never open by default on first project creation.
+3. **New fields are Enhanced unless proven otherwise.** When adding a field to any form, place it in Enhanced tier. Promotion to Quick Start requires explicit justification: "Does a practitioner need this field *before* they can get value from this entity?"
+4. **AI outputs require a practitioner action before entering the record.** Pre-populate and suggest — never silently apply. The practitioner confirms, edits, or promotes.
+5. **No gate between stages.** Practitioners can navigate to any project stage at any time, regardless of whether earlier stages are "complete." Never block navigation on prior completion.
+6. **Nudges have lifespans.** Any nudge implementation must include suppression logic: if ignored twice, suppress for 30 days. Nudges are preferences, not defaults — practitioners opt in.
+7. **Re-entry surfaces answer "where was I and what's new?" —** not "here is your progress toward completion." Dashboard and project headers are re-entry surfaces, not progress trackers.
+8. **Terminology is locked.** Use the table in the Terminology section below and in `docs/design-principles.md`. No synonyms, no drift.
+
+**Quick Start field sets by entity (minimum sufficient to create):**
+
+| Entity | Quick Start fields |
+|---|---|
+| Project | Name, Domain, Key question |
+| Input | Source URL (auto-populates metadata), Subtype |
+| Cluster | Name, Subtype (Trend / Driver / Tension) |
+| Scenario | Title, Archetype, Narrative (free text) |
+| Preferred Future | Title, Vision statement |
+| Strategic Option | Title, Description |
+
+All other fields on these entities are Enhanced tier — behind the toggle, never required.
+
+**Field governance rule:** Before adding any field to a creation form, answer: *"Does a practitioner need this field before they can get value from this entity?"* If yes → Quick Start (document justification). If no → Enhanced. This rule exists to prevent form field accumulation over time. Default answer is almost always Enhanced.
 
 ---
 
@@ -311,7 +345,7 @@ src/
 - **Density** — information-dense but not cramped. 12–13px body/labels, 10–11px metadata, 22px page headings.
 - **No generic AI aesthetics** — no purple gradients on white, no pill-everything, no card shadows on every element.
 - **Interactions** — hover states on all clickable elements, smooth drawer transitions (300ms ease), subtle border changes on focus.
-- **Empty states** — every list/section needs a proper empty state with a clear CTA, not blank space.
+- **Empty states** — every list/section needs a proper empty state with a clear CTA, not blank space. Copy is one sentence maximum: state what goes here and what to do. Scanner is the primary CTA on empty Inputs screens, not "Add signal manually."
 
 ---
 
@@ -430,3 +464,22 @@ Key decisions already made:
 - System Map is binary per project — built or not built, never a count
 - "Project settings" is the correct label for the project configuration panel (not "Edit project")
 - Preferred Futures, Strategic Options, and Scenario Narratives are v2 features under Future Models
+
+---
+
+## Key specs — read when relevant
+
+| Spec | When to read |
+|---|---|
+| `docs/design-principles.md` | Before any UX, form, AI output, nudge, or navigation decision |
+| `docs/signal-scanner-spec.md` | Any work touching the scanner, candidate ingestion, scoring, or onboarding seeding |
+| `docs/onboarding-spec.md` | Any work touching the onboarding flow, project creation, or first-session experience |
+
+---
+
+## Known database gotchas
+
+- `workspaces` table uses `user_id` not `owner_id` — check this on any new RLS policy or query touching workspaces
+- pgvector columns do not support `.not('embedding', 'is', null)` via PostgREST — use a workaround
+- Single `inputs` table with subtype column + JSONB metadata — do not create separate tables per subtype
+- Canvas (React Flow) is a view over the data model, not the data store — relationships persist when a cluster is removed from the canvas

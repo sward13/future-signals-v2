@@ -313,7 +313,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
 
   // ── Projects ──────────────────────────────────────────────────────────────
 
-  const addProject = useCallback((fields) => {
+  const addProject = useCallback((fields, { onInserted } = {}) => {
     const id = newId();
     const now = new Date().toISOString();
     const newProject = {
@@ -348,6 +348,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
         try {
           const { error } = await supabase.from("projects").insert(newProject);
           if (error) throw error;
+          onInserted?.(newProject);
           // Trigger scorer in background — non-blocking, silent fail
           fetch('/api/trigger-score', { method: 'POST' }).catch(() => {});
           // Refetch to confirm server state

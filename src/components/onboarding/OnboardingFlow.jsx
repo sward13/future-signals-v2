@@ -1,16 +1,23 @@
 /**
- * OnboardingFlow — 5-step new-user onboarding.
- * Step 1: Experience level
+ * OnboardingFlow — 7-step new-user onboarding.
+ * Step 1: Experience level      → ExperienceLevelStep (full-screen)
  * Step 2: Domain interests
  * Step 3: Purpose (skippable)
- * Step 4: Methodology education (wraps OnboardingEducation)
- * Step 5: Create first project
+ * Step 4: Methodology education
+ * Step 5: Create first project  → ProjectCreateStep (full-screen)
+ * Step 6: Creating transition   → CreatingTransition (full-screen, ~2.5s)
+ * Step 7: Scanner inbox         → ScannerInboxStep (full-screen)
  *
- * @param {{ onComplete: (preferences: object, project: object) => void }} props
+ * @param {{ workspaceId: string, onProjectCreate: (fields) => Promise, onComplete: (prefs, projectId) => void }} props
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { c, btnP, btnSec, inp } from "../../styles/tokens.js";
+import { supabase } from "../../lib/supabase.js";
 import { OnboardingEducation } from "./OnboardingEducation.jsx";
+import { ExperienceLevelStep } from "./ExperienceLevelStep.tsx";
+import { ProjectCreateStep } from "./ProjectCreateStep.jsx";
+import { CreatingTransition } from "./CreatingTransition.tsx";
+import { ScannerInboxStep } from "./ScannerInboxStep.jsx";
 
 const TOTAL_STEPS = 5;
 
@@ -384,23 +391,155 @@ function StepProject({ onSubmit, onBack, onSkip }) {
 
 // ─── Main flow ───────────────────────────────────────────────────────────────
 
-export function OnboardingFlow({ onProjectCreate, onComplete }) {
+export function OnboardingFlow({ workspaceId, onProjectCreate, onComplete }) {
   const [step,    setStep]    = useState(1);
   const [level,   setLevel]   = useState("");
   const [domains, setDomains] = useState([]);
   const [purpose, setPurpose] = useState("");
+
+  // Post-project state
+  const [pendingProject,  setPendingProject]  = useState(null);  // confirmed project object
+  const [seedCandidates,  setSeedCandidates]  = useState(null);  // null = loading, [] or [...] = resolved
+  const [waitingForSeed,  setWaitingForSeed]  = useState(false); // CreatingTransition finished before seed resolved
 
   const prefs = { level, domains, purpose };
 
   const next = () => setStep((s) => s + 1);
   const back = () => setStep((s) => s - 1);
 
-  const handleProjectSubmit = (projectFields) => {
-    const newProject = onProjectCreate(projectFields);
-    // scorer trigger already fires inside onProjectCreate (addProject)
-    onComplete(prefs, newProject.id);
+  // Advance to scanner inbox once seed resolves while we were waiting
+  useEffect(() => {
+    if (waitingForSeed && seedCandidates !== null) {
+      setWaitingForSeed(false);
+      setStep(7);
+    }
+  }, [waitingForSeed, seedCandidates]);
+
+  // Write experience_level to workspaces on Continue — fire-and-forget.
+  // Null experience_level is treated as 'regular' throughout the product.
+  const handleLevelSelect = (selectedLevel) => {
+    setLevel(selectedLevel);
+    if (!workspaceId) return;
+    supabase
+      .from("workspaces")
+      .update({ experience_level: selectedLevel })
+      .eq("id", workspaceId)
+      .then(({ error }) => {
+        if (error) console.error("[onboarding] experience_level write failed:", error);
+      });
   };
 
+  // Awaits confirmed DB insert, fires seed-onboarding in background, advances
+  // to CreatingTransition. Does NOT call onComplete — that happens after the
+  // scanner inbox step.
+  const handleProjectSubmit = async (projectFields) => {
+    const newProject = await onProjectCreate(projectFields);
+    setPendingProject(newProject);
+    setSeedCandidates(null); // mark as loading
+
+    // Fire seed-onboarding — store result in state when it arrives
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session || !newProject?.id) {
+        setSeedCandidates([]);
+        return;
+      }
+      fetch(`/api/projects/${newProject.id}/seed-onboarding`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+        .then((r) => r.json())
+        .then((data) => setSeedCandidates(data.candidates ?? []))
+        .catch((err) => {
+          console.error("[onboarding] seed-onboarding failed:", err);
+          setSeedCandidates([]);
+        });
+    });
+
+    setStep(6); // advance to CreatingTransition immediately
+  };
+
+  // Called when CreatingTransition's 2.5s animation completes
+  const handleCreatingDone = () => {
+    if (seedCandidates !== null) {
+      setStep(7);
+    } else {
+      // Seed hasn't resolved yet — wait (useEffect above will advance when it does)
+      setWaitingForSeed(true);
+    }
+  };
+
+  // Called when the scanner inbox completes (user adds or skips)
+  const handleScannerComplete = (promotedInputIds) => {
+    // promotedInputIds unused in current routing — Stage 4/5 will sync local state
+    onComplete(prefs, pendingProject?.id ?? null);
+  };
+
+  // ── Full-screen steps (bypass legacy card shell) ─────────────────────────
+
+  if (step === 1) {
+    return (
+      <ExperienceLevelStep
+        onSelect={handleLevelSelect}
+        onNext={next}
+      />
+    );
+  }
+
+  if (step === 5) {
+    return (
+      <ProjectCreateStep
+        experienceLevel={level || "regular"}
+        onSubmit={handleProjectSubmit}
+        onBack={back}
+      />
+    );
+  }
+
+  if (step === 6) {
+    return (
+      <CreatingTransition
+        projectDomain={pendingProject?.domain || "your"}
+        onNext={handleCreatingDone}
+      />
+    );
+  }
+
+  // "Almost ready…" — seed resolved after CreatingTransition finished, useEffect
+  // will flip to step 7 on the next render cycle
+  if (waitingForSeed) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: c.bg,
+          fontFamily: "'Open Sans', -apple-system, sans-serif",
+          fontSize: 13,
+          color: "#6B7280",
+        }}
+      >
+        Almost ready…
+      </div>
+    );
+  }
+
+  if (step === 7) {
+    return (
+      <ScannerInboxStep
+        candidates={seedCandidates ?? []}
+        projectId={pendingProject?.id}
+        workspaceId={workspaceId}
+        projectName={pendingProject?.name ?? ""}
+        domain={pendingProject?.domain ?? ""}
+        keyQuestion={pendingProject?.question ?? ""}
+        onComplete={handleScannerComplete}
+      />
+    );
+  }
+
+  // ── Steps 2–4: legacy card shell ─────────────────────────────────────────
   return (
     <div style={{
       height: "100vh",
@@ -431,9 +570,6 @@ export function OnboardingFlow({ onProjectCreate, onComplete }) {
 
         <ProgressDots step={step} />
 
-        {step === 1 && (
-          <StepLevel value={level} onChange={setLevel} onNext={next} />
-        )}
         {step === 2 && (
           <StepDomains value={domains} onChange={setDomains} onNext={next} onBack={back} />
         )}
@@ -448,13 +584,6 @@ export function OnboardingFlow({ onProjectCreate, onComplete }) {
         )}
         {step === 4 && (
           <StepEducation onNext={next} onBack={back} />
-        )}
-        {step === 5 && (
-          <StepProject
-            onSubmit={handleProjectSubmit}
-            onBack={back}
-            onSkip={() => onComplete(prefs, null)}
-          />
         )}
       </div>
     </div>

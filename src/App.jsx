@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "./lib/supabase.js";
 import { useAppState } from "./hooks/useAppState.js";
 import { AuthScreen } from "./components/auth/AuthScreen.jsx";
-import { OnboardingFlow } from "./components/onboarding/OnboardingFlow.jsx";
+import { OnboardingShell } from "./components/onboarding/OnboardingShell.tsx";
 import { AppShell } from "./components/layout/AppShell.jsx";
 import { Toast } from "./components/layout/Toast.jsx";
 import { NewProjectModal } from "./components/projects/NewProjectModal.jsx";
@@ -106,27 +106,27 @@ export default function App() {
   const fetchWorkspaceId = async (userId) => {
     const { data } = await supabase
       .from("workspaces")
-      .select("id")
+      .select("id, onboarding_completed")
       .eq("user_id", userId)
       .single();
     if (data) {
       setWorkspaceId(data.id);
-      fetchWorkspaceSettings(data.id);
+      // Pass the new flag; fetchWorkspaceSettings will OR it with the legacy flag
+      fetchWorkspaceSettings(data.id, data.onboarding_completed ?? false);
     }
   };
 
-  const fetchWorkspaceSettings = async (wsId) => {
-    const { data, error } = await supabase
+  const fetchWorkspaceSettings = async (wsId, newFlagCompleted = false) => {
+    const { data } = await supabase
       .from("workspace_settings")
       .select("onboarding_complete, preferences")
       .eq("workspace_id", wsId)
       .single();
-    if (data) {
-      setOnboardingComplete(data.onboarding_complete ?? false);
-      setPreferences(data.preferences ?? {});
-    } else {
-      setOnboardingComplete(false);
-    }
+    // Completed if either the new flag (workspaces.onboarding_completed) or the
+    // legacy flag (workspace_settings.onboarding_complete) is true.
+    // This ensures existing users who completed via the old flow are not re-shown onboarding.
+    setOnboardingComplete(newFlagCompleted || (data?.onboarding_complete ?? false));
+    setPreferences(data?.preferences ?? {});
   };
 
   const handleSignOut = async () => {
@@ -142,25 +142,47 @@ export default function App() {
 
   // ── Onboarding handlers ────────────────────────────────────────────────────
   const handleOnboardingProjectCreate = (fields) => {
-    return appState.addProject(fields);
+    return new Promise((resolve) => {
+      appState.addProject(fields, { onInserted: resolve });
+    });
   };
 
-  const handleOnboardingComplete = async (prefs, projectId) => {
-
-
-    const { data, error } = await supabase
-      .from("workspace_settings")
-      .update({
-        onboarding_complete: true,
-        preferences: prefs,
-      })
-      .eq("workspace_id", workspaceId);
-
-
-    setPreferences(prefs);
+  const handleOnboardingComplete = async (projectId) => {
+    // Write to the new column on workspaces (canonical) — fire-and-forget
+    if (workspaceId) {
+      supabase
+        .from("workspaces")
+        .update({ onboarding_completed: true })
+        .eq("id", workspaceId)
+        .then(({ error }) => {
+          if (error) console.error("[onboarding] onboarding_completed write failed:", error);
+        });
+    }
     setOnboardingComplete(true);
-    if (projectId) appState.openProject(projectId);
+    if (projectId) {
+      window.history.pushState({}, "", `/projects/${projectId}`);
+      appState.openProject(projectId);
+    } else {
+      window.history.pushState({}, "", "/");
+    }
   };
+
+  // ── URL management — pushState side-effects, not routing logic ────────────
+  // Updates the browser address bar without installing a router.
+  // The app remains state-driven; this is purely cosmetic / for browser history.
+  useEffect(() => {
+    if (session === undefined || onboardingComplete === undefined) return;
+    if (!session) return;
+    if (onboardingComplete === false) {
+      // New user entering the onboarding flow
+      if (window.location.pathname !== "/onboarding") {
+        window.history.pushState({}, "", "/onboarding");
+      }
+    } else if (window.location.pathname === "/onboarding") {
+      // Already completed but URL still shows /onboarding — replace with root
+      window.history.replaceState({}, "", "/");
+    }
+  }, [session, onboardingComplete]);
 
   // ── Auth gates ─────────────────────────────────────────────────────────────
   if (session === undefined) return null;   // resolving — render nothing briefly
@@ -168,11 +190,12 @@ export default function App() {
   if (!session) return <AuthScreen />;  // not signed in
 
   // ── Onboarding gate ────────────────────────────────────────────────────────
-  // Wait until workspace settings are loaded before deciding
+  // Wait until workspace state is loaded before deciding
   if (onboardingComplete === undefined) return null;
   if (!onboardingComplete) {
     return (
-      <OnboardingFlow
+      <OnboardingShell
+        workspaceId={workspaceId}
         onProjectCreate={handleOnboardingProjectCreate}
         onComplete={handleOnboardingComplete}
       />
