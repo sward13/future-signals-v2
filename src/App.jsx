@@ -184,6 +184,26 @@ export default function App() {
     }
   }, [session, onboardingComplete]);
 
+  // ── Deep-link handler — /projects/[uuid] ──────────────────────────────────
+  // Fires once after projects have loaded. If the URL matches /projects/[id],
+  // opens that project rather than landing at root state.
+  // Handles both post-onboarding redirect and hard-refresh at a project URL.
+  useEffect(() => {
+    if (!onboardingComplete || projects.length === 0) return;
+    const match = window.location.pathname.match(
+      /^\/projects\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
+    );
+    if (!match) return;
+    const projectId = match[1];
+    const exists = projects.some((p) => p.id === projectId);
+    if (exists) {
+      appState.openProject(projectId);
+    } else {
+      // Project not in workspace — fall back to root and clean the URL
+      window.history.replaceState({}, "", "/");
+    }
+  }, [onboardingComplete, projects]);
+
   // ── Auth gates ─────────────────────────────────────────────────────────────
   if (session === undefined) return null;   // resolving — render nothing briefly
   if (passwordRecovery) return <AuthScreen initialMode="reset" />;  // password reset flow
