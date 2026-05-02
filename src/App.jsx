@@ -162,6 +162,10 @@ export default function App() {
     if (projectId) {
       window.history.pushState({}, "", `/projects/${projectId}`);
       appState.openProject(projectId);
+      // Refresh inputs so onboarding-promoted signals appear in the project
+      // immediately — they were inserted via direct Supabase calls in
+      // ScannerInboxStep and are not yet in local state.
+      appState.refreshInputs();
     } else {
       window.history.pushState({}, "", "/");
     }

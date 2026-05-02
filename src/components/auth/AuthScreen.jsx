@@ -51,8 +51,7 @@ export function AuthScreen({ initialMode = "signin" }) {
       if (error) {
         setError(error.message);
       } else {
-        setInfo("Check your email for a confirmation link, then sign in.");
-        switchMode("signin");
+        switchMode("confirm");
       }
     }
 
@@ -116,7 +115,7 @@ export function AuthScreen({ initialMode = "signin" }) {
     forgot:  ["Reset password",    "Enter your email and we'll send a reset link."],
     reset:   ["Choose a new password", "Enter and confirm your new password."],
   };
-  const [heading, subheading] = HEADINGS[mode];
+  const [heading, subheading] = HEADINGS[mode] ?? ["", ""];
 
   return (
     <div style={{
@@ -142,6 +141,26 @@ export function AuthScreen({ initialMode = "signin" }) {
           <img src={logoLight} alt="Future Signals" style={{ width: 160, height: "auto", display: "block" }} />
         </div>
 
+        {/* Confirmation screen — shown after successful sign-up */}
+        {mode === "confirm" && (
+          <div style={{ textAlign: "center", padding: "4px 0 8px" }}>
+            <div style={{ fontSize: 32, marginBottom: 16 }}>✉</div>
+            <div style={{ fontSize: 17, fontWeight: 500, color: c.ink, marginBottom: 10 }}>
+              Check your email
+            </div>
+            <div style={{ fontSize: 13, color: c.muted, lineHeight: 1.65, marginBottom: 28 }}>
+              We've sent a confirmation link to <strong style={{ color: c.ink }}>{email}</strong>.
+              Click it to activate your account, then come back to sign in.
+            </div>
+            <button
+              onClick={() => switchMode("signin")}
+              style={{ ...mutedLink, fontSize: 13 }}
+            >
+              Back to sign in
+            </button>
+          </div>
+        )}
+
         {/* Back link (forgot / reset) */}
         {(mode === "forgot" || mode === "reset") && (
           <button
@@ -152,13 +171,17 @@ export function AuthScreen({ initialMode = "signin" }) {
           </button>
         )}
 
-        {/* Heading */}
-        <div style={{ fontSize: 18, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
-          {heading}
-        </div>
-        <div style={{ fontSize: 12, color: c.muted, marginBottom: 24 }}>
-          {subheading}
-        </div>
+        {/* Heading — not shown for confirm mode */}
+        {mode !== "confirm" && (
+          <>
+            <div style={{ fontSize: 18, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
+              {heading}
+            </div>
+            <div style={{ fontSize: 12, color: c.muted, marginBottom: 24 }}>
+              {subheading}
+            </div>
+          </>
+        )}
 
         {/* Info banner */}
         {info && (
