@@ -29,6 +29,9 @@ export function AuthScreen({ initialMode = "signin" }) {
   const [error,           setError]           = useState(null);
   const [info,            setInfo]            = useState(null);
   const [loading,         setLoading]         = useState(false);
+  // Separate from `mode` so it can't be overridden by switchMode calls or
+  // any auth state change that causes App.jsx to re-render this component.
+  const [signupConfirmed, setSignupConfirmed] = useState(false);
 
   const switchMode = (next) => {
     setMode(next);
@@ -51,7 +54,7 @@ export function AuthScreen({ initialMode = "signin" }) {
       if (error) {
         setError(error.message);
       } else {
-        switchMode("confirm");
+        setSignupConfirmed(true);
       }
     }
 
@@ -141,8 +144,10 @@ export function AuthScreen({ initialMode = "signin" }) {
           <img src={logoLight} alt="Future Signals" style={{ width: 160, height: "auto", display: "block" }} />
         </div>
 
-        {/* Confirmation screen — shown after successful sign-up */}
-        {mode === "confirm" && (
+        {/* Confirmation screen — shown after successful sign-up.
+            Keyed on signupConfirmed (independent boolean) rather than mode,
+            so it can't be overridden by any switchMode call or auth state event. */}
+        {signupConfirmed ? (
           <div style={{ textAlign: "center", padding: "4px 0 8px" }}>
             <div style={{ fontSize: 32, marginBottom: 16 }}>✉</div>
             <div style={{ fontSize: 17, fontWeight: 500, color: c.ink, marginBottom: 10 }}>
@@ -153,27 +158,25 @@ export function AuthScreen({ initialMode = "signin" }) {
               Click it to activate your account, then come back to sign in.
             </div>
             <button
-              onClick={() => switchMode("signin")}
+              onClick={() => { setSignupConfirmed(false); switchMode("signin"); }}
               style={{ ...mutedLink, fontSize: 13 }}
             >
               Back to sign in
             </button>
           </div>
-        )}
-
-        {/* Back link (forgot / reset) */}
-        {(mode === "forgot" || mode === "reset") && (
-          <button
-            onClick={() => switchMode("signin")}
-            style={{ ...mutedLink, marginBottom: 16, display: "block" }}
-          >
-            ← Back to sign in
-          </button>
-        )}
-
-        {/* Heading — not shown for confirm mode */}
-        {mode !== "confirm" && (
+        ) : (
           <>
+            {/* Back link (forgot / reset) */}
+            {(mode === "forgot" || mode === "reset") && (
+              <button
+                onClick={() => switchMode("signin")}
+                style={{ ...mutedLink, marginBottom: 16, display: "block" }}
+              >
+                ← Back to sign in
+              </button>
+            )}
+
+            {/* Heading */}
             <div style={{ fontSize: 18, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
               {heading}
             </div>
@@ -206,7 +209,7 @@ export function AuthScreen({ initialMode = "signin" }) {
         )}
 
         {/* ── Sign in / Sign up form ───────────────────────────────────── */}
-        {(mode === "signin" || mode === "signup") && (
+        {!signupConfirmed && (mode === "signin" || mode === "signup") && (
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 500, color: c.ink, marginBottom: 5 }}>Email</div>
@@ -334,7 +337,7 @@ export function AuthScreen({ initialMode = "signin" }) {
         )}
 
         {/* ── Sign in / Sign up toggle ─────────────────────────────────── */}
-        {(mode === "signin" || mode === "signup") && (
+        {!signupConfirmed && (mode === "signin" || mode === "signup") && (
           <div style={{ marginTop: 20, textAlign: "center", fontSize: 12, color: c.muted }}>
             {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
             <button
