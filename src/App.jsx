@@ -58,6 +58,34 @@ function ActiveScreen({ appState, onSignOut }) {
   }
 }
 
+// Shown while the session is resolving (localStorage read) or while a
+// Supabase email-confirmation token is being exchanged with the server.
+// Prevents the blank-page experience users see when arriving via a
+// confirmation link.
+function AppLoader() {
+  return (
+    <>
+      <style>{`@keyframes app-spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{
+        height: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#F7F7F5",
+      }}>
+        <div style={{
+          width: 24,
+          height: 24,
+          borderRadius: "50%",
+          border: "2.5px solid rgba(0,0,0,0.1)",
+          borderTopColor: "#3B82F6",
+          animation: "app-spin 0.7s linear infinite",
+        }} />
+      </div>
+    </>
+  );
+}
+
 export default function App() {
   // ── Auth layer ─────────────────────────────────────────────────────────────
   // session === undefined: still resolving initial state (show nothing)
@@ -75,11 +103,36 @@ export default function App() {
   const [preferences, setPreferences] = useState({});
 
   useEffect(() => {
-    // Resolve the initial session synchronously (from local storage)
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // ── Auth callback handler ──────────────────────────────────────────────────
+    // Supabase email confirmation links (PKCE / OTP flow) arrive with
+    // ?token_hash=xxx&type=xxx in the URL. The SDK does NOT auto-process
+    // query-param tokens — getSession() returns null until verifyOtp() is
+    // called. Without this handler the user sees a blank page and must reload.
+    //
+    // The legacy implicit flow (#access_token=...) is handled automatically
+    // by the SDK, so getSession() covers it without any extra work here.
+    const initSession = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const tokenHash = params.get("token_hash");
+      const type      = params.get("type");
+
+      if (tokenHash && type) {
+        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+        if (error) console.error("[auth] token exchange failed:", error.message);
+        // Remove the one-time token from the URL so it isn't reprocessed on refresh
+        window.history.replaceState(
+          {},
+          "",
+          window.location.pathname + window.location.hash
+        );
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session ?? null);
       if (session) fetchWorkspaceId(session.user.id);
-    });
+    };
+
+    initSession();
 
     // Subscribe to future auth changes (sign in, sign out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -209,13 +262,13 @@ export default function App() {
   }, [onboardingComplete, projects]);
 
   // ── Auth gates ─────────────────────────────────────────────────────────────
-  if (session === undefined) return null;   // resolving — render nothing briefly
+  if (session === undefined) return <AppLoader />;  // resolving (or exchanging token)
   if (passwordRecovery) return <AuthScreen initialMode="reset" />;  // password reset flow
   if (!session) return <AuthScreen />;  // not signed in
 
   // ── Onboarding gate ────────────────────────────────────────────────────────
   // Wait until workspace state is loaded before deciding
-  if (onboardingComplete === undefined) return null;
+  if (onboardingComplete === undefined) return <AppLoader />;
   if (!onboardingComplete) {
     return (
       <OnboardingShell
