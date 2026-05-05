@@ -568,16 +568,16 @@ function EmptyState({ onComplete, domain }) {
               margin: "0 0 9px",
             }}
           >
-            No signals found yet
+            We're still building signals for this topic
           </h2>
           <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 24px", lineHeight: 1.6 }}>
-            No signals found yet. You can discover signals from the Scanner tab inside your project.
+            Your scanner will start surfacing relevant signals overnight. In the meantime, you can add your own inputs manually from your project.
           </p>
           <button
             onClick={() => onComplete([])}
             style={{ ...btnP, fontSize: 13, padding: "10px 24px" }}
           >
-            Continue to my project
+            Go to my project →
           </button>
         </div>
       </div>
