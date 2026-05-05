@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { c, btnP } from "../../styles/tokens.js";
+import logoLight from "../../assets/logo_light.svg";
 
 interface Props {
   onNext: () => void;
@@ -55,24 +56,6 @@ function StepDots() {
   );
 }
 
-function LogoMark() {
-  return (
-    <div
-      style={{
-        width: 28, height: 28, borderRadius: 6,
-        background: c.brand,
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}
-    >
-      <svg viewBox="0 0 16 16" width={16} height={16}>
-        <circle cx={4}  cy={8}  r={2} fill="#fff" />
-        <circle cx={8}  cy={4}  r={2} fill="rgba(255,255,255,0.6)" />
-        <circle cx={12} cy={8}  r={2} fill="rgba(255,255,255,0.85)" />
-        <circle cx={8}  cy={12} r={2} fill="rgba(255,255,255,0.4)" />
-      </svg>
-    </div>
-  );
-}
 
 export function ExperienceLevelStep({ onNext, onSelect }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -112,18 +95,8 @@ export function ExperienceLevelStep({ onNext, onSelect }: Props) {
           boxSizing: "border-box",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <LogoMark />
-          <span
-            style={{
-              fontFamily: "'Roboto', -apple-system, sans-serif",
-              fontSize: 14,
-              fontWeight: 500,
-              color: c.ink,
-            }}
-          >
-            Future Signals
-          </span>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <img src={logoLight} alt="Future Signals" style={{ width: 130, height: "auto", display: "block" }} />
         </div>
         <StepDots />
       </div>
