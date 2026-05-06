@@ -185,12 +185,18 @@ export function ScannerInboxStep({
   const belowThreshold = totalCandidates < CLUSTER_THRESHOLD;
   const fillPct = Math.min((n / CLUSTER_THRESHOLD) * 100, 100);
 
+  const allSelected = totalCandidates > 0 && n === totalCandidates;
+
   const toggle = (id) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  };
+
+  const toggleAll = () => {
+    setSelectedIds(allSelected ? new Set() : new Set(candidates.map((c) => c.id)));
   };
 
   const handleSkip = () => onComplete([]);
@@ -420,6 +426,21 @@ export function ScannerInboxStep({
             >
               {progressText()}
             </div>
+          </div>
+
+          {/* Select all / Deselect all */}
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
+            <button
+              type="button"
+              onClick={toggleAll}
+              style={{
+                background: "none", border: "none", padding: 0,
+                fontSize: 11, color: c.brand, cursor: "pointer",
+                fontFamily: "inherit", fontWeight: 500,
+              }}
+            >
+              {allSelected ? "Deselect all" : "Select all"}
+            </button>
           </div>
 
           {/* Candidate grid */}
