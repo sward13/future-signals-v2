@@ -75,7 +75,7 @@ export function OnboardingShell({ workspaceId, onProjectCreate, onComplete }: Pr
         setSeedCandidates([]);
         return;
       }
-      fetch(`/api/seed-onboarding/${project.id}`, {
+      fetch(`/api/seed-onboarding?id=${project.id}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${session.access_token}` },
       })

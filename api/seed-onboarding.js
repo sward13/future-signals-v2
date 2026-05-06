@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
-import { scoreCandidate } from '../../lib/scoring.js';
+import { scoreCandidate } from './lib/scoring.js';
 
 export const config = { maxDuration: 60 };
 
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { id: projectId } = req.query;
+  const { id: projectId } = req.query; // passed as ?id=<uuid>
 
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
