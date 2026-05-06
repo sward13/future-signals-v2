@@ -345,7 +345,7 @@ function buildAssignmentRows(
 
     if (bestSim >= ASSIGNMENT_THRESHOLD && bestCluster) {
       rows.push({
-        project_id,
+        project_id:         projectId,
         workspace_id:       workspaceId,
         type:               "assignment",
         name:               bestCluster.name,  // required NOT NULL — use cluster name
