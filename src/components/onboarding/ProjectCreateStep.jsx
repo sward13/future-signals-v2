@@ -2,16 +2,16 @@ import { useState } from "react";
 import { c, inp, ta, btnP, btnSec } from "../../styles/tokens.js";
 import logoLight from "../../assets/logo_light.svg";
 
-// 8 domains with icons — "Custom / Other" intentionally excluded from onboarding
+// 8 domains — "Custom / Other" intentionally excluded from onboarding
 const DOMAINS = [
-  { label: "Technology & AI",       icon: "⚡" },
-  { label: "Climate & Energy",      icon: "🌍" },
-  { label: "Health & Life Sciences",icon: "🧬" },
-  { label: "Government & Policy",   icon: "🏛" },
-  { label: "Economy & Finance",     icon: "📈" },
-  { label: "Education & Learning",  icon: "📚" },
-  { label: "Media & Culture",       icon: "🎭" },
-  { label: "Defence & Security",    icon: "🛡" },
+  { label: "Technology & AI" },
+  { label: "Climate & Energy" },
+  { label: "Health & Life Sciences" },
+  { label: "Government & Policy" },
+  { label: "Economy & Finance" },
+  { label: "Education & Learning" },
+  { label: "Media & Culture" },
+  { label: "Defence & Security" },
 ];
 
 // 5 dots total; this step is dot index 2
@@ -237,7 +237,6 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack }) {
                       transition: "border-color 0.15s, background 0.15s, color 0.15s",
                     }}
                   >
-                    <span style={{ fontSize: 14, lineHeight: 1 }}>{d.icon}</span>
                     {d.label}
                   </button>
                 );
