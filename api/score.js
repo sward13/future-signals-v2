@@ -9,7 +9,7 @@ const supabase = createClient(
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const SCORE_THRESHOLD = 40;
+const SCORE_THRESHOLD = 30;
 
 function averageSimilarity(embedding, corpus) {
   if (!corpus.length) return 0;
