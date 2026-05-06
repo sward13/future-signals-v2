@@ -126,11 +126,75 @@ export default async function handler(req, res) {
       result.push(...overflow.slice(0, RESULT_LIMIT - result.length));
     }
 
-    // ── Fallback: candidates table when inputs pool is thin ───────────────────
+    // ── Step 2: project_candidates — pre-scored but not yet promoted ─────────
+    //
+    // score.js writes every candidate×project score to project_candidates, but
+    // only promotes to inputs those with surfaced=true (score ≥ old threshold).
+    // Candidates scoring 30–39 sit in project_candidates with surfaced=false.
+    // Read them directly rather than re-embedding and re-scoring.
+
+    if (result.length < RESULT_LIMIT) {
+      const existingUrls = new Set(result.map(c => c.source_url));
+
+      const { data: pcRows } = await supabase
+        .from('project_candidates')
+        .select('candidate_id, score, classification')
+        .eq('project_id', projectId)
+        .gte('score', 30)
+        .order('score', { ascending: false })
+        .limit(100);
+
+      const unseenPcRows = (pcRows || []).filter(r => {
+        // Skip if this candidate was already promoted to inputs (already in result)
+        return true; // url-based dedup happens below after fetching candidates
+      });
+
+      if (unseenPcRows.length > 0) {
+        const pcCandidateIds = unseenPcRows.map(r => r.candidate_id);
+        const { data: pcCands } = await supabase
+          .from('candidates')
+          .select('id, title, summary_ai, url, steepled, published_at, source_id')
+          .in('id', pcCandidateIds);
+
+        const pcSourceIds = [...new Set((pcCands || []).map(c => c.source_id).filter(Boolean))];
+        const { data: pcSources } = await supabase
+          .from('sources').select('id, name, credibility').in('id', pcSourceIds);
+
+        const pcCandMap    = Object.fromEntries((pcCands   || []).map(c => [c.id,  c]));
+        const pcSourceMap  = Object.fromEntries((pcSources || []).map(s => [s.id,  s]));
+        const pcScoreMap   = Object.fromEntries(unseenPcRows.map(r => [r.candidate_id, r]));
+
+        const pcCandidates = pcCandidateIds
+          .map(id => {
+            const cand = pcCandMap[id];
+            if (!cand) return null;
+            const src  = pcSourceMap[cand.source_id];
+            const pc   = pcScoreMap[id];
+            if (existingUrls.has(cand.url)) return null;
+            return {
+              id:                 cand.id,
+              title:              cand.title,
+              summary_ai:         cand.summary_ai         ?? '',
+              source_url:         cand.url,
+              source_name:        src?.name              ?? 'Unknown source',
+              source_credibility: src?.credibility       ?? 'general',
+              steepled_tags:      cand.steepled           ?? [],
+              published_at:       cand.published_at       ?? null,
+              score:              pc.score,
+              classification:     pc.classification,
+            };
+          })
+          .filter(Boolean);
+
+        result.push(...pcCandidates.slice(0, RESULT_LIMIT - result.length));
+      }
+    }
+
+    // ── Step 3: candidates table when inputs pool is thin ─────────────────────
     //
     // score.js fires as fire-and-forget after project creation, so for brand-new
-    // projects there are no promoted inputs yet. We also use this to fill any gap
-    // when the inbox has fewer than RESULT_LIMIT suggestions for this project.
+    // projects there are no promoted inputs or project_candidates rows yet.
+    // We also use this to fill any remaining gap.
     // Candidates already present in result are excluded by source_url.
 
     if (result.length < RESULT_LIMIT) {
