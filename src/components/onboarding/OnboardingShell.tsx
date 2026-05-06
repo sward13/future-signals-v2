@@ -178,6 +178,7 @@ export function OnboardingShell({ workspaceId, onProjectCreate, onComplete }: Pr
     <ClusteringResultsStep
       projectId={pendingProject?.id ?? ""}
       projectName={pendingProject?.name ?? ""}
+      workspaceId={workspaceId}
       promotedInputIds={promotedInputIds}
       onComplete={handleClusteringComplete}
     />

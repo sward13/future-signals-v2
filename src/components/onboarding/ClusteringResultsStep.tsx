@@ -6,6 +6,7 @@ import logoLight from "../../assets/logo_light.svg";
 interface Props {
   projectId: string;
   projectName: string;
+  workspaceId: string;
   promotedInputIds: string[];
   onComplete: () => void;
 }
@@ -20,10 +21,10 @@ interface ClusterSuggestion {
 
 type Phase = "loading" | "done";
 
-// Dot index 4 (0-indexed, final dot)
 const STEP_DOT   = 4;
 const TOTAL_DOTS = 5;
-const MIN_LOADING_MS = 1500;
+const MIN_LOADING_MS  = 2000;
+const EMBED_TIMEOUT_MS = 20_000;
 
 const TYPE_CONFIG: Record<string, {
   cardBg: string; cardBorder: string;
@@ -33,34 +34,94 @@ const TYPE_CONFIG: Record<string, {
   Trend: {
     cardBg: "#FAF8FF", cardBorder: "#DDD6FE",
     pillBg: "#EDE9FE", pillColor: "#5B21B6",
-    def: "A pattern of change already underway and gathering momentum.",
+    def: "A pattern of change visible across multiple signals.",
   },
   Driver: {
     cardBg: "#EFF8FF", cardBorder: "#BFDBFE",
     pillBg: "#DBEAFE", pillColor: "#1E40AF",
-    def: "A force actively shaping how this trend develops — accelerating, directing, or enabling change.",
+    def: "An underlying force shaping how the trend plays out.",
   },
   Tension: {
     cardBg: "#FFFBEB", cardBorder: "#FDE68A",
     pillBg: "#FEF3C7", pillColor: "#92400E",
-    def: "A friction point where competing forces, values, or interests are pulling against each other.",
+    def: "A contradiction or pressure point between competing forces.",
   },
 };
 
 const capitalize = (s: string) =>
   s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 
-// "a Trend, a Driver, and a Tension" from an array of cluster suggestions
-function formatTypeList(clusters: ClusterSuggestion[]): string {
-  const types = [...new Set(
-    clusters.map(cl => capitalize(cl.subtype ?? ""))
-        .filter(Boolean)
-  )];
-  if (!types.length) return "";
-  if (types.length === 1) return `a ${types[0]}`;
-  const last = types[types.length - 1];
-  const rest = types.slice(0, -1).map(t => `a ${t}`).join(", ");
-  return `${rest}, and a ${last}`;
+// ── Wait for all promoted inputs to have embeddings ────────────────────────────
+//
+// ScannerInboxStep fires embed-input non-blocking and calls onComplete
+// immediately. We poll until all inputs are embedded (or time out) before
+// running clustering so compute-cluster-suggestions finds actual embeddings.
+
+async function waitForEmbeddings(inputIds: string[], timeoutMs: number): Promise<void> {
+  if (inputIds.length === 0) return;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const { data } = await supabase
+      .from("inputs")
+      .select("id, embedding")
+      .in("id", inputIds);
+    const ready = (data ?? []).filter((i: { embedding: unknown }) => i.embedding != null);
+    if (ready.length >= inputIds.length) return;
+    await new Promise<void>((r) => setTimeout(r, 1500));
+  }
+  // Timeout — proceed with however many embeddings are ready
+}
+
+// ── Promote cluster suggestions to real, persisted clusters ───────────────────
+//
+// compute-cluster-suggestions writes to cluster_suggestions (status=pending).
+// This function promotes each suggestion into the clusters table and its
+// cluster_inputs junction rows, matching the pattern in useAppState.addCluster.
+
+async function promoteClusters(
+  clusterList: ClusterSuggestion[],
+  projectId: string,
+  workspaceId: string,
+): Promise<void> {
+  const now = new Date().toISOString();
+  for (const suggestion of clusterList) {
+    const clusterId = crypto.randomUUID();
+    const subtype   = capitalize(suggestion.subtype ?? "trend");
+
+    const { error: clusterError } = await supabase.from("clusters").insert({
+      id:           clusterId,
+      workspace_id: workspaceId,
+      project_id:   projectId,
+      name:         suggestion.name,
+      subtype,
+      horizon:      "H1",
+      likelihood:   "Plausible",
+      description:  suggestion.description ?? "",
+      created_at:   now,
+    });
+
+    if (clusterError) {
+      console.error("[onboarding] cluster insert failed:", clusterError);
+      continue;
+    }
+
+    if (suggestion.input_ids.length > 0) {
+      await supabase.from("cluster_inputs").insert(
+        suggestion.input_ids.map((input_id) => ({
+          workspace_id: workspaceId,
+          cluster_id:   clusterId,
+          input_id,
+        }))
+      );
+    }
+
+    // Mark suggestion as accepted (fire-and-forget)
+    supabase
+      .from("cluster_suggestions")
+      .update({ status: "accepted", acted_on_at: now })
+      .eq("id", suggestion.id)
+      .then();
+  }
 }
 
 // ── Shared chrome ─────────────────────────────────────────────────────────────
@@ -96,9 +157,7 @@ function TopBar() {
       position: "sticky", top: 0, zIndex: 10,
       boxSizing: "border-box",
     }}>
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <img src={logoLight} alt="Future Signals" style={{ width: 130, height: "auto", display: "block" }} />
-      </div>
+      <img src={logoLight} alt="Future Signals" style={{ width: 130, height: "auto", display: "block" }} />
       <StepDots />
     </div>
   );
@@ -187,7 +246,7 @@ function LoadingState() {
             fontSize: 18, fontWeight: 500, color: c.ink,
             margin: "0 0 9px",
           }}>
-            Finding patterns…
+            Finding patterns in your signals…
           </h2>
           <p style={{ fontSize: 13, color: "#6B7280", margin: 0, lineHeight: 1.6 }}>
             AI is grouping your signals into clusters. This takes a few seconds.
@@ -213,7 +272,7 @@ function NoClustersState({ onComplete }: { onComplete: () => void }) {
           Your signals are ready
         </h2>
         <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 24px", lineHeight: 1.6 }}>
-          Your signals are ready — run AI clustering any time from your project to find patterns.
+          We couldn't suggest clusters right now — you can run clustering any time from your project.
         </p>
         <button onClick={onComplete} style={{ ...btnP, fontSize: 13, padding: "10px 24px" }}>
           Open my project
@@ -238,56 +297,45 @@ function ClusterCard({
   return (
     <div style={{
       borderRadius: 10,
-      padding: "18px 20px",
-      marginBottom: 12,
+      padding: "16px 18px",
+      marginBottom: 10,
       border: `1px solid ${config.cardBorder}`,
       background: config.cardBg,
     }}>
-      {/* Row 1: pill + type definition + signal count */}
+      {/* Pill + signal count */}
       <div style={{
-        display: "flex", alignItems: "flex-start",
-        justifyContent: "space-between", gap: 12, marginBottom: 9,
+        display: "flex", alignItems: "center",
+        justifyContent: "space-between", gap: 12, marginBottom: 8,
       }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{
-            fontSize: 9, fontWeight: 500,
-            textTransform: "uppercase", letterSpacing: "0.06em",
-            padding: "2px 7px", borderRadius: 4,
-            background: config.pillBg, color: config.pillColor,
-            display: "inline-block",
-          }}>
-            {typeKey || cluster.subtype}
-          </span>
-          {config.def && (
-            <span style={{
-              fontSize: 10, fontStyle: "italic",
-              lineHeight: 1.4, maxWidth: 380,
-              color: config.pillColor,
-            }}>
-              {config.def}
-            </span>
-          )}
-        </div>
-        <span style={{ fontSize: 10, color: "#9CA3AF", whiteSpace: "nowrap", marginTop: 2 }}>
+        <span style={{
+          fontSize: 9, fontWeight: 500,
+          textTransform: "uppercase", letterSpacing: "0.06em",
+          padding: "2px 7px", borderRadius: 4,
+          background: config.pillBg, color: config.pillColor,
+          display: "inline-block",
+        }}>
+          {typeKey || cluster.subtype}
+        </span>
+        <span style={{ fontSize: 10, color: "#9CA3AF", whiteSpace: "nowrap" }}>
           {cluster.input_ids.length} {cluster.input_ids.length === 1 ? "signal" : "signals"}
         </span>
       </div>
 
-      {/* Row 2: cluster name */}
+      {/* Cluster name */}
       <div style={{ fontSize: 14, fontWeight: 500, color: "#1A1A1A", marginBottom: 5 }}>
         {cluster.name}
       </div>
 
-      {/* Row 3: AI summary */}
+      {/* AI summary */}
       {cluster.description && (
-        <div style={{ fontSize: 12, color: "#6B7280", lineHeight: 1.6, marginBottom: 9 }}>
+        <div style={{ fontSize: 12, color: "#6B7280", lineHeight: 1.6, marginBottom: 8 }}>
           {cluster.description}
         </div>
       )}
 
-      {/* Row 4: signal list */}
+      {/* Signal list */}
       {cluster.input_ids.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
           {cluster.input_ids.map((id) => (
             <div key={id} style={{
               fontSize: 11, color: "#6B7280",
@@ -308,14 +356,19 @@ function ResultsState({
   clusters,
   inputNameMap,
   projectName,
-  onComplete,
+  onConfirm,
+  confirming,
 }: {
   clusters: ClusterSuggestion[];
   inputNameMap: Record<string, string>;
   projectName: string;
-  onComplete: () => void;
+  onConfirm: () => void;
+  confirming: boolean;
 }) {
-  const typeList = formatTypeList(clusters);
+  // Only show type explainers for types that actually appear in results
+  const presentTypes = [...new Set(
+    clusters.map((cl) => capitalize(cl.subtype ?? "")).filter(Boolean)
+  )];
 
   return (
     <Shell wide>
@@ -330,7 +383,6 @@ function ResultsState({
         display: "flex", alignItems: "center", gap: 8,
       }}>
         ✓&nbsp;&nbsp;{clusters.length} {clusters.length === 1 ? "cluster" : "clusters"} found in {projectName}
-        {typeList ? ` — ${typeList}` : ""}
       </div>
 
       {/* Card header */}
@@ -349,9 +401,7 @@ function ResultsState({
         Here are the patterns in your signals
       </h2>
       <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 18px", lineHeight: 1.6 }}>
-        Clusters come in three types — each tells you something different about how change is
-        unfolding in your domain. These are AI suggestions: rename, merge, or reassign signals
-        as you see fit.
+        Each cluster is named and typed by AI. Review them here — once you open your project you can rename, merge, or reassign signals.
       </p>
 
       {/* Cluster cards */}
@@ -359,27 +409,57 @@ function ResultsState({
         <ClusterCard key={cl.id} cluster={cl} inputNameMap={inputNameMap} />
       ))}
 
+      {/* Cluster type explainer — shown for each type that appears */}
+      {presentTypes.length > 0 && (
+        <div style={{
+          marginTop: 8, marginBottom: 20,
+          padding: "14px 16px",
+          background: "#F9FAFB",
+          border: "0.5px solid rgba(0,0,0,0.09)",
+          borderRadius: 8,
+        }}>
+          <div style={{
+            fontSize: 10, fontWeight: 500,
+            textTransform: "uppercase", letterSpacing: "0.07em",
+            color: c.faint, marginBottom: 10,
+          }}>
+            What these types mean
+          </div>
+          {presentTypes.map((type) => {
+            const config = TYPE_CONFIG[type];
+            if (!config) return null;
+            return (
+              <div key={type} style={{ display: "flex", gap: 10, marginBottom: 7 }}>
+                <span style={{
+                  fontSize: 9, fontWeight: 500,
+                  textTransform: "uppercase", letterSpacing: "0.05em",
+                  padding: "2px 6px", borderRadius: 3,
+                  background: config.pillBg, color: config.pillColor,
+                  flexShrink: 0, alignSelf: "flex-start", marginTop: 1,
+                }}>
+                  {type}
+                </span>
+                <span style={{ fontSize: 12, color: "#374151", lineHeight: 1.5 }}>
+                  {config.def}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Footer */}
-      <div style={{
-        display: "flex", alignItems: "center",
-        justifyContent: "space-between", marginTop: 8,
-      }}>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <button
-          onClick={onComplete}
+          onClick={onConfirm}
+          disabled={confirming}
           style={{
-            background: "none", border: "none",
-            color: "#6B7280", fontSize: 12,
-            cursor: "pointer", fontFamily: "inherit",
-            padding: "4px 0",
+            ...btnP, fontSize: 13, padding: "10px 22px",
+            opacity: confirming ? 0.6 : 1,
+            cursor: confirming ? "default" : "pointer",
           }}
         >
-          I'll refine these later
-        </button>
-        <button
-          onClick={onComplete}
-          style={{ ...btnP, fontSize: 13, padding: "10px 22px" }}
-        >
-          Open my project
+          {confirming ? "Opening…" : "Open my project →"}
         </button>
       </div>
     </Shell>
@@ -391,15 +471,17 @@ function ResultsState({
 export function ClusteringResultsStep({
   projectId,
   projectName,
+  workspaceId,
   promotedInputIds,
   onComplete,
 }: Props) {
   const [phase,        setPhase]        = useState<Phase>("loading");
   const [clusters,     setClusters]     = useState<ClusterSuggestion[]>([]);
   const [inputNameMap, setInputNameMap] = useState<Record<string, string>>({});
+  const [confirming,   setConfirming]   = useState(false);
 
   useEffect(() => {
-    if (promotedInputIds.length === 0) return; // State A — no async work needed
+    if (promotedInputIds.length === 0) return;
 
     const run = async () => {
       const minDelay = new Promise<void>((resolve) =>
@@ -407,14 +489,19 @@ export function ClusteringResultsStep({
       );
 
       const doWork = async () => {
+        // Wait for all promoted inputs to be embedded before clustering.
+        // ScannerInboxStep fires embed-input non-blocking so embeddings may
+        // still be in-flight when this runs.
+        await waitForEmbeddings(promotedInputIds, EMBED_TIMEOUT_MS);
+
         // Trigger clustering
         const { error: fnError } = await supabase.functions.invoke(
           "compute-cluster-suggestions",
           {
             body: {
-              project_id:              projectId,
-              mode:                    "new_clusters",
-              clustering_sensitivity:  "balanced",
+              project_id:             projectId,
+              mode:                   "new_clusters",
+              clustering_sensitivity: "balanced",
             },
           }
         );
@@ -449,7 +536,6 @@ export function ClusteringResultsStep({
         return { clusters: rows, inputNameMap: nameMap };
       };
 
-      // Both conditions must be met before leaving the loading state
       const [{ clusters: c, inputNameMap: m }] = await Promise.all([
         doWork(),
         minDelay,
@@ -462,6 +548,19 @@ export function ClusteringResultsStep({
 
     run();
   }, []); // Intentionally empty — runs once on mount
+
+  // Promote pending suggestions to real clusters then hand off.
+  const handleConfirm = async () => {
+    setConfirming(true);
+    try {
+      if (clusters.length > 0) {
+        await promoteClusters(clusters, projectId, workspaceId);
+      }
+    } catch (err) {
+      console.error("[onboarding] cluster promotion failed:", err);
+    }
+    onComplete();
+  };
 
   // State A — user skipped signal selection
   if (promotedInputIds.length === 0) {
@@ -484,7 +583,8 @@ export function ClusteringResultsStep({
       clusters={clusters}
       inputNameMap={inputNameMap}
       projectName={projectName}
-      onComplete={onComplete}
+      onConfirm={handleConfirm}
+      confirming={confirming}
     />
   );
 }
