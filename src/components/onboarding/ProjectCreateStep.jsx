@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { c, inp, ta, btnP, btnSec } from "../../styles/tokens.js";
 import logoLight from "../../assets/logo_light.svg";
+import { HorizonSlider, YearInput } from "../projects/NewProjectModal.jsx";
 
 // 8 domains — "Custom / Other" intentionally excluded from onboarding
 const DOMAINS = [
@@ -67,8 +68,10 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack }) {
   const [focus,        setFocus]        = useState("");
   const [geo,          setGeo]          = useState("");
   const [stakeholders, setStakeholders] = useState("");
-  const [fromYear,     setFromYear]     = useState(String(new Date().getFullYear()));
-  const [toYear,       setToYear]       = useState(String(new Date().getFullYear() + 15));
+  const [fromYear,     setFromYear]     = useState(new Date().getFullYear());
+  const [toYear,       setToYear]       = useState(new Date().getFullYear() + 15);
+  const [h1Pct,        setH1Pct]        = useState(0.22);
+  const [h2Pct,        setH2Pct]        = useState(0.58);
 
   // Enhanced panel open state — experts start open
   const [enhancedOpen, setEnhancedOpen] = useState(experienceLevel === "expert");
@@ -78,7 +81,17 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack }) {
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    onSubmit({ name: name.trim(), domain, question: question.trim(), focus, geo, stakeholders, fromYear, toYear });
+    const span   = toYear - fromYear;
+    const h1End  = String(Math.round(fromYear + h1Pct * span));
+    const h2End  = String(Math.round(fromYear + h2Pct * span));
+    onSubmit({
+      name: name.trim(), domain, question: question.trim(),
+      focus, geo, stakeholders,
+      fromYear: String(fromYear), toYear: String(toYear),
+      h1_start: String(fromYear), h1_end: h1End,
+      h2_start: h1End,            h2_end: h2End,
+      h3_start: h2End,            h3_end: String(toYear),
+    });
   };
 
   return (
@@ -352,6 +365,8 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack }) {
                     stakeholders={stakeholders} setStakeholders={setStakeholders}
                     fromYear={fromYear} setFromYear={setFromYear}
                     toYear={toYear} setToYear={setToYear}
+                    h1Pct={h1Pct} setH1Pct={setH1Pct}
+                    h2Pct={h2Pct} setH2Pct={setH2Pct}
                   />
                 </div>
               )}
@@ -405,6 +420,8 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack }) {
                     stakeholders={stakeholders} setStakeholders={setStakeholders}
                     fromYear={fromYear} setFromYear={setFromYear}
                     toYear={toYear} setToYear={setToYear}
+                    h1Pct={h1Pct} setH1Pct={setH1Pct}
+                    h2Pct={h2Pct} setH2Pct={setH2Pct}
                   />
                 </div>
               )}
@@ -458,57 +475,30 @@ function EnhancedFields({
   stakeholders, setStakeholders,
   fromYear, setFromYear,
   toYear, setToYear,
+  h1Pct, setH1Pct,
+  h2Pct, setH2Pct,
 }) {
   return (
     <>
       {/* Time horizons */}
       <div>
-        <label
-          style={{
-            display: "block",
-            fontSize: 12,
-            fontWeight: 500,
-            color: c.ink,
-            marginBottom: 6,
-          }}
-        >
-          Time horizons
-        </label>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3 }}>
-            <span style={{ fontSize: 10, color: c.muted }}>From</span>
-            <input
-              type="number"
-              value={fromYear}
-              min={2000}
-              max={2100}
-              onChange={(e) => setFromYear(e.target.value)}
-              style={{
-                ...inp,
-                width: 80,
-                textAlign: "center",
-                padding: "6px 8px",
-              }}
-            />
-          </div>
-          <span style={{ color: c.muted, fontSize: 13, marginTop: 16 }}>→</span>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3 }}>
-            <span style={{ fontSize: 10, color: c.muted }}>To</span>
-            <input
-              type="number"
-              value={toYear}
-              min={2000}
-              max={2100}
-              onChange={(e) => setToYear(e.target.value)}
-              style={{
-                ...inp,
-                width: 80,
-                textAlign: "center",
-                padding: "6px 8px",
-              }}
-            />
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 10 }}>
+          <label style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>
+            Time horizons
+          </label>
+          <div style={{ display: "flex", gap: 10 }}>
+            <YearInput label="From" value={fromYear} onChange={setFromYear} min={2000} max={toYear - 5} />
+            <YearInput label="To"   value={toYear}   onChange={setToYear}   min={fromYear + 5} max={2100} />
           </div>
         </div>
+        <HorizonSlider
+          startYear={fromYear}
+          endYear={toYear}
+          h1Pct={h1Pct}
+          h2Pct={h2Pct}
+          onH1Change={setH1Pct}
+          onH2Change={setH2Pct}
+        />
       </div>
 
       {/* Focus area */}
