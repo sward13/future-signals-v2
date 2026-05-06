@@ -4,7 +4,7 @@
  * Common fields (Title, Description, Source URL) are always shown.
  * @param {{ open: boolean, onClose: () => void, onSave: (fields: object) => void, projects: object[] }} props
  */
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { c, inp, ta, sel, btnP, btnG, fl, fh, badg } from "../../styles/tokens.js";
 import { Drawer } from "../layout/Drawer.jsx";
 import { INPUT_TYPES, ThreeCardSelector, SteepleSelector, HorizonSelector, TypeSwitcherChip } from "./InputFormFields.jsx";
@@ -172,18 +172,30 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
   const [titleError, setTitleError] = useState(false);
   const [projectId, setProjectId] = useState(defaultProjectId);
   const [scraping, setScraping] = useState(false);
+  // Tracks the URL that was last successfully scraped so we can detect
+  // replacements and avoid re-fetching when the user blurs without changing the URL.
+  const scrapedUrlRef = useRef("");
 
   const handleUrlBlur = async (url) => {
     if (!url || !url.startsWith("http")) return;
+    if (url === scrapedUrlRef.current) return; // Same URL — no-op
+
     setScraping(true);
+    // Clear stale summary from the previous URL immediately so the user
+    // doesn't see old content while the new fetch is in flight.
+    setFields((prev) => ({ ...prev, description: "" }));
+
     try {
       const res = await fetch(`/api/scrape?url=${encodeURIComponent(url)}`);
       if (!res.ok) return;
       const data = await res.json();
+      scrapedUrlRef.current = url;
       setFields((prev) => ({
         ...prev,
-        title: prev.title || data.title || prev.title,
-        description: prev.description || data.description || prev.description,
+        // Title: only fill if the user hasn't typed one — preserve manual edits.
+        title: prev.title || data.title || "",
+        // Description: always use the freshly scraped value for this URL.
+        description: data.description || "",
       }));
     } catch {
       // Silent fail
@@ -235,6 +247,7 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
     setTitleError(false);
     setProjectId(defaultProjectId);
     setScraping(false);
+    scrapedUrlRef.current = "";
   };
 
   const handleClose = () => {
