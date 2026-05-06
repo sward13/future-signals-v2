@@ -55,6 +55,9 @@ export function OnboardingShell({ workspaceId, onProjectCreate, onComplete }: Pr
   const [seedCandidates,   setSeedCandidates]   = useState<object[] | null>(null); // null = loading
   const [waitingForSeed,   setWaitingForSeed]   = useState(false);
   const [promotedInputIds, setPromotedInputIds] = useState<string[]>([]);
+  // Preserved state for back navigation
+  const [savedProjectFields,  setSavedProjectFields]  = useState<Record<string, unknown> | null>(null);
+  const [savedSelectionIds,   setSavedSelectionIds]   = useState<Set<string>>(new Set());
 
   // Advance to scanner inbox when the seed resolves while we were waiting
   useEffect(() => {
@@ -152,6 +155,15 @@ export function OnboardingShell({ workspaceId, onProjectCreate, onComplete }: Pr
   };
 
   const handleProjectSubmit = async (fields: Record<string, unknown>) => {
+    setSavedProjectFields(fields);
+
+    if (pendingProject) {
+      // Project was already created (user went back and re-submitted).
+      // Skip re-creation — proceed straight to signals with existing seed candidates.
+      setStep(seedCandidates !== null ? 4 : 3);
+      return;
+    }
+
     const project = await onProjectCreate(fields);
     setPendingProject(project);
     setSeedCandidates(null);
@@ -195,6 +207,21 @@ export function OnboardingShell({ workspaceId, onProjectCreate, onComplete }: Pr
     onComplete(pendingProject?.id ?? null);
   };
 
+  // ── Back handlers ──────────────────────────────────────────────────────────
+
+  const handleBackFromProject = () => setStep(1);
+
+  const handleBackFromSignals = (selections: Set<string>) => {
+    setSavedSelectionIds(selections);
+    setStep(2);
+  };
+
+  const handleBackFromClusters = () => {
+    if (window.confirm("Go back to signal selection? Any cluster suggestions will be discarded.")) {
+      setStep(4);
+    }
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (step === 1) {
@@ -211,7 +238,8 @@ export function OnboardingShell({ workspaceId, onProjectCreate, onComplete }: Pr
       <ProjectCreateStep
         experienceLevel={experienceLevel ?? "regular"}
         onSubmit={handleProjectSubmit}
-        onBack={() => setStep(1)}
+        onBack={handleBackFromProject}
+        initialValues={savedProjectFields ?? undefined}
       />
     );
   }
@@ -256,6 +284,8 @@ export function OnboardingShell({ workspaceId, onProjectCreate, onComplete }: Pr
         domain={pendingProject?.domain ?? ""}
         keyQuestion={pendingProject?.question ?? ""}
         onComplete={handleScannerComplete}
+        onBack={handleBackFromSignals}
+        initialSelectedIds={savedSelectionIds}
       />
     );
   }
@@ -268,6 +298,7 @@ export function OnboardingShell({ workspaceId, onProjectCreate, onComplete }: Pr
       workspaceId={workspaceId}
       promotedInputIds={promotedInputIds}
       onComplete={handleClusteringComplete}
+      onBack={handleBackFromClusters}
     />
   );
 }

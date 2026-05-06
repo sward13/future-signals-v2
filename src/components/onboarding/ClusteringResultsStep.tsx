@@ -9,6 +9,7 @@ interface Props {
   workspaceId: string;
   promotedInputIds: string[];
   onComplete: () => void;
+  onBack?: () => void;
 }
 
 interface ClusterSuggestion {
@@ -259,7 +260,7 @@ function LoadingState() {
 
 // ── State C sub-state — 0 clusters returned ───────────────────────────────────
 
-function NoClustersState({ onComplete }: { onComplete: () => void }) {
+function NoClustersState({ onComplete, onBack }: { onComplete: () => void; onBack?: () => void }) {
   return (
     <Shell>
       <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
@@ -277,6 +278,16 @@ function NoClustersState({ onComplete }: { onComplete: () => void }) {
         <button onClick={onComplete} style={{ ...btnP, fontSize: 13, padding: "10px 24px" }}>
           Open my project
         </button>
+        {onBack && (
+          <div style={{ marginTop: 12 }}>
+            <button onClick={onBack} style={{
+              background: "none", border: "none", cursor: "pointer",
+              fontSize: 12, color: "#6B7280", fontFamily: "inherit", padding: 0,
+            }}>
+              ← Back to signal selection
+            </button>
+          </div>
+        )}
       </div>
     </Shell>
   );
@@ -358,12 +369,14 @@ function ResultsState({
   projectName,
   onConfirm,
   confirming,
+  onBack,
 }: {
   clusters: ClusterSuggestion[];
   inputNameMap: Record<string, string>;
   projectName: string;
   onConfirm: () => void;
   confirming: boolean;
+  onBack?: () => void;
 }) {
   // Only show type explainers for types that actually appear in results
   const presentTypes = [...new Set(
@@ -449,7 +462,15 @@ function ResultsState({
       )}
 
       {/* Footer */}
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: onBack ? "space-between" : "flex-end" }}>
+        {onBack && (
+          <button onClick={onBack} style={{
+            background: "none", border: "none", cursor: "pointer",
+            fontSize: 12, color: "#6B7280", fontFamily: "inherit", padding: "4px 0",
+          }}>
+            ← Back
+          </button>
+        )}
         <button
           onClick={onConfirm}
           disabled={confirming}
@@ -474,6 +495,7 @@ export function ClusteringResultsStep({
   workspaceId,
   promotedInputIds,
   onComplete,
+  onBack,
 }: Props) {
   const [phase,        setPhase]        = useState<Phase>("loading");
   const [clusters,     setClusters]     = useState<ClusterSuggestion[]>([]);
@@ -574,7 +596,7 @@ export function ClusteringResultsStep({
 
   // State C — 0 clusters returned
   if (clusters.length === 0) {
-    return <NoClustersState onComplete={onComplete} />;
+    return <NoClustersState onComplete={onComplete} onBack={onBack} />;
   }
 
   // State C — results
@@ -585,6 +607,7 @@ export function ClusteringResultsStep({
       projectName={projectName}
       onConfirm={handleConfirm}
       confirming={confirming}
+      onBack={onBack}
     />
   );
 }

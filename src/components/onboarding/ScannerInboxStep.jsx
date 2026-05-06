@@ -176,8 +176,10 @@ export function ScannerInboxStep({
   domain,
   keyQuestion,
   onComplete,
+  onBack,
+  initialSelectedIds,
 }) {
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [selectedIds, setSelectedIds] = useState(() => initialSelectedIds ?? new Set());
   const [promoting, setPromoting] = useState(false);
 
   const n = selectedIds.size;
@@ -473,18 +475,34 @@ export function ScannerInboxStep({
               justifyContent: "space-between",
             }}
           >
-            <button
-              onClick={handleSkip}
-              disabled={promoting}
-              style={{
-                background: "none", border: "none",
-                color: "#6B7280", fontSize: 12,
-                cursor: "pointer", fontFamily: "inherit",
-                padding: "4px 0",
-              }}
-            >
-              Skip — review from the Scanner tab later
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              {onBack && (
+                <button
+                  onClick={() => onBack(selectedIds)}
+                  disabled={promoting}
+                  style={{
+                    background: "none", border: "none",
+                    color: "#6B7280", fontSize: 12,
+                    cursor: "pointer", fontFamily: "inherit",
+                    padding: "4px 0",
+                  }}
+                >
+                  ← Back
+                </button>
+              )}
+              <button
+                onClick={handleSkip}
+                disabled={promoting}
+                style={{
+                  background: "none", border: "none",
+                  color: "#6B7280", fontSize: 12,
+                  cursor: "pointer", fontFamily: "inherit",
+                  padding: "4px 0",
+                }}
+              >
+                Skip — review from the Scanner tab later
+              </button>
+            </div>
 
             <button
               onClick={handleAdd}

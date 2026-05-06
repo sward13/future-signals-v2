@@ -58,20 +58,22 @@ function StepDots() {
  * onSubmit receives: { name, domain, question, focus, geo, stakeholders, fromYear, toYear }
  * Stage 3 will wire the actual Supabase insert and onNext(projectId) call inside onSubmit.
  */
-export function ProjectCreateStep({ experienceLevel, onSubmit, onBack }) {
+export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialValues }) {
+  const iv = initialValues ?? {};
+
   // Quick Start fields
-  const [name,     setName]     = useState("");
-  const [domain,   setDomain]   = useState("");
-  const [question, setQuestion] = useState("");
+  const [name,     setName]     = useState(iv.name     ?? "");
+  const [domain,   setDomain]   = useState(iv.domain   ?? "");
+  const [question, setQuestion] = useState(iv.question ?? "");
 
   // Enhanced fields
-  const [focus,        setFocus]        = useState("");
-  const [geo,          setGeo]          = useState("");
-  const [stakeholders, setStakeholders] = useState("");
-  const [fromYear,     setFromYear]     = useState(new Date().getFullYear());
-  const [toYear,       setToYear]       = useState(new Date().getFullYear() + 15);
-  const [h1Pct,        setH1Pct]        = useState(0.22);
-  const [h2Pct,        setH2Pct]        = useState(0.58);
+  const [focus,        setFocus]        = useState(iv.focus        ?? "");
+  const [geo,          setGeo]          = useState(iv.geo          ?? "");
+  const [stakeholders, setStakeholders] = useState(iv.stakeholders ?? "");
+  const [fromYear,     setFromYear]     = useState(iv.fromYear != null ? Number(iv.fromYear) : new Date().getFullYear());
+  const [toYear,       setToYear]       = useState(iv.toYear   != null ? Number(iv.toYear)   : new Date().getFullYear() + 15);
+  const [h1Pct,        setH1Pct]        = useState(iv.h1Pct    ?? 0.22);
+  const [h2Pct,        setH2Pct]        = useState(iv.h2Pct    ?? 0.58);
 
   // Enhanced panel open state — experts start open
   const [enhancedOpen, setEnhancedOpen] = useState(experienceLevel === "expert");
@@ -88,6 +90,7 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack }) {
       name: name.trim(), domain, question: question.trim(),
       focus, geo, stakeholders,
       fromYear: String(fromYear), toYear: String(toYear),
+      h1Pct, h2Pct,
       h1_start: String(fromYear), h1_end: h1End,
       h2_start: h1End,            h2_end: h2End,
       h3_start: h2End,            h3_end: String(toYear),
