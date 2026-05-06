@@ -8,6 +8,7 @@ import { useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { c, inp, btnP } from "../../styles/tokens.js";
 import logoLight from "../../assets/logo_light.svg";
+import { Eye, EyeOff } from "lucide-react";
 
 const linkBtn = {
   background: "none", border: "none", cursor: "pointer",
@@ -32,6 +33,8 @@ export function AuthScreen({ initialMode = "signin" }) {
   // Separate from `mode` so it can't be overridden by switchMode calls or
   // any auth state change that causes App.jsx to re-render this component.
   const [signupConfirmed, setSignupConfirmed] = useState(false);
+  const [showPassword,    setShowPassword]    = useState(false);
+  const [showConfirm,     setShowConfirm]     = useState(false);
 
   const switchMode = (next) => {
     setMode(next);
@@ -226,14 +229,30 @@ export function AuthScreen({ initialMode = "signin" }) {
 
             <div style={{ marginBottom: mode === "signin" ? 6 : 24 }}>
               <div style={{ fontSize: 11, fontWeight: 500, color: c.ink, marginBottom: 5 }}>Password</div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={mode === "signup" ? "At least 6 characters" : ""}
-                required
-                style={{ ...inp, fontSize: 13 }}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={mode === "signup" ? "At least 6 characters" : ""}
+                  required
+                  style={{ ...inp, fontSize: 13, paddingRight: 36 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  style={{
+                    position: "absolute", right: 10, top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none", border: "none", padding: 0,
+                    cursor: "pointer", color: c.faint, lineHeight: 0,
+                  }}
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
             </div>
 
             {/* Forgot password link — sign in only */}
@@ -301,26 +320,58 @@ export function AuthScreen({ initialMode = "signin" }) {
           <form onSubmit={handleReset}>
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 500, color: c.ink, marginBottom: 5 }}>New password</div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 6 characters"
-                required
-                autoFocus
-                style={{ ...inp, fontSize: 13 }}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                  required
+                  autoFocus
+                  style={{ ...inp, fontSize: 13, paddingRight: 36 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  style={{
+                    position: "absolute", right: 10, top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none", border: "none", padding: 0,
+                    cursor: "pointer", color: c.faint, lineHeight: 0,
+                  }}
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
             </div>
             <div style={{ marginBottom: 24 }}>
               <div style={{ fontSize: 11, fontWeight: 500, color: c.ink, marginBottom: 5 }}>Confirm password</div>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter new password"
-                required
-                style={{ ...inp, fontSize: 13 }}
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showConfirm ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter new password"
+                  required
+                  style={{ ...inp, fontSize: 13, paddingRight: 36 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm((v) => !v)}
+                  style={{
+                    position: "absolute", right: 10, top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none", border: "none", padding: 0,
+                    cursor: "pointer", color: c.faint, lineHeight: 0,
+                  }}
+                  tabIndex={-1}
+                  aria-label={showConfirm ? "Hide password" : "Show password"}
+                >
+                  {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
             </div>
             <button
               type="submit"
