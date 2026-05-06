@@ -14,6 +14,21 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase.js";
+
+// ── QA step-jump ──────────────────────────────────────────────────────────────
+// Only active when VITE_ENABLE_QA_TOOLS=true. Completely inert in production.
+
+const QA_ENABLED = import.meta.env.VITE_ENABLE_QA_TOOLS === "true";
+
+const QA_STEP_MAP: Record<string, number> = {
+  experience: 1,
+  domain:     2,
+  horizon:    2,
+  focus:      2,
+  signals:    4,
+  clusters:   5,
+  complete:   5,
+};
 import { ExperienceLevelStep } from "./ExperienceLevelStep.tsx";
 import { ProjectCreateStep } from "./ProjectCreateStep.jsx";
 import { CreatingTransition } from "./CreatingTransition.tsx";
@@ -48,6 +63,78 @@ export function OnboardingShell({ workspaceId, onProjectCreate, onComplete }: Pr
       setStep(4);
     }
   }, [waitingForSeed, seedCandidates]);
+
+  // ── QA step-jump — initialise at a specific step via ?step= param ─────────
+  useEffect(() => {
+    if (!QA_ENABLED || !workspaceId) return;
+
+    const params    = new URLSearchParams(window.location.search);
+    const stepParam = params.get("step");
+    if (!stepParam || !(stepParam in QA_STEP_MAP)) return;
+
+    const targetStep = QA_STEP_MAP[stepParam];
+
+    // Steps 1–3 need no async context — jump immediately
+    if (targetStep <= 3) {
+      setStep(targetStep);
+      return;
+    }
+
+    // Steps 4–5 need the most recent project and, for signals, seed candidates
+    const init = async () => {
+      const { data: rows } = await supabase
+        .from("projects")
+        .select("id, name, domain, question")
+        .eq("workspace_id", workspaceId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const project = (rows?.[0] ?? null) as Project | null;
+      if (project) setPendingProject(project);
+
+      if (targetStep === 4) {
+        // Fetch seed candidates via the existing endpoint
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token;
+          if (project && token) {
+            const res  = await fetch(`/api/seed-onboarding?id=${project.id}`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const json = await res.json().catch(() => ({}));
+            setSeedCandidates((json as { candidates?: object[] }).candidates ?? []);
+          } else {
+            setSeedCandidates([]);
+          }
+        } catch {
+          setSeedCandidates([]);
+        }
+      }
+
+      if (targetStep === 5) {
+        if (stepParam === "complete") {
+          // complete → ZeroInputsState (promotedInputIds stays empty)
+          setPromotedInputIds([]);
+        } else if (project) {
+          // clusters → pass existing input IDs so ClusteringResultsStep can
+          // run its normal embedding-wait + clustering flow against real data
+          const { data: inputs } = await supabase
+            .from("inputs")
+            .select("id")
+            .eq("project_id", project.id)
+            .limit(20);
+          setPromotedInputIds(
+            (inputs ?? []).map((i: { id: string }) => i.id)
+          );
+        }
+      }
+
+      setStep(targetStep);
+    };
+
+    init();
+  }, [workspaceId]); // Runs once workspaceId is available
 
   // ── Step handlers ─────────────────────────────────────────────────────────
 
