@@ -75,7 +75,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [inboxProjectFilter, setInboxProjectFilter] = useState(null);
 
   const toastTimer = useRef(null);
-  const refreshInputsRef = useRef(null);
+  const refreshInputsRef  = useRef(null);
+  const refreshClustersRef = useRef(null);
 
   // ── Toast ─────────────────────────────────────────────────────────────────
   const showToast = useCallback((message, type = "success") => {
@@ -170,6 +171,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
         showToast("Failed to load clusters", "error");
       }
     };
+
+    refreshClustersRef.current = fetchClusters;
 
     const fetchScenarios = async () => {
       try {
@@ -1497,7 +1500,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     updateCluster,
     dismissInput,
     dismissSuggestedInput,
-    refreshInputs: () => refreshInputsRef.current?.(),
+    refreshInputs:   () => refreshInputsRef.current?.(),
+    refreshClusters: () => refreshClustersRef.current?.(),
     saveInputToProject,
     saveInputsToProject,
     analyses,

@@ -219,6 +219,7 @@ export default function App() {
       // immediately — they were inserted via direct Supabase calls in
       // ScannerInboxStep and are not yet in local state.
       appState.refreshInputs();
+      appState.refreshClusters();
     } else {
       window.history.pushState({}, "", "/");
     }
