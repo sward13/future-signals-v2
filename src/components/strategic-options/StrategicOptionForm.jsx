@@ -101,6 +101,7 @@ function ScenarioMultiSelect({ scenarios, selected, onChange }) {
 
 const HORIZONS     = ["H1", "H2", "H3"];
 const FEASIBILITIES = ["High", "Medium", "Low"];
+const HML = ["High", "Medium", "Low"];
 
 const selectStyle = {
   ...sel,
@@ -136,9 +137,11 @@ export default function StrategicOptionForm({ appState, mode }) {
   const [scenarioIds,     setScenarioIds]     = useState(
     Array.isArray(opt?.scenario_ids) ? opt.scenario_ids : []
   );
-  const [dependencies,    setDependencies]    = useState(opt?.dependencies     || "");
-  const [risks,           setRisks]           = useState(opt?.risks            || "");
-  const [saving,          setSaving]          = useState(false);
+  const [dependencies,       setDependencies]       = useState(opt?.dependencies       || "");
+  const [risks,              setRisks]              = useState(opt?.risks              || "");
+  const [reversibility,      setReversibility]      = useState(opt?.reversibility      || "");
+  const [resourceIntensity,  setResourceIntensity]  = useState(opt?.resource_intensity || "");
+  const [saving,             setSaving]             = useState(false);
 
   const goBack = () => setActiveScreen("future-models");
 
@@ -155,8 +158,10 @@ export default function StrategicOptionForm({ appState, mode }) {
         horizon:          horizon                 || null,
         feasibility:      feasibility             || null,
         scenario_ids:     scenarioIds,
-        dependencies:     dependencies.trim()     || null,
-        risks:            risks.trim()            || null,
+        dependencies:       dependencies.trim()     || null,
+        risks:              risks.trim()            || null,
+        reversibility:      reversibility           || null,
+        resource_intensity: resourceIntensity       || null,
       };
 
       if (mode === "new") {
@@ -328,6 +333,24 @@ export default function StrategicOptionForm({ appState, mode }) {
             style={ta}
             placeholder="What could go wrong or undermine this option?…"
           />
+        </div>
+
+        {/* Reversibility + Resource Intensity */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+          <div>
+            <div style={fl}>Reversibility <span style={{ color: c.hint, fontWeight: 400 }}>(optional)</span></div>
+            <select value={reversibility} onChange={(e) => setReversibility(e.target.value)} style={selectStyle}>
+              <option value="">— Select reversibility</option>
+              {HML.map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div>
+            <div style={fl}>Resource Intensity <span style={{ color: c.hint, fontWeight: 400 }}>(optional)</span></div>
+            <select value={resourceIntensity} onChange={(e) => setResourceIntensity(e.target.value)} style={selectStyle}>
+              <option value="">— Select intensity</option>
+              {HML.map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
         </div>
 
       </div>

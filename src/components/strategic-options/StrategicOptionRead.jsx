@@ -29,6 +29,20 @@ function FeasibilityBadge({ value }) {
   );
 }
 
+// ─── Neutral rating badge (High / Medium / Low, no value judgement) ──────────
+
+function RatingBadge({ value }) {
+  if (!value) return null;
+  return (
+    <span style={{
+      fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 10,
+      background: c.surfaceAlt, color: c.ink, border: `1px solid ${c.border}`,
+    }}>
+      {value}
+    </span>
+  );
+}
+
 // ─── Main read view ───────────────────────────────────────────────────────────
 
 export default function StrategicOptionRead({ appState }) {
@@ -300,7 +314,23 @@ export default function StrategicOptionRead({ appState }) {
                     </div>
                   </div>
                 )}
-                {!opt.horizon && !opt.feasibility && (
+                {opt.reversibility && (
+                  <div>
+                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>Reversibility</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <RatingBadge value={opt.reversibility} />
+                    </div>
+                  </div>
+                )}
+                {opt.resource_intensity && (
+                  <div>
+                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>Resource Intensity</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <RatingBadge value={opt.resource_intensity} />
+                    </div>
+                  </div>
+                )}
+                {!opt.horizon && !opt.feasibility && !opt.reversibility && !opt.resource_intensity && (
                   <div style={{ fontSize: 11, color: c.hint }}>No structured fields set.</div>
                 )}
               </div>
