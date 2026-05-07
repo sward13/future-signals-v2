@@ -386,7 +386,7 @@ ${existingNames}
 
 Return JSON only with no preamble:
 {
-  "name": "a concise, evocative cluster name (max 8 words)",
+  "name": "a verb-driven cluster name (max 10 words)",
   "description": "one sentence describing the pattern these inputs share",
   "subtype": "trend" | "driver" | "tension"
 }
@@ -395,7 +395,25 @@ Rules:
 - name must be clearly distinct from the existing cluster names listed above
 - subtype 'trend' = an emerging pattern or direction of change
 - subtype 'driver' = a structural force shaping the future
-- subtype 'tension' = competing dynamics creating uncertainty or friction`;
+- subtype 'tension' = competing dynamics creating uncertainty or friction
+
+Naming rules — this is the most important part:
+- Names must describe what the force is DOING, not just what it IS
+- Use the format "[Subject] is/are [verb phrase]" or "[Subject] [verb]s [object]"
+- Avoid flat category labels, noun phrases, and abstract titles
+
+Good examples (use this style):
+- "Regulatory pressure is constraining AI deployment timelines"
+- "Consumer demand is accelerating EV infrastructure buildout"
+- "Tactile interfaces are converging toward standardised interaction norms"
+- "Institutional trust is eroding faster than alternatives emerge"
+- "Remote work norms are fragmenting urban commercial real estate demand"
+
+Bad examples (never use this style):
+- "AI Regulation" (noun label — says nothing about what is happening)
+- "EV Market Trends" (vague category with no direction or force)
+- "Fluid dynamics of tactile interaction" (abstract and passive)
+- "Digital Transformation" (cliché with no specificity)`;
 
   const res = await fetch(OPENAI_API_URL, {
     method:  "POST",
