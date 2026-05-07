@@ -361,7 +361,6 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
   const [domain, setDomain] = useState("");
   const [question, setQuestion] = useState("");
   const [nameError, setNameError] = useState(false);
-  const [domainError, setDomainError] = useState(false);
   const [scanningEnabled, setScanningEnabled] = useState(true);
 
   // ── Horizon slider state ─────────────────────────────────────────────
@@ -381,7 +380,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
 
   const resetForm = () => {
     setName(""); setDomain(""); setQuestion("");
-    setNameError(false); setDomainError(false);
+    setNameError(false);
     setStartYear(CURRENT_YEAR); setEndYear(DEFAULT_END_YEAR);
     setH1Pct(0.22); setH2Pct(0.58);
     setFocus(""); setScopeIn([]); setScopeOut([]); setGeo(""); setAssumptions(""); setStakeholders(""); setAudience("");
@@ -393,7 +392,6 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
   const handleSave = () => {
     let hasError = false;
     if (!name.trim()) { setNameError(true); hasError = true; }
-    if (!domain) { setDomainError(true); hasError = true; }
     if (hasError) return;
 
     const span = endYear - startYear;
@@ -517,16 +515,15 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
             <div style={fl}>Domain <span style={badg}>required</span></div>
             <div style={{ position: "relative" }}>
               <select
-                style={{ ...sel, borderColor: domainError ? c.redBorder : undefined }}
+                style={sel}
                 value={domain}
-                onChange={(e) => { setDomain(e.target.value); setDomainError(false); }}
+                onChange={(e) => setDomain(e.target.value)}
               >
                 <option value="">Select a domain…</option>
                 {DOMAINS.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
               <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: c.hint, pointerEvents: "none" }}>▾</span>
             </div>
-            {domainError && <div style={{ fontSize: 11, color: c.red800, marginTop: 4 }}>Domain is required.</div>}
           </div>
 
           {/* ── Key question ──────────────────────────────────── */}
