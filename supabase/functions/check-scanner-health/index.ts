@@ -245,9 +245,9 @@ async function runHealthCheck() {
 // ── Email digest ────────────────────────────────────────────────────────────
 
 async function sendDigest(rows: HealthRow[], now: Date) {
-  const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-  const ADMIN_EMAIL    = Deno.env.get("ADMIN_EMAIL");
-  if (!RESEND_API_KEY || !ADMIN_EMAIL) return;
+  const ADMIN_EMAIL        = Deno.env.get("ADMIN_EMAIL");
+  const SERVICE_ROLE_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!ADMIN_EMAIL || !SERVICE_ROLE_KEY) return;
 
   const dead     = rows.filter((r) => r.status === "dead");
   const degraded = rows.filter((r) => r.status === "degraded");
@@ -324,24 +324,27 @@ async function sendDigest(rows: HealthRow[], now: Date) {
     }
   }
 
-  const text = lines.join("\n");
+  const html = `<pre style="font-family:sans-serif;font-size:14px;line-height:1.6">${lines.join("\n")}</pre>`;
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${RESEND_API_KEY}`,
-      "Content-Type": "application/json",
+  const res = await fetch(
+    "https://tbxjudpxzovbasuomekq.supabase.co/functions/v1/send-email",
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from:    "scanner@futuresignals.io",
+        to:      ADMIN_EMAIL,
+        subject: `Scanner Health Report — ${dateStr}`,
+        html,
+      }),
     },
-    body: JSON.stringify({
-      from:    "scanner@resend.dev",
-      to:      ADMIN_EMAIL,
-      subject: `Scanner Health Report — ${dateStr}`,
-      text,
-    }),
-  });
+  );
 
   if (!res.ok) {
     const body = await res.text();
-    console.error("Resend error:", res.status, body);
+    console.error("send-email error:", res.status, body);
   }
 }
