@@ -12,7 +12,7 @@ import {
   getBezierPath, MarkerType, ConnectionMode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { CirclePlus, LayoutDashboard, Logs, ChevronDown, ChevronRight } from "lucide-react";
+import { CirclePlus, LayoutDashboard, Logs, ChevronDown, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
 import { c, ta, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
@@ -817,6 +817,7 @@ function CanvasArea({
   onConnect, onNodeDragStop,
   onRemoveNode, isPanning,
   panelsHidden, onTogglePanels,
+  isFullscreen, onToggleFullscreen,
 }) {
   const { zoomIn, zoomOut, setViewport, getViewport } = useReactFlow();
   const [rfNodes, setRFNodes, onNodesChange] = useNodesState([]);
@@ -941,6 +942,26 @@ function CanvasArea({
           >Cancel</button>
         </div>
       )}
+
+      {/* Fullscreen toggle */}
+      <div style={{ position: "absolute", top: 14, left: 14, zIndex: 10 }}>
+        <button
+          onClick={onToggleFullscreen}
+          title={isFullscreen ? "Exit full screen (Esc)" : "Full screen"}
+          style={{
+            ...btnG,
+            padding: "5px 8px",
+            background: isFullscreen ? c.ink : c.white,
+            color: isFullscreen ? c.white : c.muted,
+            border: `1px solid ${isFullscreen ? c.ink : c.border}`,
+            borderRadius: 7,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "background 0.15s, color 0.15s, border-color 0.15s",
+          }}
+        >
+          {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+        </button>
+      </div>
 
       {/* Add relationship button */}
       {!connectMode && projectNodes.length >= 2 && (
@@ -1083,6 +1104,7 @@ export default function ScenarioCanvas({ appState }) {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [panelsHidden, setPanelsHidden] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [connectMode, setConnectMode] = useState(false);
   const [relModalOpen, setRelModalOpen] = useState(false);
   const [pendingRel, setPendingRel] = useState(null);
@@ -1098,6 +1120,7 @@ export default function ScenarioCanvas({ appState }) {
         setRelModalOpen(false);
         setPendingRel(null);
         setEditingRelId(null);
+        setIsFullscreen(false);
       }
       if (e.code === "Space" && !e.repeat) {
         e.preventDefault();
@@ -1229,7 +1252,10 @@ export default function ScenarioCanvas({ appState }) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: c.bg }}>
+    <div style={isFullscreen
+      ? { position: "fixed", inset: 0, zIndex: 200, display: "flex", flexDirection: "column", background: c.bg }
+      : { display: "flex", flexDirection: "column", height: "100%", background: c.bg }
+    }>
       {/* Top bar */}
       <div style={{ padding: "14px 22px 12px", background: c.white, borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
@@ -1322,6 +1348,8 @@ export default function ScenarioCanvas({ appState }) {
               isPanning={isPanning}
               panelsHidden={panelsHidden}
               onTogglePanels={() => setPanelsHidden((h) => !h)}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={() => setIsFullscreen((f) => !f)}
             />
           </ReactFlowProvider>
 
