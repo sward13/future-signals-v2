@@ -213,9 +213,13 @@ const edgeTypes = { relationship: RelationshipEdgeComponent };
 // ─── Relationship modal ───────────────────────────────────────────────────────
 
 function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
-  const [relType, setRelType] = useState(initial?.type || "Drives");
-  const [evidence, setEvidence] = useState(initial?.evidence || "");
-  const [confidence, setConfidence] = useState(initial?.confidence || "Medium");
+  const isKnownType = !initial?.type || !!REL_TYPE_MAP[initial.type];
+  const [relType,     setRelType]     = useState(isKnownType ? (initial?.type || "Drives") : "Other");
+  const [customLabel, setCustomLabel] = useState(isKnownType ? "" : (initial?.type || ""));
+  const [evidence,    setEvidence]    = useState(initial?.evidence   || "");
+  const [confidence,  setConfidence]  = useState(initial?.confidence || "Medium");
+
+  const effectiveType = relType === "Other" ? (customLabel.trim() || "Other") : relType;
 
   return (
     <>
@@ -273,7 +277,39 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
                   </button>
                 );
               })}
+              {/* Other — freeform label */}
+              <button
+                onClick={() => setRelType("Other")}
+                style={{
+                  padding: "9px 12px", borderRadius: 8, textAlign: "left",
+                  border: `1.5px solid ${relType === "Other" ? c.borderMid : c.border}`,
+                  background: relType === "Other" ? "rgba(0,0,0,0.015)" : c.white,
+                  cursor: "pointer", fontFamily: "inherit",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
+                  <div style={{ width: 22, height: 2.5, borderRadius: 2, flexShrink: 0, background: c.hint }} />
+                  <span style={{ fontSize: 12, fontWeight: 500, color: relType === "Other" ? c.ink : c.muted }}>Other</span>
+                </div>
+                <div style={{ fontSize: 10, color: c.hint, lineHeight: 1.4 }}>A custom relationship type</div>
+              </button>
             </div>
+            {relType === "Other" && (
+              <input
+                autoFocus
+                type="text"
+                value={customLabel}
+                onChange={(e) => setCustomLabel(e.target.value)}
+                onKeyDown={(e) => e.stopPropagation()}
+                placeholder="Describe the relationship…"
+                style={{
+                  marginTop: 8, width: "100%", padding: "8px 10px",
+                  border: `1px solid ${c.borderMid}`, borderRadius: 6,
+                  fontSize: 12, fontFamily: "inherit", color: c.ink,
+                  background: c.white, outline: "none", boxSizing: "border-box",
+                }}
+              />
+            )}
           </div>
 
           {/* Evidence */}
@@ -322,7 +358,7 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
           display: "flex", gap: 8, justifyContent: "flex-end", flexShrink: 0,
         }}>
           <button onClick={onClose} style={btnSec}>Cancel</button>
-          <button onClick={() => onSave({ type: relType, evidence, confidence })} style={btnP}>
+          <button onClick={() => onSave({ type: effectiveType, evidence, confidence })} style={btnP}>
             Save relationship
           </button>
         </div>
@@ -653,7 +689,7 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
 
 // ─── Table view ───────────────────────────────────────────────────────────────
 
-const EMPTY_DRAFT = { fromClusterId: "", toClusterId: "", type: "Drives", evidence: "", confidence: "Medium" };
+const EMPTY_DRAFT = { fromClusterId: "", toClusterId: "", type: "Drives", customType: "", evidence: "", confidence: "Medium" };
 
 function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRel, onDeleteRel, onAddRel }) {
   const [adding, setAdding] = useState(false);
@@ -674,7 +710,12 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
   };
 
   const canSave = draft.fromClusterId && draft.toClusterId && draft.fromClusterId !== draft.toClusterId;
-  const handleSave = () => { onAddRel(draft); setDraft(EMPTY_DRAFT); setAdding(false); };
+  const handleSave = () => {
+    const effectiveType = draft.type === "Other" ? (draft.customType.trim() || "Other") : draft.type;
+    onAddRel({ ...draft, type: effectiveType });
+    setDraft(EMPTY_DRAFT);
+    setAdding(false);
+  };
   const handleCancel = () => { setDraft(EMPTY_DRAFT); setAdding(false); };
   const canvasClusters = clusters.filter((cl) => canvasNodes.some((n) => n.clusterId === cl.id));
 
@@ -704,10 +745,22 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
                     {canvasClusters.map((cl) => <option key={cl.id} value={cl.id}>{cl.name}</option>)}
                   </select>
                 </div>
-                <div style={{ padding: "8px 10px" }}>
-                  <select style={selStyle} value={draft.type} onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value }))}>
+                <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
+                  <select style={selStyle} value={draft.type} onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value, customType: "" }))}>
                     {REL_TYPES.map((rt) => <option key={rt.id} value={rt.id}>{rt.id}</option>)}
+                    <option value="Other">Other…</option>
                   </select>
+                  {draft.type === "Other" && (
+                    <input
+                      autoFocus
+                      type="text"
+                      value={draft.customType}
+                      onChange={(e) => setDraft((d) => ({ ...d, customType: e.target.value }))}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      placeholder="Custom label…"
+                      style={{ ...selStyle, cursor: "text" }}
+                    />
+                  )}
                 </div>
                 <div style={{ padding: "8px 10px" }}>
                   <select style={selStyle} value={draft.toClusterId} onChange={(e) => setDraft((d) => ({ ...d, toClusterId: e.target.value }))}>
