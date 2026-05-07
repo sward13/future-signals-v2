@@ -12,7 +12,7 @@ import {
   getBezierPath, MarkerType, ConnectionMode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { CirclePlus, LayoutDashboard, Logs } from "lucide-react";
+import { CirclePlus, LayoutDashboard, Logs, ChevronDown, ChevronRight } from "lucide-react";
 import { c, ta, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
@@ -658,6 +658,9 @@ const EMPTY_DRAFT = { fromClusterId: "", toClusterId: "", type: "Drives", eviden
 function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRel, onDeleteRel, onAddRel }) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
+  // Collapsed by default when there are relationships; expanded when empty so
+  // the user can see their clusters and orient themselves.
+  const [clustersCollapsed, setClustersCollapsed] = useState(relationships.length > 0);
 
   const thStyle = {
     padding: "8px 14px", fontSize: 10, fontWeight: 600,
@@ -677,44 +680,8 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
 
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "22px 26px" }}>
-      {/* Clusters table */}
+      {/* Relationships table — shown first */}
       <div style={{ marginBottom: 32 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 10 }}>
-          Clusters <span style={{ fontSize: 11, color: c.hint, fontWeight: 400 }}>({clusters.length})</span>
-        </div>
-        {clusters.length === 0 ? (
-          <div style={{ fontSize: 12, color: c.hint }}>No clusters in this project.</div>
-        ) : (
-          <div style={{ border: `1px solid ${c.border}`, borderRadius: 8, overflow: "hidden" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "2.5fr 1fr 1fr 1fr 60px" }}>
-              {["Name", "Subtype", "Horizon", "Likelihood", "Inputs"].map((h) => (
-                <div key={h} style={thStyle}>{h}</div>
-              ))}
-            </div>
-            {clusters.map((cl, idx) => {
-              const st = SUBTYPE_STYLE[cl.subtype] || SUBTYPE_STYLE.Trend;
-              const onCanvas = canvasNodes.some((n) => n.clusterId === cl.id);
-              return (
-                <div key={cl.id} style={{ display: "grid", gridTemplateColumns: "2.5fr 1fr 1fr 1fr 60px", borderTop: `1px solid ${c.border}`, alignItems: "center" }}>
-                  <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{cl.name}</span>
-                    {onCanvas && <span style={{ fontSize: 9, padding: "1px 5px", background: c.surfaceAlt, border: `1px solid ${c.border}`, borderRadius: 4, color: c.hint }}>on canvas</span>}
-                  </div>
-                  <div style={{ padding: "10px 14px" }}>
-                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: st.bg, color: st.col, display: "inline-block" }}>{cl.subtype}</span>
-                  </div>
-                  <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.horizon}</div>
-                  <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.likelihood}</div>
-                  <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.input_ids?.length || 0}</div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Relationships table */}
-      <div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>
             Relationships <span style={{ fontSize: 11, color: c.hint, fontWeight: 400 }}>({relationships.length})</span>
@@ -723,7 +690,7 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
         </div>
 
         {relationships.length === 0 && !adding ? (
-          <div style={{ fontSize: 12, color: c.hint }}>No relationships mapped yet. Use the button above or switch to canvas view.</div>
+          <div style={{ fontSize: 12, color: c.hint }}>No relationships mapped yet. Add one above or draw connections in the canvas view.</div>
         ) : (
           <div style={{ border: `1px solid ${c.border}`, borderRadius: 8, overflow: "hidden" }}>
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 2.5fr 1fr 90px" }}>
@@ -785,6 +752,56 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
             })}
 
           </div>
+        )}
+      </div>
+
+      {/* Clusters table — collapsible */}
+      <div>
+        <button
+          onClick={() => setClustersCollapsed((v) => !v)}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            background: "none", border: "none", cursor: "pointer",
+            padding: 0, marginBottom: clustersCollapsed ? 0 : 10,
+            fontSize: 13, fontWeight: 500, color: c.ink, fontFamily: "inherit",
+          }}
+        >
+          {clustersCollapsed
+            ? <ChevronRight size={14} style={{ color: c.hint, flexShrink: 0 }} />
+            : <ChevronDown  size={14} style={{ color: c.hint, flexShrink: 0 }} />}
+          Clusters <span style={{ fontSize: 11, color: c.hint, fontWeight: 400 }}>({clusters.length})</span>
+        </button>
+
+        {!clustersCollapsed && (
+          clusters.length === 0 ? (
+            <div style={{ fontSize: 12, color: c.hint, marginTop: 10 }}>No clusters in this project.</div>
+          ) : (
+            <div style={{ border: `1px solid ${c.border}`, borderRadius: 8, overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "2.5fr 1fr 1fr 1fr 60px" }}>
+                {["Name", "Subtype", "Horizon", "Likelihood", "Inputs"].map((h) => (
+                  <div key={h} style={thStyle}>{h}</div>
+                ))}
+              </div>
+              {clusters.map((cl) => {
+                const st = SUBTYPE_STYLE[cl.subtype] || SUBTYPE_STYLE.Trend;
+                const onCanvas = canvasNodes.some((n) => n.clusterId === cl.id);
+                return (
+                  <div key={cl.id} style={{ display: "grid", gridTemplateColumns: "2.5fr 1fr 1fr 1fr 60px", borderTop: `1px solid ${c.border}`, alignItems: "center" }}>
+                    <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{cl.name}</span>
+                      {onCanvas && <span style={{ fontSize: 9, padding: "1px 5px", background: c.surfaceAlt, border: `1px solid ${c.border}`, borderRadius: 4, color: c.hint }}>on canvas</span>}
+                    </div>
+                    <div style={{ padding: "10px 14px" }}>
+                      <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: st.bg, color: st.col, display: "inline-block" }}>{cl.subtype}</span>
+                    </div>
+                    <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.horizon}</div>
+                    <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.likelihood}</div>
+                    <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.input_ids?.length || 0}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )
         )}
       </div>
     </div>
