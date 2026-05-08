@@ -148,7 +148,7 @@ function RelationshipEdgeComponent({
 
   const color = data?.color || "#185FA5";
   const dash = data?.dash || false;
-  const typeLabel = data?.typeLabel || "Drives";
+  const typeLabel = data?.typeLabel || data?.rel?.type || "";
   const isSelected = data?.selected || false;
   const sw = isSelected ? 3.5 : 2;
   const typeKey = typeLabel.replace(/\s/g, "-");
@@ -918,7 +918,7 @@ function CanvasArea({
       const fromNode = projectNodes.find((n) => n.clusterId === rel.fromClusterId);
       const toNode = projectNodes.find((n) => n.clusterId === rel.toClusterId);
       if (!fromNode || !toNode) return null;
-      const rt = REL_TYPE_MAP[rel.type] || REL_TYPES[0];
+      const rt = REL_TYPE_MAP[rel.type];
       const isSelected = selectedItem?.type === "rel" && selectedItem.id === rel.id;
       return {
         id: `${rel.id}-${rel.type}`,
@@ -930,9 +930,9 @@ function CanvasArea({
         data: {
           rel,
           selected: isSelected,
-          color: rt.color,
-          dash: rt.dash,
-          typeLabel: rt.id,
+          color:     rt?.color ?? REL_TYPES[0].color,
+          dash:      rt?.dash  ?? REL_TYPES[0].dash,
+          typeLabel: rel.type,   // always use the stored value, never a fallback id
         },
         selectable: false,
       };
