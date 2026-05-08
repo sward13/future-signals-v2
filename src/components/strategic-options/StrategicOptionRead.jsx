@@ -29,16 +29,24 @@ function FeasibilityBadge({ value }) {
   );
 }
 
-// ─── Neutral rating badge (High / Medium / Low, no value judgement) ──────────
+// ─── Resource Intensity badge (High = costly/red, Low = lightweight/green) ───
 
-function RatingBadge({ value }) {
+function ResourceIntensityBadge({ value }) {
   if (!value) return null;
+  const map = {
+    high:   [c.red800,   c.red50,   c.redBorder],
+    medium: [c.amber700, c.amber50, c.amberBorder],
+    low:    [c.green700, c.green50, c.greenBorder],
+  };
+  const key = value.toLowerCase();
+  const [col, bg, brd] = map[key] || [c.hint, c.surfaceAlt, c.border];
+  const label = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
   return (
     <span style={{
       fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 10,
-      background: c.surfaceAlt, color: c.ink, border: `1px solid ${c.border}`,
+      background: bg, color: col, border: `1px solid ${brd}`,
     }}>
-      {value}
+      {label}
     </span>
   );
 }
@@ -318,7 +326,7 @@ export default function StrategicOptionRead({ appState }) {
                   <div>
                     <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>Reversibility</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <RatingBadge value={opt.reversibility} />
+                      <FeasibilityBadge value={opt.reversibility} />
                     </div>
                   </div>
                 )}
@@ -326,7 +334,7 @@ export default function StrategicOptionRead({ appState }) {
                   <div>
                     <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>Resource Intensity</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <RatingBadge value={opt.resource_intensity} />
+                      <ResourceIntensityBadge value={opt.resource_intensity} />
                     </div>
                   </div>
                 )}
