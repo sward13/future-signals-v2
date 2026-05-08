@@ -174,11 +174,15 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
   const [scraping, setScraping] = useState(false);
   // Tracks the URL that was last successfully scraped so we can detect
   // replacements and avoid re-fetching when the user blurs without changing the URL.
-  const scrapedUrlRef = useRef("");
+  const scrapedUrlRef    = useRef("");
+  const titleEditedByUser = useRef(false);
 
   const handleUrlBlur = async (url) => {
     if (!url || !url.startsWith("http")) return;
     if (url === scrapedUrlRef.current) return; // Same URL — no-op
+
+    // URL changed: reset manual-edit flag so the new scrape can write the title.
+    titleEditedByUser.current = false;
 
     setScraping(true);
     // Clear stale summary from the previous URL immediately so the user
@@ -192,8 +196,8 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
       scrapedUrlRef.current = url;
       setFields((prev) => ({
         ...prev,
-        // Title: only fill if the user hasn't typed one — preserve manual edits.
-        title: prev.title || data.title || "",
+        // Title: write scraped value unless the user has manually edited the field.
+        title: titleEditedByUser.current ? prev.title : (data.title || ""),
         // Description: always use the freshly scraped value for this URL.
         description: data.description || "",
       }));
@@ -248,6 +252,7 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
     setProjectId(defaultProjectId);
     setScraping(false);
     scrapedUrlRef.current = "";
+    titleEditedByUser.current = false;
   };
 
   const handleClose = () => {
@@ -299,7 +304,7 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
             style={{ ...inp, borderColor: titleError ? c.redBorder : undefined }}
             type="text"
             value={fields.title}
-            onChange={(e) => { setField("title", e.target.value); setTitleError(false); }}
+            onChange={(e) => { setField("title", e.target.value); setTitleError(false); titleEditedByUser.current = true; }}
             placeholder={`Name this ${typeData.label.toLowerCase()}…`}
             autoFocus
           />
