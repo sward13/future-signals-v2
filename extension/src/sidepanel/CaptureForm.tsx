@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../../../src/types/database.types";
 import { c, inp, ta, sel, btnP, btnSec, fl } from "../../../src/styles/tokens.js";
-import { DEFAULT_SUBTYPE, INPUT_SUBTYPE_OPTIONS } from "../constants.js";
+import { DEFAULT_SUBTYPE, INPUT_SUBTYPE_OPTIONS, SELECTION_CHANGED_MESSAGE_TYPE } from "../constants.js";
 import type { InputSubtypeId } from "../constants.js";
 import { debugLogPageExtraction, fetchActiveTabPage } from "../lib/activeTabPage.js";
 import { resolveBestDescription, resolveMetaDescription } from "../lib/metadata.js";
@@ -59,6 +59,61 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
   const [nameDirty, setNameDirty] = useState(false);
   const [descriptionDirty, setDescriptionDirty] = useState(false);
   const [sourceUrlDirty, setSourceUrlDirty] = useState(false);
+
+  // Refs give the stable runtime-message listener access to current state
+  // without needing to re-register the listener on every state change.
+  const sourceUrlRef = useRef(sourceUrl);
+  const savedIdRef   = useRef(savedId);
+  useEffect(() => { sourceUrlRef.current = sourceUrl; }, [sourceUrl]);
+  useEffect(() => { savedIdRef.current   = savedId;   }, [savedId]);
+
+  // ── Runtime message listener — automatic selection push ────────────────────
+  // Receives FS_SELECTION_CHANGED from the content script and updates
+  // Description without requiring the user to click "Reload from active tab".
+  useEffect(() => {
+    const handleMessage = async (message: unknown) => {
+      if (!message || typeof message !== "object") return;
+      const msg = message as {
+        type?: string;
+        selectedText?: string;
+        currentUrl?: string;
+        canonicalUrl?: string;
+      };
+      if (msg.type !== SELECTION_CHANGED_MESSAGE_TYPE) return;
+
+      const selectedText = msg.selectedText?.trim() ?? "";
+      if (!selectedText) return; // empty selection — do nothing
+
+      // Don't update the form while a successful save is being displayed.
+      if (savedIdRef.current) return;
+
+      const msgCleanUrl  = cleanUrl(msg.canonicalUrl || msg.currentUrl || "");
+      const formCleanUrl = cleanUrl(sourceUrlRef.current);
+      const isDifferentPage = Boolean(msgCleanUrl && formCleanUrl && msgCleanUrl !== formCleanUrl);
+
+      if (isDifferentPage) {
+        // Message came from a different page — fetch full metadata and apply
+        // as a new capture context (same logic as "Reload" on a different URL).
+        const page = await fetchActiveTabPage();
+        if (!page) return;
+        setName(page.title || "");
+        setNameDirty(false);
+        setSourceUrl(page.cleanedUrl);
+        setSourceUrlDirty(false);
+        setDescription(selectedText);
+        setDescriptionDirty(false);
+      } else {
+        // Same page — update Description only.
+        setDescription(selectedText);
+        setDescriptionDirty(false);
+      }
+      setReloadStatus("selection_updated");
+    };
+
+    const listener = (message: unknown) => { void handleMessage(message); };
+    chrome.runtime.onMessage.addListener(listener);
+    return () => chrome.runtime.onMessage.removeListener(listener);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Applies extracted page data to form fields.
