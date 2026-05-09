@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { c } from "../../../src/styles/tokens.js";
 
 // Mirrors INPUT_TYPES in src/components/inputs/InputFormFields.jsx
@@ -92,14 +92,25 @@ type Props = {
 
 export function SubtypePicker({ value, onChange }: Props) {
   const [open, setOpen] = useState(false);
+  const [menuTop, setMenuTop] = useState(0);
+  const chipRef = useRef<HTMLButtonElement>(null);
   const selected = TYPES.find((t) => t.id === value) ?? TYPES[0];
 
+  const handleOpen = () => {
+    if (chipRef.current) {
+      const rect = chipRef.current.getBoundingClientRect();
+      setMenuTop(rect.bottom + 6);
+    }
+    setOpen((o) => !o);
+  };
+
   return (
-    <div style={{ position: "relative" }}>
+    <div>
       {/* Chip trigger */}
       <button
+        ref={chipRef}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={handleOpen}
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -128,12 +139,12 @@ export function SubtypePicker({ value, onChange }: Props) {
         />
       )}
 
-      {/* Dropdown — opens upward so it doesn't clip at the bottom of the panel */}
+      {/* Dropdown — fixed so the overflowY scroll container can't clip it */}
       {open && (
         <div
           style={{
-            position: "absolute",
-            bottom: "calc(100% + 6px)",
+            position: "fixed",
+            top: menuTop,
             left: 0,
             right: 0,
             zIndex: 11,
