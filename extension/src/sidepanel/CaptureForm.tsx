@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../../../src/types/database.types";
 import { c, inp, ta, sel, btnP, btnSec, fl } from "../../../src/styles/tokens.js";
-import { DEFAULT_SUBTYPE, INPUT_SUBTYPE_OPTIONS, SELECTION_CHANGED_MESSAGE_TYPE } from "../constants.js";
+import { DEFAULT_SUBTYPE, SELECTION_CHANGED_MESSAGE_TYPE } from "../constants.js";
 import type { InputSubtypeId } from "../constants.js";
 import { Topbar } from "./Topbar";
+import { SubtypePicker } from "./SubtypePicker";
 import { debugLogPageExtraction, fetchActiveTabPage } from "../lib/activeTabPage.js";
 import { resolveBestDescription, resolveMetaDescription } from "../lib/metadata.js";
 import type { ProjectRow } from "../lib/workspace.js";
@@ -461,24 +462,22 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
           />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-          <div>
-            <div style={fl}>Subtype</div>
-            <select style={sel} value={subtype} onChange={(e) => setSubtype(normalizeSubtypeId(e.target.value))}>
-              {INPUT_SUBTYPE_OPTIONS.map((o) => (
-                <option key={o.id} value={o.id}>{o.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <div style={fl}>Project</div>
-            <select style={sel} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-              <option value="">Inbox</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
+        <div style={{ marginBottom: 12 }}>
+          <div style={fl}>Input type</div>
+          <SubtypePicker
+            value={subtype}
+            onChange={(id) => setSubtype(normalizeSubtypeId(id))}
+          />
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={fl}>Project</div>
+          <select style={sel} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+            <option value="">Inbox (default)</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
