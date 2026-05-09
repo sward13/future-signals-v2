@@ -188,23 +188,18 @@ export function SubtypePicker({ value, onChange }: Props) {
                   {t.icon}
                 </span>
 
-                {/* Label + category + description */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 1 }}>
-                    <span style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{t.label}</span>
-                    <span
-                      style={{
-                        fontSize: 9, padding: "1px 5px", borderRadius: 8,
-                        background: t.categoryBg, color: t.categoryColor,
-                        border: `1px solid ${t.categoryBorder}`,
-                      }}
-                    >
-                      {t.category}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 10, color: c.muted, lineHeight: 1.4 }}>
-                    {t.description}
-                  </div>
+                {/* Label + category */}
+                <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{t.label}</span>
+                  <span
+                    style={{
+                      fontSize: 9, padding: "1px 5px", borderRadius: 8,
+                      background: t.categoryBg, color: t.categoryColor,
+                      border: `1px solid ${t.categoryBorder}`,
+                    }}
+                  >
+                    {t.category}
+                  </span>
                 </div>
 
                 {active && (
