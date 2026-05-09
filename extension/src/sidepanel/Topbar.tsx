@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { c } from "../../../src/styles/tokens.js";
+import logoLight from "../../../src/assets/logo_light.svg";
 
 type Props = { right?: ReactNode };
 
@@ -19,7 +20,7 @@ export function Topbar({ right }: Props) {
       }}
     >
       <img
-        src="./logo_light.svg"
+        src={logoLight}
         alt="Future Signals"
         style={{ width: 124, height: "auto", display: "block" }}
       />
