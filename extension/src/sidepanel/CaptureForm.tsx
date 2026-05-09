@@ -4,6 +4,7 @@ import type { Database } from "../../../src/types/database.types";
 import { c, inp, ta, sel, btnP, btnSec, fl } from "../../../src/styles/tokens.js";
 import { DEFAULT_SUBTYPE, INPUT_SUBTYPE_OPTIONS, SELECTION_CHANGED_MESSAGE_TYPE } from "../constants.js";
 import type { InputSubtypeId } from "../constants.js";
+import { Topbar } from "./Topbar";
 import { debugLogPageExtraction, fetchActiveTabPage } from "../lib/activeTabPage.js";
 import { resolveBestDescription, resolveMetaDescription } from "../lib/metadata.js";
 import type { ProjectRow } from "../lib/workspace.js";
@@ -341,13 +342,41 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
+  // ── Sign out button (placed in Topbar) ────────────────────────────────────────
+
+  const signOutBtn = (
+    <button
+      type="button"
+      style={{
+        background: "none",
+        border: `1px solid ${c.borderMid}`,
+        borderRadius: 6,
+        padding: "5px 10px",
+        fontSize: 11,
+        color: c.muted,
+        cursor: "pointer",
+        fontFamily: "inherit",
+      }}
+      onClick={onSignOut}
+    >
+      Sign out
+    </button>
+  );
+
+  // ── Loading ────────────────────────────────────────────────────────────────
+
   if (!hydrated) {
     return (
-      <div style={{ padding: 20, fontSize: 13, color: c.muted, textAlign: "center" }}>
-        Loading…
+      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <Topbar right={signOutBtn} />
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: c.muted, fontSize: 12 }}>
+          Loading…
+        </div>
       </div>
     );
   }
+
+  // ── Success state ─────────────────────────────────────────────────────────
 
   if (savedId) {
     const savedProject = savedProjectId ? projects.find((p) => p.id === savedProjectId) : null;
@@ -355,132 +384,133 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
     const ctaLabel      = savedProject ? "Open Project" : "Open Future Signals";
     const ctaHref       = savedProject ? `${appOrigin}/projects/${savedProject.id}` : `${appOrigin}/`;
     return (
-      <div style={{ padding: 14 }}>
-        <div style={{
-          padding: "12px 14px", borderRadius: 8,
-          background: "#DCFCE7", color: "#166534",
-          fontSize: 13, marginBottom: 14,
-        }}>
-          {savedMessage}
+      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <Topbar right={signOutBtn} />
+        <div style={{ padding: 16, flex: 1, overflowY: "auto" }}>
+          <div style={{
+            padding: "12px 14px", borderRadius: 8,
+            background: "#DCFCE7", border: "1px solid #BBF7D0",
+            color: "#166534", fontSize: 13, marginBottom: 14, lineHeight: 1.5,
+          }}>
+            {savedMessage}
+          </div>
+          <a
+            href={ctaHref}
+            target="_blank"
+            rel="noreferrer"
+            style={{ ...btnP, display: "block", textAlign: "center", textDecoration: "none", marginBottom: 10 }}
+          >
+            {ctaLabel}
+          </a>
+          <button type="button" style={{ ...btnSec, width: "100%" }} onClick={() => void captureAnother()}>
+            Capture another
+          </button>
         </div>
-        <a
-          href={ctaHref}
-          target="_blank"
-          rel="noreferrer"
-          style={{ ...btnP, display: "block", textAlign: "center", textDecoration: "none", marginBottom: 10 }}
-        >
-          {ctaLabel}
-        </a>
-        <button type="button" style={{ ...btnSec, width: "100%" }} onClick={() => void captureAnother()}>
-          Capture another
-        </button>
       </div>
     );
   }
 
+  // ── Main form ─────────────────────────────────────────────────────────────
+
   return (
-    <div style={{ padding: 14, maxWidth: 420, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: c.ink }}>Capture input</div>
-        <button type="button" style={{ ...btnSec, padding: "6px 12px", fontSize: 11 }} onClick={onSignOut}>
-          Sign out
-        </button>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <Topbar right={signOutBtn} />
 
-      <p style={{ fontSize: 12, color: c.muted, margin: "0 0 12px", lineHeight: 1.45 }}>
-        Defaults to your <strong>Inbox</strong> unless you pick a project. Source URL is cleaned of common tracking
-        parameters.
-      </p>
+      <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
 
-      {errorBanner ? (
-        <div
-          role="alert"
-          style={{
-            marginBottom: 12, padding: "8px 10px", borderRadius: 6,
-            fontSize: 12, background: "#FEE2E2", color: "#991B1B",
-          }}
-        >
-          {errorBanner}
-        </div>
-      ) : null}
-
-      <div style={{ marginBottom: 10 }}>
-        <div style={fl}>Title</div>
-        <input
-          style={inp}
-          value={name}
-          onChange={(e) => { setName(e.target.value); setNameDirty(true); }}
-          placeholder="Page title or your label"
-        />
-      </div>
-
-      <div style={{ marginBottom: 10 }}>
-        <div style={fl}>Description</div>
-        <textarea
-          style={{ ...ta, minHeight: 88 }}
-          value={description}
-          onChange={(e) => { setDescription(e.target.value); setDescriptionDirty(true); }}
-          placeholder="Optional notes or selected text"
-        />
-      </div>
-
-      <div style={{ marginBottom: 10 }}>
-        <div style={fl}>Source URL</div>
-        <input
-          style={inp}
-          value={sourceUrl}
-          onChange={(e) => { setSourceUrl(e.target.value); setSourceUrlDirty(true); }}
-          placeholder="https://…"
-        />
-      </div>
-
-      <div style={{ marginBottom: 10 }}>
-        <div style={fl}>Subtype</div>
-        <select style={sel} value={subtype} onChange={(e) => setSubtype(normalizeSubtypeId(e.target.value))}>
-          {INPUT_SUBTYPE_OPTIONS.map((o) => (
-            <option key={o.id} value={o.id}>{o.label}</option>
-          ))}
-        </select>
-      </div>
-
-      <div style={{ marginBottom: 14 }}>
-        <div style={fl}>Project</div>
-        <select style={sel} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-          <option value="">Inbox (default)</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <button
-          type="button"
-          style={{ ...btnP, width: "100%", opacity: saving ? 0.65 : 1 }}
-          disabled={saving}
-          onClick={() => void submit()}
-        >
-          {saving ? "Saving…" : "Save to Future Signals"}
-        </button>
-        <button type="button" style={{ ...btnSec, width: "100%" }} onClick={() => void reloadFromTab()}>
-          Reload from active tab
-        </button>
-        {reloadStatus && (
-          <div style={{ fontSize: 11, color: c.muted, textAlign: "center", marginTop: -2 }}>
-            {RELOAD_STATUS_COPY[reloadStatus]}
+        {errorBanner ? (
+          <div
+            role="alert"
+            style={{
+              marginBottom: 14, padding: "9px 12px", borderRadius: 7,
+              fontSize: 12, lineHeight: 1.5,
+              background: "#FEE2E2", border: "1px solid #F7C1C1", color: "#791F1F",
+            }}
+          >
+            {errorBanner}
           </div>
-        )}
-        <button
-          type="button"
-          style={{
-            background: "none", border: "none", padding: "2px 0",
-            fontSize: 11, color: c.faint, cursor: "pointer",
-            fontFamily: "inherit", textAlign: "center",
-          }}
-          onClick={() => void startOver()}
-        >
-          Start over
-        </button>
+        ) : null}
+
+        <div style={{ marginBottom: 12 }}>
+          <div style={fl}>Title</div>
+          <input
+            style={inp}
+            value={name}
+            onChange={(e) => { setName(e.target.value); setNameDirty(true); }}
+            placeholder="Page title or your label"
+          />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <div style={fl}>Description</div>
+          <textarea
+            style={{ ...ta, minHeight: 84 }}
+            value={description}
+            onChange={(e) => { setDescription(e.target.value); setDescriptionDirty(true); }}
+            placeholder="Optional — selected text or notes"
+          />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <div style={fl}>Source URL</div>
+          <input
+            style={inp}
+            value={sourceUrl}
+            onChange={(e) => { setSourceUrl(e.target.value); setSourceUrlDirty(true); }}
+            placeholder="https://…"
+          />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+          <div>
+            <div style={fl}>Subtype</div>
+            <select style={sel} value={subtype} onChange={(e) => setSubtype(normalizeSubtypeId(e.target.value))}>
+              {INPUT_SUBTYPE_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <div style={fl}>Project</div>
+            <select style={sel} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+              <option value="">Inbox</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <button
+            type="button"
+            style={{ ...btnP, width: "100%", opacity: saving ? 0.65 : 1 }}
+            disabled={saving}
+            onClick={() => void submit()}
+          >
+            {saving ? "Saving…" : "Save to Future Signals"}
+          </button>
+          <button type="button" style={{ ...btnSec, width: "100%" }} onClick={() => void reloadFromTab()}>
+            Reload from active tab
+          </button>
+          {reloadStatus && (
+            <div style={{ fontSize: 11, color: c.muted, textAlign: "center" }}>
+              {RELOAD_STATUS_COPY[reloadStatus]}
+            </div>
+          )}
+          <button
+            type="button"
+            style={{
+              background: "none", border: "none", padding: "2px 0",
+              fontSize: 11, color: c.faint, cursor: "pointer",
+              fontFamily: "inherit", textAlign: "center",
+            }}
+            onClick={() => void startOver()}
+          >
+            Start over
+          </button>
+        </div>
+
       </div>
     </div>
   );
