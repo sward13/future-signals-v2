@@ -62,10 +62,16 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
   const [descriptionDirty, setDescriptionDirty] = useState(false);
   const [sourceUrlDirty, setSourceUrlDirty] = useState(false);
 
+  // Tracks how the current Description value was last set.
+  // Used to populate metadata.selected_text_used / meta_description_used.
+  type DescriptionSource = "selection" | "meta" | "manual" | "draft";
+  const [descriptionSource, setDescriptionSource] = useState<DescriptionSource>("draft");
+
   // Refs give the stable runtime-message listener access to current state
   // without needing to re-register the listener on every state change.
-  const sourceUrlRef = useRef(sourceUrl);
-  const savedIdRef   = useRef(savedId);
+  const sourceUrlRef        = useRef(sourceUrl);
+  const savedIdRef          = useRef(savedId);
+  const pageCanonicalUrlRef = useRef(""); // latest canonical URL from page data
   useEffect(() => { sourceUrlRef.current = sourceUrl; }, [sourceUrl]);
   useEffect(() => { savedIdRef.current   = savedId;   }, [savedId]);
 
@@ -98,6 +104,7 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
         // as a new capture context (same logic as "Reload" on a different URL).
         const page = await fetchActiveTabPage();
         if (!page) return;
+        if (page.canonicalUrl) pageCanonicalUrlRef.current = page.canonicalUrl;
         setName(page.title || "");
         setNameDirty(false);
         setSourceUrl(page.cleanedUrl);
@@ -109,6 +116,7 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
         setDescription(selectedText);
         setDescriptionDirty(false);
       }
+      setDescriptionSource("selection");
       setReloadStatus("selection_updated");
     };
 
@@ -137,6 +145,9 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
     debugLogPageExtraction(page);
     const { explicitReload, forceFull = false } = options;
     const selected = page.selectionText.trim();
+
+    // Keep canonical URL in sync for metadata at save time.
+    if (page.canonicalUrl) pageCanonicalUrlRef.current = page.canonicalUrl;
     const metaDescription = resolveMetaDescription(page);
     const bestDescription = resolveBestDescription(page);
 
@@ -165,6 +176,7 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
     if (selected) {
       setDescription(bestDescription);
       setDescriptionDirty(false);
+      setDescriptionSource("selection");
       return "selection_updated";
     }
 
@@ -173,6 +185,7 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
       // Auto-load on panel open or "Capture another": only fill if not dirty.
       if (!descriptionDirty) {
         setDescription(metaDescription);
+        setDescriptionSource("meta");
       }
       return null; // no status on auto-load
     }
@@ -182,6 +195,7 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
     if (canOverwriteDescription) {
       setDescription(metaDescription);
       setDescriptionDirty(false);
+      setDescriptionSource("meta");
       somethingUpdated = true;
     }
 
@@ -298,6 +312,22 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
     }
     setSaving(true);
     const effectiveProjectId = projectId.trim() ? projectId.trim() : null;
+
+    let extensionVersion: string | null = null;
+    try { extensionVersion = chrome.runtime.getManifest?.()?.version ?? null; } catch { /* ignore */ }
+
+    const metadata: Record<string, unknown> = {
+      capture_source:        "chrome_extension",
+      captured_at:           new Date().toISOString(),
+      tab_title:             title,
+      tab_url:               sourceUrl || null,
+      source_url:            cleanUrl(sourceUrl) || null,
+      selected_text_used:    descriptionSource === "selection",
+      canonical_url:         pageCanonicalUrlRef.current || null,
+      meta_description_used: descriptionSource === "meta",
+      extension_version:     extensionVersion,
+    };
+
     const result = await insertInputAndRequestEmbed(supabase, {
       workspaceId,
       name: title,
@@ -305,6 +335,7 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
       sourceUrlRaw: sourceUrl,
       subtype: normalizeSubtypeId(subtype),
       projectId: effectiveProjectId,
+      metadata,
     });
 
     setSaving(false);
@@ -447,7 +478,7 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
           <textarea
             style={{ ...ta, minHeight: 84 }}
             value={description}
-            onChange={(e) => { setDescription(e.target.value); setDescriptionDirty(true); }}
+            onChange={(e) => { setDescription(e.target.value); setDescriptionDirty(true); setDescriptionSource("manual"); }}
             placeholder="Optional — selected text or notes"
           />
         </div>
