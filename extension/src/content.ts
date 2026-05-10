@@ -23,10 +23,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 let _debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let _lastSentSelection = "";
 
+/** Returns false if the extension was reloaded and the context is no longer valid. */
+function isContextValid(): boolean {
+  try {
+    return Boolean(chrome.runtime.id);
+  } catch {
+    return false;
+  }
+}
+
 document.addEventListener("selectionchange", () => {
   if (_debounceTimer !== null) clearTimeout(_debounceTimer);
 
   _debounceTimer = setTimeout(() => {
+    // Guard: extension may have been reloaded since this content script started.
+    if (!isContextValid()) return;
+
     const selected = window.getSelection()?.toString()?.trim() ?? "";
 
     // Skip empty selections and unchanged text to avoid redundant messages.
@@ -36,15 +48,19 @@ document.addEventListener("selectionchange", () => {
     const canonicalUrl =
       document.querySelector('link[rel="canonical"]')?.getAttribute("href")?.trim() ?? "";
 
-    chrome.runtime
-      .sendMessage({
-        type: SELECTION_CHANGED_MESSAGE_TYPE,
-        selectedText: selected,
-        currentUrl: window.location.href,
-        canonicalUrl,
-      })
-      .catch(() => {
-        // Side panel is not open — silently ignore.
-      });
+    try {
+      chrome.runtime
+        .sendMessage({
+          type: SELECTION_CHANGED_MESSAGE_TYPE,
+          selectedText: selected,
+          currentUrl: window.location.href,
+          canonicalUrl,
+        })
+        .catch(() => {
+          // Side panel is not open — silently ignore.
+        });
+    } catch {
+      // Extension context was invalidated between the guard check and sendMessage.
+    }
   }, 300);
 });
