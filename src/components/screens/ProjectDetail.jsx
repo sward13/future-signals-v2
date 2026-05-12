@@ -14,6 +14,7 @@ import { AddFromInboxModal } from "../inputs/AddFromInboxModal.jsx";
 import { ClusterDrawer } from "../clusters/ClusterDrawer.jsx";
 import { ScenarioDrawer } from "../scenarios/ScenarioDrawer.jsx";
 import { EditProjectDrawer } from "../projects/EditProjectDrawer.jsx";
+import { CsvImportModal } from "../inputs/CsvImportModal.jsx";
 
 const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
 const COL = { check: 28, type: 80, quality: 100, steepled: 100, horizon: 55, action: 90 };
@@ -306,6 +307,7 @@ export default function ProjectDetail({ appState }) {
   const [scenarioDrawerOpen,setScenarioDrawerOpen]= useState(false);
   const [editDrawerOpen,    setEditDrawerOpen]    = useState(false);
   const [editScrollTo,      setEditScrollTo]      = useState(null);
+  const [csvImportOpen,     setCsvImportOpen]     = useState(false);
   const [inputTab,          setInputTab]          = useState("all");
   const [assignPickerFor,   setAssignPickerFor]   = useState(null);
   // Multi-select
@@ -896,6 +898,17 @@ export default function ProjectDetail({ appState }) {
                 ))}
               </div>
             </div>
+
+            {/* Import inputs — utility action */}
+            <div style={{ textAlign: "center", paddingTop: 4 }}>
+              <button
+                onClick={() => setCsvImportOpen(true)}
+                style={{ fontSize: 11, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "4px 0", textDecoration: "underline", textDecorationColor: c.border }}
+              >
+                Import inputs via CSV
+              </button>
+            </div>
+
           </div>
         </div>
       </div>
@@ -944,6 +957,14 @@ export default function ProjectDetail({ appState }) {
           workspaceScanningEnabled={workspaceScanningEnabled}
         />
       )}
+
+      <CsvImportModal
+        open={csvImportOpen}
+        onClose={() => setCsvImportOpen(false)}
+        projectId={project.id}
+        addInput={addInput}
+        showToast={showToast}
+      />
 
       <style>{`
         @keyframes fadeSlideIn {
