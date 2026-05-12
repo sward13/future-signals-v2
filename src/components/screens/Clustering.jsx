@@ -729,6 +729,13 @@ export default function Clustering({ appState }) {
   const [filterSteepled,        setFilterSteepled]        = useState(null);
   const [openFilterDropdown,    setOpenFilterDropdown]    = useState(null);
 
+  // Cluster section filters
+  const [clusterSearch,              setClusterSearch]              = useState("");
+  const [clusterFilterType,          setClusterFilterType]          = useState(null);
+  const [clusterFilterHorizon,       setClusterFilterHorizon]       = useState(null);
+  const [clusterFilterLikelihood,    setClusterFilterLikelihood]    = useState(null);
+  const [openClusterFilterDropdown,  setOpenClusterFilterDropdown]  = useState(null);
+
   // Sensitivity setting for new-cluster generation (Panel 2)
   const [tightness, setTightness] = useState("balanced");
 
@@ -779,6 +786,21 @@ export default function Clustering({ appState }) {
   }, [unassignedInputs, inputSearch, filterType, filterHorizon, filterSteepled]);
 
   const anyFilterActive = !!(inputSearch.trim() || filterType || filterHorizon || filterSteepled);
+
+  const filteredClusters = useMemo(() => {
+    const q = clusterSearch.trim().toLowerCase();
+    return projectClusters
+      .filter((cl) => !q || cl.name.toLowerCase().includes(q) || (cl.description || "").toLowerCase().includes(q))
+      .filter((cl) => !clusterFilterType       || cl.subtype    === clusterFilterType)
+      .filter((cl) => !clusterFilterHorizon    || cl.horizon    === clusterFilterHorizon)
+      .filter((cl) => !clusterFilterLikelihood || cl.likelihood === clusterFilterLikelihood);
+  }, [projectClusters, clusterSearch, clusterFilterType, clusterFilterHorizon, clusterFilterLikelihood]);
+
+  const anyClusterFilterActive = !!(clusterSearch.trim() || clusterFilterType || clusterFilterHorizon || clusterFilterLikelihood);
+
+  const clearClusterFilters = () => {
+    setClusterSearch(""); setClusterFilterType(null); setClusterFilterHorizon(null); setClusterFilterLikelihood(null);
+  };
 
   const visibleNewClusterSugs = useMemo(() =>
     newClusterSugs.filter((sug) => {
@@ -1050,16 +1072,84 @@ export default function Clustering({ appState }) {
               onCta={() => setNewClusterDrawerOpen(true)}
             />
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              {projectClusters.map((cl) => (
-                <ClusterCard
-                  key={cl.id}
-                  cluster={cl}
-                  inputs={projectInputs}
-                  onClick={() => openClusterDetail(cl.id)}
+            <>
+              {/* Search + filter bar */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <input
+                  value={clusterSearch}
+                  onChange={(e) => setClusterSearch(e.target.value)}
+                  placeholder="Search clusters…"
+                  style={{
+                    ...inp, width: 220, padding: "5px 10px", fontSize: 12,
+                    border: `1px solid ${c.border}`, borderRadius: 6,
+                  }}
                 />
-              ))}
-            </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
+                  <FilterDropdown
+                    label="Type"
+                    value={clusterFilterType}
+                    options={["Trend", "Driver", "Tension"].map((v) => ({ value: v, label: v }))}
+                    onChange={setClusterFilterType}
+                    onClear={() => setClusterFilterType(null)}
+                    isOpen={openClusterFilterDropdown === "type"}
+                    onToggle={() => setOpenClusterFilterDropdown(openClusterFilterDropdown === "type" ? null : "type")}
+                  />
+                  <FilterDropdown
+                    label="Horizon"
+                    value={clusterFilterHorizon}
+                    options={["H1", "H2", "H3"].map((v) => ({ value: v, label: v }))}
+                    onChange={setClusterFilterHorizon}
+                    onClear={() => setClusterFilterHorizon(null)}
+                    isOpen={openClusterFilterDropdown === "horizon"}
+                    onToggle={() => setOpenClusterFilterDropdown(openClusterFilterDropdown === "horizon" ? null : "horizon")}
+                  />
+                  <FilterDropdown
+                    label="Likelihood"
+                    value={clusterFilterLikelihood}
+                    options={["Possible", "Plausible", "Probable"].map((v) => ({ value: v, label: v }))}
+                    onChange={setClusterFilterLikelihood}
+                    onClear={() => setClusterFilterLikelihood(null)}
+                    isOpen={openClusterFilterDropdown === "likelihood"}
+                    onToggle={() => setOpenClusterFilterDropdown(openClusterFilterDropdown === "likelihood" ? null : "likelihood")}
+                  />
+                </div>
+                {anyClusterFilterActive && (
+                  <button
+                    onClick={clearClusterFilters}
+                    style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+
+              {filteredClusters.length === 0 ? (
+                <div style={{
+                  padding: "20px 24px", textAlign: "center",
+                  background: c.white, border: `1px solid ${c.border}`,
+                  borderRadius: 9,
+                }}>
+                  <div style={{ fontSize: 13, color: c.muted, marginBottom: 6 }}>No clusters match your filters.</div>
+                  <button
+                    onClick={clearClusterFilters}
+                    style={{ fontSize: 12, color: c.brand, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    Clear filters
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  {filteredClusters.map((cl) => (
+                    <ClusterCard
+                      key={cl.id}
+                      cluster={cl}
+                      inputs={projectInputs}
+                      onClick={() => openClusterDetail(cl.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
 
