@@ -244,9 +244,9 @@ async function runHealthCheck() {
 
 // ── Email digest ────────────────────────────────────────────────────────────
 
-async function sendDigest(rows: HealthRow[], now: Date) {
-  const ADMIN_EMAIL        = Deno.env.get("ADMIN_EMAIL");
-  const SERVICE_ROLE_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+async function sendDigest(rows: HealthRow[], now: Date): Promise<void> {
+  const ADMIN_EMAIL      = Deno.env.get("ADMIN_EMAIL");
+  const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!ADMIN_EMAIL || !SERVICE_ROLE_KEY) return;
 
   const dead     = rows.filter((r) => r.status === "dead");
