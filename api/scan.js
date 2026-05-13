@@ -13,7 +13,10 @@ const supabase = createClient(
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const parser = new Parser({ timeout: 10000 });
+const parser = new Parser({
+  timeout: 10000,
+  headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FutureSignals/1.0; +https://futuresignals.io)' },
+});
 
 const MAX_CANDIDATES_PER_SOURCE = 20;
 const SOURCE_CONCURRENCY = 10;     // parallel RSS fetches at a time
