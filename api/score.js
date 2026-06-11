@@ -2,6 +2,10 @@ import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import { cosineSimilarity, CREDIBILITY_SCORES } from './lib/scoring.js';
 
+export const config = {
+  maxDuration: 60,
+};
+
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -10,6 +14,7 @@ const supabase = createClient(
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const SCORE_THRESHOLD = 30;
+const CANDIDATE_LOOKBACK_DAYS = 30;
 
 function averageSimilarity(embedding, corpus) {
   if (!corpus.length) return 0;
@@ -30,17 +35,18 @@ export default async function handler(req, res) {
   };
 
   try {
-    // Fetch all active projects with a key question
+    // Fetch active projects with only the fields we need
     const { data: projects, error: projectsError } = await supabase
       .from('projects')
-      .select('*')
+      .select('id, workspace_id, name, question, key_question_embedding, scanning_enabled')
       .not('question', 'is', null)
       .neq('question', '');
 
     if (projectsError) throw projectsError;
+    if (!projects?.length) return res.status(200).json({ success: true, results });
 
-    // Fetch workspace scanning flags for all relevant workspaces
-    const workspaceIds = [...new Set((projects || []).map(p => p.workspace_id))];
+    // Fetch workspace scanning flags
+    const workspaceIds = [...new Set(projects.map(p => p.workspace_id))];
     const { data: wsSettings } = await supabase
       .from('workspace_settings')
       .select('workspace_id, scanning_enabled')
@@ -52,37 +58,62 @@ export default async function handler(req, res) {
         .map(ws => ws.workspace_id)
     );
 
-    // Fetch all scored candidates with their source credibility
-    const { data: candidates, error: candidatesError } = await supabase
+    const activeProjects = projects.filter(p =>
+      !disabledWorkspaces.has(p.workspace_id) && p.scanning_enabled !== false
+    );
+
+    if (!activeProjects.length) return res.status(200).json({ success: true, results });
+
+    // ── Bulk-fetch recent candidates — field-selective, 30-day window ─────────
+    // Previously fetched ALL scored/promoted candidates with select('*'), including
+    // full embedding vectors for every row ever ingested. After weeks of operation
+    // this ballooned into tens of MB, reliably timing out the function.
+    const lookbackDate = new Date(Date.now() - CANDIDATE_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+    const { data: candidateRows, error: candidatesError } = await supabase
       .from('candidates')
-      .select('*')
-      .in('status', ['scored', 'promoted']);
+      .select('id, source_id, title, url, summary_ai, summary_raw, steepled, embedding')
+      .in('status', ['scored', 'promoted'])
+      .gte('created_at', lookbackDate.toISOString());
 
     if (candidatesError) throw candidatesError;
 
-    // Fetch sources separately for credibility lookup
+    const allCandidates = (candidateRows || [])
+      .map(c => ({
+        ...c,
+        embedding: typeof c.embedding === 'string' ? JSON.parse(c.embedding) : c.embedding,
+      }))
+      .filter(c => c.embedding);
+
+    if (!allCandidates.length) return res.status(200).json({ success: true, results });
+
+    // ── Bulk-fetch sources for credibility lookup ─────────────────────────────
     const { data: sources } = await supabase
       .from('sources')
       .select('id, credibility');
+    const sourceMap = Object.fromEntries((sources || []).map(s => [s.id, s]));
 
-    const sourceMap = Object.fromEntries(
-      (sources || []).map(s => [s.id, s])
-    );
+    // ── Bulk-fetch already-scored pairs for all active projects in one query ───
+    // Previously fetched project_candidates per-project inside the scoring loop,
+    // causing N round-trips and loading an ever-growing history each run.
+    const projectIds = activeProjects.map(p => p.id);
+    const { data: allAlreadyScored } = await supabase
+      .from('project_candidates')
+      .select('project_id, candidate_id')
+      .in('project_id', projectIds);
 
-    // Track which candidates score well for which projects
-    // key: candidate_id, value: { candidate, projects: [...] }
+    const scoredByProject = new Map();
+    for (const row of (allAlreadyScored || [])) {
+      if (!scoredByProject.has(row.project_id)) scoredByProject.set(row.project_id, new Set());
+      scoredByProject.get(row.project_id).add(row.candidate_id);
+    }
+
+    // ── Per-project scoring ───────────────────────────────────────────────────
     const candidateProjectScores = {};
 
-    for (const project of projects) {
-      // Skip if workspace scanning is disabled
-      if (disabledWorkspaces.has(project.workspace_id)) continue;
-      // Skip if project-level scanning is disabled
-      if (project.scanning_enabled === false) continue;
-
+    for (const project of activeProjects) {
       try {
-        // Embed key question (or use cached embedding)
+        // Resolve key question embedding (cached on the project row)
         let keyQuestionEmbedding = project.key_question_embedding;
-
         if (keyQuestionEmbedding) {
           keyQuestionEmbedding = typeof keyQuestionEmbedding === 'string'
             ? JSON.parse(keyQuestionEmbedding)
@@ -90,75 +121,46 @@ export default async function handler(req, res) {
         }
 
         if (!keyQuestionEmbedding) {
-          const embeddingResponse = await openai.embeddings.create({
+          const embResp = await openai.embeddings.create({
             model: 'text-embedding-3-small',
             input: project.question,
           });
-          keyQuestionEmbedding = embeddingResponse.data[0].embedding;
-
-          // Cache it on the project
+          keyQuestionEmbedding = embResp.data[0].embedding;
           await supabase
             .from('projects')
             .update({ key_question_embedding: keyQuestionEmbedding })
             .eq('id', project.id);
         }
 
-        // Fetch existing project inputs for corpus similarity
-        const { data: projectInputs } = await supabase
+        // Use cached input embeddings for corpus similarity — no OpenAI calls.
+        // pgvector .not('embedding','is',null) is unreliable via PostgREST; filter in JS.
+        const { data: inputRows } = await supabase
           .from('inputs')
-          .select('name, description')
+          .select('embedding')
           .eq('project_id', project.id);
 
-        // Embed corpus inputs
-        let corpusEmbeddings = [];
-        if (projectInputs?.length) {
-          const corpusTexts = projectInputs.map(i =>
-            `${i.name}\n${i.description || ''}`.trim()
-          );
-          const corpusResponse = await openai.embeddings.create({
-            model: 'text-embedding-3-small',
-            input: corpusTexts,
-          });
-          corpusEmbeddings = corpusResponse.data.map(d => d.embedding);
-        }
+        const corpusEmbeddings = (inputRows || [])
+          .map(i => typeof i.embedding === 'string' ? JSON.parse(i.embedding) : i.embedding)
+          .filter(Boolean);
 
-        // Get already-scored candidates for this project
-        const { data: alreadyScored } = await supabase
-          .from('project_candidates')
-          .select('candidate_id')
-          .eq('project_id', project.id);
+        const alreadyScoredIds = scoredByProject.get(project.id) ?? new Set();
+        const newCandidates = allCandidates.filter(c => !alreadyScoredIds.has(c.id));
 
-        const alreadyScoredIds = new Set(
-          (alreadyScored || []).map(r => r.candidate_id)
-        );
-
-        // Score each candidate against this project
-        for (const candidate of candidates) {
-          if (alreadyScoredIds.has(candidate.id)) continue;
-
-          const embedding = typeof candidate.embedding === 'string'
-            ? JSON.parse(candidate.embedding)
-            : candidate.embedding;
-          if (!embedding) continue;
-
-          // Compute similarities
-          const keyQuestionSim = cosineSimilarity(embedding, keyQuestionEmbedding);
+        for (const candidate of newCandidates) {
+          const keyQuestionSim = cosineSimilarity(candidate.embedding, keyQuestionEmbedding);
           const corpusSim = corpusEmbeddings.length
-            ? averageSimilarity(embedding, corpusEmbeddings)
+            ? averageSimilarity(candidate.embedding, corpusEmbeddings)
             : 0;
 
-          // Credibility boost
           const credibility = sourceMap[candidate.source_id]?.credibility || 'general';
           const credibilityScore = CREDIBILITY_SCORES[credibility] || 50;
 
-          // Final score (0-100)
           const score = Math.round(
             (keyQuestionSim * 0.6 * 100) +
             (corpusSim * 0.2 * 100) +
             (credibilityScore * 0.2)
           );
 
-          // Classification
           let classification = 'noise';
           if (keyQuestionSim > 0.4 && corpusSim < 0.3) {
             classification = 'emerging';
@@ -168,8 +170,7 @@ export default async function handler(req, res) {
 
           const surfaced = score >= SCORE_THRESHOLD && classification !== 'noise';
 
-          // Write to project_candidates
-          await supabase.from('project_candidates').insert({
+          const { error: pcError } = await supabase.from('project_candidates').insert({
             project_id: project.id,
             candidate_id: candidate.id,
             score,
@@ -178,16 +179,14 @@ export default async function handler(req, res) {
             corpus_sim: corpusSim,
             surfaced,
           });
+          // 23505 = duplicate key — concurrent scoring run already inserted this pair, safe to ignore
+          if (pcError && pcError.code !== '23505') throw pcError;
 
           results.candidates_evaluated++;
 
-          // Track high-scoring candidates for inbox promotion
           if (surfaced) {
             if (!candidateProjectScores[candidate.id]) {
-              candidateProjectScores[candidate.id] = {
-                candidate,
-                projects: [],
-              };
+              candidateProjectScores[candidate.id] = { candidate, projects: [] };
             }
             candidateProjectScores[candidate.id].projects.push({
               project_id: project.id,
@@ -205,10 +204,9 @@ export default async function handler(req, res) {
       }
     }
 
-    // Promote high-scoring candidates to Inbox as AI-suggested inputs
+    // ── Promote high-scoring candidates to Inbox ──────────────────────────────
     for (const [candidateId, { candidate, projects: scoredProjects }] of Object.entries(candidateProjectScores)) {
       try {
-        // Check if already promoted to inputs
         const { data: existing } = await supabase
           .from('inputs')
           .select('id')
@@ -217,7 +215,6 @@ export default async function handler(req, res) {
 
         if (existing) continue;
 
-        // Get workspace_id from the highest-scoring project
         const topProject = scoredProjects.sort((a, b) => b.score - a.score)[0];
         const { data: project } = await supabase
           .from('projects')
@@ -227,7 +224,6 @@ export default async function handler(req, res) {
 
         if (!project) continue;
 
-        // Get source credibility for signal_quality mapping
         const { data: source } = await supabase
           .from('sources')
           .select('credibility')
@@ -240,10 +236,9 @@ export default async function handler(req, res) {
             ? 'Established'
             : 'Emerging';
 
-        // Insert into inputs as AI-suggested
         await supabase.from('inputs').insert({
           workspace_id: project.workspace_id,
-          project_id: null, // goes to Inbox
+          project_id: null,
           name: candidate.title,
           description: candidate.summary_ai || candidate.summary_raw,
           source_url: candidate.url,
@@ -267,7 +262,6 @@ export default async function handler(req, res) {
 
         results.candidates_promoted++;
 
-        // Mark candidate as promoted
         await supabase
           .from('candidates')
           .update({ status: 'promoted' })
@@ -278,7 +272,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // Trigger health check — fire and forget so score doesn't share its timeout budget
+    // Health check — fire and forget
     fetch(`${process.env.SUPABASE_URL}/functions/v1/check-scanner-health`, {
       method: 'GET',
       headers: { 'x-cron-secret': process.env.CRON_SECRET },

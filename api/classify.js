@@ -31,6 +31,36 @@ If it IS relevant, return JSON with three fields:
 
 Return only valid JSON, no markdown.`;
 
+async function sendQuotaAlert(batchFailCount) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) return;
+  try {
+    await fetch(`${process.env.SUPABASE_URL}/functions/v1/send-email`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'scanner@futuresignals.io',
+        to: adminEmail,
+        subject: 'Future Signals — OpenAI quota exhausted',
+        html: `<p style="font-family:sans-serif;font-size:14px;line-height:1.6">
+The Future Signals scanner has paused — your OpenAI credit balance is exhausted.
+</p>
+<p style="font-family:sans-serif;font-size:14px;line-height:1.6">
+<strong>${batchFailCount} candidates</strong> failed to classify in the latest batch and are queued for retry once credits are restored.
+</p>
+<p style="font-family:sans-serif;font-size:14px;line-height:1.6">
+<a href="https://platform.openai.com/account/billing">Top up OpenAI credits →</a>
+</p>`,
+      }),
+    });
+  } catch (e) {
+    console.error('Quota alert email failed:', e.message);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.headers['x-cron-secret'] !== process.env.CRON_SECRET) {
     return res.status(401).json({ error: 'Unauthorised' });
@@ -72,15 +102,21 @@ export default async function handler(req, res) {
       }
 
       // Parse classify results — split into classified, rejected, and failed
-      const classified  = [];
-      const rejectedIds = [];
-      const failedIds   = [];
+      const classified    = [];
+      const rejectedIds   = [];
+      const failedIds     = [];   // API errors → mark expired
+      const quotaFailIds  = [];   // 429 quota errors → leave pending for retry
 
       candidates.forEach((candidate, i) => {
         const result = classifyResults[i];
         if (result.status === 'rejected') {
-          results.errors.push(`Classify ${candidate.id}: ${result.reason?.message}`);
-          failedIds.push(candidate.id);
+          const message = result.reason?.message || '';
+          results.errors.push(`Classify ${candidate.id}: ${message}`);
+          if (message.includes('429') || message.toLowerCase().includes('quota')) {
+            quotaFailIds.push(candidate.id);
+          } else {
+            failedIds.push(candidate.id);
+          }
           return;
         }
         let steepled  = [];
@@ -101,13 +137,22 @@ export default async function handler(req, res) {
         classified.push({ ...candidate, steepled, summaryAi, classifyUsage: result.value.usage });
       });
 
-      // Mark API-failed candidates as expired so they don't block the queue
+      // Mark API-failed candidates as expired so they don't block the queue.
+      // Quota-failed (429) candidates are left as pending so they retry after top-up.
       if (failedIds.length > 0) {
         await Promise.allSettled(
           failedIds.map((id) =>
             supabase.from('candidates').update({ status: 'expired' }).eq('id', id)
           )
         );
+      }
+
+      // Alert on quota exhaustion — fires once per classify invocation while quota is empty
+      const quotaExhausted = quotaFailIds.length > 0 &&
+        classified.length === 0 &&
+        failedIds.length === 0;
+      if (quotaExhausted) {
+        await sendQuotaAlert(quotaFailIds.length);
       }
 
       // Mark relevance-rejected candidates — no embedding needed
