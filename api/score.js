@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
-import { cosineSimilarity, CREDIBILITY_SCORES } from './lib/scoring.js';
+import { norm, dot, CREDIBILITY_SCORES } from './lib/scoring.js';
 
 export const config = {
-  maxDuration: 60,
+  maxDuration: 120,
 };
 
 const supabase = createClient(
@@ -15,12 +15,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const SCORE_THRESHOLD = 30;
 const CANDIDATE_LOOKBACK_DAYS = 30;
-
-function averageSimilarity(embedding, corpus) {
-  if (!corpus.length) return 0;
-  const sims = corpus.map(e => cosineSimilarity(embedding, e));
-  return sims.reduce((a, b) => a + b, 0) / sims.length;
-}
+const INSERT_CHUNK = 500;
 
 export default async function handler(req, res) {
   if (req.headers['x-cron-secret'] !== process.env.CRON_SECRET) {
@@ -82,7 +77,8 @@ export default async function handler(req, res) {
         ...c,
         embedding: typeof c.embedding === 'string' ? JSON.parse(c.embedding) : c.embedding,
       }))
-      .filter(c => c.embedding);
+      .filter(c => c.embedding)
+      .map(c => ({ ...c, _norm: norm(c.embedding) }));
 
     if (!allCandidates.length) return res.status(200).json({ success: true, results });
 
@@ -131,6 +127,7 @@ export default async function handler(req, res) {
             .update({ key_question_embedding: keyQuestionEmbedding })
             .eq('id', project.id);
         }
+        const kqNorm = norm(keyQuestionEmbedding);
 
         // Use cached input embeddings for corpus similarity — no OpenAI calls.
         // pgvector .not('embedding','is',null) is unreliable via PostgREST; filter in JS.
@@ -141,15 +138,20 @@ export default async function handler(req, res) {
 
         const corpusEmbeddings = (inputRows || [])
           .map(i => typeof i.embedding === 'string' ? JSON.parse(i.embedding) : i.embedding)
-          .filter(Boolean);
+          .filter(Boolean)
+          .map(e => ({ embedding: e, _norm: norm(e) }));
 
         const alreadyScoredIds = scoredByProject.get(project.id) ?? new Set();
         const newCandidates = allCandidates.filter(c => !alreadyScoredIds.has(c.id));
 
+        // Score in memory, then batch-upsert — one row-at-a-time insert per
+        // candidate couldn't keep up with nightly volume (~1000 new candidates
+        // x N projects) within the function's time limit.
+        const rows = [];
         for (const candidate of newCandidates) {
-          const keyQuestionSim = cosineSimilarity(candidate.embedding, keyQuestionEmbedding);
+          const keyQuestionSim = dot(candidate.embedding, keyQuestionEmbedding) / (candidate._norm * kqNorm);
           const corpusSim = corpusEmbeddings.length
-            ? averageSimilarity(candidate.embedding, corpusEmbeddings)
+            ? corpusEmbeddings.reduce((s, c) => s + dot(candidate.embedding, c.embedding) / (candidate._norm * c._norm), 0) / corpusEmbeddings.length
             : 0;
 
           const credibility = sourceMap[candidate.source_id]?.credibility || 'general';
@@ -170,7 +172,7 @@ export default async function handler(req, res) {
 
           const surfaced = score >= SCORE_THRESHOLD && classification !== 'noise';
 
-          const { error: pcError } = await supabase.from('project_candidates').insert({
+          rows.push({
             project_id: project.id,
             candidate_id: candidate.id,
             score,
@@ -179,8 +181,6 @@ export default async function handler(req, res) {
             corpus_sim: corpusSim,
             surfaced,
           });
-          // 23505 = duplicate key — concurrent scoring run already inserted this pair, safe to ignore
-          if (pcError && pcError.code !== '23505') throw pcError;
 
           results.candidates_evaluated++;
 
@@ -195,6 +195,16 @@ export default async function handler(req, res) {
               classification,
             });
           }
+        }
+
+        for (let i = 0; i < rows.length; i += INSERT_CHUNK) {
+          const chunk = rows.slice(i, i + INSERT_CHUNK);
+          // ignoreDuplicates: a concurrent scoring run may have already inserted
+          // one of these (project_id, candidate_id) pairs — skip it, don't error.
+          const { error: pcError } = await supabase
+            .from('project_candidates')
+            .upsert(chunk, { onConflict: 'project_id,candidate_id', ignoreDuplicates: true });
+          if (pcError) throw pcError;
         }
 
         results.projects_scored++;

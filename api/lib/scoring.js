@@ -16,6 +16,21 @@ export function cosineSimilarity(a, b) {
   return dot / (magA * magB);
 }
 
+// For batch scoring where the same embeddings are compared many times —
+// precompute norm() once per vector, then use dot() for each pairwise
+// similarity instead of recomputing both magnitudes on every call.
+export function norm(v) {
+  let s = 0;
+  for (let i = 0; i < v.length; i++) s += v[i] * v[i];
+  return Math.sqrt(s);
+}
+
+export function dot(a, b) {
+  let s = 0;
+  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+  return s;
+}
+
 // Exponential recency decay with a 90-day half-life. Returns 0–100.
 // No published_at → neutral midpoint (50) rather than penalising undated content.
 export function recencyScore(publishedAt) {
