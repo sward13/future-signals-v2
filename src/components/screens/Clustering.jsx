@@ -631,36 +631,48 @@ function AssignmentGroupCard({ group, inputs, fadingOutIds, onAcceptOne, onDismi
         </div>
 
         <div style={{ background: c.surfaceAlt, border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden" }}>
+          <div style={{
+            display: "grid", gridTemplateColumns: "1fr 130px 140px", alignItems: "center", gap: 8,
+            padding: "6px 11px", borderBottom: `1px solid ${c.border}`,
+            fontSize: 10, fontWeight: 500, color: c.faint, textTransform: "uppercase", letterSpacing: "0.07em",
+          }}>
+            <span>Title</span>
+            <span style={{ textAlign: "center" }}>Match confidence</span>
+            <span style={{ textAlign: "center" }}>Actions</span>
+          </div>
           {sugs.map((sug, idx) => {
             const inputId = (sug.input_ids || [])[0];
             const matchedInput = inputs.find((i) => i.id === inputId);
             const confidenceStyle = sug.confidence ? CONFIDENCE_STYLES[sug.confidence] : null;
             return (
               <div key={sug.id} style={{
+                display: "grid", gridTemplateColumns: "1fr 130px 140px", alignItems: "center", gap: 8,
                 padding: "8px 11px",
                 borderTop: idx > 0 ? `1px solid ${c.border}` : "none",
-                display: "flex", alignItems: "center", gap: 8,
                 opacity: fadingOutIds.has(sug.id) ? 0 : 1,
                 transition: "opacity 0.25s ease",
               }}>
-                <span style={{ color: c.hint, fontSize: 10, flexShrink: 0 }}>•</span>
                 <span style={{
-                  flex: 1, fontSize: 12, color: c.ink,
+                  fontSize: 12, color: c.ink,
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 }}>
                   {matchedInput?.name || "Untitled input"}
                 </span>
-                {confidenceStyle && (
-                  <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, fontWeight: 500, ...confidenceStyle }}>
-                    {sug.confidence === "high" ? "High" : "Moderate"}
-                  </span>
-                )}
-                <button onClick={() => onAcceptOne(sug)} style={{ ...btnSm, fontSize: 11, padding: "4px 12px" }}>
-                  Accept
-                </button>
-                <button onClick={() => onDismissOne(sug.id)} style={{ ...btnG, fontSize: 11 }}>
-                  Dismiss
-                </button>
+                <span style={{ textAlign: "center" }}>
+                  {confidenceStyle && (
+                    <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, fontWeight: 500, ...confidenceStyle }}>
+                      {sug.confidence === "high" ? "High" : "Moderate"}
+                    </span>
+                  )}
+                </span>
+                <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                  <button onClick={() => onAcceptOne(sug)} style={{ ...btnSm, fontSize: 11, padding: "4px 12px" }}>
+                    Accept
+                  </button>
+                  <button onClick={() => onDismissOne(sug.id)} style={{ ...btnG, fontSize: 11 }}>
+                    Dismiss
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -1342,20 +1354,8 @@ export default function Clustering({ appState }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               {assignmentGroups.length > 0 && (
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: c.muted }}>
-                      Add to existing clusters
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 10, color: c.faint }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, fontWeight: 500, ...CONFIDENCE_STYLES.high }}>High</span>
-                        strong match
-                      </span>
-                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, fontWeight: 500, ...CONFIDENCE_STYLES.moderate }}>Moderate</span>
-                        possible match
-                      </span>
-                    </div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: c.muted, marginBottom: 8 }}>
+                    Add to existing clusters
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {assignmentGroups.map((group) => (
