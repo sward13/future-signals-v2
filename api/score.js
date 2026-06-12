@@ -73,7 +73,7 @@ export default async function handler(req, res) {
       .from('candidates')
       .select('id, source_id, title, url, summary_ai, summary_raw, steepled, embedding')
       .in('status', ['scored', 'promoted'])
-      .gte('created_at', lookbackDate.toISOString());
+      .gte('ingested_at', lookbackDate.toISOString());
 
     if (candidatesError) throw candidatesError;
 
