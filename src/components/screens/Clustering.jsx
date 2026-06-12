@@ -1342,8 +1342,20 @@ export default function Clustering({ appState }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               {assignmentGroups.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: c.muted, marginBottom: 8 }}>
-                    Add to existing clusters
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: c.muted }}>
+                      Add to existing clusters
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 10, color: c.faint }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, fontWeight: 500, ...CONFIDENCE_STYLES.high }}>High</span>
+                        strong match
+                      </span>
+                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, fontWeight: 500, ...CONFIDENCE_STYLES.moderate }}>Moderate</span>
+                        possible match
+                      </span>
+                    </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {assignmentGroups.map((group) => (
