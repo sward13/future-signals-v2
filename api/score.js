@@ -16,6 +16,27 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const SCORE_THRESHOLD = 30;
 const CANDIDATE_LOOKBACK_DAYS = 30;
 const INSERT_CHUNK = 500;
+const PAGE_SIZE = 1000;
+
+// PostgREST caps unpaginated responses at 1000 rows — page through with a
+// stable order so scoredByProject reflects the true already-scored set.
+async function fetchAllAlreadyScored(projectIds) {
+  let from = 0;
+  const all = [];
+  while (true) {
+    const { data, error } = await supabase
+      .from('project_candidates')
+      .select('project_id, candidate_id')
+      .in('project_id', projectIds)
+      .order('id', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    all.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return all;
+}
 
 export default async function handler(req, res) {
   if (req.headers['x-cron-secret'] !== process.env.CRON_SECRET) {
@@ -92,13 +113,10 @@ export default async function handler(req, res) {
     // Previously fetched project_candidates per-project inside the scoring loop,
     // causing N round-trips and loading an ever-growing history each run.
     const projectIds = activeProjects.map(p => p.id);
-    const { data: allAlreadyScored } = await supabase
-      .from('project_candidates')
-      .select('project_id, candidate_id')
-      .in('project_id', projectIds);
+    const allAlreadyScored = await fetchAllAlreadyScored(projectIds);
 
     const scoredByProject = new Map();
-    for (const row of (allAlreadyScored || [])) {
+    for (const row of allAlreadyScored) {
       if (!scoredByProject.has(row.project_id)) scoredByProject.set(row.project_id, new Set());
       scoredByProject.get(row.project_id).add(row.candidate_id);
     }
