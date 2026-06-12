@@ -1,11 +1,14 @@
 /**
- * compute-cluster-suggestions — two-pass AI clustering for project inputs.
+ * compute-cluster-suggestions — AI clustering for project inputs.
  *
  * mode 'assignments':  finds unassigned inputs semantically close to existing
  *                      cluster centroids and writes assignment suggestions.
  * mode 'new_clusters': excludes inputs matched by the assignment pass, then
  *                      runs agglomerative clustering on the remainder and names
- *                      each group via OpenAI gpt-4o-mini.
+ *                      each group via OpenAI gpt-4o-mini (existing-cluster aware).
+ * mode 'combined':     runs the assignment pass, then the new-clusters pass on
+ *                      whatever remains unmatched, and returns both result sets
+ *                      in one response.
  *
  * Required env vars: OPENAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  */
@@ -14,8 +17,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ASSIGNMENT_THRESHOLD = 0.72;
-const HIGH_CONFIDENCE_THRESHOLD = 0.80;
+const ASSIGNMENT_HIGH_CONFIDENCE = 0.65;
+const ASSIGNMENT_MODERATE_CONFIDENCE = 0.55;
 
 // Cosine similarity thresholds derived from the specified distance thresholds
 // (similarity = 1 - distance)
@@ -42,11 +45,27 @@ type EmbeddedInput = {
   embedding: number[];
 };
 
+type ClusterMeta = {
+  id: string;
+  name: string;
+};
+
 type ClusterWithCentroid = {
   id: string;
   name: string;
   centroid: number[];
 };
+
+type AssignmentMatch = {
+  input: EmbeddedInput;
+  cluster: ClusterWithCentroid;
+  similarity: number;
+  confidence: "high" | "moderate";
+};
+
+type NamingResult =
+  | { action: "create_new"; name: string; description: string; subtype: string }
+  | { action: "assign_to_existing"; cluster_name: string };
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
@@ -68,13 +87,13 @@ serve(async (req: Request) => {
       clustering_sensitivity = "balanced",
     } = body as {
       project_id: string;
-      mode: "assignments" | "new_clusters";
+      mode: "assignments" | "new_clusters" | "combined";
       clustering_sensitivity?: string;
     };
 
     if (!project_id) return respond({ error: "project_id required" }, 400);
-    if (mode !== "assignments" && mode !== "new_clusters") {
-      return respond({ error: "mode must be 'assignments' or 'new_clusters'" }, 400);
+    if (mode !== "assignments" && mode !== "new_clusters" && mode !== "combined") {
+      return respond({ error: "mode must be 'assignments', 'new_clusters', or 'combined'" }, 400);
     }
 
     // ── 1. Fetch project ───────────────────────────────────────────────────────
@@ -118,7 +137,7 @@ serve(async (req: Request) => {
       .eq("project_id", project_id);
 
     if (clustersError) throw clustersError;
-    const clusters = clusterRows ?? [];
+    const clusters: ClusterMeta[] = clusterRows ?? [];
 
     // ── 4. Fetch cluster_inputs for these clusters ─────────────────────────────
     const clusterIds = clusters.map((c) => c.id);
@@ -175,39 +194,13 @@ serve(async (req: Request) => {
         return respond({ assignments: 0, message: "No clusters with embeddings found." });
       }
 
-      // ── DEBUG: score every unassigned input against every cluster centroid ───
-      const debugScores = unassignedInputs.map((input) => {
-        const scores = clustersWithCentroids.map((cluster) => ({
-          cluster_id:   cluster.id,
-          cluster_name: cluster.name,
-          similarity:   Math.round(cosineSim(input.embedding, cluster.centroid) * 10000) / 10000,
-        }));
-        const best = scores.reduce((a, b) => (a.similarity > b.similarity ? a : b));
-        console.log(
-          `[debug] "${input.name}" → best match "${best.cluster_name}" @ ${best.similarity}` +
-          (best.similarity >= ASSIGNMENT_THRESHOLD ? " ✓ ABOVE threshold" : " ✗ below threshold"),
-        );
-        return {
-          input_id:    input.id,
-          input_name:  input.name,
-          best_similarity: best.similarity,
-          best_cluster:    best.cluster_name,
-          all_scores:  scores,
-          would_match: best.similarity >= ASSIGNMENT_THRESHOLD,
-        };
-      });
-      // ────────────────────────────────────────────────────────────────────────
+      const matches = computeAssignmentMatches(unassignedInputs, clustersWithCentroids);
 
-      const rows = buildAssignmentRows(
-        unassignedInputs,
-        clustersWithCentroids,
-        project_id,
-        project.workspace_id,
-      );
-
-      if (rows.length === 0) {
-        return respond({ assignments: 0, debug: debugScores });
+      if (matches.length === 0) {
+        return respond({ assignments: 0 });
       }
+
+      const rows = assignmentMatchesToRows(matches, project_id, project.workspace_id);
 
       await supabase
         .from("cluster_suggestions")
@@ -222,94 +215,81 @@ serve(async (req: Request) => {
 
       if (insertError) throw insertError;
 
-      return respond({ assignments: rows.length, debug: debugScores });
+      return respond({ assignments: rows.length });
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // NEW CLUSTERS MODE
+    // NEW CLUSTERS / COMBINED — shared assignment pass + new-cluster pass
     // ─────────────────────────────────────────────────────────────────────────
 
-    // Exclude any unassigned input already matched to an existing cluster
-    let candidateInputs = unassignedInputs;
-    if (clustersWithCentroids.length > 0) {
-      candidateInputs = unassignedInputs.filter((input) => {
-        let maxSim = 0;
-        for (const cluster of clustersWithCentroids) {
-          const sim = cosineSim(input.embedding, cluster.centroid);
-          if (sim > maxSim) maxSim = sim;
-        }
-        return maxSim < ASSIGNMENT_THRESHOLD;
-      });
-    }
+    // Run the assignment pass first so its matches can be excluded from the
+    // new-cluster candidate pool (Fix 2, Step 1).
+    const assignmentMatches = clustersWithCentroids.length > 0
+      ? computeAssignmentMatches(unassignedInputs, clustersWithCentroids)
+      : [];
+    const matchedInputIds = new Set(assignmentMatches.map((m) => m.input.id));
+    const candidateInputs = unassignedInputs.filter((i) => !matchedInputIds.has(i.id));
 
-    if (candidateInputs.length < 2) {
-      return respond({
-        suggestions: 0,
-        message: "Not enough inputs outside existing clusters to form new ones.",
-      });
-    }
+    const pass = await runNewClusterPass(
+      candidateInputs,
+      clusters,
+      clustering_sensitivity,
+      project_id,
+      project.workspace_id,
+    );
 
-    const threshold = SENSITIVITY_THRESHOLDS[clustering_sensitivity] ??
-      SENSITIVITY_THRESHOLDS.balanced;
+    if (mode === "new_clusters") {
+      const allRows = [...pass.newClusterRows, ...pass.assignmentRows];
 
-    const groups = averageLinkageClustering(candidateInputs, threshold);
-
-    if (groups.length === 0) {
-      return respond({
-        suggestions: 0,
-        message: "No clusters found at this sensitivity level.",
-      });
-    }
-
-    const existingClusterNames = clusters.map((c) => c.name);
-    const suggestionRows: object[] = [];
-    const errors: string[] = [];
-
-    for (const group of groups) {
-      try {
-        const groupInputs = candidateInputs.filter((i) => group.includes(i.id));
-        const named = await nameCluster(groupInputs, existingClusterNames);
-
-        suggestionRows.push({
-          project_id,
-          workspace_id: project.workspace_id,
-          type:         "new_cluster",
-          name:         named.name,
-          description:  named.description,
-          subtype:      named.subtype,
-          input_ids:    group,
-          status:       "pending",
-        });
-
-        // Track the new name so subsequent groups avoid colliding with it
-        existingClusterNames.push(named.name);
-      } catch (err) {
-        errors.push(
-          `Naming failed for group of ${group.length} inputs: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
-        );
+      if (allRows.length === 0) {
+        return respond({ suggestions: 0, message: pass.message, errors: pass.errors });
       }
+
+      await supabase
+        .from("cluster_suggestions")
+        .delete()
+        .eq("project_id", project_id)
+        .eq("status", "pending")
+        .eq("type", "new_cluster");
+
+      const { error: insertError } = await supabase
+        .from("cluster_suggestions")
+        .insert(allRows);
+
+      if (insertError) throw insertError;
+
+      return respond({ suggestions: pass.newClusterRows.length, errors: pass.errors });
     }
 
-    if (suggestionRows.length === 0) {
-      return respond({ suggestions: 0, errors });
-    }
+    // mode === "combined"
+    const assignmentRows = assignmentMatchesToRows(assignmentMatches, project_id, project.workspace_id);
+    const allAssignmentRows = [...assignmentRows, ...pass.assignmentRows];
+    const allRows = [...allAssignmentRows, ...pass.newClusterRows];
 
+    // Clear previous pending suggestions of both types before writing the fresh set.
     await supabase
       .from("cluster_suggestions")
       .delete()
       .eq("project_id", project_id)
       .eq("status", "pending")
-      .eq("type", "new_cluster");
+      .in("type", ["assignment", "new_cluster"]);
 
-    const { error: insertError } = await supabase
-      .from("cluster_suggestions")
-      .insert(suggestionRows);
+    let inserted: Record<string, unknown>[] = [];
+    if (allRows.length > 0) {
+      const { data, error: insertError } = await supabase
+        .from("cluster_suggestions")
+        .insert(allRows)
+        .select();
 
-    if (insertError) throw insertError;
+      if (insertError) throw insertError;
+      inserted = data ?? [];
+    }
 
-    return respond({ suggestions: suggestionRows.length, errors });
+    return respond({
+      assignments:  inserted.filter((r) => r.type === "assignment"),
+      new_clusters: inserted.filter((r) => r.type === "new_cluster"),
+      errors:       pass.errors,
+    });
 
   } catch (err: unknown) {
     const message = err instanceof Error
@@ -323,13 +303,15 @@ serve(async (req: Request) => {
 
 // ─── Assignment helpers ───────────────────────────────────────────────────────
 
-function buildAssignmentRows(
+/**
+ * For each input, finds its best-matching cluster centroid and keeps it as a
+ * match if similarity clears ASSIGNMENT_MODERATE_CONFIDENCE.
+ */
+function computeAssignmentMatches(
   inputs: EmbeddedInput[],
   clusters: ClusterWithCentroid[],
-  projectId: string,
-  workspaceId: string,
-): object[] {
-  const rows: object[] = [];
+): AssignmentMatch[] {
+  const matches: AssignmentMatch[] = [];
 
   for (const input of inputs) {
     let bestSim = -1;
@@ -338,26 +320,144 @@ function buildAssignmentRows(
     for (const cluster of clusters) {
       const sim = cosineSim(input.embedding, cluster.centroid);
       if (sim > bestSim) {
-        bestSim    = sim;
+        bestSim     = sim;
         bestCluster = cluster;
       }
     }
 
-    if (bestSim >= ASSIGNMENT_THRESHOLD && bestCluster) {
-      rows.push({
-        project_id:         projectId,
-        workspace_id:       workspaceId,
-        type:               "assignment",
-        name:               bestCluster.name,  // required NOT NULL — use cluster name
-        target_cluster_id:  bestCluster.id,
-        input_ids:          [input.id],
-        confidence:         bestSim >= HIGH_CONFIDENCE_THRESHOLD ? "high" : "moderate",
-        status:             "pending",
+    const matched = bestCluster !== null && bestSim >= ASSIGNMENT_MODERATE_CONFIDENCE;
+    console.log(
+      `[assign] "${input.name}" → best "${bestCluster?.name ?? "none"}" @ ${bestSim.toFixed(4)}` +
+      (matched ? ` ✓ ${bestSim >= ASSIGNMENT_HIGH_CONFIDENCE ? "high" : "moderate"}` : " ✗ below threshold"),
+    );
+
+    if (matched && bestCluster) {
+      matches.push({
+        input,
+        cluster:    bestCluster,
+        similarity: bestSim,
+        confidence: bestSim >= ASSIGNMENT_HIGH_CONFIDENCE ? "high" : "moderate",
       });
     }
   }
 
-  return rows;
+  return matches;
+}
+
+function assignmentMatchesToRows(
+  matches: AssignmentMatch[],
+  projectId: string,
+  workspaceId: string,
+): object[] {
+  return matches.map((m) => ({
+    project_id:         projectId,
+    workspace_id:       workspaceId,
+    type:               "assignment",
+    name:               m.cluster.name,  // required NOT NULL — use cluster name
+    target_cluster_id:  m.cluster.id,
+    input_ids:          [m.input.id],
+    confidence:         m.confidence,
+    status:             "pending",
+  }));
+}
+
+// ─── New-cluster pass ─────────────────────────────────────────────────────────
+
+/**
+ * Groups candidate inputs via agglomerative clustering, then names each group
+ * with gpt-4o-mini. The model is shown existing cluster names and may respond
+ * with 'assign_to_existing' instead of proposing a new cluster — those groups
+ * become per-input assignment rows targeting the named existing cluster.
+ */
+async function runNewClusterPass(
+  candidateInputs: EmbeddedInput[],
+  allClusters: ClusterMeta[],
+  sensitivity: string,
+  projectId: string,
+  workspaceId: string,
+): Promise<{ assignmentRows: object[]; newClusterRows: object[]; errors: string[]; message?: string }> {
+  const errors: string[] = [];
+
+  if (candidateInputs.length < 2) {
+    return {
+      assignmentRows: [],
+      newClusterRows: [],
+      errors,
+      message: "Not enough inputs outside existing clusters to form new ones.",
+    };
+  }
+
+  const threshold = SENSITIVITY_THRESHOLDS[sensitivity] ?? SENSITIVITY_THRESHOLDS.balanced;
+  const groups = averageLinkageClustering(candidateInputs, threshold);
+
+  if (groups.length === 0) {
+    return {
+      assignmentRows: [],
+      newClusterRows: [],
+      errors,
+      message: "No clusters found at this sensitivity level.",
+    };
+  }
+
+  const existingClusterNames = allClusters.map((c) => c.name);
+  const assignmentRows: object[] = [];
+  const newClusterRows: object[] = [];
+
+  for (const group of groups) {
+    try {
+      const groupInputs = candidateInputs.filter((i) => group.includes(i.id));
+      const named = await nameCluster(groupInputs, existingClusterNames);
+
+      if (named.action === "assign_to_existing") {
+        const target = allClusters.find(
+          (c) => c.name.trim().toLowerCase() === named.cluster_name.trim().toLowerCase(),
+        );
+
+        if (!target) {
+          errors.push(
+            `LLM suggested assigning a group to "${named.cluster_name}" but no matching cluster was found.`,
+          );
+          continue;
+        }
+
+        for (const inputId of group) {
+          assignmentRows.push({
+            project_id:        projectId,
+            workspace_id:      workspaceId,
+            type:              "assignment",
+            name:              target.name,
+            target_cluster_id: target.id,
+            input_ids:         [inputId],
+            confidence:        null,
+            status:            "pending",
+          });
+        }
+        continue;
+      }
+
+      newClusterRows.push({
+        project_id:   projectId,
+        workspace_id: workspaceId,
+        type:         "new_cluster",
+        name:         named.name,
+        description:  named.description,
+        subtype:      named.subtype,
+        input_ids:    group,
+        status:       "pending",
+      });
+
+      // Track the new name so subsequent groups avoid colliding with it
+      existingClusterNames.push(named.name);
+    } catch (err) {
+      errors.push(
+        `Naming failed for group of ${group.length} inputs: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
+  return { assignmentRows, newClusterRows, errors };
 }
 
 // ─── OpenAI naming ────────────────────────────────────────────────────────────
@@ -365,7 +465,7 @@ function buildAssignmentRows(
 async function nameCluster(
   inputs: EmbeddedInput[],
   existingClusterNames: string[],
-): Promise<{ name: string; description: string; subtype: string }> {
+): Promise<NamingResult> {
   const inputList = inputs
     .map((i) => `- ${i.name}${i.description ? `: ${i.description}` : ""}`)
     .join("\n");
@@ -375,24 +475,24 @@ async function nameCluster(
     : "(none)";
 
   const prompt =
-`You are helping a strategic foresight practitioner name and describe a cluster of signals.
+`You are helping a strategic foresight practitioner identify patterns in a group of signals.
 The following inputs have been grouped together by semantic similarity.
 
 Inputs:
 ${inputList}
 
-Existing cluster names in this project (do NOT suggest names similar to these):
+Existing clusters in this project — your suggested name must be clearly and meaningfully distinct from all of these:
 ${existingNames}
 
-Return JSON only with no preamble:
-{
-  "name": "a verb-driven cluster name (max 10 words)",
-  "description": "one sentence describing the pattern these inputs share",
-  "subtype": "trend" | "driver" | "tension"
-}
+If the inputs you've been given are better described as belonging to one of the existing clusters above rather than forming a genuinely new pattern, respond with:
+{ "action": "assign_to_existing", "cluster_name": "<name of the existing cluster>" }
 
-Rules:
-- name must be clearly distinct from the existing cluster names listed above
+Otherwise, suggest a new cluster:
+{ "action": "create_new", "name": "...", "description": "...", "subtype": "trend" | "driver" | "tension" }
+
+Return JSON only with no preamble.
+
+Rules for "create_new":
 - subtype 'trend' = an emerging pattern or direction of change
 - subtype 'driver' = a structural force shaping the future
 - subtype 'tension' = competing dynamics creating uncertainty or friction
@@ -438,8 +538,13 @@ Bad examples (never use this style):
   const json   = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   const parsed = JSON.parse(json);
 
+  if (parsed.action === "assign_to_existing" && parsed.cluster_name) {
+    return { action: "assign_to_existing", cluster_name: String(parsed.cluster_name) };
+  }
+
   const VALID_SUBTYPES = ["trend", "driver", "tension"];
   return {
+    action:      "create_new",
     name:        String(parsed.name        ?? "Unnamed cluster"),
     description: String(parsed.description ?? ""),
     subtype:     VALID_SUBTYPES.includes(parsed.subtype) ? parsed.subtype : "trend",

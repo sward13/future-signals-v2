@@ -350,24 +350,27 @@ function InputTableRow({ input, clusters, assignedCluster, onAssign, onNewCluste
 // ─── Suggestion card ──────────────────────────────────────────────────────────
 
 function SuggestionCard({ suggestion, inputs, onAccept, onDismiss, isFadingOut }) {
-  const [editing,      setEditing]      = useState(false);
-  const [editName,     setEditName]     = useState(suggestion.name);
-  const [editDesc,     setEditDesc]     = useState(suggestion.description || "");
-  const [editInputIds, setEditInputIds] = useState(suggestion.input_ids || []);
+  const [editing,  setEditing]  = useState(false);
+  const [editName, setEditName] = useState(suggestion.name);
+  const [editDesc, setEditDesc] = useState(suggestion.description || "");
+  const [inputIds, setInputIds] = useState(suggestion.input_ids || []);
 
-  const subtype    = suggestion.subtype
+  const subtype   = suggestion.subtype
     ? suggestion.subtype.charAt(0).toUpperCase() + suggestion.subtype.slice(1)
     : "Trend";
-  const activeIds  = editing ? editInputIds : (suggestion.input_ids || []);
-  const sugInputs  = inputs.filter((i) => activeIds.includes(i.id));
-  const shown      = sugInputs.slice(0, 5);
-  const extraCount = sugInputs.length - 5;
+  const sugInputs = inputIds
+    .map((id) => inputs.find((i) => i.id === id))
+    .filter(Boolean);
+  const noInputsLeft = sugInputs.length === 0;
 
   const handleCancel = () => {
     setEditing(false);
     setEditName(suggestion.name);
     setEditDesc(suggestion.description || "");
-    setEditInputIds(suggestion.input_ids || []);
+  };
+
+  const handleRemoveInput = (id) => {
+    setInputIds((prev) => prev.filter((x) => x !== id));
   };
 
   return (
@@ -424,57 +427,27 @@ function SuggestionCard({ suggestion, inputs, onAccept, onDismiss, isFadingOut }
           </div>
         ) : null}
 
-        {/* Input chips */}
-        {activeIds.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
-            {editing ? (
-              editInputIds.map((id) => {
-                const found = inputs.find((i) => i.id === id);
-                if (!found) return null;
-                return (
-                  <span key={id} style={{
-                    fontSize: 10, padding: "2px 6px 2px 8px", borderRadius: 10,
-                    background: c.surfaceAlt, color: c.muted,
-                    border: `1px solid ${c.border}`,
-                    display: "inline-flex", alignItems: "center", gap: 3,
-                  }}>
-                    <span style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {found.name}
-                    </span>
-                    <button
-                      onClick={() => setEditInputIds((prev) => prev.filter((x) => x !== id))}
-                      style={{
-                        background: "none", border: "none", cursor: "pointer",
-                        color: c.hint, fontSize: 12, padding: 0, lineHeight: 1,
-                        fontFamily: "inherit", flexShrink: 0,
-                      }}
-                    >×</button>
-                  </span>
-                );
-              })
-            ) : (
-              <>
-                {shown.map((i) => (
-                  <span key={i.id} style={{
-                    fontSize: 10, padding: "2px 8px", borderRadius: 10,
-                    background: c.surfaceAlt, color: c.muted,
-                    border: `1px solid ${c.border}`,
-                    maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                  }}>
-                    {i.name}
-                  </span>
-                ))}
-                {extraCount > 0 && (
-                  <span style={{
-                    fontSize: 10, padding: "2px 8px", borderRadius: 10,
-                    background: "transparent", color: c.hint,
-                    border: `1px solid ${c.border}`, whiteSpace: "nowrap",
-                  }}>
-                    +{extraCount} more
-                  </span>
-                )}
-              </>
-            )}
+        {/* Input list */}
+        {sugInputs.length > 0 && (
+          <div style={{ background: c.surfaceAlt, border: `1px solid ${c.border}`, borderRadius: 7, marginBottom: 12, overflow: "hidden" }}>
+            {sugInputs.map((i, idx) => (
+              <div key={i.id} style={{
+                padding: "8px 11px",
+                borderTop: idx > 0 ? `1px solid ${c.border}` : "none",
+                display: "flex", alignItems: "center", gap: 8,
+              }}>
+                <span style={{ color: c.hint, fontSize: 10, flexShrink: 0 }}>•</span>
+                <span style={{
+                  flex: 1, fontSize: 12, color: c.ink,
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>
+                  {i.name}
+                </span>
+                <button onClick={() => handleRemoveInput(i.id)} style={{ ...btnG, fontSize: 11 }}>
+                  Remove
+                </button>
+              </div>
+            ))}
           </div>
         )}
 
@@ -483,8 +456,9 @@ function SuggestionCard({ suggestion, inputs, onAccept, onDismiss, isFadingOut }
           {editing ? (
             <>
               <button
-                onClick={() => onAccept(suggestion, editName, editDesc, editInputIds)}
-                style={{ ...btnSm, fontSize: 11 }}
+                onClick={() => onAccept(suggestion, editName, editDesc, inputIds)}
+                disabled={noInputsLeft}
+                style={{ ...btnSm, fontSize: 11, ...(noInputsLeft ? { opacity: 0.5, cursor: "default" } : {}) }}
               >
                 Create cluster
               </button>
@@ -495,8 +469,9 @@ function SuggestionCard({ suggestion, inputs, onAccept, onDismiss, isFadingOut }
           ) : (
             <>
               <button
-                onClick={() => onAccept(suggestion, suggestion.name, suggestion.description || "", suggestion.input_ids || [])}
-                style={{ ...btnSm, fontSize: 11 }}
+                onClick={() => onAccept(suggestion, suggestion.name, suggestion.description || "", inputIds)}
+                disabled={noInputsLeft}
+                style={{ ...btnSm, fontSize: 11, ...(noInputsLeft ? { opacity: 0.5, cursor: "default" } : {}) }}
               >
                 Create cluster
               </button>
@@ -631,76 +606,65 @@ function TableContainer({ children }) {
   );
 }
 
-// ─── Assignment recommendation card ──────────────────────────────────────────
+// ─── Assignment group card — "Add to existing clusters" ──────────────────────
 
-function AssignmentCard({ suggestion, inputs, clusters, onAdd, onDismiss, isFadingOut }) {
-  const targetCluster = clusters.find((cl) => cl.id === suggestion.target_cluster_id);
-  const clusterName   = targetCluster?.name || suggestion.name || "cluster";
-  const sugInputs     = (suggestion.input_ids || [])
-    .map((id) => inputs.find((i) => i.id === id))
-    .filter(Boolean);
-  const n          = sugInputs.length;
-  const confidence = suggestion.confidence || "moderate";
+const CONFIDENCE_STYLES = {
+  high:     { background: c.green50, color: c.green700, border: `1px solid ${c.greenBorder}` },
+  moderate: { background: c.amber50, color: c.amber700, border: `1px solid ${c.amberBorder}` },
+};
 
-  const confidenceBadge = confidence === "high"
-    ? { background: c.green50,  color: c.green700,  border: `1px solid ${c.greenBorder}` }
-    : { background: c.amber50, color: c.amber700, border: `1px solid ${c.amberBorder}` };
+function AssignmentGroupCard({ group, inputs, fadingOutIds, onAcceptOne, onDismissOne, onAcceptAll }) {
+  const { targetClusterId, clusterName, sugs } = group;
 
   return (
-    <div style={{
-      background: c.white, border: `1px solid ${c.border}`,
-      borderRadius: 11, overflow: "hidden",
-      opacity: isFadingOut ? 0 : 1, transition: "opacity 0.25s ease",
-    }}>
+    <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 11, overflow: "hidden" }}>
       <div style={{ padding: "14px 18px" }}>
-
-        {/* Title + meta */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>
             Add to <span style={{ color: c.brand }}>{clusterName}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0, paddingTop: 1 }}>
-            <span style={{ fontSize: 11, color: c.muted }}>{n} input{n !== 1 ? "s" : ""}</span>
-            <span style={{ fontSize: 10, color: c.hint }}>·</span>
-            <span style={{ fontSize: 11, color: c.muted }}>Confidence:</span>
-            <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, fontWeight: 500, ...confidenceBadge }}>
-              {confidence === "high" ? "High" : "Moderate"}
-            </span>
-          </div>
+          {sugs.length > 1 && (
+            <button onClick={() => onAcceptAll(targetClusterId)} style={{ ...btnG, fontSize: 11 }}>
+              Accept all
+            </button>
+          )}
         </div>
 
-        {/* Inputs box */}
-        {sugInputs.length > 0 && (
-          <div style={{
-            background: c.surfaceAlt, border: `1px solid ${c.border}`,
-            borderRadius: 7, marginBottom: 12, overflow: "hidden",
-          }}>
-            <div style={{
-              fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em",
-              color: c.hint, padding: "5px 11px",
-              borderBottom: `1px solid ${c.border}`,
-            }}>
-              Inputs
-            </div>
-            {sugInputs.map((inp, idx) => (
-              <div key={inp.id} style={{
-                padding: "7px 11px",
+        <div style={{ background: c.surfaceAlt, border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden" }}>
+          {sugs.map((sug, idx) => {
+            const inputId = (sug.input_ids || [])[0];
+            const matchedInput = inputs.find((i) => i.id === inputId);
+            const confidenceStyle = sug.confidence ? CONFIDENCE_STYLES[sug.confidence] : null;
+            return (
+              <div key={sug.id} style={{
+                padding: "8px 11px",
                 borderTop: idx > 0 ? `1px solid ${c.border}` : "none",
-                display: "flex", alignItems: "flex-start", gap: 7,
+                display: "flex", alignItems: "center", gap: 8,
+                opacity: fadingOutIds.has(sug.id) ? 0 : 1,
+                transition: "opacity 0.25s ease",
               }}>
-                <span style={{ color: c.hint, fontSize: 10, flexShrink: 0, marginTop: 2 }}>•</span>
-                <span style={{ fontSize: 12, color: c.ink }}>{inp.name}</span>
+                <span style={{ color: c.hint, fontSize: 10, flexShrink: 0 }}>•</span>
+                <span style={{
+                  flex: 1, fontSize: 12, color: c.ink,
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>
+                  {matchedInput?.name || "Untitled input"}
+                </span>
+                {confidenceStyle && (
+                  <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, fontWeight: 500, ...confidenceStyle }}>
+                    {sug.confidence === "high" ? "High" : "Moderate"}
+                  </span>
+                )}
+                <button onClick={() => onAcceptOne(sug)} style={{ ...btnSm, fontSize: 11, padding: "4px 12px" }}>
+                  Accept
+                </button>
+                <button onClick={() => onDismissOne(sug.id)} style={{ ...btnG, fontSize: 11 }}>
+                  Dismiss
+                </button>
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* Actions */}
-        <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={() => onAdd(suggestion)} style={{ ...btnSm, fontSize: 11 }}>Add</button>
-          <button onClick={() => onDismiss(suggestion.id)} style={{ ...btnSec, fontSize: 11, padding: "6px 14px" }}>Dismiss</button>
+            );
+          })}
         </div>
-
       </div>
     </div>
   );
@@ -736,24 +700,22 @@ export default function Clustering({ appState }) {
   const [clusterFilterLikelihood,    setClusterFilterLikelihood]    = useState(null);
   const [openClusterFilterDropdown,  setOpenClusterFilterDropdown]  = useState(null);
 
-  // Sensitivity setting for new-cluster generation (Panel 2)
+  // Sensitivity setting for cluster suggestion generation
   const [tightness, setTightness] = useState("balanced");
 
-  // Panel 1 — assignment matching
-  const [assignmentSugs,        setAssignmentSugs]        = useState([]);
-  const [runningAssignments,    setRunningAssignments]    = useState(false);
-  const [assignmentsError,      setAssignmentsError]      = useState(null);
-  const [assignFadingOutIds,    setAssignFadingOutIds]    = useState(new Set());
-  const [totalAssignmentsFound, setTotalAssignmentsFound] = useState(null);  // null = never run
-  const [acceptedAssignCount,   setAcceptedAssignCount]   = useState(0);
+  // Cluster suggestions — assignments (Section 1)
+  const [assignmentSugs,     setAssignmentSugs]     = useState([]);
+  const [assignFadingOutIds, setAssignFadingOutIds] = useState(new Set());
 
-  // Panel 2 — new cluster suggestions
+  // Cluster suggestions — new clusters (Section 2)
   const [newClusterSugs,       setNewClusterSugs]       = useState([]);
-  const [runningNewClusters,   setRunningNewClusters]   = useState(false);
-  const [newClustersError,     setNewClustersError]     = useState(null);
   const [newClusterFadingIds,  setNewClusterFadingIds]  = useState(new Set());
   const [dismissedNewClusters, setDismissedNewClusters] = useState([]);
-  const [loadingDbSugs,        setLoadingDbSugs]        = useState(false);
+
+  // Combined suggestion run
+  const [runningSuggestions, setRunningSuggestions] = useState(false);
+  const [suggestionsError,   setSuggestionsError]   = useState(null);
+  const [loadingDbSugs,      setLoadingDbSugs]      = useState(false);
 
   const project         = activeProjectId ? projects.find((p) => p.id === activeProjectId) : null;
   const projectInputs   = project ? inputs.filter((i)  => i.project_id  === project.id) : [];
@@ -811,6 +773,21 @@ export default function Clustering({ appState }) {
     }),
     [newClusterSugs, dismissedNewClusters, newClusterFadingIds]
   );
+
+  // Group pending assignment suggestions by their target cluster for Section 1.
+  const assignmentGroups = useMemo(() => {
+    const groups = new Map();
+    for (const sug of assignmentSugs) {
+      const key = sug.target_cluster_id;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(sug);
+    }
+    return [...groups.entries()].map(([targetClusterId, sugs]) => ({
+      targetClusterId,
+      clusterName: projectClusters.find((cl) => cl.id === targetClusterId)?.name || sugs[0]?.name || "cluster",
+      sugs,
+    }));
+  }, [assignmentSugs, projectClusters]);
 
   const clearAllFilters = () => {
     setInputSearch(""); setFilterType(null); setFilterHorizon(null); setFilterSteepled(null);
@@ -876,34 +853,24 @@ export default function Clustering({ appState }) {
     );
   };
 
-  // ── Panel 1 handlers ─────────────────────────────────────────────────────────
+  // ── Suggestion handlers ──────────────────────────────────────────────────────
 
-  const handleRunAssignments = async () => {
-    if (!project || runningAssignments) return;
-    setRunningAssignments(true);
-    setAssignmentsError(null);
-    setTotalAssignmentsFound(null);
-    setAcceptedAssignCount(0);
+  const handleSuggestClustering = async () => {
+    if (!project || runningSuggestions) return;
+    setRunningSuggestions(true);
+    setSuggestionsError(null);
     try {
-      const { error } = await supabase.functions.invoke("compute-cluster-suggestions", {
-        body: { project_id: project.id, mode: "assignments" },
+      const { data, error } = await supabase.functions.invoke("compute-cluster-suggestions", {
+        body: { project_id: project.id, mode: "combined", clustering_sensitivity: tightness },
       });
       if (error) throw new Error(error.message);
-      const { data: sugs, error: fetchErr } = await supabase
-        .from("cluster_suggestions")
-        .select("*")
-        .eq("project_id", project.id)
-        .eq("status", "pending")
-        .eq("type", "assignment")
-        .order("generated_at", { ascending: false });
-      if (fetchErr) throw fetchErr;
-      const results = sugs || [];
-      setAssignmentSugs(results);
-      setTotalAssignmentsFound(results.length);
+      setAssignmentSugs(data?.assignments || []);
+      setNewClusterSugs(data?.new_clusters || []);
+      setDismissedNewClusters([]);
     } catch (err) {
-      setAssignmentsError(err.message || "Failed to find assignments.");
+      setSuggestionsError(err.message || "Failed to generate suggestions.");
     } finally {
-      setRunningAssignments(false);
+      setRunningSuggestions(false);
     }
   };
 
@@ -917,7 +884,6 @@ export default function Clustering({ appState }) {
       .eq("id", sug.id)
       .then();
     setAssignmentSugs((prev) => prev.filter((s) => s.id !== sug.id));
-    setAcceptedAssignCount((n) => n + 1);
     const cl = projectClusters.find((c) => c.id === sug.target_cluster_id);
     showToast(`Input assigned to "${cl?.name || "cluster"}"`);
   };
@@ -935,47 +901,19 @@ export default function Clustering({ appState }) {
       .then();
   };
 
-  const handleAcceptAllAssignments = () => {
-    const pending = [...assignmentSugs];
+  const handleAcceptAllAssignmentsForCluster = (targetClusterId) => {
+    const pending = assignmentSugs.filter((s) => s.target_cluster_id === targetClusterId);
     pending.forEach((sug) => {
-      (sug.input_ids || []).forEach((inputId) => assignInputToCluster(inputId, sug.target_cluster_id));
+      (sug.input_ids || []).forEach((inputId) => assignInputToCluster(inputId, targetClusterId));
     });
     supabase
       .from("cluster_suggestions")
       .update({ status: "accepted", acted_on_at: new Date().toISOString() })
       .in("id", pending.map((s) => s.id))
       .then();
-    setAcceptedAssignCount((n) => n + pending.length);
-    setAssignmentSugs([]);
-    showToast(`${pending.length} assignment${pending.length !== 1 ? "s" : ""} accepted`);
-  };
-
-  // ── Panel 2 handlers ─────────────────────────────────────────────────────────
-
-  const handleGenerateNewClusters = async () => {
-    if (!project || runningNewClusters) return;
-    setRunningNewClusters(true);
-    setNewClustersError(null);
-    try {
-      const { error } = await supabase.functions.invoke("compute-cluster-suggestions", {
-        body: { project_id: project.id, mode: "new_clusters", clustering_sensitivity: tightness },
-      });
-      if (error) throw new Error(error.message);
-      const { data: sugs, error: fetchErr } = await supabase
-        .from("cluster_suggestions")
-        .select("*")
-        .eq("project_id", project.id)
-        .eq("status", "pending")
-        .eq("type", "new_cluster")
-        .order("generated_at", { ascending: false });
-      if (fetchErr) throw fetchErr;
-      setNewClusterSugs(sugs || []);
-      setDismissedNewClusters([]);
-    } catch (err) {
-      setNewClustersError(err.message || "Failed to generate suggestions.");
-    } finally {
-      setRunningNewClusters(false);
-    }
+    setAssignmentSugs((prev) => prev.filter((s) => s.target_cluster_id !== targetClusterId));
+    const cl = projectClusters.find((c) => c.id === targetClusterId);
+    showToast(`${pending.length} input${pending.length !== 1 ? "s" : ""} assigned to "${cl?.name || "cluster"}"`);
   };
 
   const handleAcceptNewCluster = (sug, editedName, editedDesc, editedInputIds) => {
@@ -1315,117 +1253,13 @@ export default function Clustering({ appState }) {
           )}
         </div>
 
-        {/* ── Panel 1: Match to existing clusters ──────────────── */}
-        <div style={{ marginBottom: 20 }}>
-
-          {/* Panel 1 header */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>Match to existing clusters</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {runningAssignments ? (
-                <button disabled style={{
-                  fontSize: 11, padding: "4px 12px", borderRadius: 6,
-                  background: "transparent", color: c.hint,
-                  border: `1px solid ${c.border}`, cursor: "default",
-                  fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6,
-                }}>
-                  <span style={{
-                    display: "inline-block", width: 10, height: 10, borderRadius: "50%",
-                    border: `1.5px solid ${c.border}`, borderTopColor: c.muted,
-                    animation: "clusterSpinner 0.7s linear infinite",
-                  }} />
-                  Scanning…
-                </button>
-              ) : totalAssignmentsFound === null ? (
-                <button onClick={handleRunAssignments} style={{ ...btnSec, fontSize: 11, padding: "4px 12px", borderRadius: 6 }}>
-                  Find assignments
-                </button>
-              ) : (
-                <>
-                  {totalAssignmentsFound > 0 && (
-                    <span style={{ fontSize: 11, color: c.muted }}>
-                      {acceptedAssignCount} of {totalAssignmentsFound} accepted
-                    </span>
-                  )}
-                  {assignmentSugs.length > 0 && (
-                    <button onClick={handleAcceptAllAssignments} style={{ ...btnG, fontSize: 11 }}>
-                      Accept all
-                    </button>
-                  )}
-                  <button onClick={handleRunAssignments} style={{ ...btnSec, fontSize: 11, padding: "4px 12px", borderRadius: 6 }}>
-                    Re-run
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Panel 1 body */}
-          {assignmentsError ? (
-            <div style={{
-              padding: "13px 16px", background: c.red50,
-              border: `1px solid ${c.redBorder}`, borderRadius: 9,
-              fontSize: 12, color: c.red800,
-            }}>
-              {assignmentsError}
-            </div>
-          ) : assignmentSugs.length === 0 ? (
-            <div style={{
-              padding: "32px 24px", background: c.surfaceAlt,
-              border: `1px solid ${c.border}`, borderRadius: 9, textAlign: "center",
-            }}>
-              <div style={{ fontSize: 12, color: c.muted, marginBottom: 14 }}>
-                {totalAssignmentsFound === 0
-                  ? "No assignment matches found."
-                  : "Find unassigned inputs that match your existing clusters."}
-              </div>
-              {!runningAssignments && (
-                <button onClick={handleRunAssignments} style={{ ...btnSec, fontSize: 12 }}>
-                  Find assignments
-                </button>
-              )}
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {assignmentSugs.map((sug) => (
-                <AssignmentCard
-                  key={sug.id}
-                  suggestion={sug}
-                  inputs={projectInputs}
-                  clusters={projectClusters}
-                  onAdd={handleAcceptAssignment}
-                  onDismiss={handleDismissAssignment}
-                  isFadingOut={assignFadingOutIds.has(sug.id)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ── Panel 2: New cluster suggestions ─────────────────── */}
+        {/* ── Cluster suggestions ───────────────────────────────── */}
         <div style={{ marginBottom: 32 }}>
 
-          {/* Panel 2 header */}
+          {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>New cluster suggestions</div>
-              <span style={{
-                fontSize: 10, padding: "1px 7px", borderRadius: 4,
-                background: c.blue50, color: c.blue700, border: `1px solid ${c.blueBorder}`,
-              }}>
-                ✨ New
-              </span>
-            </div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>Cluster suggestions</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {visibleNewClusterSugs.length > 0 && (
-                <button
-                  onClick={handleGenerateNewClusters}
-                  disabled={runningNewClusters}
-                  style={{ ...btnG, fontSize: 11 }}
-                >
-                  Regenerate
-                </button>
-              )}
               {/* Tight / Balanced / Exploratory tabs */}
               <div style={{
                 display: "inline-flex",
@@ -1455,34 +1289,34 @@ export default function Clustering({ appState }) {
                 ))}
               </div>
               <button
-                onClick={handleGenerateNewClusters}
-                disabled={runningNewClusters}
+                onClick={handleSuggestClustering}
+                disabled={runningSuggestions}
                 style={{ ...btnSec, fontSize: 11, padding: "4px 12px", borderRadius: 6, display: "flex", alignItems: "center", gap: 6 }}
               >
-                {runningNewClusters ? (
+                {runningSuggestions ? (
                   <>
                     <span style={{
                       display: "inline-block", width: 10, height: 10, borderRadius: "50%",
                       border: `1.5px solid ${c.border}`, borderTopColor: c.muted,
                       animation: "clusterSpinner 0.7s linear infinite",
                     }} />
-                    Generating…
+                    Suggesting…
                   </>
-                ) : "Generate suggestions"}
+                ) : "Suggest clustering"}
               </button>
             </div>
           </div>
 
-          {/* Panel 2 body */}
-          {newClustersError ? (
+          {/* Body */}
+          {suggestionsError ? (
             <div style={{
               padding: "13px 16px", background: c.red50,
               border: `1px solid ${c.redBorder}`, borderRadius: 9,
               fontSize: 12, color: c.red800,
             }}>
-              {newClustersError}
+              {suggestionsError}
             </div>
-          ) : runningNewClusters ? (
+          ) : runningSuggestions ? (
             <div style={{
               padding: "36px 24px", background: c.surfaceAlt,
               border: `1px solid ${c.border}`, borderRadius: 9,
@@ -1493,34 +1327,59 @@ export default function Clustering({ appState }) {
                 border: `2px solid ${c.border}`, borderTopColor: c.ink,
                 animation: "clusterSpinner 0.7s linear infinite",
               }} />
-              <div style={{ fontSize: 12, color: c.muted }}>Generating suggestions…</div>
+              <div style={{ fontSize: 12, color: c.muted }}>Finding suggestions…</div>
             </div>
-          ) : visibleNewClusterSugs.length === 0 ? (
+          ) : assignmentGroups.length === 0 && visibleNewClusterSugs.length === 0 ? (
             <div style={{
               padding: "32px 24px", background: c.surfaceAlt,
               border: `1px solid ${c.border}`, borderRadius: 9, textAlign: "center",
             }}>
-              <div style={{ fontSize: 12, color: c.muted, marginBottom: 14 }}>
-                {newClusterSugs.length === 0 && dismissedNewClusters.length > 0
-                  ? "No new patterns found in unassigned inputs."
-                  : "Group remaining unassigned inputs into new cluster patterns."}
+              <div style={{ fontSize: 12, color: c.muted }}>
+                No suggestions — all inputs are assigned, or there aren't enough unassigned inputs to form new patterns.
               </div>
-              <button onClick={handleGenerateNewClusters} style={{ ...btnSec, fontSize: 12 }}>
-                Generate suggestions
-              </button>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {visibleNewClusterSugs.map((sug) => (
-                <SuggestionCard
-                  key={sug.id}
-                  suggestion={sug}
-                  inputs={projectInputs}
-                  onAccept={handleAcceptNewCluster}
-                  onDismiss={handleDismissNewCluster}
-                  isFadingOut={newClusterFadingIds.has(sug.id)}
-                />
-              ))}
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+              {assignmentGroups.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: c.muted, marginBottom: 8 }}>
+                    Add to existing clusters
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {assignmentGroups.map((group) => (
+                      <AssignmentGroupCard
+                        key={group.targetClusterId}
+                        group={group}
+                        inputs={projectInputs}
+                        fadingOutIds={assignFadingOutIds}
+                        onAcceptOne={handleAcceptAssignment}
+                        onDismissOne={handleDismissAssignment}
+                        onAcceptAll={handleAcceptAllAssignmentsForCluster}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {visibleNewClusterSugs.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: c.muted, marginBottom: 8 }}>
+                    New cluster suggestions
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {visibleNewClusterSugs.map((sug) => (
+                      <SuggestionCard
+                        key={sug.id}
+                        suggestion={sug}
+                        inputs={projectInputs}
+                        onAccept={handleAcceptNewCluster}
+                        onDismiss={handleDismissNewCluster}
+                        isFadingOut={newClusterFadingIds.has(sug.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
