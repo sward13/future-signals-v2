@@ -262,6 +262,34 @@ export default function App() {
     }
   }, [onboardingComplete, projects]);
 
+  // ── Deep-link handler — /inbox?candidate=<candidates.id> ──────────────────
+  // Fires once after inputs have loaded. Weekly digest emails link to
+  // /inbox?candidate=<id>; resolve that to the matching input (by
+  // metadata.candidate_id) and open its detail drawer, wherever it now lives.
+  useEffect(() => {
+    if (!onboardingComplete || inputs.length === 0) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const candidateId = params.get("candidate");
+    if (!candidateId) return;
+
+    const match = inputs.find((i) => i.metadata?.candidate_id === candidateId);
+
+    if (!match) {
+      appState.setActiveScreen("inbox");
+      appState.showToast("Signal not found in your workspace.", "error");
+    } else if (match.project_id === null) {
+      appState.setActiveScreen("inbox");
+      appState.openInputDetail(match.id);
+    } else {
+      appState.openProject(match.project_id);
+      appState.openInputDetail(match.id);
+      appState.showToast("This signal has been added to a project.");
+    }
+
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [onboardingComplete, inputs]);
+
   // ── Auth gates ─────────────────────────────────────────────────────────────
   if (session === undefined) return <AppLoader />;  // resolving (or exchanging token)
   if (passwordRecovery) return <AuthScreen initialMode="reset" />;  // password reset flow
