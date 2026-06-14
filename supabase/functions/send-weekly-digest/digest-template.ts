@@ -38,9 +38,7 @@ export function generateDigestSubject(date: Date): string {
 }
 
 export function generateDigestEmail(signals: DigestSignal[], meta: DigestMeta): string {
-  const intro = meta.domains.length > 0
-    ? `Based on your active projects in ${escapeHtml(meta.domains.join(", "))}, here's what the scanner surfaced this week.`
-    : "Here's what the scanner surfaced for your workspace this week.";
+  const intro = `Here are ${signals.length} signals in your inbox that haven't been added to a project yet. Open any signal to review it or add it to one of your active projects.`;
 
   const rows = signals.map((s, idx) => `
     <tr>
@@ -68,7 +66,7 @@ export function generateDigestEmail(signals: DigestSignal[], meta: DigestMeta): 
           <tr>
             <td>
               <a href="${APP_URL}/inbox?candidate=${encodeURIComponent(s.candidate_id)}" style="font-family:${FONT_BODY}; font-size:12px; font-weight:500; color:${c.brand}; text-decoration:none;">
-                Add to inbox →
+                Add to project →
               </a>
             </td>
           </tr>
