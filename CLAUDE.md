@@ -12,6 +12,8 @@ Future Signals v2 is a strategic foresight SPA built with React + Vite. It guide
 
 **Prototype reference:** `prototypes/future-signals-inputs-redesign_4.html` — use as a visual reference for the Inputs screen and shared layout. Do not copy its code directly.
 
+**Schema source of truth:** `supabase/migrations/` (read chronologically, latest wins) — not `src/types/database.types.ts`. The generated types file can lag behind the live database; see "Known database gotchas" for the current known gap.
+
 ---
 
 ## Design principles — read before any UX or form decision
@@ -401,6 +403,12 @@ All tables carry `workspace_id` and (where applicable) `project_id`. `workspace_
   h3_start: string, h3_end: string,
   assumptions: string,
   stakeholders: string,
+  audience: string|null,                 // added 2026-04-25
+  scope_in: string[],                    // added 2026-04-28 — in-scope topics
+  scope_out: string[],                   // added 2026-04-28 — explicitly out-of-scope topics
+  scanning_enabled: boolean,             // per-project scanner toggle; workspace_settings.scanning_enabled is the workspace-wide override (see Known database gotchas)
+  last_reviewed_at: string|null,         // Inbox inactivity detection
+  key_question_embedding: number[]|null, // internal — cached embedding of `question`, set by api/score.js, not for UI use
   created_at: string,
 }
 ```
@@ -415,7 +423,7 @@ All tables carry `workspace_id` and (where applicable) `project_id`. `workspace_
   subtype: string,           // 'Trend' | 'Driver' | 'Tension'
   horizon: string,           // 'H1' | 'H2' | 'H3'
   description: string,
-  input_ids: string[],
+  input_ids: string[],       // app-state only — derived from the cluster_inputs join table (cluster_id, input_id, workspace_id); not a column on `clusters`
   likelihood: string,        // 'Possible' | 'Plausible' | 'Probable'
   created_at: string,
 }
@@ -430,8 +438,16 @@ All tables carry `workspace_id` and (where applicable) `project_id`. `workspace_
   name: string,
   archetype: string,         // 'Continuation' | 'Collapse' | 'Constraint' | 'Transformation'
   horizon: string,
-  cluster_ids: string[],
+  cluster_ids: string[],     // app-state only — derived from the scenario_clusters join table (cluster_id, scenario_id, workspace_id); `scenarios.cluster_ids` is a legacy column, not the source of truth
+  description: string,
+  narrative: string,
+  driving_forces: object[],
+  suppressed_forces: object[],
+  key_differences: object[],
+  confidence: string,
+  geographic_scope: string,
   created_at: string,
+  updated_at: string,
 }
 ```
 
@@ -479,7 +495,46 @@ Key decisions already made:
 
 ## Known database gotchas
 
-- `workspaces` table uses `user_id` not `owner_id` — check this on any new RLS policy or query touching workspaces
-- pgvector columns do not support `.not('embedding', 'is', null)` via PostgREST — use a workaround
-- Single `inputs` table with subtype column + JSONB metadata — do not create separate tables per subtype
-- Canvas (React Flow) is a view over the data model, not the data store — relationships persist when a cluster is removed from the canvas
+### Core schema facts
+- `workspaces` table uses `user_id` not `owner_id` — check this on any new RLS policy or query touching workspaces. `workspaces` also has `onboarding_completed` (boolean) and `experience_level` (text, nullable — `null` is treated as `'regular'` throughout the product), both written from the onboarding flow.
+- pgvector columns do not support `.not('embedding', 'is', null)` via PostgREST — use a workaround (e.g. a `SECURITY DEFINER` SQL function with `WHERE embedding IS NOT NULL`, as in `get_seeding_candidates`).
+- Single `inputs` table with subtype column + JSONB metadata — do not create separate tables per subtype.
+- Canvas (React Flow) is a view over the data model, not the data store — relationships persist when a cluster is removed from the canvas.
+- Cluster↔Input and Scenario↔Cluster memberships live in junction tables (`cluster_inputs`, `scenario_clusters`), not array columns. `useAppState.js` derives `input_ids` / `cluster_ids` arrays from these joins on read and strips them before writing back. `scenarios.cluster_ids` exists as a legacy jsonb column but is not the source of truth.
+- `candidates.steepled` is `string[]` (1-3 values), not a scalar `steepled_category` column. There is **no** `candidates.domain`, `candidates.confidence_score`, `candidates.created_at`, or `candidates.summary` column.
+  - Use `candidates.ingested_at` for ingestion recency, not `created_at`.
+  - Use `candidates.summary_ai || candidates.summary_raw` for display text, not `summary`.
+  - Relevance scores live on the **promoted `inputs` row**, not on `candidates`: `inputs.metadata.suggested_projects: [{id, name, score, classification}]` and `inputs.metadata.top_score` (set by `api/score.js` at promotion time).
+  - Domain relevance for a promoted candidate is implicit, not a column: `api/score.js` only promotes a candidate into the workspace whose project scored it highest, so anything in a workspace's Inbox (`inputs.project_id IS NULL`) is inherently relevant to that workspace's projects.
+- `user_preferences` table (added 2026-06-14) holds per-user digest preferences (`digest_unsubscribed`), keyed by `user_id` referencing `auth.users.id`, RLS enabled. A row may not exist for every user — always `maybeSingle()` on reads and `upsert` on writes.
+
+### `database.types.ts` can lag behind `supabase/migrations/`
+Regenerated 2026-06-14 (`supabase gen types typescript --project-id tbxjudpxzovbasuomekq`) — this resolved the previously-listed gaps (`projects.audience`/`scope_in`/`scope_out`, `workspaces.onboarding_completed`/`experience_level`, `cluster_suggestions.type`/`target_cluster_id`/`confidence`, `source_health`, `get_seeding_candidates`). **Current known gap:** `user_preferences` and `candidates.last_digest_at` (added by `20260614_weekly_digest.sql`) are not in `database.types.ts` because that migration has not yet been applied to the live database — both are already used by the `send-weekly-digest`/`unsubscribe-digest` Edge Functions. **For schema questions, always treat `supabase/migrations/` (read chronologically, latest wins) as the source of truth, not `database.types.ts`** — this file will drift again after future migrations until it's regenerated.
+
+### RLS patterns
+Two patterns are in use, depending on the table's key column:
+- Tables with a `workspace_id` column (the vast majority): `FOR ALL USING (workspace_id = get_workspace_id())`, where `get_workspace_id()` is a `SECURITY DEFINER` SQL function resolving `auth.uid()` to the caller's `workspaces.id`. Used by `cluster_suggestions`, `preferred_futures`, `strategic_options` — default to this for new project/workspace-scoped tables.
+- Tables keyed directly by `auth.users.id` (e.g. `user_preferences`): `USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)`.
+- A second function, `get_user_workspace_id()`, also exists in the database but has no usages in any tracked migration — confirm its purpose before relying on it.
+
+### Grants for new tables
+- **New tables require explicit grants** — Supabase will not auto-grant public schema access from **October 2026** onward. Every `CREATE TABLE` migration must include:
+```sql
+  grant select on public.<table> to anon;
+  grant select, insert, update, delete on public.<table> to authenticated;
+  grant select, insert, update, delete on public.<table> to service_role;
+  alter table public.<table> enable row level security;
+```
+  Run migrations manually in Supabase before handing off implementation prompts.
+- Several existing tables (`cluster_suggestions`, `preferred_futures`, `strategic_options`, `source_health`, etc.) were created before this requirement was identified and have no explicit grants in their migration files. If a permissions error appears on one of these ahead of the October 2026 deadline, add the missing grants in a follow-up migration rather than widening access ad hoc.
+
+### Environment variable conventions
+- **Frontend (`src/`)**: only `VITE_`-prefixed vars are available to the client bundle — `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_ENABLE_QA_TOOLS`.
+- **Server-side (`api/*.js`, Supabase Edge Functions)**: bare names, never `VITE_`-prefixed — `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `CRON_SECRET`, `APP_URL`, `ADMIN_EMAIL`, `RESEND_API_KEY`, `UNSUBSCRIBE_SECRET`.
+
+### Cron-triggered endpoints
+- Both Vercel functions (`api/scan.js`, `api/score.js`) and Supabase Edge Functions (`check-scanner-health`, `send-weekly-digest`) that run on a schedule check an `x-cron-secret` header against `CRON_SECRET` (`process.env.CRON_SECRET` / `Deno.env.get("CRON_SECRET")`) and return 401 on mismatch. Use this pattern for any new cron-triggered endpoint.
+
+### Edge Function deploy flags
+- Functions called from contexts with no Supabase Authorization header (e.g. links clicked from emails) must be deployed with JWT verification disabled: `supabase functions deploy <name> --no-verify-jwt`. Currently applies to `unsubscribe-digest`.
+- Unsubscribe token pattern: `HMAC-SHA256(user_id, UNSUBSCRIBE_SECRET)`, hex-encoded, with no embedded identifiers. The receiving function finds the matching user by recomputing the signature across `supabase.auth.admin.listUsers()`.

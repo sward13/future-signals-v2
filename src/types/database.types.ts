@@ -258,6 +258,7 @@ export type Database = {
         Row: {
           acted_on_at: string | null
           avg_similarity: number | null
+          confidence: string | null
           description: string | null
           generated_at: string | null
           generative_note: string | null
@@ -269,11 +270,14 @@ export type Database = {
           rationale: string | null
           status: string
           subtype: string | null
+          target_cluster_id: string | null
+          type: string | null
           workspace_id: string
         }
         Insert: {
           acted_on_at?: string | null
           avg_similarity?: number | null
+          confidence?: string | null
           description?: string | null
           generated_at?: string | null
           generative_note?: string | null
@@ -285,11 +289,14 @@ export type Database = {
           rationale?: string | null
           status?: string
           subtype?: string | null
+          target_cluster_id?: string | null
+          type?: string | null
           workspace_id: string
         }
         Update: {
           acted_on_at?: string | null
           avg_similarity?: number | null
+          confidence?: string | null
           description?: string | null
           generated_at?: string | null
           generative_note?: string | null
@@ -301,6 +308,8 @@ export type Database = {
           rationale?: string | null
           status?: string
           subtype?: string | null
+          target_cluster_id?: string | null
+          type?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -309,6 +318,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cluster_suggestions_target_cluster_id_fkey"
+            columns: ["target_cluster_id"]
+            isOneToOne: false
+            referencedRelation: "clusters"
             referencedColumns: ["id"]
           },
           {
@@ -637,6 +653,7 @@ export type Database = {
       projects: {
         Row: {
           assumptions: string | null
+          audience: string | null
           created_at: string
           domain: string | null
           focus: string | null
@@ -653,11 +670,14 @@ export type Database = {
           name: string
           question: string | null
           scanning_enabled: boolean
+          scope_in: string[]
+          scope_out: string[]
           stakeholders: string | null
           workspace_id: string
         }
         Insert: {
           assumptions?: string | null
+          audience?: string | null
           created_at?: string
           domain?: string | null
           focus?: string | null
@@ -674,11 +694,14 @@ export type Database = {
           name: string
           question?: string | null
           scanning_enabled?: boolean
+          scope_in?: string[]
+          scope_out?: string[]
           stakeholders?: string | null
           workspace_id: string
         }
         Update: {
           assumptions?: string | null
+          audience?: string | null
           created_at?: string
           domain?: string | null
           focus?: string | null
@@ -695,6 +718,8 @@ export type Database = {
           name?: string
           question?: string | null
           scanning_enabled?: boolean
+          scope_in?: string[]
+          scope_out?: string[]
           stakeholders?: string | null
           workspace_id?: string
         }
@@ -897,6 +922,59 @@ export type Database = {
           },
         ]
       }
+      source_health: {
+        Row: {
+          avg_score_across_projects: number | null
+          avg_summary_length: number | null
+          checked_at: string
+          consecutive_failures: number
+          dedup_rate: number | null
+          id: string
+          items_last_fetch: number | null
+          last_successful_fetch: string | null
+          promotion_rate: number | null
+          source_id: string
+          status: string
+          top_dismissal_reason: string | null
+        }
+        Insert: {
+          avg_score_across_projects?: number | null
+          avg_summary_length?: number | null
+          checked_at?: string
+          consecutive_failures?: number
+          dedup_rate?: number | null
+          id?: string
+          items_last_fetch?: number | null
+          last_successful_fetch?: string | null
+          promotion_rate?: number | null
+          source_id: string
+          status?: string
+          top_dismissal_reason?: string | null
+        }
+        Update: {
+          avg_score_across_projects?: number | null
+          avg_summary_length?: number | null
+          checked_at?: string
+          consecutive_failures?: number
+          dedup_rate?: number | null
+          id?: string
+          items_last_fetch?: number | null
+          last_successful_fetch?: string | null
+          promotion_rate?: number | null
+          source_id?: string
+          status?: string
+          top_dismissal_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_health_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: true
+            referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sources: {
         Row: {
           active: boolean
@@ -957,6 +1035,8 @@ export type Database = {
           intended_outcome: string | null
           name: string
           project_id: string
+          resource_intensity: string | null
+          reversibility: string | null
           risks: string | null
           scenario_ids: Json
           updated_at: string
@@ -974,6 +1054,8 @@ export type Database = {
           intended_outcome?: string | null
           name: string
           project_id: string
+          resource_intensity?: string | null
+          reversibility?: string | null
           risks?: string | null
           scenario_ids?: Json
           updated_at?: string
@@ -991,6 +1073,8 @@ export type Database = {
           intended_outcome?: string | null
           name?: string
           project_id?: string
+          resource_intensity?: string | null
+          reversibility?: string | null
           risks?: string | null
           scenario_ids?: Json
           updated_at?: string
@@ -1060,17 +1144,23 @@ export type Database = {
       workspaces: {
         Row: {
           created_at: string
+          experience_level: string | null
           id: string
+          onboarding_completed: boolean
           user_id: string
         }
         Insert: {
           created_at?: string
+          experience_level?: string | null
           id?: string
+          onboarding_completed?: boolean
           user_id: string
         }
         Update: {
           created_at?: string
+          experience_level?: string | null
           id?: string
+          onboarding_completed?: boolean
           user_id?: string
         }
         Relationships: []
@@ -1085,6 +1175,20 @@ export type Database = {
         Returns: {
           id_a: string
           id_b: string
+        }[]
+      }
+      get_seeding_candidates: {
+        Args: { p_domain: string }
+        Returns: {
+          embedding: string
+          id: string
+          published_at: string
+          source_credibility: string
+          source_name: string
+          steepled: string[]
+          summary_ai: string
+          title: string
+          url: string
         }[]
       }
       get_user_workspace_id: { Args: never; Returns: string }
@@ -1221,5 +1325,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-A new version of Supabase CLI is available: v2.90.0 (currently installed v2.84.2)
-We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
