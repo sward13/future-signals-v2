@@ -109,6 +109,7 @@ export type Database = {
           expires_at: string
           id: string
           ingested_at: string
+          last_digest_at: string | null
           published_at: string | null
           source_id: string
           status: string
@@ -123,6 +124,7 @@ export type Database = {
           expires_at?: string
           id?: string
           ingested_at?: string
+          last_digest_at?: string | null
           published_at?: string | null
           source_id: string
           status?: string
@@ -137,6 +139,7 @@ export type Database = {
           expires_at?: string
           id?: string
           ingested_at?: string
+          last_digest_at?: string | null
           published_at?: string | null
           source_id?: string
           status?: string
@@ -1096,6 +1099,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_preferences: {
+        Row: {
+          digest_unsubscribed: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          digest_unsubscribed?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          digest_unsubscribed?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       workspace_settings: {
         Row: {
