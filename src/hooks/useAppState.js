@@ -26,6 +26,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   // ── Auth-derived user ────────────────────────────────────────────────────
   const authUser = session?.user ?? null;
   const user = {
+    id: authUser?.id || null,
     name: authUser?.user_metadata?.full_name
       || authUser?.user_metadata?.name
       || authUser?.email?.split("@")[0]

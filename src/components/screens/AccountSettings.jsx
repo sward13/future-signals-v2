@@ -64,7 +64,7 @@ function SectionCard({ children }) {
 // ─── Main screen ───────────────────────────────────────────────────────────────
 
 export default function AccountSettings({ appState, onSignOut }) {
-  const { user, workspaceScanningEnabled, updateWorkspaceScanningEnabled } = appState;
+  const { user, workspaceScanningEnabled, updateWorkspaceScanningEnabled, showToast } = appState;
 
   // ── Timeout cleanup ─────────────────────────────────────────────────────────
 
@@ -132,6 +132,39 @@ export default function AccountSettings({ appState, onSignOut }) {
       }
     } finally {
       setProfileSaving(false);
+    }
+  };
+
+  // ── Signal Scanning section — weekly digest toggle ──────────────────────────
+
+  const [digestSubscribed, setDigestSubscribed] = useState(true);
+
+  useEffect(() => {
+    if (!user.id) return;
+    (async () => {
+      const { data } = await supabase
+        .from("user_preferences")
+        .select("digest_unsubscribed")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setDigestSubscribed(data ? !data.digest_unsubscribed : true);
+    })();
+  }, [user.id]);
+
+  const handleDigestToggle = async () => {
+    if (!workspaceScanningEnabled) return;
+    const next = !digestSubscribed;
+    setDigestSubscribed(next);
+    const { error } = await supabase
+      .from("user_preferences")
+      .upsert({
+        user_id: user.id,
+        digest_unsubscribed: !next,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+    if (error) {
+      setDigestSubscribed(!next);
+      showToast("Failed to update digest preference", "error");
     }
   };
 
@@ -328,6 +361,43 @@ export default function AccountSettings({ appState, onSignOut }) {
               <span style={{
                 position: "absolute",
                 top: 3, left: workspaceScanningEnabled ? 21 : 3,
+                width: 16, height: 16, borderRadius: "50%",
+                background: c.white, transition: "left 0.2s",
+              }} />
+            </button>
+          </div>
+
+          <div style={{
+            display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16,
+            marginTop: 18, paddingTop: 18, borderTop: `1px solid ${c.border}`,
+          }}>
+            <div>
+              <div style={{ fontSize: 13, color: workspaceScanningEnabled ? c.ink : c.hint, marginBottom: 3 }}>
+                Weekly signal digest
+              </div>
+              <div style={{ fontSize: 11, color: c.muted, lineHeight: 1.5 }}>
+                Receive a weekly email of signals from the scanner relevant to your active projects.
+              </div>
+            </div>
+            {/* Toggle */}
+            <button
+              role="switch"
+              aria-checked={workspaceScanningEnabled && digestSubscribed}
+              disabled={!workspaceScanningEnabled}
+              onClick={handleDigestToggle}
+              style={{
+                flexShrink: 0,
+                width: 40, height: 22, borderRadius: 11,
+                background: workspaceScanningEnabled && digestSubscribed ? c.ink : c.hint,
+                border: "none",
+                cursor: workspaceScanningEnabled ? "pointer" : "default",
+                padding: 0, position: "relative", transition: "background 0.2s",
+                opacity: workspaceScanningEnabled ? 1 : 0.5,
+              }}
+            >
+              <span style={{
+                position: "absolute",
+                top: 3, left: workspaceScanningEnabled && digestSubscribed ? 21 : 3,
                 width: 16, height: 16, borderRadius: "50%",
                 background: c.white, transition: "left 0.2s",
               }} />
