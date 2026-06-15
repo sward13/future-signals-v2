@@ -8,12 +8,12 @@
  */
 import { useState, useMemo } from "react";
 import { c, inp, btnP, btnSm, btnSec, btnG } from "../../styles/tokens.js";
-import { CirclePlus, Sparkles, List, LayoutGrid, ChevronDown } from "lucide-react";
+import { CirclePlus, Sparkles, List, LayoutGrid } from "lucide-react";
 import { ViewToggle } from "../ViewToggle.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { HorizTag } from "../shared/Tag.jsx";
-import { ProjectPickerModal } from "../shared/ProjectPickerModal.jsx";
+import { AddToProjectButton } from "../shared/AddToProjectButton.jsx";
 import { FilterDropdown } from "./ProjectDetail.jsx";
 import { STEEPLED } from "../../data/seeds.js";
 
@@ -117,97 +117,6 @@ function ProjectPickerPopover({ projects, onSelect, onClose, onCreateProject }) 
   );
 }
 
-// ─── AI Suggested: "Add to project" menu ──────────────────────────────────────
-
-function AiAddToProjectMenu({ suggestedProjects, projects, isOpen, onToggle, onClose, onSelect, buttonStyle }) {
-  const recommended = suggestedProjects.length > 0
-    ? suggestedProjects.reduce((best, p) => ((p.score ?? 0) > (best.score ?? 0) ? p : best))
-    : null;
-  const recommendedProject = recommended ? projects.find((proj) => proj.id === recommended.id) : null;
-
-  const otherProjects = projects
-    .filter((proj) => !recommendedProject || proj.id !== recommendedProject.id)
-    .slice()
-    .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-
-  return (
-    <div style={{ position: "relative" }}>
-      <button
-        onClick={(e) => { e.stopPropagation(); onToggle(); }}
-        style={{ display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", ...buttonStyle }}
-      >
-        Add to project <ChevronDown size={11} strokeWidth={2} />
-      </button>
-      {isOpen && (
-        <>
-          <div onClick={(e) => { e.stopPropagation(); onClose(); }} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: "absolute", top: "100%", right: 0, marginTop: 4,
-              background: c.white, border: `1px solid ${c.border}`,
-              borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
-              minWidth: 220, maxHeight: 280, overflowY: "auto",
-              zIndex: 51, textAlign: "left",
-            }}
-          >
-            {recommendedProject && (
-              <>
-                <div style={{ padding: "8px 14px 4px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, fontWeight: 500 }}>
-                  Recommended
-                </div>
-                <button
-                  onClick={() => onSelect(recommendedProject)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    width: "100%", padding: "8px 14px",
-                    background: "transparent", border: "none",
-                    textAlign: "left", cursor: "pointer", fontFamily: "inherit",
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {recommendedProject.name}
-                    </div>
-                    <div style={{ fontSize: 10, color: c.hint }}>{recommendedProject.domain}</div>
-                  </div>
-                  <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: c.blue50, color: c.blue700, border: `1px solid ${c.blueBorder}`, fontWeight: 500, flexShrink: 0 }}>
-                    AI pick
-                  </span>
-                </button>
-                <div style={{ height: 1, background: c.border, margin: "2px 0" }} />
-              </>
-            )}
-            <div style={{ padding: "8px 14px 4px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, fontWeight: 500 }}>
-              Other projects
-            </div>
-            {otherProjects.length === 0 ? (
-              <div style={{ padding: "4px 14px 12px", fontSize: 11, color: c.hint }}>No other projects yet.</div>
-            ) : (
-              otherProjects.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => onSelect(p)}
-                  style={{
-                    display: "block", width: "100%", padding: "8px 14px",
-                    background: "transparent", border: "none",
-                    textAlign: "left", cursor: "pointer", fontFamily: "inherit",
-                  }}
-                >
-                  <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                  <div style={{ fontSize: 10, color: c.hint }}>{p.domain}</div>
-                </button>
-              ))
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ─── Single-input project picker modal ───────────────────────────────────────
-
 // ─── Table section header ─────────────────────────────────────────────────────
 
 function SectionHeader({ title, count, icon }) {
@@ -251,9 +160,8 @@ function ListHeader() {
 
 // ─── List row (flat single-row) ────────────────────────────────────────────────
 
-function ListRow({ input, isScannerSuggested, suggestedProjects, projects, onSaveToProject, onAddToProject, onDismissSuggested, onOpen, selected, onToggle, anySelected }) {
+function ListRow({ input, isScannerSuggested, suggestedProjects, recommendedProjectId, projects, onAddToProject, onDismissSuggested, onOpen, selected, onToggle, anySelected }) {
   const [hovered, setHovered] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const steepled = input.steepled || [];
   const vis2     = steepled.slice(0, 2);
   const overflow = steepled.length - 2;
@@ -322,32 +230,22 @@ function ListRow({ input, isScannerSuggested, suggestedProjects, projects, onSav
 
       {/* CTA */}
       <div style={{ width: COL.cta, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-        {isScannerSuggested ? (
-          <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-            <AiAddToProjectMenu
-              suggestedProjects={suggestedProjects}
-              projects={projects}
-              isOpen={menuOpen}
-              onToggle={() => setMenuOpen((o) => !o)}
-              onClose={() => setMenuOpen(false)}
-              onSelect={(project) => { setMenuOpen(false); onAddToProject(project); }}
-              buttonStyle={{ ...btnSm, fontSize: 10, padding: "3px 8px" }}
-            />
+        <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+          <AddToProjectButton
+            projects={projects}
+            recommendedProjectId={isScannerSuggested ? recommendedProjectId : undefined}
+            onAdd={onAddToProject}
+            buttonStyle={{ ...btnSm, fontSize: 10, padding: "3px 8px" }}
+          />
+          {isScannerSuggested && (
             <button
               onClick={(e) => { e.stopPropagation(); onDismissSuggested(); }}
               style={{ fontSize: 10, padding: "3px 6px", background: "none", border: "none", color: c.hint, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
             >
               Dismiss
             </button>
-          </div>
-        ) : (
-          <button
-            onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }}
-            style={{ ...btnSm, fontSize: 10, padding: "3px 8px", whiteSpace: "nowrap" }}
-          >
-            Add to project →
-          </button>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
@@ -355,9 +253,8 @@ function ListRow({ input, isScannerSuggested, suggestedProjects, projects, onSav
 
 // ─── Full card (Card view) ────────────────────────────────────────────────────
 
-function FullCard({ input, isScannerSuggested, suggestedProjects, projects, savedProjectId, onSaveToProject, onAddToProject, onDismissSuggested, onDismiss, onOpen, selected, onToggle, anySelected }) {
+function FullCard({ input, isScannerSuggested, suggestedProjects, recommendedProjectId, projects, savedProjectId, onAddToProject, onDismissSuggested, onDismiss, onOpen, selected, onToggle, anySelected }) {
   const [hovered, setHovered] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const project = savedProjectId ? projects.find((p) => p.id === savedProjectId) : null;
 
   return (
@@ -423,25 +320,20 @@ function FullCard({ input, isScannerSuggested, suggestedProjects, projects, save
                 <span style={{ fontSize: 11, color: c.green700, background: c.green50, border: `1px solid ${c.greenBorder}`, borderRadius: 6, padding: "3px 9px" }}>
                   ✓ Saved to {project?.name || "project"}
                 </span>
-              ) : isScannerSuggested ? (
+              ) : (
                 <>
-                  <AiAddToProjectMenu
-                    suggestedProjects={suggestedProjects}
+                  <AddToProjectButton
                     projects={projects}
-                    isOpen={menuOpen}
-                    onToggle={() => setMenuOpen((o) => !o)}
-                    onClose={() => setMenuOpen(false)}
-                    onSelect={(project) => { setMenuOpen(false); onAddToProject(project); }}
+                    recommendedProjectId={isScannerSuggested ? recommendedProjectId : undefined}
+                    onAdd={onAddToProject}
                     buttonStyle={{ padding: "4px 12px", borderRadius: 7, background: c.brand, color: c.white, border: "none", fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
                   />
-                  <button onClick={(e) => { e.stopPropagation(); onDismissSuggested(); }} style={{ ...btnG, fontSize: 11, padding: "4px 8px", color: c.hint }}>
-                    Dismiss
-                  </button>
+                  {isScannerSuggested && (
+                    <button onClick={(e) => { e.stopPropagation(); onDismissSuggested(); }} style={{ ...btnG, fontSize: 11, padding: "4px 8px", color: c.hint }}>
+                      Dismiss
+                    </button>
+                  )}
                 </>
-              ) : (
-                <button onClick={(e) => { e.stopPropagation(); onSaveToProject(input.id); }} style={{ padding: "4px 12px", borderRadius: 7, background: c.brand, color: c.white, border: "none", fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>
-                  Add to project →
-                </button>
               )}
             </div>
           )}
@@ -472,7 +364,6 @@ export default function Inbox({ appState }) {
   const [filterSteepled,    setFilterSteepled]    = useState(null);
   const [openFilterDropdown,setOpenFilterDropdown]= useState(null);
   const [savedToProject,    setSavedToProject]    = useState({});
-  const [savingInputId,     setSavingInputId]     = useState(null);
   const [selectedManualIds, setSelectedManualIds] = useState([]);
   const [selectedAiIds,     setSelectedAiIds]     = useState([]);
   const [manualPickerOpen,  setManualPickerOpen]  = useState(false);
@@ -589,34 +480,42 @@ export default function Inbox({ appState }) {
 
   const clearFilters = () => { setFilterType(null); setFilterHorizon(null); setFilterSteepled(null); };
 
-  const handleAddToProject = (inp, project) => {
-    saveInputToProject(inp.id, project.id);
-    setSavedToProject((prev) => ({ ...prev, [inp.id]: project.id }));
-    showToast(`Added to "${project.name}"`);
+  const handleAddToProject = (inp, projectId) => {
+    const project = projects.find((p) => p.id === projectId);
+    saveInputToProject(inp.id, projectId);
+    setSavedToProject((prev) => ({ ...prev, [inp.id]: projectId }));
+    showToast(`Added to "${project?.name || "project"}"`);
   };
 
   // Item props builder — selection context passed per-table
-  const itemProps = (inp, selectedIds, onToggle, anyTableSelected) => ({
-    input: inp,
-    isSeeded: !!inp.is_seeded,
-    isScannerSuggested: !!(inp.is_seeded && inp.metadata?.source === "scanner"),
+  const itemProps = (inp, selectedIds, onToggle, anyTableSelected) => {
     // Cross-reference against currently-active projects — `projects` only
     // contains live (non-deleted) rows, so this drops references to
     // projects the user has since deleted.
-    suggestedProjects: (inp.metadata?.suggested_projects || []).filter((sp) =>
+    const suggestedProjects = (inp.metadata?.suggested_projects || []).filter((sp) =>
       projects.some((proj) => proj.id === sp.id)
-    ),
-    projects,
-    savedProjectId: savedToProject[inp.id],
-    onSaveToProject: (id) => setSavingInputId(id),
-    onAddToProject: (project) => handleAddToProject(inp, project),
-    onDismissSuggested: () => handleDismissSuggested(inp),
-    onDismiss: handleDismiss,
-    onOpen: () => openInputDetail(inp.id),
-    selected: selectedIds.includes(inp.id),
-    onToggle,
-    anySelected: anyTableSelected,
-  });
+    );
+    const recommendedProjectId = suggestedProjects.length > 0
+      ? suggestedProjects.slice().sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0].id
+      : undefined;
+
+    return {
+      input: inp,
+      isSeeded: !!inp.is_seeded,
+      isScannerSuggested: !!(inp.is_seeded && inp.metadata?.source === "scanner"),
+      suggestedProjects,
+      recommendedProjectId,
+      projects,
+      savedProjectId: savedToProject[inp.id],
+      onAddToProject: (projectId) => handleAddToProject(inp, projectId),
+      onDismissSuggested: () => handleDismissSuggested(inp),
+      onDismiss: handleDismiss,
+      onOpen: () => openInputDetail(inp.id),
+      selected: selectedIds.includes(inp.id),
+      onToggle,
+      anySelected: anyTableSelected,
+    };
+  };
 
   // ── Render helpers ────────────────────────────────────────────────────────
 
@@ -896,20 +795,6 @@ export default function Inbox({ appState }) {
         onSave={handleSave}
         projects={projects}
       />
-
-      {savingInputId && (
-        <ProjectPickerModal
-          projects={projects}
-          onClose={() => setSavingInputId(null)}
-          onCreateProject={openProjectModal}
-          onSelect={(project) => {
-            saveInputToProject(savingInputId, project.id);
-            setSavedToProject((prev) => ({ ...prev, [savingInputId]: project.id }));
-            showToast(`Input added to "${project.name}"`);
-            setSavingInputId(null);
-          }}
-        />
-      )}
     </>
   );
 }
