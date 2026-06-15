@@ -511,7 +511,12 @@ export default function Inbox({ appState }) {
     input: inp,
     isSeeded: !!inp.is_seeded,
     isScannerSuggested: !!(inp.is_seeded && inp.metadata?.source === "scanner"),
-    suggestedProjects: inp.metadata?.suggested_projects || [],
+    // Cross-reference against currently-active projects — `projects` only
+    // contains live (non-deleted) rows, so this drops references to
+    // projects the user has since deleted.
+    suggestedProjects: (inp.metadata?.suggested_projects || []).filter((sp) =>
+      projects.some((proj) => proj.id === sp.id)
+    ),
     projects,
     savedProjectId: savedToProject[inp.id],
     onSaveToProject: (id) => setSavingInputId(id),
