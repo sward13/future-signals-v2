@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { c } from "../../styles/tokens.js";
 import { ChevronDown } from "lucide-react";
 
@@ -23,6 +24,8 @@ const item = {
  */
 export function AddToProjectButton({ projects, recommendedProjectId, onAdd, buttonStyle }) {
   const [open, setOpen] = useState(false);
+  const [anchorRect, setAnchorRect] = useState(null);
+  const buttonRef = useRef(null);
 
   const recommendedProject = recommendedProjectId
     ? projects.find((p) => p.id === recommendedProjectId)
@@ -41,18 +44,23 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
   return (
     <div style={{ position: "relative" }}>
       <button
-        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+        ref={buttonRef}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!open) setAnchorRect(buttonRef.current.getBoundingClientRect());
+          setOpen((o) => !o);
+        }}
         style={{ display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", ...buttonStyle }}
       >
         Add to project <ChevronDown size={11} strokeWidth={2} />
       </button>
-      {open && (
+      {open && anchorRect && createPortal(
         <>
           <div onClick={(e) => { e.stopPropagation(); setOpen(false); }} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              position: "absolute", top: "100%", right: 0, marginTop: 4,
+              position: "fixed", top: anchorRect.bottom + 4, right: window.innerWidth - anchorRect.right,
               background: c.white, border: `1px solid ${c.border}`,
               borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
               minWidth: 220, maxHeight: 280, overflowY: "auto",
@@ -90,7 +98,8 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
               ))
             )}
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );
