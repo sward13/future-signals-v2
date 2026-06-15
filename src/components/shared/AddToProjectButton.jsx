@@ -65,6 +65,7 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
               borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
               minWidth: 220, maxHeight: 280, overflowY: "auto",
               zIndex: 51, textAlign: "left",
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
             }}
           >
             {recommendedProject && (
