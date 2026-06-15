@@ -49,12 +49,12 @@ function formatDate(str) {
 
 // ─── Checkbox ────────────────────────────────────────────────────────────────
 
-function RowCheckbox({ checked, visible }) {
+function RowCheckbox({ checked, indeterminate, visible }) {
   return (
     <div style={{
       width: 15, height: 15, borderRadius: 3, flexShrink: 0,
-      border: `1.5px solid ${checked ? c.ink : visible ? c.borderMid : "rgba(0,0,0,0.12)"}`,
-      background: checked ? c.ink : "transparent",
+      border: `1.5px solid ${checked || indeterminate ? c.ink : visible ? c.borderMid : "rgba(0,0,0,0.12)"}`,
+      background: checked || indeterminate ? c.ink : "transparent",
       display: "flex", alignItems: "center", justifyContent: "center",
       transition: "border-color 0.15s, background 0.15s",
       pointerEvents: "none",
@@ -63,6 +63,9 @@ function RowCheckbox({ checked, visible }) {
         <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
           <path d="M1 3L3 5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
+      )}
+      {indeterminate && !checked && (
+        <div style={{ width: 7, height: 1.5, borderRadius: 1, background: c.white }} />
       )}
     </div>
   );
@@ -138,7 +141,7 @@ function SectionHeader({ title, count, icon }) {
 
 // ─── List table header ────────────────────────────────────────────────────────
 
-function ListHeader() {
+function ListHeader({ checked, indeterminate, onToggleAll }) {
   const cell = { fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, flexShrink: 0 };
   return (
     <div style={{
@@ -146,7 +149,9 @@ function ListHeader() {
       padding: "0 14px", height: 30,
       borderBottom: "0.5px solid rgba(0,0,0,0.09)",
     }}>
-      <div style={{ width: 15, flexShrink: 0 }} />
+      <div onClick={(e) => { e.stopPropagation(); onToggleAll(); }} style={{ cursor: "pointer", flexShrink: 0 }}>
+        <RowCheckbox checked={checked} indeterminate={indeterminate} visible={true} />
+      </div>
       <div style={{ flex: 1, minWidth: 0, ...cell }}>Title</div>
       <div style={{ width: COL.type,     ...cell }}>Type</div>
       <div style={{ width: COL.quality,  ...cell }}>Quality</div>
@@ -343,7 +348,69 @@ function FullCard({ input, isScannerSuggested, suggestedProjects, recommendedPro
   );
 }
 
-// ─── Shared filter function ────────────────────────────────────────────────────
+// ─── Per-section search + filter bar ──────────────────────────────────────────
+
+function SearchFilterBar({
+  search, onSearchChange,
+  filterType, onFilterTypeChange,
+  filterHorizon, onFilterHorizonChange,
+  filterSteepled, onFilterSteepledChange,
+  openDropdown, onToggleDropdown,
+  onClearAll,
+}) {
+  const anyFilterActive = !!(search.trim() || filterType || filterHorizon || filterSteepled);
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+      <input
+        value={search}
+        onChange={(e) => onSearchChange(e.target.value)}
+        placeholder="Search inputs…"
+        style={{
+          ...inp, width: 240, padding: "5px 10px", fontSize: 12,
+          border: `1px solid ${c.border}`, borderRadius: 6,
+        }}
+      />
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
+        <FilterDropdown
+          label="Type"
+          value={filterType}
+          options={INPUT_TYPE_OPTS.map((v) => ({ value: v, label: v }))}
+          onChange={onFilterTypeChange}
+          onClear={() => onFilterTypeChange(null)}
+          isOpen={openDropdown === "type"}
+          onToggle={() => onToggleDropdown("type")}
+        />
+        <FilterDropdown
+          label="Horizon"
+          value={filterHorizon}
+          options={["H1", "H2", "H3"].map((v) => ({ value: v, label: v }))}
+          onChange={onFilterHorizonChange}
+          onClear={() => onFilterHorizonChange(null)}
+          isOpen={openDropdown === "horizon"}
+          onToggle={() => onToggleDropdown("horizon")}
+        />
+        <FilterDropdown
+          label="STEEPLED"
+          value={filterSteepled}
+          options={STEEPLED.map((v) => ({ value: v, label: v }))}
+          onChange={onFilterSteepledChange}
+          onClear={() => onFilterSteepledChange(null)}
+          isOpen={openDropdown === "steepled"}
+          onToggle={() => onToggleDropdown("steepled")}
+        />
+      </div>
+      {anyFilterActive && (
+        <button
+          onClick={onClearAll}
+          style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+        >
+          Clear all
+        </button>
+      )}
+    </div>
+  );
+}
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
@@ -358,11 +425,21 @@ export default function Inbox({ appState }) {
 
   const [drawerOpen,        setDrawerOpen]        = useState(false);
   const [viewMode,          setViewMode]          = useState("list");
-  const [search,            setSearch]            = useState("");
-  const [filterType,        setFilterType]        = useState(null);
-  const [filterHorizon,     setFilterHorizon]     = useState(null);
-  const [filterSteepled,    setFilterSteepled]    = useState(null);
-  const [openFilterDropdown,setOpenFilterDropdown]= useState(null);
+
+  // My Inputs — search + filters
+  const [manualSearch,            setManualSearch]            = useState("");
+  const [manualFilterType,        setManualFilterType]        = useState(null);
+  const [manualFilterHorizon,     setManualFilterHorizon]     = useState(null);
+  const [manualFilterSteepled,    setManualFilterSteepled]    = useState(null);
+  const [manualOpenFilterDropdown,setManualOpenFilterDropdown]= useState(null);
+
+  // AI Suggested — search + filters
+  const [aiSearch,            setAiSearch]            = useState("");
+  const [aiFilterType,        setAiFilterType]        = useState(null);
+  const [aiFilterHorizon,     setAiFilterHorizon]     = useState(null);
+  const [aiFilterSteepled,    setAiFilterSteepled]    = useState(null);
+  const [aiOpenFilterDropdown,setAiOpenFilterDropdown]= useState(null);
+
   const [savedToProject,    setSavedToProject]    = useState({});
   const [selectedManualIds, setSelectedManualIds] = useState([]);
   const [selectedAiIds,     setSelectedAiIds]     = useState([]);
@@ -390,25 +467,22 @@ export default function Inbox({ appState }) {
     return all.filter((i) => i.metadata?.suggested_projects?.some((p) => p.id === inboxProjectFilter));
   }, [allInboxInputs, inboxProjectFilter]);
 
-  const anyFilterActive = !!(search.trim() || filterType || filterHorizon || filterSteepled);
-  const hasActiveSearch = anyFilterActive;
-
-  // Apply search + filters independently
+  // Apply search + filters independently per section
   const filteredManual = useMemo(() =>
     manualInputs
-      .filter((i) => !search || (i.name || "").toLowerCase().includes(search.toLowerCase()) || (i.description || "").toLowerCase().includes(search.toLowerCase()))
-      .filter((i) => !filterType     || i.subtype === filterType)
-      .filter((i) => !filterHorizon  || i.horizon === filterHorizon)
-      .filter((i) => !filterSteepled || (i.steepled || []).includes(filterSteepled)),
-    [manualInputs, search, filterType, filterHorizon, filterSteepled]
+      .filter((i) => !manualSearch || (i.name || "").toLowerCase().includes(manualSearch.toLowerCase()) || (i.description || "").toLowerCase().includes(manualSearch.toLowerCase()))
+      .filter((i) => !manualFilterType     || i.subtype === manualFilterType)
+      .filter((i) => !manualFilterHorizon  || i.horizon === manualFilterHorizon)
+      .filter((i) => !manualFilterSteepled || (i.steepled || []).includes(manualFilterSteepled)),
+    [manualInputs, manualSearch, manualFilterType, manualFilterHorizon, manualFilterSteepled]
   );
   const filteredAI = useMemo(() =>
     aiInputs
-      .filter((i) => !search || (i.name || "").toLowerCase().includes(search.toLowerCase()) || (i.description || "").toLowerCase().includes(search.toLowerCase()))
-      .filter((i) => !filterType     || i.subtype === filterType)
-      .filter((i) => !filterHorizon  || i.horizon === filterHorizon)
-      .filter((i) => !filterSteepled || (i.steepled || []).includes(filterSteepled)),
-    [aiInputs, search, filterType, filterHorizon, filterSteepled]
+      .filter((i) => !aiSearch || (i.name || "").toLowerCase().includes(aiSearch.toLowerCase()) || (i.description || "").toLowerCase().includes(aiSearch.toLowerCase()))
+      .filter((i) => !aiFilterType     || i.subtype === aiFilterType)
+      .filter((i) => !aiFilterHorizon  || i.horizon === aiFilterHorizon)
+      .filter((i) => !aiFilterSteepled || (i.steepled || []).includes(aiFilterSteepled)),
+    [aiInputs, aiSearch, aiFilterType, aiFilterHorizon, aiFilterSteepled]
   );
 
   // AI items to display (collapsed = first 10)
@@ -438,6 +512,32 @@ export default function Inbox({ appState }) {
 
   const toggleSelectAi = (id) => {
     setSelectedAiIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  };
+
+  // Select-all for the My Inputs header checkbox — applies to all rows
+  // currently visible under the active search/filters.
+  const allManualSelected  = filteredManual.length > 0 && filteredManual.every((i) => selectedManualIds.includes(i.id));
+  const someManualSelected = filteredManual.some((i) => selectedManualIds.includes(i.id));
+
+  const toggleSelectAllManual = () => {
+    if (allManualSelected) {
+      setSelectedManualIds((prev) => prev.filter((id) => !filteredManual.some((i) => i.id === id)));
+    } else {
+      setSelectedManualIds((prev) => [...new Set([...prev, ...filteredManual.map((i) => i.id)])]);
+    }
+  };
+
+  // Select-all for the AI Suggested header checkbox — applies to the rows
+  // currently rendered (respecting the collapsed preview + active filters).
+  const allAiSelected  = visibleAI.length > 0 && visibleAI.every((i) => selectedAiIds.includes(i.id));
+  const someAiSelected = visibleAI.some((i) => selectedAiIds.includes(i.id));
+
+  const toggleSelectAllAi = () => {
+    if (allAiSelected) {
+      setSelectedAiIds((prev) => prev.filter((id) => !visibleAI.some((i) => i.id === id)));
+    } else {
+      setSelectedAiIds((prev) => [...new Set([...prev, ...visibleAI.map((i) => i.id)])]);
+    }
   };
 
   const clearManualSelection = () => { setSelectedManualIds([]); setManualPickerOpen(false); };
@@ -478,7 +578,19 @@ export default function Inbox({ appState }) {
     clearAiSelection();
   };
 
-  const clearFilters = () => { setFilterType(null); setFilterHorizon(null); setFilterSteepled(null); };
+  const clearManualFilters = () => {
+    setManualSearch("");
+    setManualFilterType(null);
+    setManualFilterHorizon(null);
+    setManualFilterSteepled(null);
+  };
+
+  const clearAiFilters = () => {
+    setAiSearch("");
+    setAiFilterType(null);
+    setAiFilterHorizon(null);
+    setAiFilterSteepled(null);
+  };
 
   const handleAddToProject = (inp, projectId) => {
     const project = projects.find((p) => p.id === projectId);
@@ -519,9 +631,9 @@ export default function Inbox({ appState }) {
 
   // ── Render helpers ────────────────────────────────────────────────────────
 
-  const renderList = (items, getProps) => (
+  const renderList = (items, getProps, headerProps) => (
     <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden" }}>
-      <ListHeader />
+      <ListHeader {...headerProps} />
       {items.map((inp) => <ListRow key={inp.id} {...getProps(inp)} />)}
     </div>
   );
@@ -532,8 +644,8 @@ export default function Inbox({ appState }) {
     </div>
   );
 
-  const renderItems = (items, getProps) => {
-    if (viewMode === "list") return renderList(items, getProps);
+  const renderItems = (items, getProps, headerProps) => {
+    if (viewMode === "list") return renderList(items, getProps, headerProps);
     return renderCards(items, getProps);
   };
 
@@ -565,56 +677,6 @@ export default function Inbox({ appState }) {
           </div>
         </div>
 
-        {/* ── Search + Filter bar ──────────────────────────────── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search inputs…"
-            style={{
-              ...inp, width: 240, padding: "5px 10px", fontSize: 12,
-              border: `1px solid ${c.border}`, borderRadius: 6,
-            }}
-          />
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
-            <FilterDropdown
-              label="Type"
-              value={filterType}
-              options={INPUT_TYPE_OPTS.map((v) => ({ value: v, label: v }))}
-              onChange={setFilterType}
-              onClear={() => setFilterType(null)}
-              isOpen={openFilterDropdown === "type"}
-              onToggle={() => setOpenFilterDropdown(openFilterDropdown === "type" ? null : "type")}
-            />
-            <FilterDropdown
-              label="Horizon"
-              value={filterHorizon}
-              options={["H1", "H2", "H3"].map((v) => ({ value: v, label: v }))}
-              onChange={setFilterHorizon}
-              onClear={() => setFilterHorizon(null)}
-              isOpen={openFilterDropdown === "horizon"}
-              onToggle={() => setOpenFilterDropdown(openFilterDropdown === "horizon" ? null : "horizon")}
-            />
-            <FilterDropdown
-              label="STEEPLED"
-              value={filterSteepled}
-              options={STEEPLED.map((v) => ({ value: v, label: v }))}
-              onChange={setFilterSteepled}
-              onClear={() => setFilterSteepled(null)}
-              isOpen={openFilterDropdown === "steepled"}
-              onToggle={() => setOpenFilterDropdown(openFilterDropdown === "steepled" ? null : "steepled")}
-            />
-          </div>
-          {anyFilterActive && (
-            <button
-              onClick={() => { setSearch(""); clearFilters(); }}
-              style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
-            >
-              Clear all
-            </button>
-          )}
-        </div>
-
         {/* ── My Inputs table ──────────────────────────────────── */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -634,6 +696,20 @@ export default function Inbox({ appState }) {
             ]}
           />
         </div>
+
+        <SearchFilterBar
+          search={manualSearch}
+          onSearchChange={setManualSearch}
+          filterType={manualFilterType}
+          onFilterTypeChange={setManualFilterType}
+          filterHorizon={manualFilterHorizon}
+          onFilterHorizonChange={setManualFilterHorizon}
+          filterSteepled={manualFilterSteepled}
+          onFilterSteepledChange={setManualFilterSteepled}
+          openDropdown={manualOpenFilterDropdown}
+          onToggleDropdown={(key) => setManualOpenFilterDropdown((d) => d === key ? null : key)}
+          onClearAll={clearManualFilters}
+        />
 
         {/* My Inputs inline action bar */}
         {selectedManualIds.length > 0 && (
@@ -676,17 +752,21 @@ export default function Inbox({ appState }) {
           </div>
         ) : filteredManual.length === 0 ? (
           <div style={{ textAlign: "center", padding: "24px 0 36px", color: c.hint, fontSize: 13 }}>
-            No inputs match your {search ? "search" : "filters"}.{" "}
+            No inputs match your {manualSearch ? "search" : "filters"}.{" "}
             <button
-              onClick={() => { setSearch(""); clearFilters(); }}
+              onClick={clearManualFilters}
               style={{ color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
             >
-              Clear {hasActiveSearch ? "all" : ""}
+              Clear all
             </button>
           </div>
         ) : (
           <div style={{ marginBottom: 36 }}>
-            {renderItems(filteredManual, manualGetProps)}
+            {renderItems(filteredManual, manualGetProps, {
+              checked: allManualSelected,
+              indeterminate: !allManualSelected && someManualSelected,
+              onToggleAll: toggleSelectAllManual,
+            })}
           </div>
         )}
 
@@ -716,6 +796,20 @@ export default function Inbox({ appState }) {
         {(inboxProjectFilter ? true : aiInputs.length > 0) && (
           <>
             <SectionHeader title="AI Suggested" count={filteredAI.length} icon={<Sparkles size={16} />} />
+
+            <SearchFilterBar
+              search={aiSearch}
+              onSearchChange={setAiSearch}
+              filterType={aiFilterType}
+              onFilterTypeChange={setAiFilterType}
+              filterHorizon={aiFilterHorizon}
+              onFilterHorizonChange={setAiFilterHorizon}
+              filterSteepled={aiFilterSteepled}
+              onFilterSteepledChange={setAiFilterSteepled}
+              openDropdown={aiOpenFilterDropdown}
+              onToggleDropdown={(key) => setAiOpenFilterDropdown((d) => d === key ? null : key)}
+              onClearAll={clearAiFilters}
+            />
 
             {/* AI Suggested inline action bar */}
             {selectedAiIds.length > 0 && (
@@ -757,17 +851,21 @@ export default function Inbox({ appState }) {
 
             {filteredAI.length === 0 ? (
               <div style={{ textAlign: "center", padding: "24px 0", color: c.hint, fontSize: 13 }}>
-                No AI suggestions match your {search ? "search" : "filters"}.{" "}
+                No AI suggestions match your {aiSearch ? "search" : "filters"}.{" "}
                 <button
-                  onClick={() => { setSearch(""); clearFilters(); }}
+                  onClick={clearAiFilters}
                   style={{ color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
                 >
-                  Clear {hasActiveSearch ? "all" : ""}
+                  Clear all
                 </button>
               </div>
             ) : (
               <>
-                {renderItems(visibleAI, aiGetProps)}
+                {renderItems(visibleAI, aiGetProps, {
+                  checked: allAiSelected,
+                  indeterminate: !allAiSelected && someAiSelected,
+                  onToggleAll: toggleSelectAllAi,
+                })}
                 {!aiExpanded && filteredAI.length > AI_PREVIEW_COUNT && (
                   <button
                     onClick={() => setAiExpanded(true)}
