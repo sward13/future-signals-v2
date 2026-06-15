@@ -176,7 +176,7 @@ function InputTypeBadge({ subtype }) {
 
 // ─── Filter dropdown chip ──────────────────────────────────────────────────────
 
-export function FilterDropdown({ label, value, options, onChange, onClear, isOpen, onToggle }) {
+export function FilterDropdown({ label, value, options, onChange, onClear, isOpen, onToggle, menuWidth = 150 }) {
   const active = !!value;
   return (
     <div style={{ position: "relative" }}>
@@ -208,11 +208,11 @@ export function FilterDropdown({ label, value, options, onChange, onClear, isOpe
             position: "absolute", top: "100%", left: 0, marginTop: 4,
             background: c.white, border: `1px solid ${c.border}`,
             borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-            zIndex: 51, minWidth: 150, overflow: "hidden",
+            zIndex: 51, minWidth: menuWidth, maxHeight: 280, overflowX: "hidden", overflowY: "auto",
           }}>
             {options.map((opt) => (
               <button
-                key={opt.value}
+                key={opt.value || "__all__"}
                 onClick={() => { onChange(opt.value); onToggle(); }}
                 style={{
                   display: "block", width: "100%", padding: "8px 12px",
@@ -222,7 +222,12 @@ export function FilterDropdown({ label, value, options, onChange, onClear, isOpe
                   fontSize: 12, color: c.ink, fontFamily: "inherit",
                 }}
               >
-                {opt.label}
+                <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt.label}</div>
+                {opt.sublabel && (
+                  <div style={{ fontSize: 10, color: c.hint, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {opt.sublabel}
+                  </div>
+                )}
               </button>
             ))}
           </div>

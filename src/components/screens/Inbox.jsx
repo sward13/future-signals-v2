@@ -355,10 +355,11 @@ function SearchFilterBar({
   filterType, onFilterTypeChange,
   filterHorizon, onFilterHorizonChange,
   filterSteepled, onFilterSteepledChange,
+  filterProject, onFilterProjectChange, projectOptions,
   openDropdown, onToggleDropdown,
   onClearAll,
 }) {
-  const anyFilterActive = !!(search.trim() || filterType || filterHorizon || filterSteepled);
+  const anyFilterActive = !!(search.trim() || filterType || filterHorizon || filterSteepled || filterProject);
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -399,6 +400,18 @@ function SearchFilterBar({
           isOpen={openDropdown === "steepled"}
           onToggle={() => onToggleDropdown("steepled")}
         />
+        {projectOptions && (
+          <FilterDropdown
+            label="Project"
+            value={filterProject}
+            options={projectOptions}
+            onChange={onFilterProjectChange}
+            onClear={() => onFilterProjectChange("")}
+            isOpen={openDropdown === "project"}
+            onToggle={() => onToggleDropdown("project")}
+            menuWidth={200}
+          />
+        )}
       </div>
       {anyFilterActive && (
         <button
@@ -420,7 +433,7 @@ export default function Inbox({ appState }) {
     addInput, dismissInput, dismissSuggestedInput, deleteInput,
     saveInputToProject, saveInputsToProject,
     showToast, openInputDetail, openProjectModal,
-    inboxProjectFilter, setInboxProjectFilter,
+    inboxProjectFilter,
   } = appState;
 
   const [drawerOpen,        setDrawerOpen]        = useState(false);
@@ -438,6 +451,16 @@ export default function Inbox({ appState }) {
   const [aiFilterType,        setAiFilterType]        = useState(null);
   const [aiFilterHorizon,     setAiFilterHorizon]     = useState(null);
   const [aiFilterSteepled,    setAiFilterSteepled]    = useState(null);
+  // Default: an incoming deep-link filter from Project settings (if set),
+  // otherwise the most recently active project (by last_reviewed_at, then
+  // created_at), or "" (All projects) if the workspace has no projects yet.
+  const [aiFilterProject,     setAiFilterProject]     = useState(() => {
+    if (inboxProjectFilter) return inboxProjectFilter;
+    if (projects.length === 0) return "";
+    return projects.slice().sort((a, b) =>
+      new Date(b.last_reviewed_at || b.created_at) - new Date(a.last_reviewed_at || a.created_at)
+    )[0].id;
+  });
   const [aiOpenFilterDropdown,setAiOpenFilterDropdown]= useState(null);
 
   const [savedToProject,    setSavedToProject]    = useState({});
@@ -461,11 +484,17 @@ export default function Inbox({ appState }) {
     () => allInboxInputs.filter((i) => !(i.is_seeded && i.metadata?.source === "scanner")),
     [allInboxInputs]
   );
-  const aiInputs = useMemo(() => {
-    const all = allInboxInputs.filter((i) => i.is_seeded && i.metadata?.source === "scanner");
-    if (!inboxProjectFilter) return all;
-    return all.filter((i) => i.metadata?.suggested_projects?.some((p) => p.id === inboxProjectFilter));
-  }, [allInboxInputs, inboxProjectFilter]);
+  const aiInputs = useMemo(
+    () => allInboxInputs.filter((i) => i.is_seeded && i.metadata?.source === "scanner"),
+    [allInboxInputs]
+  );
+
+  // Project filter dropdown options for AI Suggested — "All projects" plus
+  // one entry per project (name + domain subtitle).
+  const aiProjectFilterOptions = useMemo(() => [
+    { value: "", label: "All projects" },
+    ...projects.map((p) => ({ value: p.id, label: p.name, sublabel: p.domain })),
+  ], [projects]);
 
   // Apply search + filters independently per section
   const filteredManual = useMemo(() =>
@@ -481,8 +510,9 @@ export default function Inbox({ appState }) {
       .filter((i) => !aiSearch || (i.name || "").toLowerCase().includes(aiSearch.toLowerCase()) || (i.description || "").toLowerCase().includes(aiSearch.toLowerCase()))
       .filter((i) => !aiFilterType     || i.subtype === aiFilterType)
       .filter((i) => !aiFilterHorizon  || i.horizon === aiFilterHorizon)
-      .filter((i) => !aiFilterSteepled || (i.steepled || []).includes(aiFilterSteepled)),
-    [aiInputs, aiSearch, aiFilterType, aiFilterHorizon, aiFilterSteepled]
+      .filter((i) => !aiFilterSteepled || (i.steepled || []).includes(aiFilterSteepled))
+      .filter((i) => !aiFilterProject  || (i.metadata?.suggested_projects || []).some((p) => p.id === aiFilterProject)),
+    [aiInputs, aiSearch, aiFilterType, aiFilterHorizon, aiFilterSteepled, aiFilterProject]
   );
 
   // AI items to display (collapsed = first 10)
@@ -590,6 +620,7 @@ export default function Inbox({ appState }) {
     setAiFilterType(null);
     setAiFilterHorizon(null);
     setAiFilterSteepled(null);
+    setAiFilterProject("");
   };
 
   const handleAddToProject = (inp, projectId) => {
@@ -771,31 +802,9 @@ export default function Inbox({ appState }) {
         )}
 
         {/* ── AI Suggested table ───────────────────────────────── */}
-        {inboxProjectFilter && (() => {
-          const proj = projects.find((p) => p.id === inboxProjectFilter);
-          return (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-              <span style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                fontSize: 11, padding: "4px 10px", borderRadius: 20,
-                background: c.blue50, color: c.blue700,
-                border: `1px solid ${c.blueBorder}`,
-              }}>
-                Showing suggestions for: <strong>{proj?.name || "project"}</strong>
-                <button
-                  onClick={() => setInboxProjectFilter(null)}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: c.blue700, fontSize: 13, lineHeight: 1, padding: "0 0 0 2px", fontFamily: "inherit" }}
-                  title="Clear filter"
-                >
-                  ✕
-                </button>
-              </span>
-            </div>
-          );
-        })()}
-        {(inboxProjectFilter ? true : aiInputs.length > 0) && (
+        {aiInputs.length > 0 && (
           <>
-            <SectionHeader title="AI Suggested" count={filteredAI.length} icon={<Sparkles size={16} />} />
+            <SectionHeader title="AI Suggested" count={aiInputs.length} icon={<Sparkles size={16} />} />
 
             <SearchFilterBar
               search={aiSearch}
@@ -806,10 +815,17 @@ export default function Inbox({ appState }) {
               onFilterHorizonChange={setAiFilterHorizon}
               filterSteepled={aiFilterSteepled}
               onFilterSteepledChange={setAiFilterSteepled}
+              filterProject={aiFilterProject}
+              onFilterProjectChange={setAiFilterProject}
+              projectOptions={aiProjectFilterOptions}
               openDropdown={aiOpenFilterDropdown}
               onToggleDropdown={(key) => setAiOpenFilterDropdown((d) => d === key ? null : key)}
               onClearAll={clearAiFilters}
             />
+
+            <div style={{ fontSize: 11, color: c.hint, marginBottom: 8 }}>
+              Showing {filteredAI.length} of {aiInputs.length}
+            </div>
 
             {/* AI Suggested inline action bar */}
             {selectedAiIds.length > 0 && (
