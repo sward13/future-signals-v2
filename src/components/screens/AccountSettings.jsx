@@ -64,7 +64,7 @@ function SectionCard({ children }) {
 // ─── Main screen ───────────────────────────────────────────────────────────────
 
 export default function AccountSettings({ appState, onSignOut }) {
-  const { user, workspaceScanningEnabled, updateWorkspaceScanningEnabled, showToast } = appState;
+  const { user, projects, workspaceScanningEnabled, updateWorkspaceScanningEnabled, updateProject, showToast } = appState;
 
   // ── Timeout cleanup ─────────────────────────────────────────────────────────
 
@@ -366,6 +366,54 @@ export default function AccountSettings({ appState, onSignOut }) {
               }} />
             </button>
           </div>
+
+          {/* ── Per-project scanning ── */}
+          {workspaceScanningEnabled && projects.length > 0 && (
+            <div style={{ marginTop: 18, paddingTop: 18, borderTop: `1px solid ${c.border}` }}>
+              <div style={{ fontSize: 11, color: c.muted, marginBottom: 10 }}>
+                {projects.filter((p) => p.scanning_enabled !== false).length} of {projects.length} project{projects.length !== 1 ? "s" : ""} scanning
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                {projects.map((p, i) => (
+                  <div
+                    key={p.id}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                      padding: "9px 0",
+                      borderTop: i > 0 ? `1px solid ${c.border}` : "none",
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
+                      {p.domain && <div style={{ fontSize: 10, color: c.hint, marginTop: 1 }}>{p.domain}</div>}
+                    </div>
+                    <button
+                      role="switch"
+                      aria-checked={p.scanning_enabled !== false}
+                      onClick={() => {
+                        const next = p.scanning_enabled === false;
+                        updateProject(p.id, { scanning_enabled: next });
+                      }}
+                      style={{
+                        flexShrink: 0,
+                        width: 34, height: 19, borderRadius: 10,
+                        background: p.scanning_enabled !== false ? c.ink : c.hint,
+                        border: "none", cursor: "pointer", padding: 0,
+                        position: "relative", transition: "background 0.2s",
+                      }}
+                    >
+                      <span style={{
+                        position: "absolute",
+                        top: 2, left: p.scanning_enabled !== false ? 17 : 2,
+                        width: 15, height: 15, borderRadius: "50%",
+                        background: c.white, transition: "left 0.2s",
+                      }} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div style={{
             display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16,
