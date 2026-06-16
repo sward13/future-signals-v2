@@ -393,7 +393,6 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
   const handleSave = () => {
     let hasError = false;
     if (!name.trim()) { setNameError(true); hasError = true; }
-    if (!domain) { setDomainError(true); hasError = true; }
     if (hasError) return;
 
     const span = endYear - startYear;

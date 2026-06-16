@@ -130,7 +130,7 @@ function SourceFields({ fields, setField }) {
         <input style={inp} type="text" value={fields.metadata.author_publisher || ""} onChange={(e) => setField("metadata", { ...fields.metadata, author_publisher: e.target.value })} placeholder="e.g. IPCC, McKinsey Global Institute" />
       </div>
       <div style={{ marginBottom: 16 }}>
-        <div style={fl}>Publication date</div>
+        <div style={fl}>Date</div>
         <input style={inp} type="date" value={fields.metadata.publication_date || ""} onChange={(e) => setField("metadata", { ...fields.metadata, publication_date: e.target.value })} />
       </div>
     </>

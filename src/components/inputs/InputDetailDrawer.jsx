@@ -174,7 +174,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
           <div style={{ marginBottom: 16 }}>
             {editing ? (
               <>
-                <div style={fl}>Title</div>
+                <div style={fl}>Title / Name</div>
                 <input style={inp} value={fields.name} onChange={(e) => set("name", e.target.value)} autoFocus />
               </>
             ) : (
