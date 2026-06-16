@@ -10,10 +10,10 @@ const TOTAL_DOTS = 5;
 // Threshold for "unlock AI clustering" messaging
 const CLUSTER_THRESHOLD = 10;
 
-const CREDIBILITY_TO_SIGNAL_QUALITY = {
-  institutional: "Established",
-  specialist:    "Emerging",
-  general:       "Emerging",
+const CREDIBILITY_TO_SOURCE_CONFIDENCE = {
+  institutional: "high",
+  specialist:    "medium",
+  general:       "low",
 };
 
 function StepDots() {
@@ -212,22 +212,22 @@ export function ScannerInboxStep({
 
     const results = await Promise.allSettled(
       selected.map((candidate) => {
-        const signalQuality =
-          CREDIBILITY_TO_SIGNAL_QUALITY[candidate.source_credibility] ?? "Emerging";
+        const sourceConfidence =
+          CREDIBILITY_TO_SOURCE_CONFIDENCE[candidate.source_credibility] ?? null;
 
         return supabase
           .from("inputs")
           .insert({
-            id:           crypto.randomUUID(),
-            workspace_id: workspaceId,
-            project_id:   projectId,
-            name:         candidate.title,
-            description:  candidate.summary_ai || "",
-            source_url:   candidate.source_url,
-            subtype:      "Signal",
-            steepled:     candidate.steepled_tags || [],
-            signal_quality: signalQuality,
-            is_seeded:    true,
+            id:              crypto.randomUUID(),
+            workspace_id:    workspaceId,
+            project_id:      projectId,
+            name:            candidate.title,
+            description:     candidate.summary_ai || "",
+            source_url:      candidate.source_url,
+            subtype:         "Signal",
+            steepled:        candidate.steepled_tags || [],
+            source_confidence: sourceConfidence,
+            is_seeded:       true,
             metadata: {
               source:       "onboarding_scanner",
               candidate_id: candidate.id,

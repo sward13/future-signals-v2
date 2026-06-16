@@ -139,7 +139,7 @@ function buildCSV(inputs, project) {
       : s;
   };
 
-  const headers = ["Name", "Subtype", "Description", "Source URL", "STEEPLED", "Horizon", "Signal Quality", "Date Added"];
+  const headers = ["Name", "Subtype", "Description", "Source URL", "STEEPLED", "Horizon", "Signal Strength", "Source Confidence", "Date Added"];
 
   const rows = projectInputs.map((inp) => [
     esc(inp.name),
@@ -148,7 +148,8 @@ function buildCSV(inputs, project) {
     esc(inp.source_url),
     esc(Array.isArray(inp.steepled) ? inp.steepled.join(", ") : ""),
     esc(inp.horizon),
-    esc(inp.signal_quality),
+    esc(inp.signal_strength),
+    esc(inp.source_confidence),
     esc(inp.created_at ? new Date(inp.created_at).toLocaleDateString() : ""),
   ]);
 

@@ -28,12 +28,18 @@ function SelectField({ label, value, onChange, options, placeholder }) {
   );
 }
 
-// ─── Signal quality options (shared across type field blocks) ─────────────────
+// ─── Signal strength + source confidence options ──────────────────────────────
 
-const SIGNAL_QUALITY_OPTIONS = [
-  { value: "Emerging",    title: "Emerging",    desc: "Early or isolated indication, limited sourcing",        dotColor: c.amber700 },
-  { value: "Established", title: "Established", desc: "Multiple sources, visible pattern, credible reporting", dotColor: c.blue700 },
-  { value: "Confirmed",   title: "Confirmed",   desc: "Widespread evidence, data-backed, mainstream sources",  dotColor: c.green700 },
+const SIGNAL_STRENGTH_OPTIONS = [
+  { value: "weak",     title: "Weak",     desc: "Single source, edge case, or very early emergence",           dotColor: c.amber700 },
+  { value: "moderate", title: "Moderate", desc: "Multiple sources or visible within a specific community",      dotColor: c.blue700 },
+  { value: "high",     title: "High",     desc: "Widespread, data-backed, or reported by mainstream sources",   dotColor: c.green700 },
+];
+
+const SOURCE_CONFIDENCE_OPTIONS = [
+  { value: "low",    title: "Low",    desc: "Social media, blogs, unverified sources",                               dotColor: c.amber700 },
+  { value: "medium", title: "Medium", desc: "Quality journalism, industry reports, expert commentary",               dotColor: c.blue700 },
+  { value: "high",   title: "High",   desc: "Peer-reviewed research, official statistics, established institutions",  dotColor: c.green700 },
 ];
 
 // ─── Type-specific field blocks ────────────────────────────────────────────────
@@ -44,10 +50,16 @@ function SignalFields({ fields, setField }) {
       <FieldSectionHeader />
       <SteepleSelector selected={fields.steepled} onToggle={(cat) => setField("steepled", fields.steepled.includes(cat) ? fields.steepled.filter((c) => c !== cat) : [...fields.steepled, cat])} />
       <ThreeCardSelector
-        label="Signal quality"
-        selected={fields.signal_quality}
-        onSelect={(v) => setField("signal_quality", v)}
-        options={SIGNAL_QUALITY_OPTIONS}
+        label="Signal strength"
+        selected={fields.signal_strength}
+        onSelect={(v) => setField("signal_strength", v)}
+        options={SIGNAL_STRENGTH_OPTIONS}
+      />
+      <ThreeCardSelector
+        label="Source confidence"
+        selected={fields.source_confidence}
+        onSelect={(v) => setField("source_confidence", v)}
+        options={SOURCE_CONFIDENCE_OPTIONS}
       />
       <HorizonSelector selected={fields.horizon} onSelect={(v) => setField("horizon", v)} />
     </>
@@ -65,10 +77,16 @@ function IssueFields({ fields, setField }) {
         <input style={inp} type="text" value={fields.metadata.affected_domain || ""} onChange={(e) => setField("metadata", { ...fields.metadata, affected_domain: e.target.value })} placeholder="e.g. Renewable energy operators" />
       </div>
       <ThreeCardSelector
-        label="Signal quality"
-        selected={fields.signal_quality}
-        onSelect={(v) => setField("signal_quality", v)}
-        options={SIGNAL_QUALITY_OPTIONS}
+        label="Signal strength"
+        selected={fields.signal_strength}
+        onSelect={(v) => setField("signal_strength", v)}
+        options={SIGNAL_STRENGTH_OPTIONS}
+      />
+      <ThreeCardSelector
+        label="Source confidence"
+        selected={fields.source_confidence}
+        onSelect={(v) => setField("source_confidence", v)}
+        options={SOURCE_CONFIDENCE_OPTIONS}
       />
       <HorizonSelector selected={fields.horizon} onSelect={(v) => setField("horizon", v)} />
     </>
@@ -110,10 +128,16 @@ function ObstacleFields({ fields, setField }) {
       <SelectField label="Obstacle type" value={fields.metadata.obstacle_type || ""} onChange={(v) => setField("metadata", { ...fields.metadata, obstacle_type: v })} options={["Regulatory", "Technical", "Social", "Economic", "Political"]} placeholder="Select type…" />
       <SteepleSelector selected={fields.steepled} onToggle={(cat) => setField("steepled", fields.steepled.includes(cat) ? fields.steepled.filter((c) => c !== cat) : [...fields.steepled, cat])} />
       <ThreeCardSelector
-        label="Signal quality"
-        selected={fields.signal_quality}
-        onSelect={(v) => setField("signal_quality", v)}
-        options={SIGNAL_QUALITY_OPTIONS}
+        label="Signal strength"
+        selected={fields.signal_strength}
+        onSelect={(v) => setField("signal_strength", v)}
+        options={SIGNAL_STRENGTH_OPTIONS}
+      />
+      <ThreeCardSelector
+        label="Source confidence"
+        selected={fields.source_confidence}
+        onSelect={(v) => setField("source_confidence", v)}
+        options={SOURCE_CONFIDENCE_OPTIONS}
       />
       <HorizonSelector selected={fields.horizon} onSelect={(v) => setField("horizon", v)} />
     </>
@@ -161,7 +185,8 @@ const EMPTY_FIELDS = {
   description: "",
   source_url: "",
   steepled: [],
-  signal_quality: null,
+  signal_strength: null,
+  source_confidence: null,
   horizon: null,
   metadata: {},
 };
@@ -236,7 +261,8 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
       source_url: fields.source_url,
       subtype: selectedType,
       steepled: fields.steepled,
-      signal_quality: fields.signal_quality,
+      signal_strength: fields.signal_strength,
+      source_confidence: fields.source_confidence,
       horizon: fields.horizon,
       metadata: fields.metadata,
       project_id: projectId || null,

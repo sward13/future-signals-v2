@@ -51,21 +51,33 @@ function SteepleList({ tags = [] }) {
   );
 }
 
-// ─── Signal quality pill ───────────────────────────────────────────────────────
+// ─── Strength / confidence display ────────────────────────────────────────────
 
-const QUALITY_COLORS = {
-  Emerging:    [c.amber700, c.amber50, c.amberBorder],
-  Established: [c.blue700,  c.blue50,  c.blueBorder],
-  Confirmed:   [c.green700, c.green50, c.greenBorder],
+const STRENGTH_COLORS = {
+  weak:     [c.amber700, c.amber50, c.amberBorder],
+  moderate: [c.blue700,  c.blue50,  c.blueBorder],
+  high:     [c.green700, c.green50, c.greenBorder],
 };
 
-function QualityPill({ value }) {
-  if (!value) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
-  const [col, bg, brd] = QUALITY_COLORS[value] || [c.hint, c.surfaceAlt, c.border];
+const CONFIDENCE_COLORS = {
+  low:    [c.amber700, c.amber50, c.amberBorder],
+  medium: [c.blue700,  c.blue50,  c.blueBorder],
+  high:   [c.green700, c.green50, c.greenBorder],
+};
+
+function StrengthCell({ strength, confidence }) {
+  if (!strength && !confidence) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
   return (
-    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 8, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap" }}>
-      {value}
-    </span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {strength && (() => {
+        const [col, bg, brd] = STRENGTH_COLORS[strength] || [c.hint, c.surfaceAlt, c.border];
+        return <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{strength.charAt(0).toUpperCase() + strength.slice(1)}</span>;
+      })()}
+      {confidence && (() => {
+        const [col, bg, brd] = CONFIDENCE_COLORS[confidence] || [c.hint, c.surfaceAlt, c.border];
+        return <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{confidence.charAt(0).toUpperCase() + confidence.slice(1)} conf.</span>;
+      })()}
+    </div>
   );
 }
 
@@ -296,9 +308,9 @@ function InputTableRow({ input, clusters, assignedCluster, onAssign, onNewCluste
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{input.name}</span>
       </div>
 
-      {/* Signal Quality */}
+      {/* Strength / Confidence */}
       <div style={{ display: "flex", alignItems: "center" }}>
-        <QualityPill value={input.signal_quality} />
+        <StrengthCell strength={input.signal_strength} confidence={input.source_confidence} />
       </div>
 
       {/* Horizon */}
@@ -1241,7 +1253,7 @@ export default function Clustering({ appState }) {
               <TableHead cols={[
                 { label: "", width: "28px" },
                 { label: "Title", width: "1fr" },
-                { label: "Quality", width: "100px" },
+                { label: "Strength", width: "120px" },
                 { label: "Horizon", width: "60px" },
                 { label: "STEEPLED", width: "160px" },
                 { label: "", width: "120px" },

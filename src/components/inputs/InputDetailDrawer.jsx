@@ -30,16 +30,28 @@ function TypeChip({ typeId }) {
   );
 }
 
-const SIGNAL_QUALITY_OPTIONS = [
-  { value: "Emerging",    title: "Emerging",    desc: "Early or isolated indication, limited sourcing",        dotColor: c.amber700 },
-  { value: "Established", title: "Established", desc: "Multiple sources, visible pattern, credible reporting", dotColor: c.blue700 },
-  { value: "Confirmed",   title: "Confirmed",   desc: "Widespread evidence, data-backed, mainstream sources",  dotColor: c.green700 },
+const SIGNAL_STRENGTH_OPTIONS = [
+  { value: "weak",     title: "Weak",     desc: "Single source, edge case, or very early emergence",           dotColor: c.amber700 },
+  { value: "moderate", title: "Moderate", desc: "Multiple sources or visible within a specific community",      dotColor: c.blue700 },
+  { value: "high",     title: "High",     desc: "Widespread, data-backed, or reported by mainstream sources",   dotColor: c.green700 },
 ];
 
-const QUALITY_COLORS = {
-  Emerging:    [c.amber700, c.amber50, c.amberBorder],
-  Established: [c.blue700,  c.blue50,  c.blueBorder],
-  Confirmed:   [c.green700, c.green50, c.greenBorder],
+const SOURCE_CONFIDENCE_OPTIONS = [
+  { value: "low",    title: "Low",    desc: "Social media, blogs, unverified sources",                               dotColor: c.amber700 },
+  { value: "medium", title: "Medium", desc: "Quality journalism, industry reports, expert commentary",               dotColor: c.blue700 },
+  { value: "high",   title: "High",   desc: "Peer-reviewed research, official statistics, established institutions",  dotColor: c.green700 },
+];
+
+const STRENGTH_COLORS = {
+  weak:     [c.amber700, c.amber50, c.amberBorder],
+  moderate: [c.blue700,  c.blue50,  c.blueBorder],
+  high:     [c.green700, c.green50, c.greenBorder],
+};
+
+const CONFIDENCE_COLORS = {
+  low:    [c.amber700, c.amber50, c.amberBorder],
+  medium: [c.blue700,  c.blue50,  c.blueBorder],
+  high:   [c.green700, c.green50, c.greenBorder],
 };
 
 export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], onClose, onSave, onDelete, onAccept, onSaveToProject, onDismissSuggested, projectClusters, onAssignToCluster, onOpenCluster }) {
@@ -58,7 +70,8 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
         source_url:        input.source_url        || "",
         subtype:           input.subtype           || "signal",
         steepled:          input.steepled          || [],
-        signal_quality:    input.signal_quality    || null,
+        signal_strength:   input.signal_strength   || null,
+        source_confidence: input.source_confidence || null,
         horizon:           input.horizon           || null,
         project_id:        input.project_id        || "",
       });
@@ -91,7 +104,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
     setFields({
       name: input.name || "", description: input.description || "",
       source_url: input.source_url || "", subtype: input.subtype || "signal",
-      steepled: input.steepled || [], signal_quality: input.signal_quality || null,
+      steepled: input.steepled || [], signal_strength: input.signal_strength || null, source_confidence: input.source_confidence || null,
       horizon: input.horizon || null,
       project_id: input.project_id || "",
     });
@@ -309,22 +322,54 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
             )}
           </div>
 
-          {/* Signal quality */}
+          {/* Signal strength */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Signal quality</div>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Signal strength</div>
             {editing ? (
               <ThreeCardSelector
                 label=""
-                selected={fields.signal_quality}
-                onSelect={(v) => set("signal_quality", v)}
-                options={SIGNAL_QUALITY_OPTIONS}
+                selected={fields.signal_strength}
+                onSelect={(v) => set("signal_strength", v)}
+                options={SIGNAL_STRENGTH_OPTIONS}
               />
             ) : (() => {
-              const [col, bg, brd] = QUALITY_COLORS[input.signal_quality] || [c.hint, c.surfaceAlt, c.border];
-              return (
-                <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}` }}>
-                  {input.signal_quality || "Not set"}
-                </span>
+              const opt = SIGNAL_STRENGTH_OPTIONS.find((o) => o.value === input.signal_strength);
+              const [col, bg, brd] = STRENGTH_COLORS[input.signal_strength] || [c.hint, c.surfaceAlt, c.border];
+              return opt ? (
+                <div>
+                  <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}` }}>
+                    {opt.title}
+                  </span>
+                  <div style={{ fontSize: 11, color: c.muted, marginTop: 5, lineHeight: 1.45 }}>{opt.desc}</div>
+                </div>
+              ) : (
+                <span style={{ fontSize: 11, color: c.hint, fontStyle: "italic" }}>Not set</span>
+              );
+            })()}
+          </div>
+
+          {/* Source confidence */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Source confidence</div>
+            {editing ? (
+              <ThreeCardSelector
+                label=""
+                selected={fields.source_confidence}
+                onSelect={(v) => set("source_confidence", v)}
+                options={SOURCE_CONFIDENCE_OPTIONS}
+              />
+            ) : (() => {
+              const opt = SOURCE_CONFIDENCE_OPTIONS.find((o) => o.value === input.source_confidence);
+              const [col, bg, brd] = CONFIDENCE_COLORS[input.source_confidence] || [c.hint, c.surfaceAlt, c.border];
+              return opt ? (
+                <div>
+                  <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}` }}>
+                    {opt.title}
+                  </span>
+                  <div style={{ fontSize: 11, color: c.muted, marginTop: 5, lineHeight: 1.45 }}>{opt.desc}</div>
+                </div>
+              ) : (
+                <span style={{ fontSize: 11, color: c.hint, fontStyle: "italic" }}>Not set</span>
               );
             })()}
           </div>

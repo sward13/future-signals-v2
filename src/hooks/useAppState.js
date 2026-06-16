@@ -420,7 +420,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       horizon: fields.horizon || null,
       project_id: fields.project_id || null,
       is_seeded: false,
-      signal_quality: fields.signal_quality || null,
+      signal_strength: fields.signal_strength || null,
+      source_confidence: fields.source_confidence || null,
       metadata: fields.metadata || {},
       created_at: now,
     };

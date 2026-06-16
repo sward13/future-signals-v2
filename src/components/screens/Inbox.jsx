@@ -20,24 +20,36 @@ import { STEEPLED } from "../../data/seeds.js";
 const STEEPLED_ABB  = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
 const INPUT_TYPE_OPTS = ["Signal", "Issue", "Projection", "Plan", "Obstacle"];
 
-const QUALITY_COLORS = {
-  Emerging:    [c.amber700, c.amber50, c.amberBorder],
-  Established: [c.blue700,  c.blue50,  c.blueBorder],
-  Confirmed:   [c.green700, c.green50, c.greenBorder],
+const STRENGTH_COLORS = {
+  weak:     [c.amber700, c.amber50, c.amberBorder],
+  moderate: [c.blue700,  c.blue50,  c.blueBorder],
+  high:     [c.green700, c.green50, c.greenBorder],
+};
+
+const CONFIDENCE_COLORS = {
+  low:    [c.amber700, c.amber50, c.amberBorder],
+  medium: [c.blue700,  c.blue50,  c.blueBorder],
+  high:   [c.green700, c.green50, c.greenBorder],
 };
 
 const AI_PREVIEW_COUNT = 10;
 
 // Column widths for list/table layout
-const COL = { type: 76, quality: 94, horizon: 52, steepled: 100, date: 55, cta: 220 };
+const COL = { type: 76, quality: 120, horizon: 52, steepled: 100, date: 55, cta: 220 };
 
-function QualityPill({ value }) {
-  if (!value) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
-  const [col, bg, brd] = QUALITY_COLORS[value] || [c.hint, c.surfaceAlt, c.border];
+function StrengthCell({ strength, confidence }) {
+  if (!strength && !confidence) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
   return (
-    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 8, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap" }}>
-      {value}
-    </span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {strength && (() => {
+        const [col, bg, brd] = STRENGTH_COLORS[strength] || [c.hint, c.surfaceAlt, c.border];
+        return <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{strength.charAt(0).toUpperCase() + strength.slice(1)}</span>;
+      })()}
+      {confidence && (() => {
+        const [col, bg, brd] = CONFIDENCE_COLORS[confidence] || [c.hint, c.surfaceAlt, c.border];
+        return <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{confidence.charAt(0).toUpperCase() + confidence.slice(1)} conf.</span>;
+      })()}
+    </div>
   );
 }
 
@@ -154,7 +166,7 @@ function ListHeader({ checked, indeterminate, onToggleAll }) {
       </div>
       <div style={{ flex: 1, minWidth: 0, ...cell }}>Title</div>
       <div style={{ width: COL.type,     ...cell }}>Type</div>
-      <div style={{ width: COL.quality,  ...cell }}>Quality</div>
+      <div style={{ width: COL.quality,  ...cell }}>Strength</div>
       <div style={{ width: COL.horizon,  ...cell }}>Horizon</div>
       <div style={{ width: COL.steepled, ...cell }}>STEEPLED</div>
       <div style={{ width: COL.date,     ...cell }}>Date</div>
@@ -208,9 +220,9 @@ function ListRow({ input, isScannerSuggested, suggestedProjects, recommendedProj
           : <span style={{ color: c.hint }}>—</span>}
       </div>
 
-      {/* Quality */}
+      {/* Strength / Confidence */}
       <div style={{ width: COL.quality, flexShrink: 0 }}>
-        <QualityPill value={input.signal_quality} />
+        <StrengthCell strength={input.signal_strength} confidence={input.source_confidence} />
       </div>
 
       {/* Horizon */}
@@ -285,7 +297,7 @@ function FullCard({ input, isScannerSuggested, suggestedProjects, recommendedPro
               {input.subtype}
             </span>
           )}
-          <span style={{ marginLeft: "auto" }}><QualityPill value={input.signal_quality} /></span>
+          <span style={{ marginLeft: "auto" }}><StrengthCell strength={input.signal_strength} confidence={input.source_confidence} /></span>
         </div>
 
         <div
