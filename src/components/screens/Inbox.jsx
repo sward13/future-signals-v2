@@ -484,6 +484,11 @@ export default function Inbox({ appState }) {
     () => allInboxInputs.filter((i) => !(i.is_seeded && i.metadata?.source === "scanner")),
     [allInboxInputs]
   );
+  // True if any manually-created inputs exist anywhere in the workspace (assigned or not)
+  const hasAnyManualInputs = useMemo(
+    () => inputs.some((i) => !(i.is_seeded && i.metadata?.source === "scanner")),
+    [inputs]
+  );
   const aiInputs = useMemo(
     () => allInboxInputs.filter((i) => i.is_seeded && i.metadata?.source === "scanner"),
     [allInboxInputs]
@@ -773,13 +778,19 @@ export default function Inbox({ appState }) {
 
         {manualInputs.length === 0 ? (
           <div style={{ marginBottom: 36 }}>
-            <EmptyState
-              icon="◎"
-              title="No inputs yet"
-              body="Add your first input manually, or use the Chrome extension to capture signals from the web."
-              ctaLabel="Add an input"
-              onCta={() => setDrawerOpen(true)}
-            />
+            {hasAnyManualInputs ? (
+              <div style={{ textAlign: "center", padding: "24px 0 36px", color: c.muted, fontSize: 13 }}>
+                All your inputs have been assigned to a project.
+              </div>
+            ) : (
+              <EmptyState
+                icon="◎"
+                title="Your inbox is empty."
+                body="Add your first input manually, or capture signals from the web with the Chrome extension."
+                ctaLabel="Add an input"
+                onCta={() => setDrawerOpen(true)}
+              />
+            )}
           </div>
         ) : filteredManual.length === 0 ? (
           <div style={{ textAlign: "center", padding: "24px 0 36px", color: c.hint, fontSize: 13 }}>
