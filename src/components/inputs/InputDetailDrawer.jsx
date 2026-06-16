@@ -125,14 +125,6 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
               Edit
             </button>
           )}
-          {onDelete && !editing && !isAiSuggested && (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
-            >
-              Delete
-            </button>
-          )}
           <button onClick={onClose} style={{ ...btnG, fontSize: 16, padding: "2px 6px", color: c.muted }}>×</button>
         </div>
 
@@ -388,6 +380,16 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
           }}>
             <button onClick={handleCancel} style={btnSec}>Cancel</button>
             <button onClick={handleSave} style={btnP}>Save changes</button>
+          </div>
+        )}
+        {!editing && onDelete && !isAiSuggested && (
+          <div style={{ padding: "12px 24px 18px", borderTop: `1px solid ${c.border}`, flexShrink: 0, display: "flex", justifyContent: "flex-end" }}>
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Delete input
+            </button>
           </div>
         )}
       </div>
