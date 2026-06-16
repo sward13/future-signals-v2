@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { c, inp, ta, btnP, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { INPUT_TYPES, ThreeCardSelector, SteepleSelector, HorizonSelector, TypeSwitcherChip } from "./InputFormFields.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
+import { AddToProjectButton } from "../shared/AddToProjectButton.jsx";
 import { sanitizeUrl } from "../../utils/sanitizeUrl.js";
 
 const HORIZON_COLORS = {
@@ -151,12 +152,12 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
               </button>
             )}
             {onSaveToProject && (
-              <button
-                onClick={() => onSaveToProject(input.id)}
-                style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit" }}
-              >
-                Add to project →
-              </button>
+              <AddToProjectButton
+                projects={projects}
+                recommendedProjectId={input.metadata?.suggested_projects?.[0]?.id}
+                onAdd={(projectId) => onSaveToProject(input.id, projectId)}
+                buttonStyle={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit" }}
+              />
             )}
             {onDismissSuggested && (
               <button
