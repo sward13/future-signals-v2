@@ -688,6 +688,28 @@ export default function Inbox({ appState }) {
   const manualGetProps = (inp) => itemProps(inp, selectedManualIds, toggleSelectManual, selectedManualIds.length > 0);
   const aiGetProps     = (inp) => itemProps(inp, selectedAiIds,     toggleSelectAi,     selectedAiIds.length > 0);
 
+  // Empty state content for the My Inputs section — rendered inside the table body
+  const manualEmptyContent = manualInputs.length === 0 && hasAnyManualInputs ? (
+    <div style={{ textAlign: "center", padding: "24px 0 36px", color: c.muted, fontSize: 13 }}>
+      All your inputs have been assigned to a project.
+    </div>
+  ) : manualInputs.length === 0 ? (
+    <EmptyState
+      icon="◎"
+      title="Your inbox is empty."
+      body="Add your first input manually, or capture signals from the web with the Chrome extension."
+      ctaLabel="Add an input"
+      onCta={() => setDrawerOpen(true)}
+    />
+  ) : (
+    <div style={{ textAlign: "center", padding: "24px 0 36px", color: c.hint, fontSize: 13 }}>
+      No inputs match your {manualSearch ? "search" : "filters"}.{" "}
+      <button onClick={clearManualFilters} style={{ color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>
+        Clear all
+      </button>
+    </div>
+  );
+
   return (
     <>
       <div style={{ padding: "24px 32px", background: c.bg, minHeight: "100%" }}>
@@ -776,41 +798,24 @@ export default function Inbox({ appState }) {
           </div>
         )}
 
-        {manualInputs.length === 0 ? (
-          <div style={{ marginBottom: 36 }}>
-            {hasAnyManualInputs ? (
-              <div style={{ textAlign: "center", padding: "24px 0 36px", color: c.muted, fontSize: 13 }}>
-                All your inputs have been assigned to a project.
-              </div>
-            ) : (
-              <EmptyState
-                icon="◎"
-                title="Your inbox is empty."
-                body="Add your first input manually, or capture signals from the web with the Chrome extension."
-                ctaLabel="Add an input"
-                onCta={() => setDrawerOpen(true)}
+        <div style={{ marginBottom: 36 }}>
+          {viewMode === "list" ? (
+            <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden" }}>
+              <ListHeader
+                checked={allManualSelected}
+                indeterminate={!allManualSelected && someManualSelected}
+                onToggleAll={toggleSelectAllManual}
               />
-            )}
-          </div>
-        ) : filteredManual.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "24px 0 36px", color: c.hint, fontSize: 13 }}>
-            No inputs match your {manualSearch ? "search" : "filters"}.{" "}
-            <button
-              onClick={clearManualFilters}
-              style={{ color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}
-            >
-              Clear all
-            </button>
-          </div>
-        ) : (
-          <div style={{ marginBottom: 36 }}>
-            {renderItems(filteredManual, manualGetProps, {
-              checked: allManualSelected,
-              indeterminate: !allManualSelected && someManualSelected,
-              onToggleAll: toggleSelectAllManual,
-            })}
-          </div>
-        )}
+              {filteredManual.length > 0
+                ? filteredManual.map((inp) => <ListRow key={inp.id} {...manualGetProps(inp)} />)
+                : manualEmptyContent}
+            </div>
+          ) : filteredManual.length > 0 ? (
+            renderCards(filteredManual, manualGetProps)
+          ) : (
+            manualEmptyContent
+          )}
+        </div>
 
         {/* ── AI Suggested table ───────────────────────────────── */}
         {aiInputs.length > 0 && (
