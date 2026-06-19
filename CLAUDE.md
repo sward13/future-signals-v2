@@ -257,7 +257,7 @@ Width: `240px`. Contains three cards separated by `14px` gap.
 **Projects are mandatory. Clusters and System Maps only exist within a Project.**
 
 - The Inbox holds inputs that have not yet been assigned to a project (`project_id === null`). It is a workspace-level screen.
-- The Inbox's AI Suggested section has its own search/filter bar, including a Project filter (filters on `metadata.suggested_projects`). It defaults to the most recently active project (`last_reviewed_at`, falling back to `created_at`), or "All projects" if the workspace has none yet.
+- The Inbox's AI Suggested section has its own search/filter bar, including a Project filter (filters on `metadata.suggested_projects`). It defaults to "All projects" (no filter) on fresh page load and on first navigation to the Inbox. Within a session, the filter persists whatever the user last selected (including cleared).
 - A project's "Review N suggestions" action (Project Detail) sets `appState.inboxProjectFilter` and navigates to the Inbox — the AI Suggested Project filter picks this up as its initial selection (deep-link), pre-filtering AI Suggested to that project on arrival.
 - Clustering and System Map are project-scoped screens. They only appear in the sidebar when a project is active.
 - At workspace level (Dashboard, Inbox, no active project) the sidebar shows only: Dashboard, Inbox. No project-scoped items.
