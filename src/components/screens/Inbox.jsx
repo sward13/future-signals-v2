@@ -445,7 +445,7 @@ export default function Inbox({ appState }) {
     addInput, dismissInput, dismissSuggestedInput, deleteInput,
     saveInputToProject, saveInputsToProject,
     showToast, openInputDetail, openProjectModal,
-    inboxProjectFilter,
+    inboxProjectFilter, setInboxProjectFilter,
   } = appState;
 
   const [drawerOpen,        setDrawerOpen]        = useState(false);
@@ -638,6 +638,7 @@ export default function Inbox({ appState }) {
     setAiFilterHorizon(null);
     setAiFilterSteepled(null);
     setAiFilterProject("");
+    setInboxProjectFilter(null);
   };
 
   const handleAddToProject = (inp, projectId) => {
@@ -844,7 +845,7 @@ export default function Inbox({ appState }) {
               filterSteepled={aiFilterSteepled}
               onFilterSteepledChange={setAiFilterSteepled}
               filterProject={aiFilterProject}
-              onFilterProjectChange={setAiFilterProject}
+              onFilterProjectChange={(v) => { setAiFilterProject(v); setInboxProjectFilter(v || null); }}
               projectOptions={aiProjectFilterOptions}
               openDropdown={aiOpenFilterDropdown}
               onToggleDropdown={(key) => setAiOpenFilterDropdown((d) => d === key ? null : key)}
