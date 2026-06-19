@@ -6,7 +6,7 @@
  * bulk actions (add to project, dismiss).
  * @param {{ appState: object }} props
  */
-import { useState, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { c, inp, btnP, btnSm, btnSec, btnG } from "../../styles/tokens.js";
 import { CirclePlus, Sparkles, List, LayoutGrid } from "lucide-react";
 import { ViewToggle } from "../ViewToggle.jsx";
@@ -463,16 +463,26 @@ export default function Inbox({ appState }) {
   const [aiFilterType,        setAiFilterType]        = useState(null);
   const [aiFilterHorizon,     setAiFilterHorizon]     = useState(null);
   const [aiFilterSteepled,    setAiFilterSteepled]    = useState(null);
-  // undefined = first visit → default to most recently active project
-  // null = user explicitly cleared → show all
-  // "uuid" = deep-link or user selected → filter to that project
-  const [aiFilterProject,     setAiFilterProject]     = useState(() => {
-    if (inboxProjectFilter !== undefined) return inboxProjectFilter || "";
-    if (projects.length === 0) return "";
-    return projects.slice().sort((a, b) =>
+  // undefined = no explicit choice yet; null = user cleared; "uuid" = selected/deep-linked
+  // The initializer just uses whatever appState says (or "" if undefined).
+  // The useEffect below applies the "most recently active" default once projects load,
+  // but only if the user hasn't made an explicit choice (inboxProjectFilter === undefined).
+  const [aiFilterProject,     setAiFilterProject]     = useState(
+    inboxProjectFilter !== undefined ? (inboxProjectFilter || "") : ""
+  );
+  const defaultApplied = useRef(false);
+  useEffect(() => {
+    if (defaultApplied.current) return;
+    if (inboxProjectFilter !== undefined) { defaultApplied.current = true; return; }
+    if (projects.length === 0) return;
+    defaultApplied.current = true;
+    const defaultId = projects.slice().sort((a, b) =>
       new Date(b.last_reviewed_at || b.created_at) - new Date(a.last_reviewed_at || a.created_at)
     )[0].id;
-  });
+    setAiFilterProject(defaultId);
+    setInboxProjectFilter(defaultId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects.length]);
   const [aiOpenFilterDropdown,setAiOpenFilterDropdown]= useState(null);
 
   const [savedToProject,    setSavedToProject]    = useState({});
