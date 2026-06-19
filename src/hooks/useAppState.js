@@ -73,7 +73,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [scenarioDetailId, setScenarioDetailId] = useState(null);
   const [activeScenarioId, setActiveScenarioId] = useState(null);
   const [activePFId, setActivePFId] = useState(null);
-  const [inboxProjectFilter, setInboxProjectFilter] = useState(null);
+  // undefined = first visit (apply default); null = user explicitly cleared; "uuid" = deep-link/selected
+  const [inboxProjectFilter, setInboxProjectFilter] = useState(undefined);
 
   const toastTimer = useRef(null);
   const refreshInputsRef  = useRef(null);

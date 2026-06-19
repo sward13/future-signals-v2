@@ -463,11 +463,11 @@ export default function Inbox({ appState }) {
   const [aiFilterType,        setAiFilterType]        = useState(null);
   const [aiFilterHorizon,     setAiFilterHorizon]     = useState(null);
   const [aiFilterSteepled,    setAiFilterSteepled]    = useState(null);
-  // Default: an incoming deep-link filter from Project settings (if set),
-  // otherwise the most recently active project (by last_reviewed_at, then
-  // created_at), or "" (All projects) if the workspace has no projects yet.
+  // undefined = first visit → default to most recently active project
+  // null = user explicitly cleared → show all
+  // "uuid" = deep-link or user selected → filter to that project
   const [aiFilterProject,     setAiFilterProject]     = useState(() => {
-    if (inboxProjectFilter) return inboxProjectFilter;
+    if (inboxProjectFilter !== undefined) return inboxProjectFilter || "";
     if (projects.length === 0) return "";
     return projects.slice().sort((a, b) =>
       new Date(b.last_reviewed_at || b.created_at) - new Date(a.last_reviewed_at || a.created_at)
