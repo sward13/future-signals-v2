@@ -75,9 +75,12 @@ const c = {
   brandDeep:   "#F0F7FF",   // key question block background
   brandBorder: "#BFDBFE",   // active filter pill border
 
-  // Semantic — Signal Quality badges
+  // Semantic — Signal Strength / Source Confidence badges
+  // Strong / High
   confirmedBg:    "#D1FAE5", confirmedText:    "#065F46",
+  // Moderate / Medium
   establishedBg:  "#DBEAFE", establishedText:  "#1E40AF",
+  // Weak / Low
   emergingBg:     "#FEF3C7", emergingText:     "#92400E",
 
   // Semantic — Time horizons (H1/H2/H3)
@@ -248,7 +251,9 @@ Width: `240px`. Contains three cards separated by `14px` gap.
 **Cluster subtypes:** `Trend | Driver | Tension`
 **Scenario archetypes:** `Continuation | Collapse | Constraint | Transformation`
 **Input subtypes:** `Signal | Issue | Projection | Plan | Obstacle`
-**Signal Quality values:** `Emerging | Established | Confirmed`
+**Signal Strength values:** `Weak | Moderate | Strong`
+**Source Confidence values:** `Low | Medium | High`
+**Note:** The `signal_quality` DB column still exists but is no longer read or written anywhere in the UI. Do not use it in new code.
 
 ---
 
@@ -382,7 +387,9 @@ All tables carry `workspace_id` and (where applicable) `project_id`. `workspace_
   source_url: string,
   subtype: string,           // 'Signal' | 'Issue' | 'Projection' | 'Plan' | 'Obstacle'
   steepled: string[],        // subset of ['Social','Technological','Economic','Environmental','Political','Legal','Ethical','Demographic']
-  signal_quality: string,    // 'Emerging' | 'Established' | 'Confirmed'
+  signal_strength: string|null,    // 'Weak' | 'Moderate' | 'Strong' — practitioner-set
+  source_confidence: string|null,  // 'Low' | 'Medium' | 'High' — practitioner-set
+  // signal_quality column exists in DB but is unused in UI — do not read or write it
   horizon: string,           // 'H1' | 'H2' | 'H3'
   metadata: object,
   created_at: string,
@@ -472,7 +479,7 @@ The full Product Requirements Document is at:
 Key decisions already made:
 - Cluster subtypes: **Trend, Driver, Tension** (Enabler removed)
 - Scenario archetypes: **Continuation, Collapse, Constraint, Transformation**
-- Signal Quality: **Emerging, Established, Confirmed** — single field replacing Signal Strength + Source Confidence
+- Signal Quality field has been disaggregated into two separate practitioner-set fields: **Signal Strength** (`Weak | Moderate | Strong`) and **Source Confidence** (`Low | Medium | High`). The `signal_quality` DB column is retained but unused.
 - Inbox default container — `project_id: null` means "in Inbox"
 - Workspace is 1:1 with user account in v2 — no team/org layer yet
 - Real-time collaboration deferred to v3
@@ -539,4 +546,10 @@ Two patterns are in use, depending on the table's key column:
 
 ### Edge Function deploy flags
 - Functions called from contexts with no Supabase Authorization header (e.g. links clicked from emails) must be deployed with JWT verification disabled: `supabase functions deploy <name> --no-verify-jwt`. Currently applies to `unsubscribe-digest`.
-- Unsubscribe token pattern: `HMAC-SHA256(user_id, UNSUBSCRIBE_SECRET)`, hex-encoded, with no embedded identifiers. The receiving function finds the matching user by recomputing the signature across `supabase.auth.admin.listUsers()`.
+- Unsubscribe token pattern: `userId:HMAC-SHA256(userId, UNSUBSCRIBE_SECRET)`, hex-encoded. The `userId` is embedded so verification is O(1) — extract the prefix, recompute the HMAC for that user only, compare. The unsubscribe URL in emails routes through `APP_URL/api/unsubscribe` (a Vercel proxy) rather than the Supabase function URL directly, keeping the Supabase project ID out of emails.
+
+### Security patterns for API endpoints
+- **Cron-only endpoints** (`scan.js`, `classify.js`, `score.js`, `run-health-check.js`): check `x-cron-secret` header, return 401 on mismatch.
+- **Client-callable endpoints** (`scrape.js`, `seed-onboarding.js`): require a Supabase Bearer token, verify with `supabase.auth.getUser(token)`, return 401 if invalid.
+- **Dual-auth endpoints** (`trigger-score.js`): accept either `x-cron-secret` OR a valid Bearer token — used by both cron and the client (after project creation).
+- **`api/scrape.js` SSRF protection**: validates URL is HTTPS, rejects private/loopback/IMDS IP ranges, caps response body at 512 KB.

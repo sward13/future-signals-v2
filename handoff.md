@@ -1,6 +1,6 @@
 # Future Signals v2 — Handoff
 
-_Last updated: 2026-05-13_
+_Last updated: 2026-06-19_
 
 ---
 
@@ -36,6 +36,10 @@ Recent notable additions:
 - Search + filter on Clustering screen (type / horizon / likelihood)
 - Strategic Options: Reversibility + Resource Intensity fields with colour-coded badges
 - System Map: fullscreen toggle, "Other" relationship type with custom label, table view reorder
+- Signal Quality disaggregated into Signal Strength (`Weak | Moderate | Strong`) and Source Confidence (`Low | Medium | High`) — both practitioner-set; `signal_quality` DB column retained but unused
+- Inbox AI Suggested Project filter: defaults to "All projects" on fresh load; persists within session; deep-link from "Review N suggestions" still pre-selects the correct project
+- Per-project scanning controls in Account Settings
+- Security hardening: SSRF protection on `/api/scrape`, auth required on `/api/trigger-score`, RLS on `source_health`, dropped `candidates_insert` open policy, O(1) unsubscribe token verification, unsubscribe URL routed through app domain
 
 ---
 
@@ -155,6 +159,7 @@ send-email                   — thin Resend wrapper used by health check
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`
 - `OPENAI_API_KEY`
 - `CRON_SECRET`
+- `APP_URL` (= `https://future-signals-v2.vercel.app`)
 
 **Supabase edge function secrets:**
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
@@ -162,6 +167,8 @@ send-email                   — thin Resend wrapper used by health check
 - `ADMIN_EMAIL`
 - `CRON_SECRET` (must match Vercel value)
 - `OPENAI_API_KEY`
+- `UNSUBSCRIBE_SECRET`
+- `APP_URL` (= `https://future-signals-v2.vercel.app`) — used to build unsubscribe URLs in digest emails
 
 ---
 
