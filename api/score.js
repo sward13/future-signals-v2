@@ -39,7 +39,12 @@ async function fetchAllAlreadyScored(projectIds) {
 }
 
 export default async function handler(req, res) {
-  if (req.headers['x-cron-secret'] !== process.env.CRON_SECRET) {
+  // Accept x-cron-secret (from classify's fire-and-forget) OR Authorization: Bearer
+  // (Vercel's cron runner sends the latter automatically when CRON_SECRET is set)
+  const cronOk =
+    req.headers['x-cron-secret'] === process.env.CRON_SECRET ||
+    req.headers['authorization'] === `Bearer ${process.env.CRON_SECRET}`;
+  if (!cronOk) {
     return res.status(401).json({ error: 'Unauthorised' });
   }
 

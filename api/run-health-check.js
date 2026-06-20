@@ -1,7 +1,10 @@
 export const config = { maxDuration: 30 };
 
 export default async function handler(req, res) {
-  if (req.headers['x-cron-secret'] !== process.env.CRON_SECRET) {
+  const cronOk =
+    req.headers['x-cron-secret'] === process.env.CRON_SECRET ||
+    req.headers['authorization'] === `Bearer ${process.env.CRON_SECRET}`;
+  if (!cronOk) {
     return res.status(401).json({ error: 'Unauthorised' });
   }
 
