@@ -86,19 +86,25 @@ export default async function handler(req, res) {
     if (!activeProjects.length) return res.status(200).json({ success: true, results });
 
     // ── Bulk-fetch recent candidates — field-selective, 30-day window ─────────
-    // Previously fetched ALL scored/promoted candidates with select('*'), including
-    // full embedding vectors for every row ever ingested. After weeks of operation
-    // this ballooned into tens of MB, reliably timing out the function.
+    // Paginate through all candidates to avoid PostgREST's 1000-row default cap.
     const lookbackDate = new Date(Date.now() - CANDIDATE_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
-    const { data: candidateRows, error: candidatesError } = await supabase
-      .from('candidates')
-      .select('id, source_id, title, url, summary_ai, summary_raw, steepled, embedding')
-      .in('status', ['scored', 'promoted'])
-      .gte('ingested_at', lookbackDate.toISOString());
+    const candidateRows = [];
+    let candFrom = 0;
+    while (true) {
+      const { data: page, error: candidatesError } = await supabase
+        .from('candidates')
+        .select('id, source_id, title, url, summary_ai, summary_raw, steepled, embedding')
+        .in('status', ['scored', 'promoted'])
+        .gte('ingested_at', lookbackDate.toISOString())
+        .order('ingested_at', { ascending: true })
+        .range(candFrom, candFrom + PAGE_SIZE - 1);
+      if (candidatesError) throw candidatesError;
+      candidateRows.push(...(page ?? []));
+      if (!page || page.length < PAGE_SIZE) break;
+      candFrom += PAGE_SIZE;
+    }
 
-    if (candidatesError) throw candidatesError;
-
-    const allCandidates = (candidateRows || [])
+    const allCandidates = candidateRows
       .map(c => ({
         ...c,
         embedding: typeof c.embedding === 'string' ? JSON.parse(c.embedding) : c.embedding,
