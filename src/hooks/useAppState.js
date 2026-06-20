@@ -355,7 +355,13 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
           if (error) throw error;
           onInserted?.(newProject);
           // Trigger scorer in background — non-blocking, silent fail
-          fetch('/api/trigger-score', { method: 'POST' }).catch(() => {});
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (!session) return;
+            fetch('/api/trigger-score', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            }).catch(() => {});
+          });
           // Refetch to confirm server state
           const { data, error: fetchError } = await supabase
             .from("projects")

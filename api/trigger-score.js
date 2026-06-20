@@ -1,6 +1,24 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+);
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Accept either the cron secret (server-to-server) or a valid user session (client)
+  const cronOk = req.headers['x-cron-secret'] === process.env.CRON_SECRET;
+  if (!cronOk) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorised' });
+    }
+    const { data: { user }, error } = await supabase.auth.getUser(authHeader.slice(7));
+    if (error || !user) return res.status(401).json({ error: 'Unauthorised' });
   }
 
   try {

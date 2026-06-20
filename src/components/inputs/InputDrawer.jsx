@@ -6,6 +6,7 @@
  */
 import { useState, useRef } from "react";
 import { c, inp, ta, sel, btnP, btnG, fl, fh, badg } from "../../styles/tokens.js";
+import { supabase } from "../../lib/supabase.js";
 import { Drawer } from "../layout/Drawer.jsx";
 import { INPUT_TYPES, ThreeCardSelector, SteepleSelector, HorizonSelector, TypeSwitcherChip } from "./InputFormFields.jsx";
 
@@ -215,7 +216,10 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
     setFields((prev) => ({ ...prev, description: "" }));
 
     try {
-      const res = await fetch(`/api/scrape?url=${encodeURIComponent(url)}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`/api/scrape?url=${encodeURIComponent(url)}`, {
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
       if (!res.ok) return;
       const data = await res.json();
       scrapedUrlRef.current = url;
