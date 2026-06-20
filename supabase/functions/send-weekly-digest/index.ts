@@ -283,7 +283,9 @@ async function markDigested(candidateIds: string[], now: Date) {
 
 async function buildUnsubscribeUrl(userId: string): Promise<string> {
   const token = await signUserId(userId);
-  return `${Deno.env.get("SUPABASE_URL")}/functions/v1/unsubscribe-digest?token=${token}`;
+  // Token format: "<userId>:<hmac>" — allows O(1) verification without scanning all users.
+  // URL routes through the app domain (APP_URL) to avoid exposing the Supabase project ID in emails.
+  return `${Deno.env.get("APP_URL")}/api/unsubscribe?token=${encodeURIComponent(`${userId}:${token}`)}`;
 }
 
 async function signUserId(userId: string): Promise<string> {

@@ -16,7 +16,6 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
-const LIST_USERS_PAGE_SIZE = 200;
 const PLAIN = { "Content-Type": "text/plain; charset=utf-8" };
 
 serve(async (req: Request) => {
@@ -44,6 +43,15 @@ serve(async (req: Request) => {
 });
 
 async function findUserByToken(token: string): Promise<string | null> {
+  // Token format: "<userId>:<hmac>" — extract userId, recompute HMAC, compare.
+  // This is O(1) regardless of user count; the old approach scanned all users.
+  const colonIdx = token.indexOf(":");
+  if (colonIdx === -1) return null;
+  const userId = token.slice(0, colonIdx);
+  const providedHmac = token.slice(colonIdx + 1);
+
+  if (!userId || !providedHmac) return null;
+
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(Deno.env.get("UNSUBSCRIBE_SECRET")!),
@@ -52,19 +60,13 @@ async function findUserByToken(token: string): Promise<string | null> {
     ["sign"],
   );
 
-  let page = 1;
-  while (true) {
-    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: LIST_USERS_PAGE_SIZE });
-    if (error) throw error;
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(userId));
+  const expectedHmac = Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
 
-    for (const user of data.users) {
-      const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(user.id));
-      const hex = Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
-      if (hex === token) return user.id;
-    }
+  if (expectedHmac !== providedHmac) return null;
 
-    if (data.users.length < LIST_USERS_PAGE_SIZE) break;
-    page++;
-  }
-  return null;
+  // Confirm the user actually exists before acting
+  const { data, error } = await supabase.auth.admin.getUserById(userId);
+  if (error || !data?.user) return null;
+  return data.user.id;
 }
