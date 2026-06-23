@@ -1085,7 +1085,22 @@ function CanvasArea({
   panelsHidden, onTogglePanels,
   isFullscreen, onToggleFullscreen,
 }) {
-  const { zoomIn, zoomOut, setViewport, getViewport, screenToFlowPosition } = useReactFlow();
+  const { zoomIn, zoomOut, setViewport, getViewport, screenToFlowPosition, fitView: fitViewFn } = useReactFlow();
+
+  const vpKey = `fs_vp_${activeProjectId}`;
+
+  const onInit = useCallback(() => {
+    const saved = localStorage.getItem(vpKey);
+    if (saved) {
+      try { setViewport(JSON.parse(saved)); } catch { fitViewFn({ padding: 0.3 }); }
+    } else {
+      fitViewFn({ padding: 0.3 });
+    }
+  }, [vpKey, setViewport, fitViewFn]);
+
+  const onMoveEnd = useCallback((_, vp) => {
+    if (vp) localStorage.setItem(vpKey, JSON.stringify(vp));
+  }, [vpKey]);
   const [rfNodes, setRFNodes, onNodesChange] = useNodesState([]);
   const [rfEdges, setRFEdges, onEdgesChange] = useEdgesState([]);
   const [currentZoom, setCurrentZoom] = useState(1);
@@ -1359,11 +1374,11 @@ function CanvasArea({
             const k = rt.id.replace(/\s/g, "-");
             return (
               <>
-                <marker key={`end-${k}`} id={`arrow-end-${k}`} markerWidth="10" markerHeight="6" refX="8" refY="3" orient="auto">
+                <marker key={`end-${k}`} id={`arrow-end-${k}`} markerWidth="10" markerHeight="6" refX="0" refY="3" orient="auto">
                   <path d="M0,0 L0,6 L8,3 z" fill={rt.color} />
                 </marker>
                 {rt.dash && (
-                  <marker key={`start-${k}`} id={`arrow-start-${k}`} markerWidth="10" markerHeight="6" refX="8" refY="3" orient="auto-start-reverse">
+                  <marker key={`start-${k}`} id={`arrow-start-${k}`} markerWidth="10" markerHeight="6" refX="0" refY="3" orient="auto-start-reverse">
                     <path d="M0,0 L0,6 L8,3 z" fill={rt.color} />
                   </marker>
                 )}
@@ -1402,10 +1417,10 @@ function CanvasArea({
         onEdgeClick={handleEdgeClick}
         onPaneClick={handlePaneClick}
         onNodeDragStop={onNodeDragStop}
+        onInit={onInit}
+        onMoveEnd={onMoveEnd}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        fitView
-        fitViewOptions={{ padding: 0.3 }}
         minZoom={0.2}
         maxZoom={3}
         zoomOnPinch={true}
