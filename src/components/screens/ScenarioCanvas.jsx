@@ -12,7 +12,7 @@ import {
   getBezierPath, MarkerType, ConnectionMode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { CirclePlus, LayoutDashboard, Logs, ChevronDown, ChevronRight, Maximize2, Minimize2, Hand, MousePointer2, Share2 } from "lucide-react";
+import { CirclePlus, LayoutDashboard, Logs, ChevronDown, ChevronRight, Maximize2, Minimize2, Hand, MousePointer2, Network, Type } from "lucide-react";
 import { c, ta, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
@@ -1353,11 +1353,11 @@ function CanvasArea({
             const k = rt.id.replace(/\s/g, "-");
             return (
               <>
-                <marker key={`end-${k}`} id={`arrow-end-${k}`} markerWidth="6" markerHeight="6" refX="7" refY="3" orient="auto">
+                <marker key={`end-${k}`} id={`arrow-end-${k}`} markerWidth="10" markerHeight="6" refX="8" refY="3" orient="auto">
                   <path d="M0,0 L0,6 L8,3 z" fill={rt.color} />
                 </marker>
                 {rt.dash && (
-                  <marker key={`start-${k}`} id={`arrow-start-${k}`} markerWidth="6" markerHeight="6" refX="2" refY="3" orient="auto-start-reverse">
+                  <marker key={`start-${k}`} id={`arrow-start-${k}`} markerWidth="10" markerHeight="6" refX="8" refY="3" orient="auto-start-reverse">
                     <path d="M0,0 L0,6 L8,3 z" fill={rt.color} />
                   </marker>
                 )}
@@ -1517,10 +1517,10 @@ function CanvasArea({
               <Hand size={14} />
             </button>
             <button style={toolBtn("text")} title="Text (T)" onClick={() => setActiveTool("text")}>
-              <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1, fontFamily: "Georgia, serif" }}>T</span>
+              <Type size={14} />
             </button>
             <button style={toolBtn("connect")} title="Connect (C)" onClick={() => setActiveTool("connect")}>
-              <Share2 size={14} />
+              <Network size={14} />
             </button>
           </div>
         );
