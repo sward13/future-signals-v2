@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  ReactFlow, ReactFlowProvider, Background, Controls,
+  ReactFlow, ReactFlowProvider, Background, Controls, Panel,
   useReactFlow, useNodesState, useEdgesState,
   Handle, Position, BaseEdge, EdgeLabelRenderer,
   getBezierPath, MarkerType, ConnectionMode,
@@ -206,8 +206,203 @@ function RelationshipEdgeComponent({
   );
 }
 
+// ─── Text node constants ──────────────────────────────────────────────────────
+
+const TEXT_NODE_FONTS = [
+  { label: "Sans",  value: "Open Sans, system-ui, sans-serif" },
+  { label: "Serif", value: "Georgia, 'Times New Roman', serif" },
+  { label: "Mono",  value: "'Menlo', 'Courier New', monospace" },
+];
+const TEXT_NODE_SIZES = [12, 14, 16, 20, 24, 32, 48];
+const TEXT_NODE_COLORS = [
+  { hex: "#1A1A1A", label: "Ink" },
+  { hex: "#374151", label: "Dark gray" },
+  { hex: "#6B7280", label: "Gray" },
+  { hex: "#1D4ED8", label: "Blue" },
+  { hex: "#0F6E56", label: "Teal" },
+  { hex: "#993C1D", label: "Coral" },
+  { hex: "#854F0B", label: "Amber" },
+];
+
+// ─── TextNodeComponent — freeform canvas annotation ──────────────────────────
+// Must be defined outside CanvasArea for a stable nodeTypes reference.
+
+function TextNodeComponent({ id, data, selected }) {
+  const { setNodes } = useReactFlow();
+  const taRef = useRef(null);
+  const [editing, setEditing] = useState(data.autoFocus ?? false);
+
+  function resize() {
+    const el = taRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.width = "auto";
+    el.style.height = el.scrollHeight + "px";
+    el.style.width = Math.max(el.scrollWidth, 80) + "px";
+  }
+
+  useEffect(() => {
+    if (editing && taRef.current) {
+      taRef.current.focus();
+      taRef.current.select();
+      resize();
+    }
+  }, [editing]);
+
+  function commit(value) {
+    setNodes((ns) =>
+      ns.map((n) =>
+        n.id === id
+          ? { ...n, data: { ...n.data, text: value, autoFocus: false, editing: false } }
+          : n
+      )
+    );
+    setEditing(false);
+  }
+
+  function startEditing() {
+    setNodes((ns) =>
+      ns.map((n) =>
+        n.id === id ? { ...n, data: { ...n.data, editing: true } } : n
+      )
+    );
+    setEditing(true);
+  }
+
+  const fontStyle = {
+    fontFamily: data.fontFamily,
+    fontSize: (data.fontSize ?? 16) + "px",
+    fontWeight: data.bold ? "700" : "400",
+    fontStyle: data.italic ? "italic" : "normal",
+    color: data.color,
+    lineHeight: "1.45",
+  };
+
+  const sharedStyle = {
+    ...fontStyle,
+    background: "transparent",
+    border: "none",
+    outline: "none",
+    padding: 0,
+    margin: 0,
+    display: "block",
+    minWidth: 80,
+    resize: "none",
+    overflow: "hidden",
+    whiteSpace: "pre",
+  };
+
+  return (
+    <div
+      style={{ position: "relative", cursor: editing ? "text" : "default" }}
+      onDoubleClick={() => startEditing()}
+    >
+      {selected && !editing && (
+        <div style={{
+          position: "absolute", inset: -6,
+          border: `1.5px solid ${c.brand}`,
+          borderRadius: 4,
+          pointerEvents: "none",
+        }} />
+      )}
+      {editing ? (
+        <textarea
+          ref={taRef}
+          defaultValue={data.text}
+          style={{ ...sharedStyle, cursor: "text" }}
+          rows={1}
+          onInput={resize}
+          onBlur={(e) => commit(e.target.value)}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Escape") commit(e.target.value);
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              commit(e.target.value);
+            }
+          }}
+        />
+      ) : (
+        <div style={{ ...sharedStyle, whiteSpace: "pre-wrap", minHeight: "1.45em", cursor: "default" }}>
+          {data.text || (
+            <span style={{ color: "rgba(107,114,128,0.5)", fontStyle: "italic" }}>Text</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── FormatBarTextNode — format bar for selected text nodes ───────────────────
+
+function FormatBarTextNode({ node, onUpdate, onDuplicate, onDelete }) {
+  if (!node || node.data.editing) return null;
+  const d = node.data;
+  const sep = { width: 1, height: 16, background: "rgba(255,255,255,0.15)", flexShrink: 0 };
+  const selSty = {
+    background: "rgba(255,255,255,0.08)", border: "none",
+    color: "#d0d0d0", fontSize: 11.5, borderRadius: 4,
+    padding: "3px 5px", cursor: "pointer", outline: "none",
+    fontFamily: "inherit",
+  };
+  const fmtBtn = (active) => ({
+    background: active ? "rgba(255,255,255,0.18)" : "none",
+    border: "none", color: "#d0d0d0",
+    fontSize: 13, cursor: "pointer", borderRadius: 4,
+    padding: "3px 7px", lineHeight: 1, fontFamily: "inherit",
+  });
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 6,
+      background: "#1c1c1e", borderRadius: 8,
+      padding: "6px 10px",
+      boxShadow: "0 2px 12px rgba(0,0,0,0.22)",
+      marginTop: 12,
+    }}>
+      <select value={d.fontFamily} onChange={(e) => onUpdate({ fontFamily: e.target.value })} style={selSty}>
+        {TEXT_NODE_FONTS.map((f) => <option key={f.label} value={f.value}>{f.label}</option>)}
+      </select>
+      <div style={sep} />
+      <select value={d.fontSize} onChange={(e) => onUpdate({ fontSize: Number(e.target.value) })} style={selSty}>
+        {TEXT_NODE_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+      </select>
+      <div style={sep} />
+      <button style={{ ...fmtBtn(d.bold), fontWeight: 700 }} onClick={() => onUpdate({ bold: !d.bold })}>B</button>
+      <button style={{ ...fmtBtn(d.italic), fontStyle: "italic" }} onClick={() => onUpdate({ italic: !d.italic })}>I</button>
+      <div style={sep} />
+      {TEXT_NODE_COLORS.map((clr) => (
+        <button
+          key={clr.hex}
+          title={clr.label}
+          onClick={() => onUpdate({ color: clr.hex })}
+          style={{
+            width: 14, height: 14, borderRadius: "50%",
+            background: clr.hex, border: "none", padding: 0,
+            cursor: "pointer", flexShrink: 0,
+            outline: d.color === clr.hex ? "2px solid #fff" : "none",
+            outlineOffset: 1,
+            transform: d.color === clr.hex ? "scale(1.2)" : "scale(1)",
+            transition: "transform 0.1s",
+          }}
+        />
+      ))}
+      <div style={sep} />
+      <button
+        style={{ background: "none", border: "none", color: "#9ca3af", fontSize: 13, cursor: "pointer", borderRadius: 4, padding: "2px 6px", fontFamily: "inherit" }}
+        onClick={onDuplicate}
+        title="Duplicate"
+      >⧉</button>
+      <button
+        style={{ background: "none", border: "none", color: "#f87171", fontSize: 13, cursor: "pointer", borderRadius: 4, padding: "2px 6px", fontFamily: "inherit" }}
+        onClick={onDelete}
+        title="Delete"
+      >✕</button>
+    </div>
+  );
+}
+
 // Stable type maps — defined once outside any component
-const nodeTypes = { cluster: ClusterNodeComponent };
+const nodeTypes = { cluster: ClusterNodeComponent, textNode: TextNodeComponent };
 const edgeTypes = { relationship: RelationshipEdgeComponent };
 
 // ─── Relationship modal ───────────────────────────────────────────────────────
@@ -872,45 +1067,130 @@ function CanvasArea({
   panelsHidden, onTogglePanels,
   isFullscreen, onToggleFullscreen,
 }) {
-  const { zoomIn, zoomOut, setViewport, getViewport } = useReactFlow();
+  const { zoomIn, zoomOut, setViewport, getViewport, screenToFlowPosition } = useReactFlow();
   const [rfNodes, setRFNodes, onNodesChange] = useNodesState([]);
   const [rfEdges, setRFEdges, onEdgesChange] = useEdgesState([]);
   const [currentZoom, setCurrentZoom] = useState(1);
+  const [textToolActive, setTextToolActive] = useState(false);
+  const [selectedTextNodeId, setSelectedTextNodeId] = useState(null);
 
   // Stable ref for onRemoveNode so node data closures don't go stale
   const onRemoveNodeRef = useRef(onRemoveNode);
   useEffect(() => { onRemoveNodeRef.current = onRemoveNode; }, [onRemoveNode]);
 
-  // Rebuild RF nodes whenever projectNodes structure changes (add/remove)
+  // Rebuild RF nodes whenever projectNodes structure changes (add/remove).
+  // Preserve any existing text nodes — they are not persisted to Supabase.
   const nodeIdsKey = projectNodes.map((n) => n.id).join(",");
   useEffect(() => {
-    setRFNodes(projectNodes.map((pNode) => ({
-      id: pNode.id,
-      type: "cluster",
-      position: { x: pNode.x, y: pNode.y },
-      selectable: false,
-      data: {
-        cluster: clusters.find((cl) => cl.id === pNode.clusterId),
-        onRemove: () => onRemoveNodeRef.current(pNode.id),
-        connectMode: !!connectMode,
-        isConnectSource: false,
-        selected: false,
-      },
-    })));
+    setRFNodes((prev) => {
+      const textNodes = prev.filter((n) => n.type === "textNode");
+      return [
+        ...projectNodes.map((pNode) => ({
+          id: pNode.id,
+          type: "cluster",
+          position: { x: pNode.x, y: pNode.y },
+          selectable: false,
+          data: {
+            cluster: clusters.find((cl) => cl.id === pNode.clusterId),
+            onRemove: () => onRemoveNodeRef.current(pNode.id),
+            connectMode: !!connectMode,
+            isConnectSource: false,
+            selected: false,
+          },
+        })),
+        ...textNodes,
+      ];
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeIdsKey]);
 
-  // Update data (selection, connectMode) without resetting positions
+  // Update data (selection, connectMode) without resetting positions.
+  // Skip text nodes — they manage their own selection via rfNode.selected.
   useEffect(() => {
-    setRFNodes((nds) => nds.map((rfNode) => ({
-      ...rfNode,
-      data: {
-        ...rfNode.data,
-        connectMode: !!connectMode,
-        selected: selectedItem?.type === "node" && selectedItem.nodeId === rfNode.id,
-      },
-    })));
+    setRFNodes((nds) => nds.map((rfNode) => {
+      if (rfNode.type === "textNode") return rfNode;
+      return {
+        ...rfNode,
+        data: {
+          ...rfNode.data,
+          connectMode: !!connectMode,
+          selected: selectedItem?.type === "node" && selectedItem.nodeId === rfNode.id,
+        },
+      };
+    }));
   }, [selectedItem, connectMode, setRFNodes]);
+
+  // Text node helpers
+  const addTextNodeAtPosition = useCallback((position) => {
+    const id = `txt-${Date.now()}`;
+    setRFNodes((nds) => [
+      ...nds,
+      {
+        id,
+        type: "textNode",
+        position,
+        selected: true,
+        data: {
+          text: "",
+          fontFamily: TEXT_NODE_FONTS[0].value,
+          fontSize: 16,
+          color: TEXT_NODE_COLORS[0].hex,
+          bold: false,
+          italic: false,
+          autoFocus: true,
+          editing: true,
+        },
+      },
+    ]);
+    setSelectedTextNodeId(id);
+  }, [setRFNodes]);
+
+  const updateTextNodeData = useCallback((nodeId, patch) => {
+    setRFNodes((nds) =>
+      nds.map((n) => n.id === nodeId ? { ...n, data: { ...n.data, ...patch } } : n)
+    );
+  }, [setRFNodes]);
+
+  const deleteTextNode = useCallback((nodeId) => {
+    setRFNodes((nds) => nds.filter((n) => n.id !== nodeId));
+    setSelectedTextNodeId(null);
+  }, [setRFNodes]);
+
+  const duplicateTextNode = useCallback((nodeId) => {
+    setRFNodes((nds) => {
+      const src = nds.find((n) => n.id === nodeId);
+      if (!src) return nds;
+      const newId = `txt-${Date.now()}`;
+      const copy = {
+        ...src,
+        id: newId,
+        position: { x: src.position.x + 16, y: src.position.y + 16 },
+        selected: true,
+        data: { ...src.data, autoFocus: false, editing: false },
+      };
+      setSelectedTextNodeId(newId);
+      return [...nds.map((n) => ({ ...n, selected: false })), copy];
+    });
+  }, [setRFNodes]);
+
+  // Keyboard shortcuts for text tool — handled locally in CanvasArea
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const tag = document.activeElement?.tagName.toLowerCase();
+      const isEditing = tag === "input" || tag === "textarea" || tag === "select" ||
+        document.activeElement?.isContentEditable;
+      if (isEditing) return;
+
+      if (e.key === "t" || e.key === "T") { setTextToolActive(true); return; }
+      if (e.key === "v" || e.key === "V") { setTextToolActive(false); return; }
+      if (e.key === "Escape") { setTextToolActive(false); return; }
+      if ((e.key === "Backspace" || e.key === "Delete") && selectedTextNodeId) {
+        deleteTextNode(selectedTextNodeId);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedTextNodeId, deleteTextNode]);
 
   // Rebuild edges whenever relationships or selection changes
   useEffect(() => {
@@ -940,23 +1220,45 @@ function CanvasArea({
   }, [projectRels, projectNodes, selectedItem, setRFEdges]);
 
   const handleNodeClick = useCallback((_, rfNode) => {
+    if (rfNode.type === "textNode") {
+      setSelectedTextNodeId(rfNode.id);
+      setRFNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === rfNode.id })));
+      setSelectedItem(null);
+      setTextToolActive(false);
+      return;
+    }
     const pNode = projectNodes.find((n) => n.id === rfNode.id);
     if (!pNode) return;
+    setSelectedTextNodeId(null);
     setSelectedItem({ type: "node", nodeId: rfNode.id, clusterId: pNode.clusterId });
-  }, [projectNodes, setSelectedItem]);
+  }, [projectNodes, setSelectedItem, setRFNodes]);
 
   const handleEdgeClick = useCallback((_, rfEdge) => {
+    setSelectedTextNodeId(null);
     // rfEdge.id is `${rel.id}-${rel.type}` — read the stable rel id from data
     setSelectedItem({ type: "rel", id: rfEdge.data.rel.id });
   }, [setSelectedItem]);
 
-  const handlePaneClick = useCallback(() => {
+  const handlePaneClick = useCallback((event) => {
+    if (textToolActive) {
+      const pos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      addTextNodeAtPosition(pos);
+      setTextToolActive(false);
+      return;
+    }
+    setSelectedTextNodeId(null);
+    setRFNodes((nds) => nds.map((n) => n.type === "textNode" ? { ...n, selected: false } : n));
     if (connectMode) { setConnectMode(false); return; }
     setSelectedItem(null);
-  }, [connectMode, setConnectMode, setSelectedItem]);
+  }, [textToolActive, connectMode, setConnectMode, setSelectedItem, setRFNodes,
+      screenToFlowPosition, addTextNodeAtPosition]);
+
+  const selectedTextNode = selectedTextNodeId
+    ? rfNodes.find((n) => n.id === selectedTextNodeId) ?? null
+    : null;
 
   return (
-    <div style={{ flex: 1, position: "relative", width: "100%", height: "100%" }}>
+    <div style={{ flex: 1, position: "relative", width: "100%", height: "100%", cursor: textToolActive ? "crosshair" : undefined }}>
       {/* Global SVG marker definitions — one per relationship type, always in DOM */}
       <svg style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
         <defs>
@@ -1045,7 +1347,8 @@ function CanvasArea({
         zoomOnScroll={true}
         panOnScroll={false}
         preventScrolling={true}
-        panOnDrag={isPanning ? true : [1, 2]}
+        panOnDrag={textToolActive ? false : (isPanning ? true : [1, 2])}
+        nodesDraggable={!textToolActive}
         connectionMode={ConnectionMode.Loose}
         connectionRadius={20}
         deleteKeyCode={null}
@@ -1056,6 +1359,16 @@ function CanvasArea({
         proOptions={{ hideAttribution: true }}
       >
         <Background color="rgba(0,0,0,0.11)" gap={24} size={1} />
+        {selectedTextNode && (
+          <Panel position="top-center">
+            <FormatBarTextNode
+              node={selectedTextNode}
+              onUpdate={(patch) => updateTextNodeData(selectedTextNodeId, patch)}
+              onDuplicate={() => duplicateTextNode(selectedTextNodeId)}
+              onDelete={() => deleteTextNode(selectedTextNodeId)}
+            />
+          </Panel>
+        )}
       </ReactFlow>
 
       {/* Empty canvas nudge */}
@@ -1124,11 +1437,26 @@ function CanvasArea({
         >reset</button>
       </div>
 
-      {/* Hint */}
-      <div style={{ position: "absolute", bottom: 18, left: 54, zIndex: 10, pointerEvents: "none" }}>
-        <div style={{ fontSize: 10, color: c.hint }}>
+      {/* Hint + text tool toggle */}
+      <div style={{ position: "absolute", bottom: 18, left: 54, zIndex: 10, display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ fontSize: 10, color: c.hint, pointerEvents: "none" }}>
           Space + drag to pan · Scroll to zoom · Tab to toggle panels
         </div>
+        <div style={{ width: 1, height: 10, background: c.border, flexShrink: 0 }} />
+        <button
+          onClick={() => setTextToolActive((v) => !v)}
+          title="Text tool (T)"
+          style={{
+            display: "flex", alignItems: "center", gap: 4,
+            padding: "3px 8px", border: "none", borderRadius: 5,
+            fontSize: 10, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
+            background: textToolActive ? c.ink : "transparent",
+            color: textToolActive ? c.white : c.muted,
+            transition: "background 0.15s, color 0.15s",
+          }}
+        >
+          T  {textToolActive ? "Click to place" : "Text"}
+        </button>
       </div>
     </div>
   );
@@ -1275,8 +1603,9 @@ export default function ScenarioCanvas({ appState }) {
     }
   }, [projectNodes]);
 
-  // Persist position on drag end
+  // Persist position on drag end — text nodes are session-only, not persisted
   const onNodeDragStop = useCallback((_, rfNode) => {
+    if (rfNode.type === "textNode") return;
     updateCanvasNodePos(rfNode.id, { x: rfNode.position.x, y: rfNode.position.y });
   }, [updateCanvasNodePos]);
 
