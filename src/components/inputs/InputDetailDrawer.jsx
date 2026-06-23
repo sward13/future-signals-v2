@@ -3,7 +3,8 @@
  * Read-only by default; clicking Edit makes all fields editable.
  * @param {{ inputId: string|null, inputs: object[], projects: object[], onClose: () => void, onSave: (id, fields) => void }} props
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { c, inp, ta, btnP, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { INPUT_TYPES, ThreeCardSelector, SteepleSelector, HorizonSelector, TypeSwitcherChip } from "./InputFormFields.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
@@ -54,13 +55,16 @@ const CONFIDENCE_COLORS = {
   high:   [c.green700, c.green50, c.greenBorder],
 };
 
-export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], onClose, onSave, onDelete, onAccept, onSaveToProject, onDismissSuggested, projectClusters, onAssignToCluster, onOpenCluster }) {
+export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], onClose, onSave, onDelete, onAccept, onSaveToProject, onDismissSuggested, projectClusters, onAssignToCluster, onOpenCluster, onDuplicateToCluster }) {
   const input = inputs.find((i) => i.id === inputId) || null;
 
   const [editing, setEditing] = useState(false);
   const [fields, setFields] = useState({});
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [reassigning, setReassigning] = useState(false);
+  const [dupePickerOpen, setDupePickerOpen] = useState(false);
+  const [dupeAnchorRect, setDupeAnchorRect] = useState(null);
+  const dupeButtonRef = useRef(null);
 
   useEffect(() => {
     if (input) {
@@ -78,6 +82,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
     }
     setEditing(false);
     setReassigning(false);
+    setDupePickerOpen(false);
   }, [inputId]);
 
   if (!input) return null;
@@ -427,16 +432,88 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
             <button onClick={handleSave} style={btnP}>Save changes</button>
           </div>
         )}
-        {!editing && onDelete && !isAiSuggested && (
-          <div style={{ padding: "12px 24px 18px", borderTop: `1px solid ${c.border}`, flexShrink: 0, display: "flex", justifyContent: "flex-end" }}>
-            <button
-              onClick={() => setConfirmDelete(true)}
-              style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
-            >
-              Delete input
-            </button>
-          </div>
-        )}
+        {!editing && (onDelete || onDuplicateToCluster) && !isAiSuggested && (() => {
+          const eligibleClusters = projectClusters
+            ? projectClusters.filter((cl) => !(cl.input_ids || []).includes(input.id))
+            : [];
+          const canDupe = !!onDuplicateToCluster && eligibleClusters.length > 0;
+          return (
+            <div style={{ padding: "12px 24px 18px", borderTop: `1px solid ${c.border}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              {canDupe ? (
+                <div style={{ position: "relative" }}>
+                  <button
+                    ref={dupeButtonRef}
+                    onClick={() => {
+                      const rect = dupeButtonRef.current?.getBoundingClientRect();
+                      setDupeAnchorRect(rect ?? null);
+                      setDupePickerOpen((o) => !o);
+                    }}
+                    style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, border: `1px solid ${c.borderMid}`, background: "transparent", color: c.muted, cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    Duplicate to cluster
+                  </button>
+                  {dupePickerOpen && dupeAnchorRect && createPortal(
+                    <>
+                      <div onClick={() => setDupePickerOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 400 }} />
+                      <div style={{
+                        position: "fixed",
+                        bottom: window.innerHeight - dupeAnchorRect.top + 4,
+                        left: dupeAnchorRect.left,
+                        background: c.white,
+                        border: `1px solid ${c.border}`,
+                        borderRadius: 10,
+                        boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
+                        minWidth: 220,
+                        zIndex: 401,
+                        overflow: "hidden",
+                      }}>
+                        <div style={{ padding: "8px 14px 4px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.muted, fontWeight: 500 }}>
+                          Copy to cluster
+                        </div>
+                        <div style={{ maxHeight: 220, overflowY: "auto" }}>
+                          {eligibleClusters.map((cl) => (
+                            <button
+                              key={cl.id}
+                              onClick={async () => {
+                                setDupePickerOpen(false);
+                                await onDuplicateToCluster(cl.id);
+                              }}
+                              style={{
+                                display: "block", width: "100%", padding: "9px 14px",
+                                background: "transparent", border: "none",
+                                borderBottom: `1px solid ${c.border}`,
+                                textAlign: "left", cursor: "pointer",
+                                fontSize: 12, color: c.ink, fontFamily: "inherit",
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = c.surfaceAlt; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                            >
+                              {cl.name}
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{ padding: "6px 14px", borderTop: `1px solid ${c.border}` }}>
+                          <button onClick={() => setDupePickerOpen(false)} style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </>,
+                    document.body
+                  )}
+                </div>
+              ) : <div />}
+              {onDelete && (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  Delete input
+                </button>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {confirmDelete && (

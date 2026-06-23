@@ -188,7 +188,7 @@ export default function App() {
 
   // ── App state ──────────────────────────────────────────────────────────────
   const appState = useAppState(workspaceId, session ?? null, preferences);
-  const { inputDetailId, clusterDetailId, closeInputDetail, closeClusterDetail, updateInput, updateCluster, assignInputToCluster, removeInputFromCluster, deleteInput, deleteCluster, inputs, clusters, projects, activeProjectId } = appState;
+  const { inputDetailId, clusterDetailId, closeInputDetail, closeClusterDetail, updateInput, updateCluster, assignInputToCluster, removeInputFromCluster, deleteInput, deleteCluster, duplicateInputToCluster, inputs, clusters, projects, activeProjectId } = appState;
   const projectClusters = activeProjectId ? clusters.filter((cl) => cl.project_id === activeProjectId) : null;
 
   // ── Onboarding handlers ────────────────────────────────────────────────────
@@ -368,6 +368,13 @@ export default function App() {
           appState.showToast(cl ? `Assigned to "${cl.name}"` : "Input assigned");
         }}
         onOpenCluster={(clusterId) => { closeInputDetail(); appState.openClusterDetail(clusterId); }}
+        onDuplicateToCluster={activeProjectId ? async (destClusterId) => {
+          const newInput = await duplicateInputToCluster(inputDetailId, destClusterId);
+          if (newInput) {
+            const cl = clusters.find((c) => c.id === destClusterId);
+            appState.showToast(`Copied to "${cl?.name ?? "cluster"}"`);
+          }
+        } : undefined}
       />
 
 

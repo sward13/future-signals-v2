@@ -573,6 +573,32 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     }
   }, [workspaceId, showToast]);
 
+  const duplicateInputToCluster = useCallback(async (sourceInputId, destClusterId) => {
+    if (!workspaceId) return null;
+    try {
+      const { data, error } = await supabase.rpc("duplicate_input_to_cluster", {
+        p_source_id:       sourceInputId,
+        p_dest_cluster_id: destClusterId,
+        p_workspace_id:    workspaceId,
+      });
+      if (error) throw error;
+      const newInput = Array.isArray(data) ? data[0] : data;
+      if (!newInput) throw new Error("no row returned");
+      setInputs((prev) => [newInput, ...prev]);
+      setClusters((prev) =>
+        prev.map((cl) =>
+          cl.id === destClusterId && !cl.input_ids.includes(newInput.id)
+            ? { ...cl, input_ids: [...cl.input_ids, newInput.id] }
+            : cl
+        )
+      );
+      return newInput;
+    } catch {
+      showToast("Failed to duplicate input", "error");
+      return null;
+    }
+  }, [workspaceId, showToast]);
+
   /** Delete an input and strip it from all cluster input_ids. */
   const deleteInput = useCallback((id) => {
     setInputs((prev) => prev.filter((inp) => inp.id !== id));
@@ -1552,6 +1578,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     addRelationship,
     updateRelationship,
     removeRelationship,
+    duplicateInputToCluster,
     deleteInput,
     deleteCluster,
     deleteSystemMap,

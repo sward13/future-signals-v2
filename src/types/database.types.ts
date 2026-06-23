@@ -402,6 +402,8 @@ export type Database = {
           name: string
           project_id: string | null
           signal_quality: string | null
+          signal_strength: string | null
+          source_confidence: string | null
           source_url: string | null
           steepled: string[]
           subtype: string
@@ -418,6 +420,8 @@ export type Database = {
           name: string
           project_id?: string | null
           signal_quality?: string | null
+          signal_strength?: string | null
+          source_confidence?: string | null
           source_url?: string | null
           steepled?: string[]
           subtype?: string
@@ -434,6 +438,8 @@ export type Database = {
           name?: string
           project_id?: string | null
           signal_quality?: string | null
+          signal_strength?: string | null
+          source_confidence?: string | null
           source_url?: string | null
           steepled?: string[]
           subtype?: string

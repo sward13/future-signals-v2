@@ -3,6 +3,7 @@
  * left = inputs table with filter tabs, right = clusters/systems summary.
  */
 import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { CirclePlus } from "lucide-react";
 import { useScannerStatus } from "../../hooks/useScannerStatus.js";
 import { c, inp, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
@@ -17,7 +18,7 @@ import { EditProjectDrawer } from "../projects/EditProjectDrawer.jsx";
 import { CsvImportModal } from "../inputs/CsvImportModal.jsx";
 
 const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
-const COL = { check: 28, type: 80, quality: 120, steepled: 100, horizon: 55, action: 90 };
+const COL = { check: 28, type: 80, quality: 120, steepled: 100, horizon: 55, action: 90, menu: 28 };
 
 const STRENGTH_COLORS = {
   weak:     [c.amber700, c.amber50, c.amberBorder],
@@ -316,6 +317,7 @@ export default function ProjectDetail({ appState }) {
     addInput, saveInputsToProject, showToast, setActiveScreen, setActiveProjectId,
     openInputDetail, openClusterDetail, openScenarioDetail,
     addCluster, addScenario, updateProject, assignInputToCluster, deleteProject,
+    duplicateInputToCluster,
     workspaceScanningEnabled, setInboxProjectFilter,
   } = appState;
 
@@ -338,6 +340,9 @@ export default function ProjectDetail({ appState }) {
   const [filterHorizon,     setFilterHorizon]     = useState(null);
   const [filterSteepled,    setFilterSteepled]    = useState(null);
   const [openFilterDropdown,setOpenFilterDropdown]= useState(null);
+  // Row context menu + cluster picker for "Duplicate to cluster"
+  const [rowMenu,    setRowMenu]    = useState(null); // null | { inputId, rect }
+  const [dupePicker, setDupePicker] = useState(null); // null | { inputId, rect }
 
   const project = projects.find((p) => p.id === activeProjectId) ?? null;
   const { status: scanStatus, foundCount, dismiss: dismissScan } = useScannerStatus(project, inputs);
@@ -468,6 +473,12 @@ export default function ProjectDetail({ appState }) {
     assignInputToCluster(inputId, cluster.id);
     showToast(`Input assigned to "${cluster.name}"`);
     setAssignPickerFor(null);
+  };
+
+  const handleDuplicateToCluster = async (inputId, destCluster) => {
+    setDupePicker(null);
+    const result = await duplicateInputToCluster(inputId, destCluster.id);
+    if (result) showToast(`Copied to "${destCluster.name}"`);
   };
 
   const cell = { fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, flexShrink: 0 };
@@ -706,6 +717,7 @@ export default function ProjectDetail({ appState }) {
                     <div style={{ width: COL.steepled,...cell }}>STEEPLED</div>
                     <div style={{ width: COL.horizon,    ...cell }}>Horizon</div>
                     <div style={{ width: COL.action, flexShrink: 0, ...cell }}>Cluster</div>
+                    <div style={{ width: COL.menu, flexShrink: 0 }} />
                   </div>
 
                   {/* Data rows */}
@@ -804,6 +816,25 @@ export default function ProjectDetail({ appState }) {
                               {assignedClusters.length} clusters
                             </span>
                           )}
+                        </div>
+                        {/* Three-dot context menu trigger */}
+                        <div style={{ width: COL.menu, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setRowMenu((prev) => prev?.inputId === inp.id ? null : { inputId: inp.id, rect });
+                              setDupePicker(null);
+                            }}
+                            style={{
+                              background: "none", border: "none", cursor: "pointer",
+                              fontSize: 14, color: c.muted, padding: "2px 4px",
+                              borderRadius: 4, fontFamily: "inherit", lineHeight: 1,
+                            }}
+                            title="More actions"
+                          >
+                            ⋯
+                          </button>
                         </div>
                       </div>
                     );
@@ -990,6 +1021,123 @@ export default function ProjectDetail({ appState }) {
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
+
+      {/* ── Row context menu portal ──────────────────────────── */}
+      {rowMenu && createPortal(
+        <>
+          <div
+            onClick={() => setRowMenu(null)}
+            style={{ position: "fixed", inset: 0, zIndex: 200 }}
+          />
+          <div style={{
+            position: "fixed",
+            top: rowMenu.rect.bottom + 4,
+            right: window.innerWidth - rowMenu.rect.right,
+            background: c.white,
+            border: `1px solid ${c.border}`,
+            borderRadius: 8,
+            boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
+            minWidth: 180,
+            zIndex: 201,
+            overflow: "hidden",
+          }}>
+            <button
+              onClick={() => {
+                const { inputId, rect } = rowMenu;
+                setRowMenu(null);
+                setDupePicker({ inputId, rect });
+              }}
+              style={{
+                display: "block", width: "100%", padding: "9px 14px",
+                background: "transparent", border: "none",
+                textAlign: "left", cursor: "pointer",
+                fontSize: 12, color: c.ink, fontFamily: "inherit",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = c.surfaceAlt; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              Duplicate to cluster
+            </button>
+          </div>
+        </>,
+        document.body
+      )}
+
+      {/* ── Cluster picker portal for duplicate ─────────────── */}
+      {dupePicker && (() => {
+        const sourceInput = inputs.find((i) => i.id === dupePicker.inputId);
+        const assignedClusterIds = new Set(
+          projectClusters.filter((cl) => cl.input_ids?.includes(dupePicker.inputId)).map((cl) => cl.id)
+        );
+        const eligibleClusters = projectClusters.filter((cl) => !assignedClusterIds.has(cl.id));
+        return createPortal(
+          <>
+            <div
+              onClick={() => setDupePicker(null)}
+              style={{ position: "fixed", inset: 0, zIndex: 200 }}
+            />
+            <div style={{
+              position: "fixed",
+              top: dupePicker.rect.bottom + 4,
+              right: window.innerWidth - dupePicker.rect.right,
+              background: c.white,
+              border: `1px solid ${c.border}`,
+              borderRadius: 10,
+              boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
+              minWidth: 220,
+              zIndex: 201,
+              overflow: "hidden",
+            }}>
+              <div style={{
+                padding: "8px 14px 4px",
+                fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em",
+                color: c.muted, fontWeight: 500,
+              }}>
+                Copy to cluster
+              </div>
+              {eligibleClusters.length === 0 ? (
+                <div style={{ padding: "8px 14px 12px", fontSize: 12, color: c.muted, fontStyle: "italic" }}>
+                  {projectClusters.length === 0
+                    ? "No clusters yet — build one first."
+                    : "Input is already in all clusters."}
+                </div>
+              ) : (
+                <div style={{ maxHeight: 220, overflowY: "auto" }}>
+                  {eligibleClusters.map((cl) => (
+                    <button
+                      key={cl.id}
+                      onClick={() => sourceInput && handleDuplicateToCluster(sourceInput.id, cl)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 8,
+                        width: "100%", padding: "9px 14px",
+                        background: "transparent", border: "none",
+                        borderBottom: `1px solid ${c.border}`,
+                        textAlign: "left", cursor: "pointer", fontFamily: "inherit",
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = c.surfaceAlt; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <SubtypeTag sub={cl.subtype} />
+                      <span style={{ fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {cl.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div style={{ padding: "6px 14px", borderTop: `1px solid ${c.border}` }}>
+                <button
+                  onClick={() => setDupePicker(null)}
+                  style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </>,
+          document.body
+        );
+      })()}
     </>
   );
 }
