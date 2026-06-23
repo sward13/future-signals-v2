@@ -1349,7 +1349,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   }, [workspaceId, showToast]);
 
   const addCanvasTextNode = useCallback((fields) => {
-    const id = newId();
+    const id = fields.id ?? newId();
     const node = {
       id,
       projectId: fields.projectId,

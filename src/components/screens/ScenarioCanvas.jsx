@@ -243,16 +243,19 @@ function TextNodeComponent({ id, data, selected }) {
 
   useEffect(() => {
     if (!editing) return;
-    // requestAnimationFrame defers focus past the ReactFlow pane-click handler,
-    // which would otherwise reclaim focus before the textarea can receive it.
-    const raf = requestAnimationFrame(() => {
-      if (taRef.current) {
-        taRef.current.focus();
-        taRef.current.select();
-        resize();
-      }
+    // Double-RAF ensures focus fires after ReactFlow settles its own internal
+    // focus handling from the pane-click event that placed this node.
+    let r1, r2;
+    r1 = requestAnimationFrame(() => {
+      r2 = requestAnimationFrame(() => {
+        if (taRef.current) {
+          taRef.current.focus();
+          taRef.current.select();
+          resize();
+        }
+      });
     });
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(r1); cancelAnimationFrame(r2); };
   }, [editing]);
 
   function commit(value) {
@@ -1087,29 +1090,37 @@ function CanvasArea({
   useEffect(() => { onRemoveNodeRef.current = onRemoveNode; }, [onRemoveNode]);
 
   // Rebuild RF nodes whenever cluster nodes OR text nodes change (add/remove).
-  // Text nodes added locally are reflected immediately then confirmed by projectTextNodes.
   const nodeIdsKey = projectNodes.map((n) => n.id).join(",");
   const textNodeIdsKey = projectTextNodes.map((n) => n.id).join(",");
   useEffect(() => {
     setRFNodes((prev) => {
-      // Preserve pending local text nodes not yet saved (autoFocus still true = brand new)
-      const pendingLocal = prev.filter((n) => n.type === "textNode" && n.data?.autoFocus);
-      const dbTextNodes = projectTextNodes.map((tn) => ({
-        id: tn.id,
-        type: "textNode",
-        position: { x: tn.x, y: tn.y },
-        selected: false,
-        data: {
-          text: tn.text,
-          fontFamily: tn.fontFamily,
-          fontSize: tn.fontSize,
-          bold: tn.bold,
-          italic: tn.italic,
-          color: tn.color,
-          autoFocus: false,
-          editing: false,
-        },
-      }));
+      const dbIds = new Set(projectTextNodes.map((n) => n.id));
+      // Build DB text nodes — if the RF node already exists (same ID) preserve its current
+      // state (editing, selection, text-in-progress) so the DB confirmation doesn't reset it.
+      const dbTextNodes = projectTextNodes.map((tn) => {
+        const existing = prev.find((n) => n.id === tn.id && n.type === "textNode");
+        if (existing) return existing;
+        return {
+          id: tn.id,
+          type: "textNode",
+          position: { x: tn.x, y: tn.y },
+          selected: false,
+          data: {
+            text: tn.text,
+            fontFamily: tn.fontFamily,
+            fontSize: tn.fontSize,
+            bold: tn.bold,
+            italic: tn.italic,
+            color: tn.color,
+            autoFocus: false,
+            editing: false,
+          },
+        };
+      });
+      // Only keep locally-placed nodes that aren't yet confirmed by Supabase
+      const pendingLocal = prev.filter(
+        (n) => n.type === "textNode" && n.data?.autoFocus && !dbIds.has(n.id)
+      );
       return [
         ...projectNodes.map((pNode) => ({
           id: pNode.id,
@@ -1149,7 +1160,11 @@ function CanvasArea({
 
   // Text node helpers
   const addTextNodeAtPosition = useCallback((position) => {
+    // Pre-generate the UUID so the optimistic RF node and the DB row share the same ID.
+    // This prevents a duplicate node from appearing while the Supabase insert is in flight.
+    const id = crypto.randomUUID();
     const fields = {
+      id,
       projectId: activeProjectId,
       x: position.x,
       y: position.y,
@@ -1160,22 +1175,19 @@ function CanvasArea({
       bold: false,
       italic: false,
     };
-    // Optimistic RF node with autoFocus so the rebuild useEffect keeps it until Supabase confirms
-    const tempId = `txt-${Date.now()}`;
     setRFNodes((nds) => [
       ...nds,
       {
-        id: tempId,
+        id,
         type: "textNode",
         position,
         selected: true,
         data: { ...fields, autoFocus: true, editing: true },
       },
     ]);
-    setSelectedTextNodeId(tempId);
-    // Persist to Supabase; on success the DB row id replaces tempId via textNodeIdsKey rebuild
+    setSelectedTextNodeId(id);
     onAddTextNode(fields);
-  }, [projectNodes, setRFNodes, onAddTextNode]);
+  }, [activeProjectId, setRFNodes, onAddTextNode]);
 
   const updateTextNodeData = useCallback((nodeId, patch) => {
     // Update RF node locally for immediate feedback
@@ -1196,7 +1208,9 @@ function CanvasArea({
   const duplicateTextNode = useCallback((nodeId) => {
     const src = rfNodes.find((n) => n.id === nodeId);
     if (!src) return;
+    const id = crypto.randomUUID();
     const fields = {
+      id,
       projectId: activeProjectId,
       x: src.position.x + 16,
       y: src.position.y + 16,
@@ -1207,20 +1221,19 @@ function CanvasArea({
       bold: src.data.bold,
       italic: src.data.italic,
     };
-    const tempId = `txt-${Date.now()}`;
     setRFNodes((nds) => [
       ...nds.map((n) => ({ ...n, selected: false })),
       {
-        id: tempId,
+        id,
         type: "textNode",
         position: { x: fields.x, y: fields.y },
         selected: true,
-        data: { ...fields, autoFocus: true, editing: false },
+        data: { ...fields, autoFocus: false, editing: false },
       },
     ]);
-    setSelectedTextNodeId(tempId);
+    setSelectedTextNodeId(id);
     onAddTextNode(fields);
-  }, [rfNodes, projectNodes, setRFNodes, onAddTextNode]);
+  }, [rfNodes, activeProjectId, setRFNodes, onAddTextNode]);
 
   // Keyboard shortcuts for text tool — handled locally in CanvasArea
   useEffect(() => {
