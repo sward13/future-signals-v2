@@ -12,7 +12,7 @@ import {
   getBezierPath, MarkerType, ConnectionMode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { CirclePlus, LayoutDashboard, Logs, ChevronDown, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
+import { CirclePlus, LayoutDashboard, Logs, ChevronDown, ChevronRight, Maximize2, Minimize2, Hand, MousePointer2, Share2 } from "lucide-react";
 import { c, ta, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
@@ -1083,8 +1083,13 @@ function CanvasArea({
   const [rfNodes, setRFNodes, onNodesChange] = useNodesState([]);
   const [rfEdges, setRFEdges, onEdgesChange] = useEdgesState([]);
   const [currentZoom, setCurrentZoom] = useState(1);
-  const [textToolActive, setTextToolActive] = useState(false);
+  const [activeTool, setActiveTool] = useState("select"); // 'select' | 'hand' | 'text' | 'connect'
   const [selectedTextNodeId, setSelectedTextNodeId] = useState(null);
+
+  // Keep connectMode in sync with activeTool
+  useEffect(() => {
+    setConnectMode(activeTool === "connect");
+  }, [activeTool, setConnectMode]);
 
   // Stable refs so node data closures don't go stale
   const onRemoveNodeRef = useRef(onRemoveNode);
@@ -1244,7 +1249,7 @@ function CanvasArea({
     onAddTextNode(fields);
   }, [rfNodes, activeProjectId, setRFNodes, onAddTextNode]);
 
-  // Keyboard shortcuts for text tool — handled locally in CanvasArea
+  // Keyboard shortcuts for tool switching and text node deletion
   useEffect(() => {
     const onKeyDown = (e) => {
       const tag = document.activeElement?.tagName.toLowerCase();
@@ -1252,9 +1257,11 @@ function CanvasArea({
         document.activeElement?.isContentEditable;
       if (isEditing) return;
 
-      if (e.key === "t" || e.key === "T") { setTextToolActive(true); return; }
-      if (e.key === "v" || e.key === "V") { setTextToolActive(false); return; }
-      if (e.key === "Escape") { setTextToolActive(false); return; }
+      if (e.key === "v" || e.key === "V") { setActiveTool("select"); return; }
+      if (e.key === "h" || e.key === "H") { setActiveTool("hand"); return; }
+      if (e.key === "t" || e.key === "T") { setActiveTool("text"); return; }
+      if (e.key === "c" || e.key === "C") { setActiveTool("connect"); return; }
+      if (e.key === "Escape") { setActiveTool("select"); return; }
       if ((e.key === "Backspace" || e.key === "Delete") && selectedTextNodeId) {
         deleteTextNode(selectedTextNodeId);
       }
@@ -1295,7 +1302,7 @@ function CanvasArea({
       setSelectedTextNodeId(rfNode.id);
       setRFNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === rfNode.id })));
       setSelectedItem(null);
-      setTextToolActive(false);
+      setActiveTool("select");
       return;
     }
     const pNode = projectNodes.find((n) => n.id === rfNode.id);
@@ -1311,25 +1318,34 @@ function CanvasArea({
   }, [setSelectedItem]);
 
   const handlePaneClick = useCallback((event) => {
-    if (textToolActive) {
+    if (activeTool === "text") {
       const pos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
       addTextNodeAtPosition(pos);
-      setTextToolActive(false);
+      setActiveTool("select");
       return;
     }
     setSelectedTextNodeId(null);
     setRFNodes((nds) => nds.map((n) => n.type === "textNode" ? { ...n, selected: false } : n));
-    if (connectMode) { setConnectMode(false); return; }
+    if (activeTool === "connect") { setActiveTool("select"); return; }
     setSelectedItem(null);
-  }, [textToolActive, connectMode, setConnectMode, setSelectedItem, setRFNodes,
-      screenToFlowPosition, addTextNodeAtPosition]);
+  }, [activeTool, setSelectedItem, setRFNodes, screenToFlowPosition, addTextNodeAtPosition]);
+
+  // Wraps the onConnect prop: adds type guard + resets tool on completion
+  const handleConnect = useCallback((connection) => {
+    const sourceNode = rfNodes.find((n) => n.id === connection.source);
+    const targetNode = rfNodes.find((n) => n.id === connection.target);
+    if (!sourceNode || !targetNode) return;
+    if (sourceNode.type !== "cluster" || targetNode.type !== "cluster") return;
+    onConnect(connection);
+    setActiveTool("select");
+  }, [rfNodes, onConnect]);
 
   const selectedTextNode = selectedTextNodeId
     ? rfNodes.find((n) => n.id === selectedTextNodeId) ?? null
     : null;
 
   return (
-    <div style={{ flex: 1, position: "relative", width: "100%", height: "100%", cursor: textToolActive ? "crosshair" : undefined }}>
+    <div style={{ flex: 1, position: "relative", width: "100%", height: "100%", cursor: activeTool === "text" ? "crosshair" : activeTool === "hand" ? "grab" : undefined }}>
       {/* Global SVG marker definitions — one per relationship type, always in DOM */}
       <svg style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
         <defs>
@@ -1363,47 +1379,19 @@ function CanvasArea({
         }}>
           Drag from a node handle to connect
           <button
-            onMouseDown={(e) => { e.stopPropagation(); setConnectMode(false); }}
+            onMouseDown={(e) => { e.stopPropagation(); setActiveTool("select"); }}
             style={{ background: "rgba(255,255,255,0.15)", border: "none", color: c.white, fontSize: 11, padding: "2px 10px", borderRadius: 4, cursor: "pointer", fontFamily: "inherit", pointerEvents: "all" }}
           >Cancel</button>
         </div>
       )}
 
-      {/* Fullscreen toggle */}
-      <div style={{ position: "absolute", top: 14, left: 14, zIndex: 10 }}>
-        <button
-          onClick={onToggleFullscreen}
-          title={isFullscreen ? "Exit full screen (Esc)" : "Full screen"}
-          style={{
-            ...btnG,
-            padding: "5px 8px",
-            background: isFullscreen ? c.ink : c.white,
-            color: isFullscreen ? c.white : c.muted,
-            border: `1px solid ${isFullscreen ? c.ink : c.border}`,
-            borderRadius: 7,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "background 0.15s, color 0.15s, border-color 0.15s",
-          }}
-        >
-          {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-        </button>
-      </div>
-
-      {/* Add relationship button */}
-      {!connectMode && projectNodes.length >= 2 && (
-        <div style={{ position: "absolute", top: 14, right: 14, zIndex: 10 }}>
-          <button onClick={() => setConnectMode(true)} style={{ ...btnSm, fontSize: 11 }}>
-            + Add relationship
-          </button>
-        </div>
-      )}
 
       <ReactFlow
         nodes={rfNodes}
         edges={rfEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        onConnect={handleConnect}
         onNodeClick={handleNodeClick}
         onEdgeClick={handleEdgeClick}
         onPaneClick={handlePaneClick}
@@ -1418,8 +1406,8 @@ function CanvasArea({
         zoomOnScroll={true}
         panOnScroll={false}
         preventScrolling={true}
-        panOnDrag={textToolActive ? false : (isPanning ? true : [1, 2])}
-        nodesDraggable={!textToolActive}
+        panOnDrag={activeTool === "hand" ? true : activeTool === "text" ? false : (isPanning ? true : [1, 2])}
+        nodesDraggable={activeTool !== "text"}
         connectionMode={ConnectionMode.Loose}
         connectionRadius={20}
         deleteKeyCode={null}
@@ -1455,32 +1443,45 @@ function CanvasArea({
         </div>
       )}
 
-      {/* Panel toggle button */}
-      <div style={{ position: "absolute", bottom: 14, left: 14, zIndex: 10 }}>
+      {/* ── Bottom-left: panel controls pill ── */}
+      <div style={{
+        position: "absolute", bottom: 16, left: 16, zIndex: 10,
+        display: "flex", flexDirection: "column",
+        background: c.white, border: "1px solid rgba(0,0,0,0.1)",
+        borderRadius: 8, boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+        overflow: "hidden",
+      }}>
+        <button
+          onClick={onToggleFullscreen}
+          title={isFullscreen ? "Exit full screen (Esc)" : "Full screen"}
+          style={{
+            padding: 7, border: "none", background: isFullscreen ? c.ink : "none",
+            color: isFullscreen ? c.white : c.ink, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "background 0.15s, color 0.15s",
+          }}
+        >
+          {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+        </button>
+        <div style={{ borderTop: "1px solid rgba(0,0,0,0.08)" }} />
         <button
           onClick={onTogglePanels}
           title={panelsHidden ? "Show panels (Tab)" : "Hide panels (Tab)"}
           style={{
-            ...btnG,
-            padding: "5px 8px",
-            background: panelsHidden ? c.ink : c.white,
-            color: panelsHidden ? c.white : c.muted,
-            border: `1px solid ${panelsHidden ? c.ink : c.border}`,
-            borderRadius: 7,
+            padding: 7, border: "none", background: panelsHidden ? c.ink : "none",
+            color: panelsHidden ? c.white : c.ink, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "background 0.15s, color 0.15s, border-color 0.15s",
+            transition: "background 0.15s, color 0.15s",
           }}
         >
           {panelsHidden ? (
-            // Expand icon: single full-width block with outward arrows
-            <svg width="16" height="14" viewBox="0 0 16 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="16" height="14" viewBox="0 0 16 14" fill="none">
               <rect x="1" y="1" width="14" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
               <path d="M6 5L4 7L6 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M10 5L12 7L10 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           ) : (
-            // Collapse icon: three-column layout with inward arrows
-            <svg width="16" height="14" viewBox="0 0 16 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="16" height="14" viewBox="0 0 16 14" fill="none">
               <rect x="1" y="1" width="3.5" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
               <rect x="11.5" y="1" width="3.5" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
               <path d="M6.5 5L8.5 7L6.5 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1490,44 +1491,58 @@ function CanvasArea({
         </button>
       </div>
 
-      {/* Zoom controls */}
+      {/* ── Bottom-center: tool toolbar ── */}
+      {(() => {
+        const pillStyle = {
+          position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", zIndex: 10,
+          display: "flex", flexDirection: "row", alignItems: "center",
+          background: c.white, border: "1px solid rgba(0,0,0,0.1)",
+          borderRadius: 8, boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+          overflow: "hidden",
+        };
+        const toolBtn = (tool) => ({
+          padding: "8px 12px", border: "none", cursor: "pointer",
+          borderRadius: 0, display: "flex", alignItems: "center", gap: 5,
+          fontSize: 12, fontFamily: "inherit",
+          background: activeTool === tool ? c.ink : "none",
+          color: activeTool === tool ? c.white : c.ink,
+          transition: "background 0.15s, color 0.15s",
+        });
+        return (
+          <div style={pillStyle}>
+            <button style={toolBtn("select")} title="Select (V)" onClick={() => setActiveTool("select")}>
+              <MousePointer2 size={14} />
+            </button>
+            <button style={toolBtn("hand")} title="Hand (H)" onClick={() => setActiveTool("hand")}>
+              <Hand size={14} />
+            </button>
+            <button style={toolBtn("text")} title="Text (T)" onClick={() => setActiveTool("text")}>
+              <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1, fontFamily: "Georgia, serif" }}>T</span>
+            </button>
+            <button style={toolBtn("connect")} title="Connect (C)" onClick={() => setActiveTool("connect")}>
+              <Share2 size={14} />
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* ── Bottom-right: zoom controls ── */}
       <div style={{
-        position: "absolute", bottom: 14, right: 14, zIndex: 10,
+        position: "absolute", bottom: 16, right: 16, zIndex: 10,
         display: "flex", alignItems: "center",
-        border: `1px solid ${c.border}`, borderRadius: 7, overflow: "hidden",
-        background: c.white,
+        background: c.white, border: "1px solid rgba(0,0,0,0.1)",
+        borderRadius: 8, boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+        overflow: "hidden",
       }}>
-        <button onClick={() => zoomOut()} style={{ ...btnG, padding: "5px 11px", fontSize: 15, lineHeight: 1 }}>−</button>
-        <div style={{ padding: "5px 10px", fontSize: 11, color: c.muted, borderLeft: `1px solid ${c.border}`, borderRight: `1px solid ${c.border}`, minWidth: 48, textAlign: "center" }}>
+        <button onClick={() => zoomOut()} style={{ padding: "7px 11px", border: "none", background: "none", color: c.ink, fontSize: 15, lineHeight: 1, cursor: "pointer", fontFamily: "inherit" }}>−</button>
+        <div style={{ padding: "7px 10px", fontSize: 11, color: c.muted, borderLeft: "1px solid rgba(0,0,0,0.08)", borderRight: "1px solid rgba(0,0,0,0.08)", minWidth: 48, textAlign: "center" }}>
           {Math.round(currentZoom * 100)}%
         </div>
-        <button onClick={() => zoomIn()} style={{ ...btnG, padding: "5px 11px", fontSize: 15, lineHeight: 1 }}>+</button>
+        <button onClick={() => zoomIn()} style={{ padding: "7px 11px", border: "none", background: "none", color: c.ink, fontSize: 15, lineHeight: 1, cursor: "pointer", fontFamily: "inherit" }}>+</button>
         <button
           onClick={() => { setViewport({ x: 60, y: 60, zoom: 1 }); setCurrentZoom(1); }}
-          style={{ ...btnG, padding: "5px 10px", fontSize: 10, borderLeft: `1px solid ${c.border}` }}
+          style={{ padding: "7px 10px", border: "none", background: "none", color: c.muted, fontSize: 10, borderLeft: "1px solid rgba(0,0,0,0.08)", cursor: "pointer", fontFamily: "inherit" }}
         >reset</button>
-      </div>
-
-      {/* Hint + text tool toggle */}
-      <div style={{ position: "absolute", bottom: 18, left: 54, zIndex: 10, display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ fontSize: 10, color: c.hint, pointerEvents: "none" }}>
-          Space + drag to pan · Scroll to zoom · Tab to toggle panels
-        </div>
-        <div style={{ width: 1, height: 10, background: c.border, flexShrink: 0 }} />
-        <button
-          onClick={() => setTextToolActive((v) => !v)}
-          title="Text tool (T)"
-          style={{
-            display: "flex", alignItems: "center", gap: 4,
-            padding: "3px 8px", border: "none", borderRadius: 5,
-            fontSize: 10, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
-            background: textToolActive ? c.ink : "transparent",
-            color: textToolActive ? c.white : c.muted,
-            transition: "background 0.15s, color 0.15s",
-          }}
-        >
-          T  {textToolActive ? "Click to place" : "Text"}
-        </button>
       </div>
     </div>
   );
