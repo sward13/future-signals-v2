@@ -267,6 +267,7 @@ function TextNodeComponent({ id, data, selected }) {
       )
     );
     setEditing(false);
+    data.onCommit?.(value);
   }
 
   function startEditing() {
@@ -1085,9 +1086,11 @@ function CanvasArea({
   const [textToolActive, setTextToolActive] = useState(false);
   const [selectedTextNodeId, setSelectedTextNodeId] = useState(null);
 
-  // Stable ref for onRemoveNode so node data closures don't go stale
+  // Stable refs so node data closures don't go stale
   const onRemoveNodeRef = useRef(onRemoveNode);
   useEffect(() => { onRemoveNodeRef.current = onRemoveNode; }, [onRemoveNode]);
+  const onUpdateTextNodeRef = useRef(onUpdateTextNode);
+  useEffect(() => { onUpdateTextNodeRef.current = onUpdateTextNode; }, [onUpdateTextNode]);
 
   // Rebuild RF nodes whenever cluster nodes OR text nodes change (add/remove).
   const nodeIdsKey = projectNodes.map((n) => n.id).join(",");
@@ -1114,6 +1117,7 @@ function CanvasArea({
             color: tn.color,
             autoFocus: false,
             editing: false,
+            onCommit: (text) => onUpdateTextNodeRef.current(tn.id, { text }),
           },
         };
       });
@@ -1182,7 +1186,12 @@ function CanvasArea({
         type: "textNode",
         position,
         selected: true,
-        data: { ...fields, autoFocus: true, editing: true },
+        data: {
+          ...fields,
+          autoFocus: true,
+          editing: true,
+          onCommit: (text) => onUpdateTextNodeRef.current(id, { text }),
+        },
       },
     ]);
     setSelectedTextNodeId(id);
