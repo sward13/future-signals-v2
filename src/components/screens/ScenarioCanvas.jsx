@@ -242,11 +242,17 @@ function TextNodeComponent({ id, data, selected }) {
   }
 
   useEffect(() => {
-    if (editing && taRef.current) {
-      taRef.current.focus();
-      taRef.current.select();
-      resize();
-    }
+    if (!editing) return;
+    // requestAnimationFrame defers focus past the ReactFlow pane-click handler,
+    // which would otherwise reclaim focus before the textarea can receive it.
+    const raf = requestAnimationFrame(() => {
+      if (taRef.current) {
+        taRef.current.focus();
+        taRef.current.select();
+        resize();
+      }
+    });
+    return () => cancelAnimationFrame(raf);
   }, [editing]);
 
   function commit(value) {
@@ -1060,6 +1066,8 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
 
 function CanvasArea({
   projectNodes, projectRels, clusters,
+  projectTextNodes, activeProjectId,
+  onAddTextNode, onUpdateTextNode, onRemoveTextNode,
   connectMode, setConnectMode,
   selectedItem, setSelectedItem,
   onConnect, onNodeDragStop,
@@ -1078,12 +1086,30 @@ function CanvasArea({
   const onRemoveNodeRef = useRef(onRemoveNode);
   useEffect(() => { onRemoveNodeRef.current = onRemoveNode; }, [onRemoveNode]);
 
-  // Rebuild RF nodes whenever projectNodes structure changes (add/remove).
-  // Preserve any existing text nodes — they are not persisted to Supabase.
+  // Rebuild RF nodes whenever cluster nodes OR text nodes change (add/remove).
+  // Text nodes added locally are reflected immediately then confirmed by projectTextNodes.
   const nodeIdsKey = projectNodes.map((n) => n.id).join(",");
+  const textNodeIdsKey = projectTextNodes.map((n) => n.id).join(",");
   useEffect(() => {
     setRFNodes((prev) => {
-      const textNodes = prev.filter((n) => n.type === "textNode");
+      // Preserve pending local text nodes not yet saved (autoFocus still true = brand new)
+      const pendingLocal = prev.filter((n) => n.type === "textNode" && n.data?.autoFocus);
+      const dbTextNodes = projectTextNodes.map((tn) => ({
+        id: tn.id,
+        type: "textNode",
+        position: { x: tn.x, y: tn.y },
+        selected: false,
+        data: {
+          text: tn.text,
+          fontFamily: tn.fontFamily,
+          fontSize: tn.fontSize,
+          bold: tn.bold,
+          italic: tn.italic,
+          color: tn.color,
+          autoFocus: false,
+          editing: false,
+        },
+      }));
       return [
         ...projectNodes.map((pNode) => ({
           id: pNode.id,
@@ -1098,11 +1124,12 @@ function CanvasArea({
             selected: false,
           },
         })),
-        ...textNodes,
+        ...dbTextNodes,
+        ...pendingLocal,
       ];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodeIdsKey]);
+  }, [nodeIdsKey, textNodeIdsKey]);
 
   // Update data (selection, connectMode) without resetting positions.
   // Skip text nodes — they manage their own selection via rfNode.selected.
@@ -1122,56 +1149,78 @@ function CanvasArea({
 
   // Text node helpers
   const addTextNodeAtPosition = useCallback((position) => {
-    const id = `txt-${Date.now()}`;
+    const fields = {
+      projectId: activeProjectId,
+      x: position.x,
+      y: position.y,
+      text: "",
+      fontFamily: TEXT_NODE_FONTS[0].value,
+      fontSize: 16,
+      color: TEXT_NODE_COLORS[0].hex,
+      bold: false,
+      italic: false,
+    };
+    // Optimistic RF node with autoFocus so the rebuild useEffect keeps it until Supabase confirms
+    const tempId = `txt-${Date.now()}`;
     setRFNodes((nds) => [
       ...nds,
       {
-        id,
+        id: tempId,
         type: "textNode",
         position,
         selected: true,
-        data: {
-          text: "",
-          fontFamily: TEXT_NODE_FONTS[0].value,
-          fontSize: 16,
-          color: TEXT_NODE_COLORS[0].hex,
-          bold: false,
-          italic: false,
-          autoFocus: true,
-          editing: true,
-        },
+        data: { ...fields, autoFocus: true, editing: true },
       },
     ]);
-    setSelectedTextNodeId(id);
-  }, [setRFNodes]);
+    setSelectedTextNodeId(tempId);
+    // Persist to Supabase; on success the DB row id replaces tempId via textNodeIdsKey rebuild
+    onAddTextNode(fields);
+  }, [projectNodes, setRFNodes, onAddTextNode]);
 
   const updateTextNodeData = useCallback((nodeId, patch) => {
+    // Update RF node locally for immediate feedback
     setRFNodes((nds) =>
       nds.map((n) => n.id === nodeId ? { ...n, data: { ...n.data, ...patch } } : n)
     );
-  }, [setRFNodes]);
+    // Persist format change to Supabase (position updates go via onNodeDragStop)
+    const { x, y, autoFocus, editing, ...formattingPatch } = patch;
+    if (Object.keys(formattingPatch).length > 0) onUpdateTextNode(nodeId, formattingPatch);
+  }, [setRFNodes, onUpdateTextNode]);
 
   const deleteTextNode = useCallback((nodeId) => {
     setRFNodes((nds) => nds.filter((n) => n.id !== nodeId));
     setSelectedTextNodeId(null);
-  }, [setRFNodes]);
+    onRemoveTextNode(nodeId);
+  }, [setRFNodes, onRemoveTextNode]);
 
   const duplicateTextNode = useCallback((nodeId) => {
-    setRFNodes((nds) => {
-      const src = nds.find((n) => n.id === nodeId);
-      if (!src) return nds;
-      const newId = `txt-${Date.now()}`;
-      const copy = {
-        ...src,
-        id: newId,
-        position: { x: src.position.x + 16, y: src.position.y + 16 },
+    const src = rfNodes.find((n) => n.id === nodeId);
+    if (!src) return;
+    const fields = {
+      projectId: activeProjectId,
+      x: src.position.x + 16,
+      y: src.position.y + 16,
+      text: src.data.text,
+      fontFamily: src.data.fontFamily,
+      fontSize: src.data.fontSize,
+      color: src.data.color,
+      bold: src.data.bold,
+      italic: src.data.italic,
+    };
+    const tempId = `txt-${Date.now()}`;
+    setRFNodes((nds) => [
+      ...nds.map((n) => ({ ...n, selected: false })),
+      {
+        id: tempId,
+        type: "textNode",
+        position: { x: fields.x, y: fields.y },
         selected: true,
-        data: { ...src.data, autoFocus: false, editing: false },
-      };
-      setSelectedTextNodeId(newId);
-      return [...nds.map((n) => ({ ...n, selected: false })), copy];
-    });
-  }, [setRFNodes]);
+        data: { ...fields, autoFocus: true, editing: false },
+      },
+    ]);
+    setSelectedTextNodeId(tempId);
+    onAddTextNode(fields);
+  }, [rfNodes, projectNodes, setRFNodes, onAddTextNode]);
 
   // Keyboard shortcuts for text tool — handled locally in CanvasArea
   useEffect(() => {
@@ -1467,8 +1516,9 @@ function CanvasArea({
 export default function ScenarioCanvas({ appState }) {
   const {
     clusters, inputs, scenarios, projects, activeProjectId, setActiveProjectId, openProjectModal,
-    canvasNodes, relationships,
+    canvasNodes, canvasTextNodes, relationships,
     addCanvasNode, removeCanvasNode, updateCanvasNodePos,
+    addCanvasTextNode, updateCanvasTextNode, removeCanvasTextNode,
     addRelationship, updateRelationship, removeRelationship,
     deleteSystemMap, deleteAnalysis, showToast, scenarioDetailId, closeScenarioDetail,
   } = appState;
@@ -1476,6 +1526,7 @@ export default function ScenarioCanvas({ appState }) {
   const project = projects.find((p) => p.id === activeProjectId) || null;
   const projectClusters = clusters.filter((cl) => cl.project_id === activeProjectId);
   const projectNodes = canvasNodes.filter((n) => n.projectId === activeProjectId);
+  const projectTextNodes = canvasTextNodes.filter((n) => n.projectId === activeProjectId);
   const projectRels = relationships
     .filter((r) => r.projectId === activeProjectId)
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -1603,11 +1654,14 @@ export default function ScenarioCanvas({ appState }) {
     }
   }, [projectNodes]);
 
-  // Persist position on drag end — text nodes are session-only, not persisted
+  // Persist position on drag end
   const onNodeDragStop = useCallback((_, rfNode) => {
-    if (rfNode.type === "textNode") return;
+    if (rfNode.type === "textNode") {
+      updateCanvasTextNode(rfNode.id, { x: rfNode.position.x, y: rfNode.position.y });
+      return;
+    }
     updateCanvasNodePos(rfNode.id, { x: rfNode.position.x, y: rfNode.position.y });
-  }, [updateCanvasNodePos]);
+  }, [updateCanvasNodePos, updateCanvasTextNode]);
 
   const editingRel = editingRelId ? relationships.find((r) => r.id === editingRelId) : null;
   const fromCluster = pendingRel
@@ -1720,6 +1774,11 @@ export default function ScenarioCanvas({ appState }) {
               projectNodes={projectNodes}
               projectRels={projectRels}
               clusters={clusters}
+              projectTextNodes={projectTextNodes}
+              activeProjectId={activeProjectId}
+              onAddTextNode={addCanvasTextNode}
+              onUpdateTextNode={updateCanvasTextNode}
+              onRemoveTextNode={removeCanvasTextNode}
               connectMode={connectMode}
               setConnectMode={setConnectMode}
               selectedItem={selectedItem}

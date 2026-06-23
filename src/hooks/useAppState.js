@@ -53,6 +53,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [nodePositions, setNodePositions] = useState({});
   const [connections, setConnections] = useState([]);
   const [canvasNodes, setCanvasNodes] = useState([]);
+  const [canvasTextNodes, setCanvasTextNodes] = useState([]);
   const [relationships, setRelationships] = useState([]);
 
   const connectionsRef = useRef(connections);
@@ -213,6 +214,30 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       }
     };
 
+    const fetchCanvasTextNodes = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("canvas_text_nodes")
+          .select("*")
+          .eq("workspace_id", workspaceId);
+        if (error) throw error;
+        setCanvasTextNodes(data.map((n) => ({
+          id: n.id,
+          projectId: n.project_id,
+          x: n.x,
+          y: n.y,
+          text: n.text,
+          fontFamily: n.font_family,
+          fontSize: n.font_size,
+          bold: n.bold,
+          italic: n.italic,
+          color: n.color,
+        })));
+      } catch {
+        showToast("Failed to load canvas text nodes", "error");
+      }
+    };
+
     const fetchRelationships = async () => {
       try {
         const { data, error } = await supabase
@@ -298,6 +323,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     fetchPreferredFutures();
     fetchStrategicOptions();
     fetchCanvasNodes();
+    fetchCanvasTextNodes();
     fetchRelationships();
     fetchAnalyses();
     fetchWorkspaceScanning();
@@ -1322,6 +1348,95 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     }
   }, [workspaceId, showToast]);
 
+  const addCanvasTextNode = useCallback((fields) => {
+    const id = newId();
+    const node = {
+      id,
+      projectId: fields.projectId,
+      x: fields.x ?? 100,
+      y: fields.y ?? 100,
+      text: fields.text ?? "",
+      fontFamily: fields.fontFamily ?? "Open Sans, system-ui, sans-serif",
+      fontSize: fields.fontSize ?? 16,
+      bold: fields.bold ?? false,
+      italic: fields.italic ?? false,
+      color: fields.color ?? "#1A1A1A",
+    };
+    setCanvasTextNodes((prev) => [...prev, node]);
+    if (workspaceId) {
+      (async () => {
+        try {
+          const { error } = await supabase.from("canvas_text_nodes").insert({
+            id,
+            workspace_id: workspaceId,
+            project_id: fields.projectId,
+            x: node.x,
+            y: node.y,
+            text: node.text,
+            font_family: node.fontFamily,
+            font_size: node.fontSize,
+            bold: node.bold,
+            italic: node.italic,
+            color: node.color,
+          });
+          if (error) throw error;
+        } catch {
+          setCanvasTextNodes((prev) => prev.filter((n) => n.id !== id));
+          showToast("Failed to save text node", "error");
+        }
+      })();
+    }
+    return node;
+  }, [workspaceId, showToast]);
+
+  const updateCanvasTextNode = useCallback((nodeId, patch) => {
+    setCanvasTextNodes((prev) =>
+      prev.map((n) => n.id === nodeId ? { ...n, ...patch } : n)
+    );
+    if (workspaceId) {
+      const dbPatch = {};
+      if (patch.x !== undefined) dbPatch.x = patch.x;
+      if (patch.y !== undefined) dbPatch.y = patch.y;
+      if (patch.text !== undefined) dbPatch.text = patch.text;
+      if (patch.fontFamily !== undefined) dbPatch.font_family = patch.fontFamily;
+      if (patch.fontSize !== undefined) dbPatch.font_size = patch.fontSize;
+      if (patch.bold !== undefined) dbPatch.bold = patch.bold;
+      if (patch.italic !== undefined) dbPatch.italic = patch.italic;
+      if (patch.color !== undefined) dbPatch.color = patch.color;
+      if (Object.keys(dbPatch).length === 0) return;
+      (async () => {
+        try {
+          const { error } = await supabase
+            .from("canvas_text_nodes")
+            .update(dbPatch)
+            .eq("id", nodeId)
+            .eq("workspace_id", workspaceId);
+          if (error) throw error;
+        } catch {
+          showToast("Failed to save text node", "error");
+        }
+      })();
+    }
+  }, [workspaceId, showToast]);
+
+  const removeCanvasTextNode = useCallback((nodeId) => {
+    setCanvasTextNodes((prev) => prev.filter((n) => n.id !== nodeId));
+    if (workspaceId) {
+      (async () => {
+        try {
+          const { error } = await supabase
+            .from("canvas_text_nodes")
+            .delete()
+            .eq("id", nodeId)
+            .eq("workspace_id", workspaceId);
+          if (error) throw error;
+        } catch {
+          showToast("Failed to remove text node", "error");
+        }
+      })();
+    }
+  }, [workspaceId, showToast]);
+
   const addRelationship = useCallback((fields) => {
     const id = newId();
     const rel = {
@@ -1409,18 +1524,21 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     }
   }, [workspaceId, showToast]);
 
-  /** Delete all canvas nodes and relationships for a project (System Map reset). */
+  /** Delete all canvas nodes, text nodes, and relationships for a project (System Map reset). */
   const deleteSystemMap = useCallback((projectId) => {
     setCanvasNodes((prev) => prev.filter((n) => n.projectId !== projectId));
+    setCanvasTextNodes((prev) => prev.filter((n) => n.projectId !== projectId));
     setRelationships((prev) => prev.filter((r) => r.projectId !== projectId));
     if (workspaceId) {
       (async () => {
         try {
-          const [{ error: nodesError }, { error: relsError }] = await Promise.all([
+          const [{ error: nodesError }, { error: textNodesError }, { error: relsError }] = await Promise.all([
             supabase.from("canvas_nodes").delete().eq("project_id", projectId).eq("workspace_id", workspaceId),
+            supabase.from("canvas_text_nodes").delete().eq("project_id", projectId).eq("workspace_id", workspaceId),
             supabase.from("relationships").delete().eq("project_id", projectId).eq("workspace_id", workspaceId),
           ]);
           if (nodesError) throw nodesError;
+          if (textNodesError) throw textNodesError;
           if (relsError) throw relsError;
         } catch {
           showToast("Failed to reset system map", "error");
@@ -1571,10 +1689,14 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     updateConnection,
     removeConnection,
     canvasNodes,
+    canvasTextNodes,
     relationships,
     addCanvasNode,
     removeCanvasNode,
     updateCanvasNodePos,
+    addCanvasTextNode,
+    updateCanvasTextNode,
+    removeCanvasTextNode,
     addRelationship,
     updateRelationship,
     removeRelationship,
