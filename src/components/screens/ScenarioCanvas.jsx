@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   ReactFlow, ReactFlowProvider, Background, Controls, Panel,
   useReactFlow, useNodesState, useEdgesState,
+  useUpdateNodeInternals,
   Handle, Position, BaseEdge, EdgeLabelRenderer,
   getBezierPath, MarkerType, ConnectionMode,
 } from "@xyflow/react";
@@ -53,11 +54,16 @@ const LEFT_BORDER_COLOR = {
 // Must be defined outside any component to keep stable references.
 
 /** Custom node: renders a cluster card with handles. */
-function ClusterNodeComponent({ data }) {
+function ClusterNodeComponent({ id, data }) {
   const [hovered, setHovered] = useState(false);
+  const updateNodeInternals = useUpdateNodeInternals();
   const { cluster, onRemove, connectMode, isConnectSource, selected } = data;
   if (!cluster) return null;
   const st = SUBTYPE_STYLE[cluster.subtype] || SUBTYPE_STYLE.Trend;
+
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, cluster.name, cluster.description, cluster.input_ids?.length]);
 
   const handleStyle = {
     width: 8, height: 8, borderRadius: "50%",
