@@ -513,19 +513,18 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
 
           {/* ── Domain ────────────────────────────────────────── */}
           <div style={{ marginBottom: 16 }}>
-            <div style={fl}>Domain <span style={badg}>required</span></div>
+            <div style={fl}>Domain</div>
             <div style={{ position: "relative" }}>
               <select
-                style={{ ...sel, borderColor: domainError ? c.redBorder : undefined }}
+                style={sel}
                 value={domain}
-                onChange={(e) => { setDomain(e.target.value); setDomainError(false); }}
+                onChange={(e) => setDomain(e.target.value)}
               >
                 <option value="">Select a domain…</option>
                 {DOMAINS.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
               <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: c.hint, pointerEvents: "none" }}>▾</span>
             </div>
-            {domainError && <div style={{ fontSize: 11, color: c.red800, marginTop: 4 }}>Domain is required.</div>}
           </div>
 
           {/* ── Key question ──────────────────────────────────── */}
@@ -694,7 +693,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
           <button onClick={handleClose} style={btnG}>Cancel</button>
           <button
             onClick={handleSave}
-            style={{ ...btnP, opacity: name.trim() && domain ? 1 : 0.35 }}
+            style={{ ...btnP, opacity: name.trim() ? 1 : 0.35 }}
           >
             Create project
           </button>
