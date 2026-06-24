@@ -13,7 +13,7 @@ import {
   getBezierPath, MarkerType, ConnectionMode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { CirclePlus, LayoutDashboard, Logs, ChevronDown, ChevronRight, Maximize2, Minimize2, Hand, MousePointer2, Network, Type } from "lucide-react";
+import { CirclePlus, LayoutDashboard, Logs, ChevronDown, ChevronRight, Maximize2, Minimize2, Hand, MousePointer2, Network, Type, SlidersHorizontal } from "lucide-react";
 import { c, ta, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
@@ -602,6 +602,7 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
 // ─── Left sidebar ─────────────────────────────────────────────────────────────
 
 function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
+  const [clusterSearch, setClusterSearch] = useState("");
   const nodeClusterIds = new Set(canvasNodes.map((n) => n.clusterId));
 
   if (collapsed) {
@@ -654,6 +655,22 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
             Add all clusters
           </button>
         )}
+        {clusters.length > 5 && (
+          <input
+            type="text"
+            placeholder="Search clusters…"
+            value={clusterSearch}
+            onChange={(e) => setClusterSearch(e.target.value)}
+            style={{
+              width: "100%", padding: "7px 10px",
+              border: `1px solid ${c.border}`,
+              borderRadius: 6, fontSize: 12,
+              color: c.ink, background: c.white,
+              outline: "none", boxSizing: "border-box",
+              marginTop: 8,
+            }}
+          />
+        )}
       </div>
 
       {/* Cluster list */}
@@ -662,8 +679,16 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
           <div style={{ padding: "16px 14px", fontSize: 11, color: c.hint, lineHeight: 1.5 }}>
             No clusters in this project yet. Create some in the Clustering screen first.
           </div>
-        ) : (
-          clusters.map((cl) => {
+        ) : (() => {
+          const filteredClusters = clusterSearch.trim()
+            ? clusters.filter((cl) => cl.name.toLowerCase().includes(clusterSearch.toLowerCase()))
+            : clusters;
+          if (filteredClusters.length === 0) {
+            return (
+              <div style={{ fontSize: 12, color: c.muted, padding: "8px 14px" }}>No clusters match</div>
+            );
+          }
+          return filteredClusters.map((cl) => {
             const added = nodeClusterIds.has(cl.id);
             const st = SUBTYPE_STYLE[cl.subtype] || SUBTYPE_STYLE.Trend;
             const lb = LEFT_BORDER_COLOR[cl.subtype] || c.border;
@@ -706,8 +731,8 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
                 >{added ? "Added" : "+ Add"}</button>
               </div>
             );
-          })
-        )}
+          });
+        })()}
       </div>
 
       {/* Relationship legend */}
@@ -1127,6 +1152,10 @@ function CanvasArea({
   const [currentZoom, setCurrentZoom] = useState(1);
   const [activeTool, setActiveTool] = useState("select"); // 'select' | 'hand' | 'text' | 'connect'
   const [selectedTextNodeId, setSelectedTextNodeId] = useState(null);
+  const [hiddenSubtypes, setHiddenSubtypes] = useState(new Set());
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterBtnRef = useRef(null);
+  const filterPopoverRef = useRef(null);
 
   // Keep connectMode in sync with activeTool
   useEffect(() => {
@@ -1339,6 +1368,21 @@ function CanvasArea({
     }).filter(Boolean));
   }, [projectRels, projectNodes, selectedItem, setRFEdges]);
 
+  // Close filter popover when clicking outside
+  useEffect(() => {
+    if (!filterOpen) return;
+    const handler = (e) => {
+      if (
+        filterBtnRef.current && !filterBtnRef.current.contains(e.target) &&
+        filterPopoverRef.current && !filterPopoverRef.current.contains(e.target)
+      ) {
+        setFilterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [filterOpen]);
+
   const handleNodeClick = useCallback((_, rfNode) => {
     if (rfNode.type === "textNode") {
       setSelectedTextNodeId(rfNode.id);
@@ -1381,6 +1425,26 @@ function CanvasArea({
     onConnect(connection);
     setActiveTool("select");
   }, [rfNodes, onConnect]);
+
+  // Derive filtered views without mutating rfNodes / rfEdges state
+  const visibleNodes = hiddenSubtypes.size === 0
+    ? rfNodes
+    : rfNodes.map((n) => {
+        if (n.type === "textNode") return n;
+        const subtype = n.data?.cluster?.subtype;
+        return { ...n, hidden: hiddenSubtypes.has(subtype) };
+      });
+
+  const hiddenNodeIds = hiddenSubtypes.size === 0
+    ? new Set()
+    : new Set(visibleNodes.filter((n) => n.hidden).map((n) => n.id));
+
+  const visibleEdges = hiddenNodeIds.size === 0
+    ? rfEdges
+    : rfEdges.map((e) => ({
+        ...e,
+        hidden: hiddenNodeIds.has(e.source) || hiddenNodeIds.has(e.target),
+      }));
 
   const selectedTextNode = selectedTextNodeId
     ? rfNodes.find((n) => n.id === selectedTextNodeId) ?? null
@@ -1429,8 +1493,8 @@ function CanvasArea({
 
 
       <ReactFlow
-        nodes={rfNodes}
-        edges={rfEdges}
+        nodes={visibleNodes}
+        edges={visibleEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={handleConnect}
@@ -1569,6 +1633,75 @@ function CanvasArea({
           </div>
         );
       })()}
+
+      {/* ── Bottom-center-right: subtype filter pill ── */}
+      <div style={{ position: "absolute", bottom: 16, left: "calc(50% + 92px)", zIndex: 10 }}>
+        {/* Popover */}
+        {filterOpen && (
+          <div
+            ref={filterPopoverRef}
+            style={{
+              position: "absolute", bottom: 44, left: 0,
+              background: c.white, border: `1px solid ${c.border}`,
+              borderRadius: 8, padding: "10px 12px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+              minWidth: 148,
+            }}
+          >
+            {["Trend", "Driver", "Tension"].map((subtype) => {
+              const st = SUBTYPE_STYLE[subtype];
+              const checked = !hiddenSubtypes.has(subtype);
+              return (
+                <label
+                  key={subtype}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "5px 2px", cursor: "pointer",
+                    fontSize: 12, color: st.col, fontWeight: 500,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => {
+                      setHiddenSubtypes((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(subtype)) { next.delete(subtype); } else { next.add(subtype); }
+                        return next;
+                      });
+                    }}
+                    style={{ accentColor: st.col, cursor: "pointer" }}
+                  />
+                  {subtype}
+                </label>
+              );
+            })}
+          </div>
+        )}
+        {/* Button */}
+        <button
+          ref={filterBtnRef}
+          onClick={() => {
+            if (hiddenSubtypes.size > 0) {
+              setHiddenSubtypes(new Set());
+              setFilterOpen(false);
+            } else {
+              setFilterOpen((o) => !o);
+            }
+          }}
+          style={{
+            display: "flex", alignItems: "center", gap: 5,
+            padding: "8px 12px", border: `1px solid ${c.border}`,
+            borderRadius: 8, cursor: "pointer", fontFamily: "inherit",
+            fontSize: 12, color: c.ink,
+            background: hiddenSubtypes.size > 0 || filterOpen ? "rgba(0,0,0,0.06)" : c.white,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+          }}
+        >
+          <SlidersHorizontal size={14} />
+          {hiddenSubtypes.size > 0 ? `Filter · ${hiddenSubtypes.size}` : "Filter"}
+        </button>
+      </div>
 
       {/* ── Bottom-right: zoom controls ── */}
       <div style={{
