@@ -70,10 +70,10 @@ const RELATED_CATEGORIES = [
   { key: "challenges", label: "Challenges",       dot: c.amber700,  desc: "Complicates or strains" },
 ];
 
-export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSave, onRemoveInput, onAssignInput, onDelete }) {
+export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSave, onRemoveInput, onAssignInput, onDelete, startInEditMode = false }) {
   const cluster = clusters.find((cl) => cl.id === clusterId) || null;
 
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(!!startInEditMode);
   const [fields, setFields] = useState({});
   const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -94,7 +94,7 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
         description: cluster.description || "",
       });
     }
-    setEditing(false);
+    setEditing(!!startInEditMode);
     setPickerOpen(false);
     setConfirmDelete(false);
     // Reset related panel when a different cluster is opened

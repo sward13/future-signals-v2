@@ -1240,6 +1240,17 @@ function CanvasArea({
     }));
   }, [selectedItem, connectMode, setRFNodes]);
 
+  // Sync cluster property changes (name, subtype, etc.) into existing rfNodes without resetting positions.
+  // Runs whenever the clusters array reference changes — i.e. after updateCluster completes in appState.
+  useEffect(() => {
+    setRFNodes((nds) => nds.map((rfNode) => {
+      if (rfNode.type !== "cluster") return rfNode;
+      const updated = clusters.find((cl) => cl.id === rfNode.data?.cluster?.id);
+      if (!updated) return rfNode;
+      return { ...rfNode, data: { ...rfNode.data, cluster: updated } };
+    }));
+  }, [clusters]);
+
   // Text node helpers
   const addTextNodeAtPosition = useCallback((position) => {
     // Pre-generate the UUID so the optimistic RF node and the DB row share the same ID.
@@ -2037,6 +2048,7 @@ export default function ScenarioCanvas({ appState }) {
           onSave={(id, fields) => { updateCluster(id, fields); showToast("Cluster updated"); }}
           onRemoveInput={removeInputFromCluster}
           onAssignInput={assignInputToCluster}
+          startInEditMode
         />
       )}
 
