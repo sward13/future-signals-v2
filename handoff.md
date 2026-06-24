@@ -1,6 +1,6 @@
 # Future Signals v2 — Handoff
 
-_Last updated: 2026-06-19_
+_Last updated: 2026-06-23_
 
 ---
 
@@ -40,6 +40,16 @@ Recent notable additions:
 - Inbox AI Suggested Project filter: defaults to "All projects" on fresh load; persists within session; deep-link from "Review N suggestions" still pre-selects the correct project
 - Per-project scanning controls in Account Settings
 - Security hardening: SSRF protection on `/api/scrape`, auth required on `/api/trigger-score`, RLS on `source_health`, dropped `candidates_insert` open policy, O(1) unsubscribe token verification, unsubscribe URL routed through app domain
+
+**2026-06-23 session — System Map canvas:**
+- **Text annotation nodes:** freeform text labels on the canvas (`TextNodeComponent`), persisted to the new `canvas_text_nodes` Supabase table. Double-click to edit, format bar for font/size/bold/italic/colour, drag to reposition. UUID pre-generated client-side to keep optimistic RF node and DB row in sync from creation.
+- **Canvas toolbar consolidation:** three FigJam-style pill groups replace scattered controls — bottom-left (fullscreen + panel toggle), bottom-centre (Select/Hand/Text/Connect tools), bottom-right (zoom −/%/+/reset). Tool state is `activeTool: 'select' | 'hand' | 'text' | 'connect'` in `CanvasArea`; keyboard shortcuts V/H/T/C/Escape. Connect tool syncs to ReactFlow `connectMode` via `useEffect`. Icons: `MousePointer2`, `Hand`, `Type`, `Network` from lucide-react.
+- **Viewport persistence:** canvas pan/zoom saved to `localStorage` as `fs_vp_{projectId}` on `onMoveEnd`; restored in `onInit`. Removed `fitView` prop — viewport is now set imperatively (fitView only on first visit to a project's map). Prevents the `fitView` prop from re-firing when `updateNodeInternals` causes internal ReactFlow layout changes.
+- **Edge rendering fixes:**
+  - `useUpdateNodeInternals` called in `ClusterNodeComponent` on mount and when `cluster.name / .description / .input_ids?.length` change — fixes handle positions on content-sized (variable-height) nodes.
+  - `arrowOffset()` helper offsets edge endpoints outward by `ARROW_DEPTH = 5` SVG user units before `getBezierPath`, so the path terminates at the arrowhead base and the tip lands at the node boundary. Markers use `markerUnits="userSpaceOnUse"` (absolute px, not scaled by stroke weight).
+  - `refX="0"` on all markers — arrowhead base at the adjusted path endpoint, tip extends forward to the node border.
+- **Toolbar styling:** all three pill groups and the text-node format bar use the white-surface design system (`c.white` background, `c.border` border, `0 1px 3px` shadow, `c.ink` icons). Active tool button is the only dark element (ink fill, white icon). Panel toggle active states use `rgba(0,0,0,0.06)` tint rather than full ink fill.
 
 ---
 
