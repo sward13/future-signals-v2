@@ -1,6 +1,6 @@
 # Future Signals v2 — Handoff
 
-_Last updated: 2026-06-23_
+_Last updated: 2026-06-24_
 
 ---
 
@@ -40,6 +40,13 @@ Recent notable additions:
 - Inbox AI Suggested Project filter: defaults to "All projects" on fresh load; persists within session; deep-link from "Review N suggestions" still pre-selects the correct project
 - Per-project scanning controls in Account Settings
 - Security hardening: SSRF protection on `/api/scrape`, auth required on `/api/trigger-score`, RLS on `source_health`, dropped `candidates_insert` open policy, O(1) unsubscribe token verification, unsubscribe URL routed through app domain
+
+**2026-06-24 session — System Map Inspector + canvas improvements:**
+- **Canvas subtype filter:** Filter pill (bottom-centre-right, separate from tool toolbar) lets practitioners hide Trend / Driver / Tension nodes and any edges connected to them. `hiddenSubtypes` is a `Set` in `CanvasArea`; `visibleNodes` and `visibleEdges` are derived in render without mutating RF state. Active state shows `"Filter · N"` count badge; single click on active filter clears all. Click-outside closes the popover via a `mousedown` document listener. `SlidersHorizontal` icon from lucide-react.
+- **Cluster panel search:** Search input in `LeftSidebar` (local state, only rendered when `clusters.length > 5`). Filters the cluster list by name in real time, case-insensitive. "No clusters match" empty state when search yields nothing.
+- **Inspector Edit button:** Clicking a cluster node in the System Map now shows an Edit button in the Inspector header. Opens `ClusterDetailDrawer` (the same drawer used on the Clustering screen) via `drawerCluster` state in `ScenarioCanvas`. `onEditCluster` prop added to `Inspector` function. No editing logic duplicated.
+- **Drawer opens in edit mode:** Added `startInEditMode` prop to `ClusterDetailDrawer`. When `true`, initialises `editing` to `true` and resets to `true` on `clusterId` change (the useEffect that resets state on open now respects the prop). Passed as `startInEditMode` from the Inspector path only — Clustering screen behaviour unchanged.
+- **Immediate canvas refresh:** Added a `useEffect` in `CanvasArea` that watches the `clusters` prop and patches `rfNode.data.cluster` for any node whose cluster ID matches a changed entry — without resetting positions. `ClusterNodeComponent` already calls `updateNodeInternals` when `cluster.name` changes, so no external call needed. Canvas name/subtype badge updates immediately after saving in the drawer.
 
 **2026-06-23 session — System Map canvas:**
 - **Text annotation nodes:** freeform text labels on the canvas (`TextNodeComponent`), persisted to the new `canvas_text_nodes` Supabase table. Double-click to edit, format bar for font/size/bold/italic/colour, drag to reposition. UUID pre-generated client-side to keep optimistic RF node and DB row in sync from creation.
