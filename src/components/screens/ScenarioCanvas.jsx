@@ -17,6 +17,7 @@ import { CirclePlus, LayoutDashboard, Logs, ChevronDown, ChevronRight, Maximize2
 import { c, ta, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
+import { ClusterDetailDrawer } from "../clusters/ClusterDetailDrawer.jsx";
 
 const NODE_W = 156;
 
@@ -761,7 +762,7 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
 
 // ─── Inspector ────────────────────────────────────────────────────────────────
 
-function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel, onDeleteRel, onClose, collapsed, onToggle }) {
+function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel, onDeleteRel, onEditCluster, onClose, collapsed, onToggle }) {
   const HINSP_COLORS = {
     H1: [c.green700, c.green50],
     H2: [c.blue700, c.blue50],
@@ -821,7 +822,8 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
       <div style={panelStyle}>
         <div style={headerStyle}>
           <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>Cluster</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <button onClick={() => onEditCluster(cluster)} style={{ ...btnSec, fontSize: 11, padding: "4px 12px" }}>Edit</button>
             <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "0 5px", color: c.hint, fontSize: 13 }}>›</button>
             <button onClick={onClose} style={{ ...btnG, padding: "0 4px", color: c.hint, fontSize: 15 }}>×</button>
           </div>
@@ -1734,6 +1736,7 @@ export default function ScenarioCanvas({ appState }) {
     addCanvasNode, removeCanvasNode, updateCanvasNodePos,
     addCanvasTextNode, updateCanvasTextNode, removeCanvasTextNode,
     addRelationship, updateRelationship, removeRelationship,
+    updateCluster, assignInputToCluster, removeInputFromCluster,
     deleteSystemMap, deleteAnalysis, showToast, scenarioDetailId, closeScenarioDetail,
   } = appState;
 
@@ -1757,6 +1760,7 @@ export default function ScenarioCanvas({ appState }) {
   const [editingRelId, setEditingRelId] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [isPanning, setIsPanning] = useState(false);
+  const [drawerCluster, setDrawerCluster] = useState(null);
 
   // Keyboard shortcuts: Escape, Space (pan), Tab (toggle panels)
   useEffect(() => {
@@ -2015,11 +2019,25 @@ export default function ScenarioCanvas({ appState }) {
             relationships={projectRels}
             onEditRel={handleEditRel}
             onDeleteRel={handleDeleteRel}
+            onEditCluster={setDrawerCluster}
             onClose={() => setSelectedItem(null)}
             collapsed={!rightOpen || panelsHidden}
             onToggle={() => setRightOpen((o) => !o)}
           />
         </div>
+      )}
+
+      {/* Cluster detail drawer — opened from Inspector Edit button */}
+      {drawerCluster && (
+        <ClusterDetailDrawer
+          clusterId={drawerCluster.id}
+          clusters={clusters}
+          inputs={inputs}
+          onClose={() => setDrawerCluster(null)}
+          onSave={(id, fields) => { updateCluster(id, fields); showToast("Cluster updated"); }}
+          onRemoveInput={removeInputFromCluster}
+          onAssignInput={assignInputToCluster}
+        />
       )}
 
       {/* Relationship modal */}
