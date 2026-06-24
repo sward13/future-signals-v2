@@ -143,17 +143,38 @@ function ClusterNodeComponent({ id, data }) {
   );
 }
 
+// Depth of the arrowhead triangle in SVG user units (markerUnits="userSpaceOnUse").
+// Must match the x-extent of the triangle path inside the marker definition.
+const ARROW_DEPTH = 5;
+
+function arrowOffset(x, y, position) {
+  switch (position) {
+    case Position.Left:   return { x: x - ARROW_DEPTH, y };
+    case Position.Right:  return { x: x + ARROW_DEPTH, y };
+    case Position.Top:    return { x, y: y - ARROW_DEPTH };
+    case Position.Bottom: return { x, y: y + ARROW_DEPTH };
+    default:              return { x, y };
+  }
+}
+
 /** Custom edge: relationship line with type label and optional bidirectional arrows. */
 function RelationshipEdgeComponent({
   id, sourceX, sourceY, targetX, targetY,
   sourcePosition, targetPosition, data,
 }) {
+  const dash = data?.dash || false;
+
+  // Offset endpoints outward so the path terminates at the arrowhead base
+  // and the tip lands exactly at the node boundary.
+  const adjTarget = arrowOffset(targetX, targetY, targetPosition);
+  const adjSource = dash ? arrowOffset(sourceX, sourceY, sourcePosition) : { x: sourceX, y: sourceY };
+
   const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition,
+    sourceX: adjSource.x, sourceY: adjSource.y, sourcePosition,
+    targetX: adjTarget.x, targetY: adjTarget.y, targetPosition,
   });
 
   const color = data?.color || "#185FA5";
-  const dash = data?.dash || false;
   const typeLabel = data?.typeLabel || data?.rel?.type || "";
   const isSelected = data?.selected || false;
   const sw = isSelected ? 3.5 : 2;
@@ -1374,12 +1395,12 @@ function CanvasArea({
             const k = rt.id.replace(/\s/g, "-");
             return (
               <>
-                <marker key={`end-${k}`} id={`arrow-end-${k}`} markerWidth="10" markerHeight="6" refX="0" refY="3" orient="auto">
-                  <path d="M0,0 L0,6 L8,3 z" fill={rt.color} />
+                <marker key={`end-${k}`} id={`arrow-end-${k}`} markerWidth="10" markerHeight="6" refX="0" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+                  <path d="M0,0 L0,6 L5,3 z" fill={rt.color} />
                 </marker>
                 {rt.dash && (
-                  <marker key={`start-${k}`} id={`arrow-start-${k}`} markerWidth="10" markerHeight="6" refX="0" refY="3" orient="auto-start-reverse">
-                    <path d="M0,0 L0,6 L8,3 z" fill={rt.color} />
+                  <marker key={`start-${k}`} id={`arrow-start-${k}`} markerWidth="10" markerHeight="6" refX="0" refY="3" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+                    <path d="M0,0 L0,6 L5,3 z" fill={rt.color} />
                   </marker>
                 )}
               </>
