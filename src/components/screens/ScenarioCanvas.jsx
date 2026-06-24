@@ -375,25 +375,25 @@ function TextNodeComponent({ id, data, selected }) {
 function FormatBarTextNode({ node, onUpdate, onDuplicate, onDelete }) {
   if (!node || node.data.editing) return null;
   const d = node.data;
-  const sep = { width: 1, height: 16, background: "rgba(255,255,255,0.15)", flexShrink: 0 };
+  const sep = { width: 1, height: 16, background: c.border, flexShrink: 0 };
   const selSty = {
-    background: "rgba(255,255,255,0.08)", border: "none",
-    color: "#d0d0d0", fontSize: 11.5, borderRadius: 4,
+    background: "transparent", border: "none",
+    color: c.ink, fontSize: 11.5, borderRadius: 4,
     padding: "3px 5px", cursor: "pointer", outline: "none",
     fontFamily: "inherit",
   };
   const fmtBtn = (active) => ({
-    background: active ? "rgba(255,255,255,0.18)" : "none",
-    border: "none", color: "#d0d0d0",
+    background: active ? "rgba(0,0,0,0.08)" : "none",
+    border: "none", color: c.ink,
     fontSize: 13, cursor: "pointer", borderRadius: 4,
     padding: "3px 7px", lineHeight: 1, fontFamily: "inherit",
   });
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 6,
-      background: "#1c1c1e", borderRadius: 8,
+      background: c.white, border: `1px solid ${c.border}`, borderRadius: 8,
       padding: "6px 10px",
-      boxShadow: "0 2px 12px rgba(0,0,0,0.22)",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
       marginTop: 12,
     }}>
       <select value={d.fontFamily} onChange={(e) => onUpdate({ fontFamily: e.target.value })} style={selSty}>
@@ -416,7 +416,7 @@ function FormatBarTextNode({ node, onUpdate, onDuplicate, onDelete }) {
             width: 14, height: 14, borderRadius: "50%",
             background: clr.hex, border: "none", padding: 0,
             cursor: "pointer", flexShrink: 0,
-            outline: d.color === clr.hex ? "2px solid #fff" : "none",
+            outline: d.color === clr.hex ? `2px solid ${c.ink}` : "none",
             outlineOffset: 1,
             transform: d.color === clr.hex ? "scale(1.2)" : "scale(1)",
             transition: "transform 0.1s",
@@ -425,12 +425,12 @@ function FormatBarTextNode({ node, onUpdate, onDuplicate, onDelete }) {
       ))}
       <div style={sep} />
       <button
-        style={{ background: "none", border: "none", color: "#9ca3af", fontSize: 13, cursor: "pointer", borderRadius: 4, padding: "2px 6px", fontFamily: "inherit" }}
+        style={{ background: "none", border: "none", color: c.muted, fontSize: 13, cursor: "pointer", borderRadius: 4, padding: "2px 6px", fontFamily: "inherit" }}
         onClick={onDuplicate}
         title="Duplicate"
       >⧉</button>
       <button
-        style={{ background: "none", border: "none", color: "#f87171", fontSize: 13, cursor: "pointer", borderRadius: 4, padding: "2px 6px", fontFamily: "inherit" }}
+        style={{ background: "none", border: "none", color: c.muted, fontSize: 13, cursor: "pointer", borderRadius: 4, padding: "2px 6px", fontFamily: "inherit" }}
         onClick={onDelete}
         title="Delete"
       >✕</button>
@@ -1489,31 +1489,33 @@ function CanvasArea({
       <div style={{
         position: "absolute", bottom: 16, left: 16, zIndex: 10,
         display: "flex", flexDirection: "column",
-        background: c.white, border: "1px solid rgba(0,0,0,0.1)",
-        borderRadius: 8, boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+        background: c.white, border: `1px solid ${c.border}`,
+        borderRadius: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
         overflow: "hidden",
       }}>
         <button
           onClick={onToggleFullscreen}
           title={isFullscreen ? "Exit full screen (Esc)" : "Full screen"}
           style={{
-            padding: 7, border: "none", background: isFullscreen ? c.ink : "none",
-            color: isFullscreen ? c.white : c.ink, cursor: "pointer",
+            padding: 7, border: "none",
+            background: isFullscreen ? "rgba(0,0,0,0.06)" : "none",
+            color: c.ink, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "background 0.15s, color 0.15s",
+            transition: "background 0.15s",
           }}
         >
           {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
         </button>
-        <div style={{ borderTop: "1px solid rgba(0,0,0,0.08)" }} />
+        <div style={{ borderTop: `1px solid ${c.border}` }} />
         <button
           onClick={onTogglePanels}
           title={panelsHidden ? "Show panels (Tab)" : "Hide panels (Tab)"}
           style={{
-            padding: 7, border: "none", background: panelsHidden ? c.ink : "none",
-            color: panelsHidden ? c.white : c.ink, cursor: "pointer",
+            padding: 7, border: "none",
+            background: panelsHidden ? "rgba(0,0,0,0.06)" : "none",
+            color: c.ink, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "background 0.15s, color 0.15s",
+            transition: "background 0.15s",
           }}
         >
           {panelsHidden ? (
@@ -1538,8 +1540,8 @@ function CanvasArea({
         const pillStyle = {
           position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", zIndex: 10,
           display: "flex", flexDirection: "row", alignItems: "center",
-          background: c.white, border: "1px solid rgba(0,0,0,0.1)",
-          borderRadius: 8, boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+          background: c.white, border: `1px solid ${c.border}`,
+          borderRadius: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
           overflow: "hidden",
         };
         const toolBtn = (tool) => ({
@@ -1572,18 +1574,18 @@ function CanvasArea({
       <div style={{
         position: "absolute", bottom: 16, right: 16, zIndex: 10,
         display: "flex", alignItems: "center",
-        background: c.white, border: "1px solid rgba(0,0,0,0.1)",
-        borderRadius: 8, boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+        background: c.white, border: `1px solid ${c.border}`,
+        borderRadius: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
         overflow: "hidden",
       }}>
         <button onClick={() => zoomOut()} style={{ padding: "7px 11px", border: "none", background: "none", color: c.ink, fontSize: 15, lineHeight: 1, cursor: "pointer", fontFamily: "inherit" }}>−</button>
-        <div style={{ padding: "7px 10px", fontSize: 11, color: c.muted, borderLeft: "1px solid rgba(0,0,0,0.08)", borderRight: "1px solid rgba(0,0,0,0.08)", minWidth: 48, textAlign: "center" }}>
+        <div style={{ padding: "7px 10px", fontSize: 12, color: c.ink, borderLeft: `1px solid ${c.border}`, borderRight: `1px solid ${c.border}`, minWidth: 48, textAlign: "center" }}>
           {Math.round(currentZoom * 100)}%
         </div>
         <button onClick={() => zoomIn()} style={{ padding: "7px 11px", border: "none", background: "none", color: c.ink, fontSize: 15, lineHeight: 1, cursor: "pointer", fontFamily: "inherit" }}>+</button>
         <button
           onClick={() => { setViewport({ x: 60, y: 60, zoom: 1 }); setCurrentZoom(1); }}
-          style={{ padding: "7px 10px", border: "none", background: "none", color: c.muted, fontSize: 10, borderLeft: "1px solid rgba(0,0,0,0.08)", cursor: "pointer", fontFamily: "inherit" }}
+          style={{ padding: "7px 10px", border: "none", background: "none", color: c.muted, fontSize: 12, borderLeft: `1px solid ${c.border}`, cursor: "pointer", fontFamily: "inherit" }}
         >reset</button>
       </div>
     </div>
