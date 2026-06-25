@@ -12,6 +12,7 @@ import { supabase } from "../../lib/supabase.js";
 import { HorizTag, SubtypeTag, Tag } from "../shared/Tag.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
+import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
 import { ClusterDrawer } from "../clusters/ClusterDrawer.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { FilterDropdown } from "./ProjectDetail.jsx";
@@ -81,72 +82,6 @@ function StrengthCell({ strength, confidence }) {
   );
 }
 
-
-// ─── Cluster assign popover ────────────────────────────────────────────────────
-
-function AssignPicker({ clusters, onAssign, onNewCluster, onClose, anchorRect }) {
-  if (!anchorRect) return null;
-  const DROPDOWN_MAX_HEIGHT = 240;
-  const spaceBelow = window.innerHeight - anchorRect.bottom;
-  const openUp = spaceBelow < DROPDOWN_MAX_HEIGHT + 48;
-
-  const style = {
-    position: "fixed",
-    right: window.innerWidth - anchorRect.right,
-    ...(openUp
-      ? { bottom: window.innerHeight - anchorRect.top + 4 }
-      : { top: anchorRect.bottom + 4 }),
-    background: c.white, border: `1px solid ${c.border}`,
-    borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
-    minWidth: 240, zIndex: 9999, overflow: "hidden",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
-  };
-
-  return createPortal(
-    <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
-      <div style={style}>
-        {clusters.length === 0 ? (
-          <div style={{ padding: "12px 14px", fontSize: 12, color: c.hint }}>No clusters yet</div>
-        ) : (
-          <div style={{ maxHeight: DROPDOWN_MAX_HEIGHT, overflowY: "auto" }}>
-            {clusters.map((cl) => (
-              <button
-                key={cl.id}
-                onClick={() => onAssign(cl)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  width: "100%", padding: "10px 14px",
-                  background: "transparent", border: "none",
-                  textAlign: "left", cursor: "pointer", fontFamily: "inherit",
-                  borderBottom: `1px solid ${c.border}`,
-                }}
-              >
-                <SubtypeTag sub={cl.subtype} />
-                <span style={{ fontSize: 12, color: c.ink, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {cl.name}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-        <button
-          onClick={onNewCluster}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            width: "100%", padding: "10px 14px",
-            background: "transparent", border: "none",
-            textAlign: "left", cursor: "pointer", fontFamily: "inherit",
-            fontSize: 12, color: c.muted,
-          }}
-        >
-          <span style={{ fontSize: 14 }}>+</span> Build a cluster
-        </button>
-      </div>
-    </>,
-    document.body
-  );
-}
 
 // ─── Inline checkbox ──────────────────────────────────────────────────────────
 
@@ -347,7 +282,7 @@ function InputTableRow({ input, clusters, assignedCluster, onAssign, onNewCluste
             {assignedCluster ? "Reassign" : "Assign →"}
           </button>
           {pickerOpen && (
-            <AssignPicker
+            <ClusterAssignMenu
               clusters={clusters}
               onAssign={(cl) => { onAssign(input.id, cl); setPickerOpen(false); }}
               onNewCluster={() => { setPickerOpen(false); onNewCluster(); }}
@@ -1058,7 +993,7 @@ export default function Clustering({ appState }) {
             <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Clustering</div>
           </div>
           <button onClick={() => setNewClusterDrawerOpen(true)} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}>
-            <CirclePlus size={14} />Build a cluster
+            <CirclePlus size={14} />New cluster
           </button>
         </div>
 
@@ -1081,7 +1016,7 @@ export default function Clustering({ appState }) {
                   ? `Add at least 3 inputs before clustering. You have ${projectInputs.length} so far.`
                   : "Build your first cluster manually or accept an AI suggestion below."
               }
-              ctaLabel="Build a cluster"
+              ctaLabel="New cluster"
               onCta={() => setNewClusterDrawerOpen(true)}
             />
           ) : (
@@ -1183,11 +1118,11 @@ export default function Clustering({ appState }) {
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
               padding: "9px 14px", marginBottom: 10,
-              background: c.white, border: `1px solid ${c.borderMid}`,
-              borderRadius: 9, boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+              background: "rgb(249, 249, 247)", border: `1px solid ${c.border}`,
+              borderRadius: 9,
             }}>
               <span style={{ fontSize: 12, fontWeight: 500, color: c.ink, flex: 1 }}>
-                {selectedInputIds.length} input{selectedInputIds.length !== 1 ? "s" : ""} selected
+                {selectedInputIds.length} selected
               </span>
               <div style={{ position: "relative" }}>
                 <button
@@ -1201,7 +1136,7 @@ export default function Clustering({ appState }) {
                   Assign to cluster →
                 </button>
                 {assignPickerOpen && (
-                  <AssignPicker
+                  <ClusterAssignMenu
                     clusters={projectClusters}
                     onAssign={handleBulkAssign}
                     onNewCluster={handleNewClusterFromSelection}
@@ -1215,16 +1150,16 @@ export default function Clustering({ appState }) {
                 style={{
                   padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 500,
                   cursor: "pointer", fontFamily: "inherit",
-                  background: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA",
+                  background: "rgb(254, 226, 226)", color: "rgb(185, 28, 28)", border: "none",
                 }}
               >
                 Delete
               </button>
               <button
                 onClick={() => setSelectedInputIds([])}
-                style={{ ...btnG, fontSize: 11, color: c.muted }}
+                style={{ fontSize: 11, color: "rgb(102, 102, 102)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
               >
-                Clear
+                ✕ Clear
               </button>
             </div>
           )}

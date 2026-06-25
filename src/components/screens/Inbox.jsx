@@ -827,14 +827,22 @@ export default function Inbox({ appState }) {
         {selectedManualIds.length > 0 && (
           <div style={{
             display: "flex", alignItems: "center", gap: 8,
-            padding: "8px 12px", background: c.surfaceAlt,
+            padding: "8px 12px", background: "rgb(249, 249, 247)",
             border: `1px solid ${c.border}`, borderRadius: 8, marginBottom: 8,
           }}>
             <span style={{ fontSize: 12, fontWeight: 500, color: c.ink, flex: 1 }}>
               {selectedManualIds.length} selected
             </span>
             <div style={{ position: "relative" }}>
-              <button onClick={() => setManualPickerOpen((s) => !s)} style={{ ...btnSm, fontSize: 11 }}>
+              <button
+                onClick={() => setManualPickerOpen((s) => !s)}
+                style={{
+                  padding: "7px 14px", borderRadius: 7, fontSize: 11,
+                  background: "transparent", color: "rgb(102, 102, 102)",
+                  border: "1px solid rgb(200, 200, 200)",
+                  cursor: "pointer", fontFamily: "inherit",
+                }}
+              >
                 Add to project →
               </button>
               {manualPickerOpen && (
@@ -851,13 +859,13 @@ export default function Inbox({ appState }) {
               style={{
                 padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 500,
                 cursor: "pointer", fontFamily: "inherit",
-                background: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA",
+                background: "rgb(254, 226, 226)", color: "rgb(185, 28, 28)", border: "none",
               }}
             >
               Delete
             </button>
-            <button onClick={clearManualSelection} style={{ fontSize: 11, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-              Clear selection
+            <button onClick={clearManualSelection} style={{ fontSize: 11, color: "rgb(102, 102, 102)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+              ✕ Clear
             </button>
           </div>
         )}
@@ -911,7 +919,7 @@ export default function Inbox({ appState }) {
             {selectedAiIds.length > 0 && (
               <div style={{
                 display: "flex", alignItems: "center", gap: 8,
-                padding: "8px 12px", background: c.surfaceAlt,
+                padding: "8px 12px", background: "rgb(249, 249, 247)",
                 border: `1px solid ${c.border}`, borderRadius: 8, marginBottom: 8,
               }}>
                 <span style={{ fontSize: 12, fontWeight: 500, color: c.ink, flex: 1 }}>
@@ -923,7 +931,12 @@ export default function Inbox({ appState }) {
                 <div style={{ position: "relative" }}>
                   <button
                     onClick={() => setAiPickerOpen((s) => !s)}
-                    style={{ padding: "7px 16px", borderRadius: 7, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}
+                    style={{
+                      padding: "7px 14px", borderRadius: 7, fontSize: 11,
+                      background: "transparent", color: "rgb(102, 102, 102)",
+                      border: "1px solid rgb(200, 200, 200)",
+                      cursor: "pointer", fontFamily: "inherit",
+                    }}
                   >
                     Add to project →
                   </button>
@@ -936,11 +949,19 @@ export default function Inbox({ appState }) {
                     />
                   )}
                 </div>
-                <button onClick={handleBulkDismissAi} style={{ ...btnG, fontSize: 11, color: c.muted }}>
+                <button
+                  onClick={handleBulkDismissAi}
+                  style={{
+                    padding: "7px 14px", borderRadius: 7, fontSize: 11,
+                    background: "transparent", color: "rgb(102, 102, 102)",
+                    border: "1px solid rgb(200, 200, 200)",
+                    cursor: "pointer", fontFamily: "inherit",
+                  }}
+                >
                   Dismiss
                 </button>
-                <button onClick={clearAiSelection} style={{ fontSize: 11, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-                  Clear selection
+                <button onClick={clearAiSelection} style={{ fontSize: 11, color: "rgb(102, 102, 102)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                  ✕ Clear
                 </button>
               </div>
             )}

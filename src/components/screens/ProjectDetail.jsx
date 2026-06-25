@@ -10,6 +10,7 @@ import { c, inp, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { STEEPLED } from "../../data/seeds.js";
 import { HorizTag, SubtypeTag } from "../shared/Tag.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
+import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { AddFromInboxModal } from "../inputs/AddFromInboxModal.jsx";
 import { ClusterDrawer } from "../clusters/ClusterDrawer.jsx";
@@ -99,57 +100,6 @@ function HorizonBar({ project }) {
 }
 
 // ─── Cluster assign popover ────────────────────────────────────────────────────
-
-function ClusterAssignPopover({ clusters, onAssign, onClose, anchorRect }) {
-  if (!anchorRect) return null;
-  const DROPDOWN_MAX_HEIGHT = 200;
-  const spaceBelow = window.innerHeight - anchorRect.bottom;
-  const openUp = spaceBelow < DROPDOWN_MAX_HEIGHT + 48;
-  const style = {
-    position: "fixed",
-    right: window.innerWidth - anchorRect.right,
-    ...(openUp
-      ? { bottom: window.innerHeight - anchorRect.top + 4 }
-      : { top: anchorRect.bottom + 4 }),
-    background: c.white, border: `1px solid ${c.border}`,
-    borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
-    minWidth: 220, zIndex: 9999, overflow: "hidden",
-  };
-  return createPortal(
-    <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
-      <div style={style}>
-        {clusters.length === 0 ? (
-          <div style={{ padding: "12px 14px", fontSize: 12, color: c.hint }}>
-            No clusters yet — build one first.
-          </div>
-        ) : (
-          <div style={{ maxHeight: DROPDOWN_MAX_HEIGHT, overflowY: "auto" }}>
-            {clusters.map((cl) => (
-              <button key={cl.id} onClick={() => onAssign(cl)} style={{
-                display: "flex", alignItems: "center", gap: 8,
-                width: "100%", padding: "9px 14px",
-                background: "transparent", border: "none", borderBottom: `1px solid ${c.border}`,
-                textAlign: "left", cursor: "pointer", fontFamily: "inherit",
-              }}>
-                <SubtypeTag sub={cl.subtype} />
-                <span style={{ fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {cl.name}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-        <div style={{ padding: "6px 14px", borderTop: `1px solid ${c.border}` }}>
-          <button onClick={onClose} style={{ fontSize: 11, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-            Cancel
-          </button>
-        </div>
-      </div>
-    </>,
-    document.body
-  );
-}
 
 // ─── Filter tab ────────────────────────────────────────────────────────────────
 
@@ -725,10 +675,10 @@ export default function ProjectDetail({ appState }) {
                   <div style={{
                     display: "flex", alignItems: "center", gap: 8,
                     padding: "7px 12px", marginBottom: 8,
-                    background: c.ink, borderRadius: 8,
+                    background: "rgb(249, 249, 247)", border: `1px solid ${c.border}`, borderRadius: 8,
                     animation: "fadeSlideIn 0.15s ease",
                   }}>
-                    <span style={{ fontSize: 12, color: c.white, flex: 1 }}>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: c.ink, flex: 1 }}>
                       {selectedIds.size} selected
                     </span>
                     <div style={{ position: "relative" }} ref={batchAnchorRef}>
@@ -737,14 +687,15 @@ export default function ProjectDetail({ appState }) {
                           if (!batchPickerOpen) setBatchAssignAnchorRect(e.currentTarget.getBoundingClientRect());
                           setBatchPickerOpen((p) => !p);
                         }}
-                        style={{ ...btnSm, fontSize: 11, padding: "4px 10px", background: c.white, color: c.ink }}
+                        style={{ ...btnSm, fontSize: 11, padding: "4px 10px" }}
                       >
                         Assign →
                       </button>
                       {batchPickerOpen && (
-                        <ClusterAssignPopover
+                        <ClusterAssignMenu
                           clusters={projectClusters}
                           onAssign={handleBatchAssign}
+                          onNewCluster={() => { setBatchPickerOpen(false); setClusterDrawerOpen(true); }}
                           onClose={() => setBatchPickerOpen(false)}
                           anchorRect={batchAssignAnchorRect}
                         />
@@ -762,7 +713,7 @@ export default function ProjectDetail({ appState }) {
                     </button>
                     <button
                       onClick={() => setSelectedIds(new Set())}
-                      style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                      style={{ fontSize: 11, color: "rgb(102, 102, 102)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
                     >
                       ✕ Clear
                     </button>
@@ -875,9 +826,10 @@ export default function ProjectDetail({ appState }) {
                                 Assign →
                               </button>
                               {assignPickerFor === inp.id && (
-                                <ClusterAssignPopover
+                                <ClusterAssignMenu
                                   clusters={projectClusters}
                                   onAssign={(cl) => handleAssignToCluster(inp.id, cl)}
+                                  onNewCluster={() => { setAssignPickerFor(null); setClusterDrawerOpen(true); }}
                                   onClose={() => setAssignPickerFor(null)}
                                   anchorRect={assignPickerAnchorRect}
                                 />
