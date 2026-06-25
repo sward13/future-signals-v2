@@ -563,18 +563,33 @@ function AssignmentSugRow({ sug, inputs, fadingOutIds, onAcceptOne, onDismissOne
   const inputId = (sug.input_ids || [])[0];
   const matchedInput = inputs.find((i) => i.id === inputId);
   const confidenceStyle = sug.confidence ? CONFIDENCE_STYLES[sug.confidence] : null;
+  const hasRationale = Boolean(sug.rationale);
+
   return (
     <div style={{
       borderTop: idx > 0 ? `1px solid ${c.border}` : "none",
       opacity: fadingOutIds.has(sug.id) ? 0 : 1,
       transition: "opacity 0.25s ease",
     }}>
-      {/* Row 1: title, confidence badge, actions */}
-      <div style={{
-        display: "grid", gridTemplateColumns: "1fr 130px 140px", alignItems: "center", gap: 8,
-        padding: "8px 11px",
-      }}>
-        <div style={{ minWidth: 0 }}>
+      {/* Row 1: clickable row — chevron + title, confidence badge, actions */}
+      <div
+        onClick={hasRationale ? () => setRationaleOpen((s) => !s) : undefined}
+        style={{
+          display: "grid", gridTemplateColumns: "1fr 130px 140px", alignItems: "center", gap: 8,
+          padding: "8px 11px",
+          cursor: hasRationale ? "pointer" : "default",
+        }}
+      >
+        <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 5 }}>
+          {hasRationale && (
+            <span style={{
+              display: "inline-block",
+              fontSize: 11, color: c.faint,
+              transform: rationaleOpen ? "rotate(90deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+              lineHeight: 1, userSelect: "none", flexShrink: 0,
+            }}>›</span>
+          )}
           <div style={{
             fontSize: 12, color: c.ink,
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -590,45 +605,31 @@ function AssignmentSugRow({ sug, inputs, fadingOutIds, onAcceptOne, onDismissOne
           )}
         </span>
         <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-          <button onClick={() => onAcceptOne(sug)} style={{ ...btnSm, fontSize: 11, padding: "4px 12px" }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onAcceptOne(sug); }}
+            style={{ ...btnSm, fontSize: 11, padding: "4px 12px" }}
+          >
             Accept
           </button>
-          <button onClick={() => onDismissOne(sug.id)} style={{ ...btnG, fontSize: 11 }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDismissOne(sug.id); }}
+            style={{ ...btnG, fontSize: 11 }}
+          >
             Dismiss
           </button>
         </div>
       </div>
 
-      {/* Row 2: rationale lane — only when rationale exists */}
-      {sug.rationale && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 6,
-          padding: "0 11px 7px",
-        }}>
-          <button
-            onClick={() => setRationaleOpen((s) => !s)}
-            title="Why this match?"
-            style={{
-              flexShrink: 0,
-              width: 14, height: 14, borderRadius: "50%",
-              border: `1px solid ${c.border}`,
-              background: "transparent",
-              color: c.faint,
-              fontSize: 8, fontWeight: 600,
-              cursor: "pointer", fontFamily: "inherit",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              lineHeight: 1, padding: 0,
-            }}
-          >?</button>
-          {rationaleOpen && (
-            <div style={{
-              fontSize: 11, color: c.faint, fontStyle: "italic",
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              flex: 1,
-            }}>
-              {sug.rationale}
-            </div>
-          )}
+      {/* Rationale sub-row — expands below row 1 on click */}
+      {hasRationale && rationaleOpen && (
+        <div style={{ padding: "0 11px 8px" }}>
+          <div style={{
+            fontSize: 12, color: c.muted, lineHeight: 1.55,
+            borderLeft: `2px solid ${c.border}`,
+            paddingLeft: 10,
+          }}>
+            {sug.rationale}
+          </div>
         </div>
       )}
     </div>
