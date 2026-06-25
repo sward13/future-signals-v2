@@ -588,13 +588,12 @@ function AssignmentSugRow({ sug, inputs, fadingOutIds, onAcceptOne, onDismissOne
                 display: "flex", alignItems: "center", gap: 4,
               }}
             >
-              <span style={{ fontSize: 9 }}>{rationaleOpen ? "▾" : "▸"}</span>
               Why this match?
             </button>
             {rationaleOpen && (
               <div style={{
                 marginTop: 6, padding: "8px 11px",
-                background: c.surfaceAlt, border: `1px solid ${c.border}`,
+                background: c.surfaceAlt,
                 borderRadius: 6, fontSize: 11, color: c.muted,
                 lineHeight: 1.6, fontStyle: "italic",
               }}>
