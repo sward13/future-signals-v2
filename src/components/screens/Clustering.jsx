@@ -739,6 +739,8 @@ export default function Clustering({ appState }) {
   const [inputDrawerOpen,       setInputDrawerOpen]       = useState(false);
   const [selectedInputIds,      setSelectedInputIds]      = useState([]);
   const [assignPickerOpen,      setAssignPickerOpen]      = useState(false);
+  const [bulkAssignAnchorRect,  setBulkAssignAnchorRect]  = useState(null);
+  const bulkAssignBtnRef = useRef(null);
   const [preselectedForCluster, setPreselectedForCluster] = useState([]);
   const [inputSearch,           setInputSearch]           = useState("");
   const [filterType,            setFilterType]            = useState(null);
@@ -1189,7 +1191,11 @@ export default function Clustering({ appState }) {
               </span>
               <div style={{ position: "relative" }}>
                 <button
-                  onClick={() => setAssignPickerOpen((s) => !s)}
+                  ref={bulkAssignBtnRef}
+                  onClick={() => {
+                    if (!assignPickerOpen) setBulkAssignAnchorRect(bulkAssignBtnRef.current.getBoundingClientRect());
+                    setAssignPickerOpen((s) => !s);
+                  }}
                   style={{ ...btnSm, fontSize: 11 }}
                 >
                   Assign to cluster →
@@ -1200,6 +1206,7 @@ export default function Clustering({ appState }) {
                     onAssign={handleBulkAssign}
                     onNewCluster={handleNewClusterFromSelection}
                     onClose={() => setAssignPickerOpen(false)}
+                    anchorRect={bulkAssignAnchorRect}
                   />
                 )}
               </div>
