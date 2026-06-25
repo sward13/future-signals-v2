@@ -374,6 +374,35 @@ export default function FutureModels({ appState }) {
 
       <div style={{ maxWidth: 960 }}>
 
+        {/* ── Scenarios ────────────────────────────────────────────────── */}
+        <SectionCard>
+          <SectionHeader
+            title="Scenarios"
+            count={projectScenarios.length}
+            action={projectScenarios.length > 0 ? (
+              <button onClick={() => openScenarioNew()} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
+                New scenario
+              </button>
+            ) : null}
+          />
+          <div style={{ padding: "16px 20px 20px" }}>
+            {projectScenarios.length === 0 ? (
+              <ScenarioEmptyState onNew={() => openScenarioNew()} />
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                {projectScenarios.map((s) => (
+                  <ScenarioCard
+                    key={s.id}
+                    scenario={s}
+                    clusterName={clusterName}
+                    onClick={() => openScenario(s.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </SectionCard>
+
         {/* ── Preferred Future ─────────────────────────────────────────── */}
         <SectionCard>
           <SectionHeader
@@ -461,35 +490,6 @@ export default function FutureModels({ appState }) {
                     index={i}
                     scenarioName={scenarioName}
                     onClick={() => openStrategicOption(option.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </SectionCard>
-
-        {/* ── Scenarios ────────────────────────────────────────────────── */}
-        <SectionCard>
-          <SectionHeader
-            title="Scenarios"
-            count={projectScenarios.length}
-            action={projectScenarios.length > 0 ? (
-              <button onClick={() => openScenarioNew()} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
-                New scenario
-              </button>
-            ) : null}
-          />
-          <div style={{ padding: "16px 20px 20px" }}>
-            {projectScenarios.length === 0 ? (
-              <ScenarioEmptyState onNew={() => openScenarioNew()} />
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                {projectScenarios.map((s) => (
-                  <ScenarioCard
-                    key={s.id}
-                    scenario={s}
-                    clusterName={clusterName}
-                    onClick={() => openScenario(s.id)}
                   />
                 ))}
               </div>
