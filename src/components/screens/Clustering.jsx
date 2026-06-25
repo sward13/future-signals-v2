@@ -871,9 +871,8 @@ export default function Clustering({ appState }) {
         body: { project_id: project.id, mode: "combined", clustering_sensitivity: tightness },
       });
       if (error) throw new Error(error.message);
-      setAssignmentSugs(data?.assignments || []);
-      setNewClusterSugs(data?.new_clusters || []);
       setDismissedNewClusters([]);
+      await loadSuggestions(project.id, workspaceId);
     } catch (err) {
       setSuggestionsError(err.message || "Failed to generate suggestions.");
     } finally {
