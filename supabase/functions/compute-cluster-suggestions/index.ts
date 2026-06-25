@@ -626,7 +626,7 @@ Reference the content and theme of both — what they share, what dynamic connec
 Input: ${input.name}${input.description ? ` — ${input.description}` : ""}
 ${clusterLine}
 
-Respond with a single sentence only. No preamble.`;
+Respond with a single sentence of no more than 20 words. No preamble.`;
 
   try {
     const res = await fetch(OPENAI_API_URL, {
