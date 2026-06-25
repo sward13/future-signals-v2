@@ -219,12 +219,12 @@ function OptionCard({ title, subtitle, checked, disabled, onClick }) {
 
 export function ExportModal({ appState, onClose }) {
   const { projects, activeProjectId, activeScreen, inputs, clusters, scenarios, preferredFutures, strategicOptions, systemMapExportRef } = appState;
-  const [checked, setChecked] = useState({ md: true, csv: false, svg: false, png: false });
+  const [checked, setChecked] = useState({ md: true, csv: false, png: false });
   const [exporting, setExporting] = useState(false);
 
   const project = projects.find((p) => p.id === activeProjectId);
   const onSystemMap = activeScreen === "scenarios";
-  const anyChecked = checked.md || checked.csv || (onSystemMap && checked.svg) || (onSystemMap && checked.png);
+  const anyChecked = checked.md || checked.csv || (onSystemMap && checked.png);
 
   const toggle = (key) => setChecked((prev) => ({ ...prev, [key]: !prev[key] }));
 
@@ -242,9 +242,6 @@ export function ExportModal({ appState, onClose }) {
         const content  = buildCSV(inputs, project);
         const filename = `${project.name.replace(/[^a-z0-9]/gi, "_")}_inputs.csv`;
         downloadBlob(content, filename, "text/csv;charset=utf-8");
-      }
-      if (onSystemMap && checked.svg) {
-        await systemMapExportRef?.current?.exportAsSvg();
       }
       if (onSystemMap && checked.png) {
         await systemMapExportRef?.current?.exportAsPng();
@@ -299,13 +296,6 @@ export function ExportModal({ appState, onClose }) {
             subtitle="CSV of all project inputs with metadata"
             checked={checked.csv}
             onClick={() => toggle("csv")}
-          />
-          <OptionCard
-            title="System Map (SVG)"
-            subtitle="Vector export of the system map canvas"
-            checked={checked.svg}
-            disabled={!onSystemMap}
-            onClick={() => toggle("svg")}
           />
           <OptionCard
             title="System Map (PNG)"

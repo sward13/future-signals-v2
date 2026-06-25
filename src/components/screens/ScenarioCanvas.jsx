@@ -13,7 +13,7 @@ import {
   getBezierPath, MarkerType, ConnectionMode,
   getNodesBounds, getViewportForBounds,
 } from "@xyflow/react";
-import { toPng, toSvg } from "html-to-image";
+import { toPng } from "html-to-image";
 import "@xyflow/react/dist/style.css";
 import { CirclePlus, LayoutDashboard, Logs, ChevronDown, ChevronRight, Maximize2, Minimize2, Hand, MousePointer2, Network, Type, SlidersHorizontal } from "lucide-react";
 import { c, ta, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
@@ -1206,12 +1206,7 @@ function CanvasArea({
     };
 
     try {
-      let dataUrl;
-      if (format === "svg") {
-        dataUrl = await toSvg(viewport, { width: IMAGE_W, height: IMAGE_H, style: captureStyle });
-      } else {
-        dataUrl = await toPng(viewport, { width: IMAGE_W, height: IMAGE_H, style: captureStyle });
-      }
+      const dataUrl = await toPng(viewport, { width: IMAGE_W, height: IMAGE_H, style: captureStyle });
 
       const a = document.createElement("a");
       a.href = dataUrl;
@@ -1224,14 +1219,13 @@ function CanvasArea({
   }, [getViewport, setViewport]);
 
   const exportAsPng = useCallback(() => runExport("png"), [runExport]);
-  const exportAsSvg = useCallback(() => runExport("svg"), [runExport]);
 
-  // Register / deregister export handles on the shared ref
+  // Register / deregister export handle on the shared ref
   useEffect(() => {
     if (!systemMapExportRef) return;
-    systemMapExportRef.current = { exportAsPng, exportAsSvg };
+    systemMapExportRef.current = { exportAsPng };
     return () => { systemMapExportRef.current = null; };
-  }, [systemMapExportRef, exportAsPng, exportAsSvg]);
+  }, [systemMapExportRef, exportAsPng]);
 
   // Keep connectMode in sync with activeTool
   useEffect(() => {
