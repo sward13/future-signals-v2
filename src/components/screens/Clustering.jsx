@@ -572,34 +572,40 @@ function AssignmentSugRow({ sug, inputs, fadingOutIds, onAcceptOne, onDismissOne
       transition: "opacity 0.25s ease",
     }}>
       <div style={{ minWidth: 0, paddingTop: 2 }}>
-        <div style={{
-          fontSize: 12, color: c.ink,
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
-          {matchedInput?.name || "Untitled input"}
-        </div>
-        {sug.rationale && (
-          <div style={{ marginTop: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+          <div style={{
+            fontSize: 12, color: c.ink, flex: 1,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {matchedInput?.name || "Untitled input"}
+          </div>
+          {sug.rationale && (
             <button
               onClick={() => setRationaleOpen((s) => !s)}
+              title="Why this match?"
               style={{
-                background: "none", border: "none", cursor: "pointer",
-                fontSize: 11, color: c.muted, padding: 0, fontFamily: "inherit",
-                display: "flex", alignItems: "center", gap: 4,
+                flexShrink: 0,
+                width: 16, height: 16, borderRadius: "50%",
+                border: `1px solid ${c.borderMid}`,
+                background: rationaleOpen ? c.surfaceAlt : "transparent",
+                color: c.faint,
+                fontSize: 9, fontWeight: 600,
+                cursor: "pointer", fontFamily: "inherit",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                lineHeight: 1, padding: 0,
+                transition: "background 0.12s, color 0.12s",
               }}
-            >
-              Why this match?
-            </button>
-            {rationaleOpen && (
-              <div style={{
-                marginTop: 6, padding: "8px 11px",
-                background: c.surfaceAlt,
-                borderRadius: 6, fontSize: 11, color: c.muted,
-                lineHeight: 1.6, fontStyle: "italic",
-              }}>
-                {sug.rationale}
-              </div>
-            )}
+            >?</button>
+          )}
+        </div>
+        {rationaleOpen && sug.rationale && (
+          <div style={{
+            marginTop: 6, padding: "8px 11px",
+            background: c.surfaceAlt,
+            borderRadius: 6, fontSize: 11, color: c.muted,
+            lineHeight: 1.6, fontStyle: "italic",
+          }}>
+            {sug.rationale}
           </div>
         )}
       </div>

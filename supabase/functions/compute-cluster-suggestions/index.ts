@@ -19,6 +19,9 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const ASSIGNMENT_HIGH_CONFIDENCE = 0.65;
 const ASSIGNMENT_MODERATE_CONFIDENCE = 0.55;
+// Minimum gap between the best and second-best cluster similarity score.
+// Prevents all inputs routing to one dominant cluster in narrow-domain projects.
+const ASSIGNMENT_MARGIN = 0.05;
 
 // Cosine similarity thresholds derived from the specified distance thresholds
 // (similarity = 1 - distance)
@@ -310,41 +313,71 @@ serve(async (req: Request) => {
 
 /**
  * For each input, finds its best-matching cluster centroid and keeps it as a
- * match if similarity clears ASSIGNMENT_MODERATE_CONFIDENCE.
+ * match if similarity clears ASSIGNMENT_MODERATE_CONFIDENCE, the margin
+ * requirement, and the per-cluster cap.
  */
 function computeAssignmentMatches(
   inputs: EmbeddedInput[],
   clusters: ClusterWithCentroid[],
 ): AssignmentMatch[] {
+  // Fix 2: Per-cluster cap — no single cluster may absorb more than 2× its
+  // "fair share" of unassigned inputs in one run. Without this, the largest /
+  // most-central cluster in a narrow-domain project can receive every
+  // suggestion, leaving the practitioner with no meaningful distribution.
+  const perClusterCap = Math.ceil((inputs.length / clusters.length) * 2);
+  const clusterCounts = new Map<string, number>();
+
   const matches: AssignmentMatch[] = [];
 
   for (const input of inputs) {
-    let bestSim = -1;
-    let bestCluster: ClusterWithCentroid | null = null;
+    // Score against every cluster centroid and sort descending.
+    const scored = clusters
+      .map((cluster) => ({ cluster, sim: cosineSim(input.embedding, cluster.centroid) }))
+      .sort((a, b) => b.sim - a.sim);
 
-    for (const cluster of clusters) {
-      const sim = cosineSim(input.embedding, cluster.centroid);
-      if (sim > bestSim) {
-        bestSim     = sim;
-        bestCluster = cluster;
+    if (scored.length === 0) continue;
+
+    const { cluster: bestCluster, sim: bestSim } = scored[0];
+
+    // Fix 1: Margin requirement — only assign when the best cluster clearly
+    // leads the second-best. In narrow-domain projects all clusters sit close
+    // together in embedding space; without a minimum margin every input picks
+    // the same dominant cluster by a tiny, semantically meaningless gap.
+    if (scored.length >= 2) {
+      const margin = bestSim - scored[1].sim;
+      if (margin < ASSIGNMENT_MARGIN) {
+        console.log(
+          `[assign] "${input.name}" → margin ${margin.toFixed(4)} < ${ASSIGNMENT_MARGIN} ✗ insufficient margin`,
+        );
+        continue;
       }
     }
 
-    const matched = bestCluster !== null && bestSim >= ASSIGNMENT_MODERATE_CONFIDENCE;
+    const matched = bestSim >= ASSIGNMENT_MODERATE_CONFIDENCE;
     console.log(
-      `[assign] "${input.name}" → best "${bestCluster?.name ?? "none"}" @ ${bestSim.toFixed(4)}` +
+      `[assign] "${input.name}" → best "${bestCluster.name}" @ ${bestSim.toFixed(4)}` +
       (matched ? ` ✓ ${bestSim >= ASSIGNMENT_HIGH_CONFIDENCE ? "high" : "moderate"}` : " ✗ below threshold"),
     );
 
-    if (matched && bestCluster) {
-      matches.push({
-        input,
-        cluster:    bestCluster,
-        similarity: bestSim,
-        confidence: bestSim >= ASSIGNMENT_HIGH_CONFIDENCE ? "high" : "moderate",
-        rationale:  null,
-      });
+    if (!matched) continue;
+
+    // Fix 2 (enforcement): skip if this cluster has already hit its cap.
+    const count = clusterCounts.get(bestCluster.id) ?? 0;
+    if (count >= perClusterCap) {
+      console.log(
+        `[assign] "${input.name}" → "${bestCluster.name}" ✗ cluster cap reached (${perClusterCap})`,
+      );
+      continue;
     }
+
+    clusterCounts.set(bestCluster.id, count + 1);
+    matches.push({
+      input,
+      cluster:    bestCluster,
+      similarity: bestSim,
+      confidence: bestSim >= ASSIGNMENT_HIGH_CONFIDENCE ? "high" : "moderate",
+      rationale:  null,
+    });
   }
 
   return matches;
