@@ -100,22 +100,31 @@ function HorizonBar({ project }) {
 
 // ─── Cluster assign popover ────────────────────────────────────────────────────
 
-function ClusterAssignPopover({ clusters, onAssign, onClose }) {
-  return (
+function ClusterAssignPopover({ clusters, onAssign, onClose, anchorRect }) {
+  if (!anchorRect) return null;
+  const DROPDOWN_MAX_HEIGHT = 200;
+  const spaceBelow = window.innerHeight - anchorRect.bottom;
+  const openUp = spaceBelow < DROPDOWN_MAX_HEIGHT + 48;
+  const style = {
+    position: "fixed",
+    right: window.innerWidth - anchorRect.right,
+    ...(openUp
+      ? { bottom: window.innerHeight - anchorRect.top + 4 }
+      : { top: anchorRect.bottom + 4 }),
+    background: c.white, border: `1px solid ${c.border}`,
+    borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
+    minWidth: 220, zIndex: 9999, overflow: "hidden",
+  };
+  return createPortal(
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
-      <div style={{
-        position: "absolute", top: "100%", right: 0, marginTop: 4,
-        background: c.white, border: `1px solid ${c.border}`,
-        borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
-        minWidth: 220, zIndex: 51, overflow: "hidden",
-      }}>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />
+      <div style={style}>
         {clusters.length === 0 ? (
           <div style={{ padding: "12px 14px", fontSize: 12, color: c.hint }}>
             No clusters yet — build one first.
           </div>
         ) : (
-          <div style={{ maxHeight: 200, overflowY: "auto" }}>
+          <div style={{ maxHeight: DROPDOWN_MAX_HEIGHT, overflowY: "auto" }}>
             {clusters.map((cl) => (
               <button key={cl.id} onClick={() => onAssign(cl)} style={{
                 display: "flex", alignItems: "center", gap: 8,
@@ -137,7 +146,8 @@ function ClusterAssignPopover({ clusters, onAssign, onClose }) {
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 
@@ -365,11 +375,13 @@ export default function ProjectDetail({ appState }) {
   const [editScrollTo,      setEditScrollTo]      = useState(null);
   const [csvImportOpen,     setCsvImportOpen]     = useState(false);
   const [inputTab,          setInputTab]          = useState("all");
-  const [assignPickerFor,   setAssignPickerFor]   = useState(null);
+  const [assignPickerFor,        setAssignPickerFor]        = useState(null);
+  const [assignPickerAnchorRect, setAssignPickerAnchorRect] = useState(null);
   // Multi-select
-  const [selectedIds,       setSelectedIds]       = useState(new Set());
-  const [batchPickerOpen,   setBatchPickerOpen]   = useState(false);
-  const [confirmDeleteIds,  setConfirmDeleteIds]  = useState(null);
+  const [selectedIds,            setSelectedIds]            = useState(new Set());
+  const [batchPickerOpen,        setBatchPickerOpen]        = useState(false);
+  const [batchAssignAnchorRect,  setBatchAssignAnchorRect]  = useState(null);
+  const [confirmDeleteIds,       setConfirmDeleteIds]       = useState(null);
   const batchAnchorRef = useRef(null);
   // Search + filters
   const [searchQuery,       setSearchQuery]       = useState("");
@@ -721,7 +733,10 @@ export default function ProjectDetail({ appState }) {
                     </span>
                     <div style={{ position: "relative" }} ref={batchAnchorRef}>
                       <button
-                        onClick={() => setBatchPickerOpen((p) => !p)}
+                        onClick={(e) => {
+                          if (!batchPickerOpen) setBatchAssignAnchorRect(e.currentTarget.getBoundingClientRect());
+                          setBatchPickerOpen((p) => !p);
+                        }}
                         style={{ ...btnSm, fontSize: 11, padding: "4px 10px", background: c.white, color: c.ink }}
                       >
                         Assign →
@@ -731,6 +746,7 @@ export default function ProjectDetail({ appState }) {
                           clusters={projectClusters}
                           onAssign={handleBatchAssign}
                           onClose={() => setBatchPickerOpen(false)}
+                          anchorRect={batchAssignAnchorRect}
                         />
                       )}
                     </div>
@@ -849,7 +865,11 @@ export default function ProjectDetail({ appState }) {
                           {assignedClusters.length === 0 ? (
                             <>
                               <button
-                                onClick={(e) => { e.stopPropagation(); setAssignPickerFor(assignPickerFor === inp.id ? null : inp.id); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (assignPickerFor !== inp.id) setAssignPickerAnchorRect(e.currentTarget.getBoundingClientRect());
+                                  setAssignPickerFor(assignPickerFor === inp.id ? null : inp.id);
+                                }}
                                 style={{ ...btnSm, fontSize: 10, padding: "3px 8px", whiteSpace: "nowrap" }}
                               >
                                 Assign →
@@ -859,6 +879,7 @@ export default function ProjectDetail({ appState }) {
                                   clusters={projectClusters}
                                   onAssign={(cl) => handleAssignToCluster(inp.id, cl)}
                                   onClose={() => setAssignPickerFor(null)}
+                                  anchorRect={assignPickerAnchorRect}
                                 />
                               )}
                             </>
