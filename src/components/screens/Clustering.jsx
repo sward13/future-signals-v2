@@ -565,58 +565,47 @@ function AssignmentSugRow({ sug, inputs, fadingOutIds, onAcceptOne, onDismissOne
   const confidenceStyle = sug.confidence ? CONFIDENCE_STYLES[sug.confidence] : null;
   return (
     <div key={sug.id} style={{
-      display: "grid", gridTemplateColumns: "1fr 130px 140px", alignItems: "start", gap: 8,
+      display: "grid", gridTemplateColumns: "1fr 130px 140px", alignItems: "center", gap: 8,
       padding: "8px 11px",
       borderTop: idx > 0 ? `1px solid ${c.border}` : "none",
       opacity: fadingOutIds.has(sug.id) ? 0 : 1,
       transition: "opacity 0.25s ease",
     }}>
-      <div style={{ minWidth: 0, paddingTop: 2 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-          <div style={{
-            fontSize: 12, color: c.ink, flex: 1,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
-            {matchedInput?.name || "Untitled input"}
-          </div>
-          {sug.rationale && (
-            <button
-              onClick={() => setRationaleOpen((s) => !s)}
-              title="Why this match?"
-              style={{
-                flexShrink: 0,
-                width: 16, height: 16, borderRadius: "50%",
-                border: `1px solid ${c.borderMid}`,
-                background: rationaleOpen ? c.surfaceAlt : "transparent",
-                color: c.faint,
-                fontSize: 9, fontWeight: 600,
-                cursor: "pointer", fontFamily: "inherit",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                lineHeight: 1, padding: 0,
-                transition: "background 0.12s, color 0.12s",
-              }}
-            >?</button>
-          )}
+      {/* Title row — explicit gridRow:1 so rationale in row 2 doesn't shift it */}
+      <div style={{ gridColumn: 1, gridRow: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 5 }}>
+        <div style={{
+          fontSize: 12, color: c.ink, flex: 1,
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          {matchedInput?.name || "Untitled input"}
         </div>
-        {rationaleOpen && sug.rationale && (
-          <div style={{
-            marginTop: 6, padding: "8px 11px",
-            background: c.surfaceAlt,
-            borderRadius: 6, fontSize: 11, color: c.muted,
-            lineHeight: 1.6, fontStyle: "italic",
-          }}>
-            {sug.rationale}
-          </div>
+        {sug.rationale && (
+          <button
+            onClick={() => setRationaleOpen((s) => !s)}
+            title="Why this match?"
+            style={{
+              flexShrink: 0,
+              width: 16, height: 16, borderRadius: "50%",
+              border: `1px solid ${c.borderMid}`,
+              background: rationaleOpen ? c.surfaceAlt : "transparent",
+              color: c.faint,
+              fontSize: 9, fontWeight: 600,
+              cursor: "pointer", fontFamily: "inherit",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              lineHeight: 1, padding: 0,
+              transition: "background 0.12s, color 0.12s",
+            }}
+          >?</button>
         )}
       </div>
-      <span style={{ textAlign: "center", paddingTop: 2 }}>
+      <span style={{ gridColumn: 2, gridRow: 1, textAlign: "center" }}>
         {confidenceStyle && (
           <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, fontWeight: 500, ...confidenceStyle }}>
             {sug.confidence === "high" ? "High" : "Moderate"}
           </span>
         )}
       </span>
-      <div style={{ display: "flex", gap: 8, justifyContent: "center", paddingTop: 1 }}>
+      <div style={{ gridColumn: 3, gridRow: 1, display: "flex", gap: 8, justifyContent: "center" }}>
         <button onClick={() => onAcceptOne(sug)} style={{ ...btnSm, fontSize: 11, padding: "4px 12px" }}>
           Accept
         </button>
@@ -624,6 +613,18 @@ function AssignmentSugRow({ sug, inputs, fadingOutIds, onAcceptOne, onDismissOne
           Dismiss
         </button>
       </div>
+      {/* Rationale in row 2, col 1 only — right columns stay centered to row 1 */}
+      {rationaleOpen && sug.rationale && (
+        <div style={{
+          gridColumn: 1, gridRow: 2,
+          padding: "8px 11px",
+          background: c.surfaceAlt,
+          borderRadius: 6, fontSize: 11, color: c.muted,
+          lineHeight: 1.6, fontStyle: "italic",
+        }}>
+          {sug.rationale}
+        </div>
+      )}
     </div>
   );
 }
