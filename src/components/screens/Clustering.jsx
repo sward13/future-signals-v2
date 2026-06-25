@@ -556,6 +556,73 @@ function TableContainer({ children }) {
   );
 }
 
+// ─── Assignment suggestion row ────────────────────────────────────────────────
+
+function AssignmentSugRow({ sug, inputs, fadingOutIds, onAcceptOne, onDismissOne, idx }) {
+  const [rationaleOpen, setRationaleOpen] = useState(false);
+  const inputId = (sug.input_ids || [])[0];
+  const matchedInput = inputs.find((i) => i.id === inputId);
+  const confidenceStyle = sug.confidence ? CONFIDENCE_STYLES[sug.confidence] : null;
+  return (
+    <div key={sug.id} style={{
+      display: "grid", gridTemplateColumns: "1fr 130px 140px", alignItems: "start", gap: 8,
+      padding: "8px 11px",
+      borderTop: idx > 0 ? `1px solid ${c.border}` : "none",
+      opacity: fadingOutIds.has(sug.id) ? 0 : 1,
+      transition: "opacity 0.25s ease",
+    }}>
+      <div style={{ minWidth: 0, paddingTop: 2 }}>
+        <div style={{
+          fontSize: 12, color: c.ink,
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          {matchedInput?.name || "Untitled input"}
+        </div>
+        {sug.rationale && (
+          <div style={{ marginTop: 4 }}>
+            <button
+              onClick={() => setRationaleOpen((s) => !s)}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                fontSize: 11, color: c.muted, padding: 0, fontFamily: "inherit",
+                display: "flex", alignItems: "center", gap: 4,
+              }}
+            >
+              <span style={{ fontSize: 9 }}>{rationaleOpen ? "▾" : "▸"}</span>
+              Why this match?
+            </button>
+            {rationaleOpen && (
+              <div style={{
+                marginTop: 6, padding: "8px 11px",
+                background: c.surfaceAlt, border: `1px solid ${c.border}`,
+                borderRadius: 6, fontSize: 11, color: c.muted,
+                lineHeight: 1.6, fontStyle: "italic",
+              }}>
+                {sug.rationale}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      <span style={{ textAlign: "center", paddingTop: 2 }}>
+        {confidenceStyle && (
+          <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, fontWeight: 500, ...confidenceStyle }}>
+            {sug.confidence === "high" ? "High" : "Moderate"}
+          </span>
+        )}
+      </span>
+      <div style={{ display: "flex", gap: 8, justifyContent: "center", paddingTop: 1 }}>
+        <button onClick={() => onAcceptOne(sug)} style={{ ...btnSm, fontSize: 11, padding: "4px 12px" }}>
+          Accept
+        </button>
+        <button onClick={() => onDismissOne(sug.id)} style={{ ...btnG, fontSize: 11 }}>
+          Dismiss
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Assignment group card — "Add to existing clusters" ──────────────────────
 
 const CONFIDENCE_STYLES = {
@@ -590,49 +657,17 @@ function AssignmentGroupCard({ group, inputs, fadingOutIds, onAcceptOne, onDismi
             <span style={{ textAlign: "center" }}>Match confidence</span>
             <span style={{ textAlign: "center" }}>Actions</span>
           </div>
-          {sugs.map((sug, idx) => {
-            const inputId = (sug.input_ids || [])[0];
-            const matchedInput = inputs.find((i) => i.id === inputId);
-            const confidenceStyle = sug.confidence ? CONFIDENCE_STYLES[sug.confidence] : null;
-            return (
-              <div key={sug.id} style={{
-                display: "grid", gridTemplateColumns: "1fr 130px 140px", alignItems: "center", gap: 8,
-                padding: "8px 11px",
-                borderTop: idx > 0 ? `1px solid ${c.border}` : "none",
-                opacity: fadingOutIds.has(sug.id) ? 0 : 1,
-                transition: "opacity 0.25s ease",
-              }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 12, color: c.ink,
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                  }}>
-                    {matchedInput?.name || "Untitled input"}
-                  </div>
-                  {sug.rationale && (
-                    <div style={{ fontSize: 11, color: c.muted, lineHeight: 1.45, marginTop: 2 }}>
-                      {sug.rationale}
-                    </div>
-                  )}
-                </div>
-                <span style={{ textAlign: "center" }}>
-                  {confidenceStyle && (
-                    <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, fontWeight: 500, ...confidenceStyle }}>
-                      {sug.confidence === "high" ? "High" : "Moderate"}
-                    </span>
-                  )}
-                </span>
-                <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                  <button onClick={() => onAcceptOne(sug)} style={{ ...btnSm, fontSize: 11, padding: "4px 12px" }}>
-                    Accept
-                  </button>
-                  <button onClick={() => onDismissOne(sug.id)} style={{ ...btnG, fontSize: 11 }}>
-                    Dismiss
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+          {sugs.map((sug, idx) => (
+            <AssignmentSugRow
+              key={sug.id}
+              sug={sug}
+              inputs={inputs}
+              fadingOutIds={fadingOutIds}
+              onAcceptOne={onAcceptOne}
+              onDismissOne={onDismissOne}
+              idx={idx}
+            />
+          ))}
         </div>
       </div>
     </div>
