@@ -150,12 +150,12 @@ function AssignPicker({ clusters, onAssign, onNewCluster, onClose, anchorRect })
 
 // ─── Inline checkbox ──────────────────────────────────────────────────────────
 
-function RowCheckbox({ checked, visible }) {
+function RowCheckbox({ checked, indeterminate, visible }) {
   return (
     <div style={{
       width: 15, height: 15, borderRadius: 3, flexShrink: 0,
-      border: `1.5px solid ${checked ? c.ink : visible ? c.borderMid : "rgba(0,0,0,0.12)"}`,
-      background: checked ? c.ink : "transparent",
+      border: `1.5px solid ${checked || indeterminate ? c.ink : visible ? c.borderMid : "rgba(0,0,0,0.12)"}`,
+      background: checked || indeterminate ? c.ink : "transparent",
       display: "flex", alignItems: "center", justifyContent: "center",
       transition: "border-color 0.15s, background 0.15s",
       pointerEvents: "none",
@@ -164,6 +164,9 @@ function RowCheckbox({ checked, visible }) {
         <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
           <path d="M1 3L3 5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
+      )}
+      {indeterminate && !checked && (
+        <div style={{ width: 7, height: 1.5, borderRadius: 1, background: c.white }} />
       )}
     </div>
   );
@@ -362,10 +365,11 @@ function InputTableRow({ input, clusters, assignedCluster, onAssign, onNewCluste
 // ─── Suggestion card ──────────────────────────────────────────────────────────
 
 function SuggestionCard({ suggestion, inputs, onAccept, onDismiss, isFadingOut }) {
-  const [editing,  setEditing]  = useState(false);
-  const [editName, setEditName] = useState(suggestion.name);
-  const [editDesc, setEditDesc] = useState(suggestion.description || "");
-  const [inputIds, setInputIds] = useState(suggestion.input_ids || []);
+  const [editing,       setEditing]       = useState(false);
+  const [editName,      setEditName]      = useState(suggestion.name);
+  const [editDesc,      setEditDesc]      = useState(suggestion.description || "");
+  const [inputIds,      setInputIds]      = useState(suggestion.input_ids || []);
+  const [rationaleOpen, setRationaleOpen] = useState(false);
 
   const subtype   = suggestion.subtype
     ? suggestion.subtype.charAt(0).toUpperCase() + suggestion.subtype.slice(1)
@@ -439,6 +443,33 @@ function SuggestionCard({ suggestion, inputs, onAccept, onDismiss, isFadingOut }
           </div>
         ) : null}
 
+        {/* Rationale toggle */}
+        {suggestion.rationale && (
+          <div style={{ marginBottom: 10 }}>
+            <button
+              onClick={() => setRationaleOpen((s) => !s)}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                fontSize: 11, color: c.muted, padding: 0, fontFamily: "inherit",
+                display: "flex", alignItems: "center", gap: 4,
+              }}
+            >
+              <span style={{ fontSize: 9 }}>{rationaleOpen ? "▾" : "▸"}</span>
+              Why this cluster?
+            </button>
+            {rationaleOpen && (
+              <div style={{
+                marginTop: 7, padding: "9px 12px",
+                background: c.surfaceAlt, border: `1px solid ${c.border}`,
+                borderRadius: 6, fontSize: 12, color: c.muted,
+                lineHeight: 1.6, fontStyle: "italic",
+              }}>
+                {suggestion.rationale}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Input list */}
         {sugInputs.length > 0 && (
           <div style={{ background: c.surfaceAlt, border: `1px solid ${c.border}`, borderRadius: 7, marginBottom: 12, overflow: "hidden" }}>
@@ -499,99 +530,6 @@ function SuggestionCard({ suggestion, inputs, onAccept, onDismiss, isFadingOut }
 
       </div>
     </div>
-  );
-}
-
-// ─── Suggestion inspector panel ───────────────────────────────────────────────
-
-function SuggestionInspector({ suggestion, inputs, onAccept, onDismiss, onClose }) {
-  const sugInputs = inputs.filter((inp) => (suggestion.input_ids || []).includes(inp.id));
-
-  return (
-    <>
-      <div
-        onClick={onClose}
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 300 }}
-      />
-      <div style={{
-        position: "fixed", top: 0, right: 0, bottom: 0, width: 420,
-        background: c.white, borderLeft: `1px solid ${c.border}`,
-        zIndex: 301, display: "flex", flexDirection: "column",
-        animation: "drawerSlideIn 0.28s ease",
-      }}>
-        {/* Header */}
-        <div style={{
-          padding: "20px 24px 16px", borderBottom: `1px solid ${c.border}`,
-          display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexShrink: 0,
-        }}>
-          <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 4 }}>
-              AI suggestion
-            </div>
-            <div style={{ fontSize: 17, fontWeight: 500, color: c.ink, lineHeight: 1.35 }}>
-              {suggestion.name}
-            </div>
-          </div>
-          <button onClick={onClose} style={{ ...btnG, fontSize: 16, padding: "2px 6px", color: c.muted, flexShrink: 0 }}>×</button>
-        </div>
-
-        {/* Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
-          {suggestion.description && (
-            <div style={{ marginBottom: 24 }}>
-              <div style={fl}>Description</div>
-              <div style={{ fontSize: 13, color: c.muted, lineHeight: 1.65 }}>{suggestion.description}</div>
-            </div>
-          )}
-
-          <div>
-            <div style={fl}>
-              Linked inputs
-              <span style={{ ...badg, marginLeft: 2 }}>{sugInputs.length}</span>
-            </div>
-            {sugInputs.length === 0 ? (
-              <div style={{ fontSize: 12, color: c.hint }}>No matching inputs found.</div>
-            ) : (
-              <div style={{ border: `1px solid ${c.border}`, borderRadius: 8, overflow: "hidden" }}>
-                {sugInputs.map((inp, idx) => (
-                  <div key={inp.id} style={{
-                    padding: "9px 12px",
-                    borderTop: idx > 0 ? `1px solid ${c.border}` : "none",
-                    background: c.white,
-                  }}>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{inp.name}</div>
-                    {inp.description && (
-                      <div style={{ fontSize: 11, color: c.muted, marginTop: 2, lineHeight: 1.45 }}>
-                        {inp.description}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div style={{
-          padding: "14px 24px 20px", borderTop: `1px solid ${c.border}`,
-          display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, flexShrink: 0,
-        }}>
-          <button
-            onClick={() => { onDismiss(suggestion.id); onClose(); }}
-            style={btnSec}
-          >
-            Dismiss
-          </button>
-          <button
-            onClick={() => { onAccept(suggestion, suggestion.name); onClose(); }}
-            style={btnP}
-          >
-            Accept →
-          </button>
-        </div>
-      </div>
-    </>
   );
 }
 
@@ -664,12 +602,19 @@ function AssignmentGroupCard({ group, inputs, fadingOutIds, onAcceptOne, onDismi
                 opacity: fadingOutIds.has(sug.id) ? 0 : 1,
                 transition: "opacity 0.25s ease",
               }}>
-                <span style={{
-                  fontSize: 12, color: c.ink,
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>
-                  {matchedInput?.name || "Untitled input"}
-                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 12, color: c.ink,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {matchedInput?.name || "Untitled input"}
+                  </div>
+                  {sug.rationale && (
+                    <div style={{ fontSize: 11, color: c.muted, lineHeight: 1.45, marginTop: 2 }}>
+                      {sug.rationale}
+                    </div>
+                  )}
+                </div>
                 <span style={{ textAlign: "center" }}>
                   {confidenceStyle && (
                     <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 4, fontWeight: 500, ...confidenceStyle }}>
@@ -694,13 +639,49 @@ function AssignmentGroupCard({ group, inputs, fadingOutIds, onAcceptOne, onDismi
   );
 }
 
+// ─── Confirm delete modal ────────────────────────────────────────────────────
+
+function ConfirmDeleteModal({ count, onConfirm, onCancel }) {
+  return createPortal(
+    <>
+      <div onClick={onCancel} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 400 }} />
+      <div style={{
+        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+        background: c.white, borderRadius: 12, padding: "24px 28px",
+        boxShadow: "0 16px 48px rgba(0,0,0,0.18)", zIndex: 401, minWidth: 320,
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
+      }}>
+        <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
+          Delete {count} input{count !== 1 ? "s" : ""}?
+        </div>
+        <div style={{ fontSize: 12, color: c.muted, marginBottom: 20, lineHeight: 1.5 }}>
+          This cannot be undone.
+        </div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button onClick={onCancel} style={{ ...btnSec, fontSize: 12, padding: "7px 16px" }}>
+            Cancel
+          </button>
+          <button onClick={onConfirm} style={{
+            padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 500,
+            cursor: "pointer", fontFamily: "inherit", border: "none",
+            background: "#DC2626", color: "#fff",
+          }}>
+            Delete
+          </button>
+        </div>
+      </div>
+    </>,
+    document.body
+  );
+}
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function Clustering({ appState }) {
   const {
     activeProjectId, setActiveProjectId, projects, inputs, clusters,
     addCluster, addInput,
-    assignInputToCluster,
+    assignInputToCluster, deleteInput,
     showToast, setActiveScreen, openProjectModal,
     openInputDetail, openClusterDetail, scenarios,
     workspaceId,
@@ -735,6 +716,8 @@ export default function Clustering({ appState }) {
   const [newClusterSugs,       setNewClusterSugs]       = useState([]);
   const [newClusterFadingIds,  setNewClusterFadingIds]  = useState(new Set());
   const [dismissedNewClusters, setDismissedNewClusters] = useState([]);
+
+  const [confirmDeleteIds, setConfirmDeleteIds] = useState(null);
 
   // Combined suggestion run
   const [runningSuggestions, setRunningSuggestions] = useState(false);
@@ -987,6 +970,25 @@ export default function Clustering({ appState }) {
     setInputDrawerOpen(false);
   };
 
+  const allUnassignedSelected = filteredUnassigned.length > 0 && filteredUnassigned.every((i) => selectedInputIds.includes(i.id));
+  const someUnassignedSelected = filteredUnassigned.some((i) => selectedInputIds.includes(i.id));
+
+  const toggleSelectAllUnassigned = () => {
+    if (allUnassignedSelected) {
+      setSelectedInputIds((prev) => prev.filter((id) => !filteredUnassigned.some((i) => i.id === id)));
+    } else {
+      setSelectedInputIds((prev) => [...new Set([...prev, ...filteredUnassigned.map((i) => i.id)])]);
+    }
+  };
+
+  const handleBulkDeleteUnassigned = () => {
+    confirmDeleteIds.forEach((id) => deleteInput(id));
+    const n = confirmDeleteIds.length;
+    showToast(`${n} input${n !== 1 ? "s" : ""} deleted`);
+    setConfirmDeleteIds(null);
+    setSelectedInputIds([]);
+  };
+
   const anySelected = selectedInputIds.length > 0;
 
   if (!project) return null;
@@ -1155,6 +1157,16 @@ export default function Clustering({ appState }) {
                 )}
               </div>
               <button
+                onClick={() => setConfirmDeleteIds([...selectedInputIds])}
+                style={{
+                  padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 500,
+                  cursor: "pointer", fontFamily: "inherit",
+                  background: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA",
+                }}
+              >
+                Delete
+              </button>
+              <button
                 onClick={() => setSelectedInputIds([])}
                 style={{ ...btnG, fontSize: 11, color: c.muted }}
               >
@@ -1250,14 +1262,32 @@ export default function Clustering({ appState }) {
             </div>
           ) : (
             <TableContainer>
-              <TableHead cols={[
-                { label: "", width: "28px" },
-                { label: "Title", width: "1fr" },
-                { label: "Strength", width: "120px" },
-                { label: "Horizon", width: "60px" },
-                { label: "STEEPLED", width: "160px" },
-                { label: "", width: "120px" },
-              ]} />
+              {/* Header with select-all */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "28px 1fr 120px 60px 160px 120px",
+                padding: "6px 12px",
+                borderBottom: `1px solid ${c.border}`,
+                background: c.surfaceAlt,
+                borderRadius: "8px 8px 0 0",
+                alignItems: "center",
+              }}>
+                <div
+                  onClick={toggleSelectAllUnassigned}
+                  style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
+                >
+                  <RowCheckbox
+                    checked={allUnassignedSelected}
+                    indeterminate={!allUnassignedSelected && someUnassignedSelected}
+                    visible={true}
+                  />
+                </div>
+                {["Title", "Strength", "Horizon", "STEEPLED", ""].map((label, i) => (
+                  <div key={i} style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>
+                    {label}
+                  </div>
+                ))}
+              </div>
               {filteredUnassigned.map((inp, idx) => (
                 <InputTableRow
                   key={inp.id}
@@ -1411,6 +1441,14 @@ export default function Clustering({ appState }) {
         </div>
 
       </div>
+
+      {confirmDeleteIds && (
+        <ConfirmDeleteModal
+          count={confirmDeleteIds.length}
+          onConfirm={handleBulkDeleteUnassigned}
+          onCancel={() => setConfirmDeleteIds(null)}
+        />
+      )}
 
       <ClusterDrawer
         open={newClusterDrawerOpen}

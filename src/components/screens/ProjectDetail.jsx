@@ -251,6 +251,42 @@ export function FilterDropdown({ label, value, options, onChange, onClear, isOpe
   );
 }
 
+// ─── Confirm delete modal ────────────────────────────────────────────────────
+
+function ConfirmDeleteModal({ count, onConfirm, onCancel }) {
+  return createPortal(
+    <>
+      <div onClick={onCancel} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 400 }} />
+      <div style={{
+        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+        background: c.white, borderRadius: 12, padding: "24px 28px",
+        boxShadow: "0 16px 48px rgba(0,0,0,0.18)", zIndex: 401, minWidth: 320,
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
+      }}>
+        <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
+          Delete {count} input{count !== 1 ? "s" : ""}?
+        </div>
+        <div style={{ fontSize: 12, color: c.muted, marginBottom: 20, lineHeight: 1.5 }}>
+          This cannot be undone.
+        </div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button onClick={onCancel} style={{ ...btnSec, fontSize: 12, padding: "7px 16px" }}>
+            Cancel
+          </button>
+          <button onClick={onConfirm} style={{
+            padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 500,
+            cursor: "pointer", fontFamily: "inherit", border: "none",
+            background: "#DC2626", color: "#fff",
+          }}>
+            Delete
+          </button>
+        </div>
+      </div>
+    </>,
+    document.body
+  );
+}
+
 // ─── Right-column summary card ─────────────────────────────────────────────────
 
 function SummaryCard({ icon, title, count, countLabel, emptyBody, ctaLabel, onCta, addButton, children, showCount = true }) {
@@ -317,7 +353,7 @@ export default function ProjectDetail({ appState }) {
     addInput, saveInputsToProject, showToast, setActiveScreen, setActiveProjectId,
     openInputDetail, openClusterDetail, openScenarioDetail,
     addCluster, addScenario, updateProject, assignInputToCluster, deleteProject,
-    duplicateInputToCluster,
+    duplicateInputToCluster, deleteInput,
     workspaceScanningEnabled, setInboxProjectFilter,
   } = appState;
 
@@ -333,6 +369,7 @@ export default function ProjectDetail({ appState }) {
   // Multi-select
   const [selectedIds,       setSelectedIds]       = useState(new Set());
   const [batchPickerOpen,   setBatchPickerOpen]   = useState(false);
+  const [confirmDeleteIds,  setConfirmDeleteIds]  = useState(null);
   const batchAnchorRef = useRef(null);
   // Search + filters
   const [searchQuery,       setSearchQuery]       = useState("");
@@ -415,6 +452,14 @@ export default function ProjectDetail({ appState }) {
         return next;
       });
     }
+  };
+
+  const handleBulkDelete = () => {
+    confirmDeleteIds.forEach((id) => deleteInput(id));
+    const n = confirmDeleteIds.length;
+    showToast(`${n} input${n !== 1 ? "s" : ""} deleted`);
+    setConfirmDeleteIds(null);
+    setSelectedIds(new Set());
   };
 
   const handleBatchAssign = (cluster) => {
@@ -689,6 +734,16 @@ export default function ProjectDetail({ appState }) {
                         />
                       )}
                     </div>
+                    <button
+                      onClick={() => setConfirmDeleteIds([...selectedIds])}
+                      style={{
+                        padding: "4px 10px", borderRadius: 7, fontSize: 11, fontWeight: 500,
+                        cursor: "pointer", fontFamily: "inherit", border: "none",
+                        background: "#FEE2E2", color: "#991B1B",
+                      }}
+                    >
+                      Delete
+                    </button>
                     <button
                       onClick={() => setSelectedIds(new Set())}
                       style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
@@ -1021,6 +1076,14 @@ export default function ProjectDetail({ appState }) {
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
+
+      {confirmDeleteIds && (
+        <ConfirmDeleteModal
+          count={confirmDeleteIds.length}
+          onConfirm={handleBulkDelete}
+          onCancel={() => setConfirmDeleteIds(null)}
+        />
+      )}
 
       {/* ── Row context menu portal ──────────────────────────── */}
       {rowMenu && createPortal(

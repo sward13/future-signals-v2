@@ -7,6 +7,7 @@
  * @param {{ appState: object }} props
  */
 import { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { c, inp, btnP, btnSm, btnSec, btnG } from "../../styles/tokens.js";
 import { CirclePlus, Sparkles, List, LayoutGrid } from "lucide-react";
 import { ViewToggle } from "../ViewToggle.jsx";
@@ -437,6 +438,42 @@ function SearchFilterBar({
   );
 }
 
+// ─── Confirm delete modal ────────────────────────────────────────────────────
+
+function ConfirmDeleteModal({ count, onConfirm, onCancel }) {
+  return createPortal(
+    <>
+      <div onClick={onCancel} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 400 }} />
+      <div style={{
+        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+        background: c.white, borderRadius: 12, padding: "24px 28px",
+        boxShadow: "0 16px 48px rgba(0,0,0,0.18)", zIndex: 401, minWidth: 320,
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
+      }}>
+        <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
+          Delete {count} input{count !== 1 ? "s" : ""}?
+        </div>
+        <div style={{ fontSize: 12, color: c.muted, marginBottom: 20, lineHeight: 1.5 }}>
+          This cannot be undone.
+        </div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button onClick={onCancel} style={{ ...btnSec, fontSize: 12, padding: "7px 16px" }}>
+            Cancel
+          </button>
+          <button onClick={onConfirm} style={{
+            padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 500,
+            cursor: "pointer", fontFamily: "inherit", border: "none",
+            background: "#DC2626", color: "#fff",
+          }}>
+            Delete
+          </button>
+        </div>
+      </div>
+    </>,
+    document.body
+  );
+}
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function Inbox({ appState }) {
@@ -473,9 +510,10 @@ export default function Inbox({ appState }) {
   const [savedToProject,    setSavedToProject]    = useState({});
   const [selectedManualIds, setSelectedManualIds] = useState([]);
   const [selectedAiIds,     setSelectedAiIds]     = useState([]);
-  const [manualPickerOpen,  setManualPickerOpen]  = useState(false);
-  const [aiPickerOpen,      setAiPickerOpen]      = useState(false);
-  const [aiExpanded,        setAiExpanded]        = useState(false);
+  const [manualPickerOpen,       setManualPickerOpen]       = useState(false);
+  const [aiPickerOpen,           setAiPickerOpen]           = useState(false);
+  const [aiExpanded,             setAiExpanded]             = useState(false);
+  const [confirmDeleteManualIds, setConfirmDeleteManualIds] = useState(null);
 
   // All inbox inputs (base list — used for total count + selection reference)
   const allInboxInputs = useMemo(() =>
@@ -584,6 +622,14 @@ export default function Inbox({ appState }) {
 
   const clearManualSelection = () => { setSelectedManualIds([]); setManualPickerOpen(false); };
   const clearAiSelection     = () => { setSelectedAiIds([]);     setAiPickerOpen(false); };
+
+  const handleBulkDeleteManual = () => {
+    confirmDeleteManualIds.forEach((id) => deleteInput(id));
+    const n = confirmDeleteManualIds.length;
+    showToast(`${n} input${n !== 1 ? "s" : ""} deleted`);
+    setConfirmDeleteManualIds(null);
+    clearManualSelection();
+  };
 
   const handleBulkAddToProjectManual = (project) => {
     saveInputsToProject(selectedManualIds, project.id);
@@ -800,6 +846,16 @@ export default function Inbox({ appState }) {
                 />
               )}
             </div>
+            <button
+              onClick={() => setConfirmDeleteManualIds([...selectedManualIds])}
+              style={{
+                padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 500,
+                cursor: "pointer", fontFamily: "inherit",
+                background: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA",
+              }}
+            >
+              Delete
+            </button>
             <button onClick={clearManualSelection} style={{ fontSize: 11, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
               Clear selection
             </button>
@@ -933,6 +989,14 @@ export default function Inbox({ appState }) {
         onSave={handleSave}
         projects={projects}
       />
+
+      {confirmDeleteManualIds && (
+        <ConfirmDeleteModal
+          count={confirmDeleteManualIds.length}
+          onConfirm={handleBulkDeleteManual}
+          onCancel={() => setConfirmDeleteManualIds(null)}
+        />
+      )}
     </>
   );
 }

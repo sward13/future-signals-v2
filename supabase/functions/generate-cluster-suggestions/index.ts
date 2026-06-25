@@ -1,3 +1,5 @@
+// LEGACY — superseded by compute-cluster-suggestions. Safe to delete.
+
 /**
  * generate-cluster-suggestions — AI-powered clustering for project inputs.
  *

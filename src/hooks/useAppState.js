@@ -80,6 +80,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const toastTimer = useRef(null);
   const refreshInputsRef  = useRef(null);
   const refreshClustersRef = useRef(null);
+  const systemMapExportRef = useRef(null);
 
   // ── Toast ─────────────────────────────────────────────────────────────────
   const showToast = useCallback((message, type = "success") => {
@@ -1709,5 +1710,6 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     showToast,
     inboxProjectFilter,
     setInboxProjectFilter,
+    systemMapExportRef,
   };
 }

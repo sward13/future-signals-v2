@@ -1,10 +1,13 @@
 /**
- * ExportModal — project-level export with two options:
+ * ExportModal — project-level export with four options:
  *   1. Future Models & Clusters → Markdown file
  *   2. Inputs → CSV file
+ *   3. System Map (SVG) → vector canvas export
+ *   4. System Map (PNG) → raster canvas export
  *
- * Generates files entirely client-side via Blob + URL.createObjectURL.
- * Uses data already loaded in appState — no additional fetches needed.
+ * Text exports are generated client-side via Blob + URL.createObjectURL.
+ * Canvas exports delegate to capture functions registered by CanvasArea
+ * via appState.systemMapExportRef.
  */
 import { useState } from "react";
 import { c, btnSec, btnG } from "../../styles/tokens.js";
@@ -170,30 +173,34 @@ function downloadBlob(content, filename, mimeType) {
 
 // ─── Option card ─────────────────────────────────────────────────────────────
 
-function OptionCard({ title, subtitle, selected, onClick }) {
+function OptionCard({ title, subtitle, checked, disabled, onClick }) {
   return (
     <div
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      title={disabled ? "Open the System Map to export" : undefined}
       style={{
         display: "flex", alignItems: "flex-start", gap: 12,
         padding: "14px 16px",
-        border: `1px solid ${selected ? c.ink : c.border}`,
+        border: `1px solid ${checked && !disabled ? c.ink : c.border}`,
         borderRadius: 8,
-        background: selected ? "rgba(0,0,0,0.02)" : c.white,
-        cursor: "pointer",
-        transition: "border-color 0.12s",
+        background: checked && !disabled ? "rgba(0,0,0,0.02)" : c.white,
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.45 : 1,
+        transition: "border-color 0.12s, opacity 0.12s",
       }}
     >
-      {/* Radio circle */}
+      {/* Checkbox */}
       <div style={{
-        width: 16, height: 16, borderRadius: "50%", flexShrink: 0, marginTop: 1,
-        border: `2px solid ${selected ? c.ink : c.hint}`,
-        background: selected ? c.ink : "transparent",
+        width: 16, height: 16, borderRadius: 4, flexShrink: 0, marginTop: 1,
+        border: `2px solid ${checked && !disabled ? c.ink : c.hint}`,
+        background: checked && !disabled ? c.ink : "transparent",
         transition: "background 0.1s, border-color 0.1s",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        {selected && (
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: c.white }} />
+        {checked && !disabled && (
+          <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+            <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         )}
       </div>
       <div>
@@ -211,25 +218,42 @@ function OptionCard({ title, subtitle, selected, onClick }) {
 // ─── Modal ────────────────────────────────────────────────────────────────────
 
 export function ExportModal({ appState, onClose }) {
-  const { projects, activeProjectId, inputs, clusters, scenarios, preferredFutures, strategicOptions } = appState;
-  const [selected, setSelected] = useState("md");
+  const { projects, activeProjectId, activeScreen, inputs, clusters, scenarios, preferredFutures, strategicOptions, systemMapExportRef } = appState;
+  const [checked, setChecked] = useState({ md: true, csv: false, svg: false, png: false });
+  const [exporting, setExporting] = useState(false);
 
   const project = projects.find((p) => p.id === activeProjectId);
+  const onSystemMap = activeScreen === "scenarios";
+  const anyChecked = checked.md || checked.csv || (onSystemMap && checked.svg) || (onSystemMap && checked.png);
 
-  const handleExport = () => {
-    if (!project) return;
+  const toggle = (key) => setChecked((prev) => ({ ...prev, [key]: !prev[key] }));
 
-    if (selected === "md") {
-      const content  = buildMarkdown(project, clusters, inputs, scenarios, preferredFutures, strategicOptions);
-      const filename = `${project.name.replace(/[^a-z0-9]/gi, "_")}.md`;
-      downloadBlob(content, filename, "text/markdown;charset=utf-8");
-    } else {
-      const content  = buildCSV(inputs, project);
-      const filename = `${project.name.replace(/[^a-z0-9]/gi, "_")}_inputs.csv`;
-      downloadBlob(content, filename, "text/csv;charset=utf-8");
+  const handleExport = async () => {
+    if (!project || !anyChecked || exporting) return;
+    setExporting(true);
+
+    try {
+      if (checked.md) {
+        const content  = buildMarkdown(project, clusters, inputs, scenarios, preferredFutures, strategicOptions);
+        const filename = `${project.name.replace(/[^a-z0-9]/gi, "_")}.md`;
+        downloadBlob(content, filename, "text/markdown;charset=utf-8");
+      }
+      if (checked.csv) {
+        const content  = buildCSV(inputs, project);
+        const filename = `${project.name.replace(/[^a-z0-9]/gi, "_")}_inputs.csv`;
+        downloadBlob(content, filename, "text/csv;charset=utf-8");
+      }
+      if (onSystemMap && checked.svg) {
+        await systemMapExportRef?.current?.exportAsSvg();
+      }
+      if (onSystemMap && checked.png) {
+        await systemMapExportRef?.current?.exportAsPng();
+      }
+      onClose();
+    } catch (err) {
+      console.error("[ExportModal] export failed:", err);
+      setExporting(false);
     }
-
-    onClose();
   };
 
   return (
@@ -267,14 +291,28 @@ export function ExportModal({ appState, onClose }) {
           <OptionCard
             title="Future Models & Clusters"
             subtitle="Markdown file with clusters, scenarios, preferred future, and strategic options"
-            selected={selected === "md"}
-            onClick={() => setSelected("md")}
+            checked={checked.md}
+            onClick={() => toggle("md")}
           />
           <OptionCard
             title="Inputs"
             subtitle="CSV of all project inputs with metadata"
-            selected={selected === "csv"}
-            onClick={() => setSelected("csv")}
+            checked={checked.csv}
+            onClick={() => toggle("csv")}
+          />
+          <OptionCard
+            title="System Map (SVG)"
+            subtitle="Vector export of the system map canvas"
+            checked={checked.svg}
+            disabled={!onSystemMap}
+            onClick={() => toggle("svg")}
+          />
+          <OptionCard
+            title="System Map (PNG)"
+            subtitle="Raster export of the system map canvas"
+            checked={checked.png}
+            disabled={!onSystemMap}
+            onClick={() => toggle("png")}
           />
         </div>
 
@@ -287,10 +325,14 @@ export function ExportModal({ appState, onClose }) {
           <button onClick={onClose} style={{ ...btnG, fontSize: 12 }}>Cancel</button>
           <button
             onClick={handleExport}
-            disabled={!project}
-            style={{ ...btnSec, fontSize: 12, padding: "7px 18px", opacity: project ? 1 : 0.5 }}
+            disabled={!project || !anyChecked || exporting}
+            style={{
+              ...btnSec, fontSize: 12, padding: "7px 18px",
+              opacity: (!project || !anyChecked || exporting) ? 0.5 : 1,
+              cursor: (!project || !anyChecked || exporting) ? "not-allowed" : "pointer",
+            }}
           >
-            Export
+            {exporting ? "Exporting…" : "Export"}
           </button>
         </div>
       </div>

@@ -11,7 +11,9 @@ import {
   useUpdateNodeInternals,
   Handle, Position, BaseEdge, EdgeLabelRenderer,
   getBezierPath, MarkerType, ConnectionMode,
+  getNodesBounds, getViewportForBounds,
 } from "@xyflow/react";
+import { toPng, toSvg } from "html-to-image";
 import "@xyflow/react/dist/style.css";
 import { CirclePlus, LayoutDashboard, Logs, ChevronDown, ChevronRight, Maximize2, Minimize2, Hand, MousePointer2, Network, Type, SlidersHorizontal } from "lucide-react";
 import { c, ta, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
@@ -1132,6 +1134,7 @@ function CanvasArea({
   onRemoveNode, isPanning,
   panelsHidden, onTogglePanels,
   isFullscreen, onToggleFullscreen,
+  systemMapExportRef,
 }) {
   const { zoomIn, zoomOut, setViewport, getViewport, screenToFlowPosition, fitView: fitViewFn } = useReactFlow();
 
@@ -1158,6 +1161,77 @@ function CanvasArea({
   const [filterOpen, setFilterOpen] = useState(false);
   const filterBtnRef = useRef(null);
   const filterPopoverRef = useRef(null);
+  const markerSvgRef = useRef(null);
+
+  // Stable ref so export closures always see the latest rfNodes without re-registering
+  const rfNodesRef = useRef(rfNodes);
+  useEffect(() => { rfNodesRef.current = rfNodes; }, [rfNodes]);
+
+  // ── Canvas export ─────────────────────────────────────────────────────────────
+
+  const IMAGE_W = 2400;
+  const IMAGE_H = 1600;
+
+  const runExport = useCallback(async (format) => {
+    const nodes = rfNodesRef.current;
+    if (!nodes.length) throw new Error("No nodes on canvas to export");
+
+    const bounds = getNodesBounds(nodes);
+    const transform = getViewportForBounds(bounds, IMAGE_W, IMAGE_H, 0.1, 2);
+
+    const viewport = document.querySelector(".react-flow__viewport");
+    if (!viewport) throw new Error("React Flow viewport element not found");
+
+    // Inject cloned marker <defs> into the viewport so arrowheads survive capture
+    let injected = null;
+    const markerSvg = markerSvgRef.current;
+    if (markerSvg) {
+      const defs = markerSvg.querySelector("defs");
+      if (defs) {
+        injected = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        injected.setAttribute("style", "position:absolute;width:0;height:0;overflow:hidden");
+        injected.setAttribute("data-export-defs", "true");
+        injected.appendChild(defs.cloneNode(true));
+        viewport.insertBefore(injected, viewport.firstChild);
+      }
+    }
+
+    const savedVp = getViewport();
+    setViewport(transform);
+
+    const captureStyle = {
+      width: IMAGE_W + "px",
+      height: IMAGE_H + "px",
+      transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
+    };
+
+    try {
+      let dataUrl;
+      if (format === "svg") {
+        dataUrl = await toSvg(viewport, { width: IMAGE_W, height: IMAGE_H, style: captureStyle });
+      } else {
+        dataUrl = await toPng(viewport, { width: IMAGE_W, height: IMAGE_H, style: captureStyle });
+      }
+
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `system-map.${format}`;
+      a.click();
+    } finally {
+      viewport.querySelector("[data-export-defs]")?.remove();
+      setViewport(savedVp);
+    }
+  }, [getViewport, setViewport]);
+
+  const exportAsPng = useCallback(() => runExport("png"), [runExport]);
+  const exportAsSvg = useCallback(() => runExport("svg"), [runExport]);
+
+  // Register / deregister export handles on the shared ref
+  useEffect(() => {
+    if (!systemMapExportRef) return;
+    systemMapExportRef.current = { exportAsPng, exportAsSvg };
+    return () => { systemMapExportRef.current = null; };
+  }, [systemMapExportRef, exportAsPng, exportAsSvg]);
 
   // Keep connectMode in sync with activeTool
   useEffect(() => {
@@ -1466,7 +1540,7 @@ function CanvasArea({
   return (
     <div style={{ flex: 1, position: "relative", width: "100%", height: "100%", cursor: activeTool === "text" ? "crosshair" : activeTool === "hand" ? "grab" : undefined }}>
       {/* Global SVG marker definitions — one per relationship type, always in DOM */}
-      <svg style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
+      <svg ref={markerSvgRef} style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
         <defs>
           {REL_TYPES.map((rt) => {
             const k = rt.id.replace(/\s/g, "-");
@@ -1749,6 +1823,7 @@ export default function ScenarioCanvas({ appState }) {
     addRelationship, updateRelationship, removeRelationship,
     updateCluster, assignInputToCluster, removeInputFromCluster,
     deleteSystemMap, deleteAnalysis, showToast, scenarioDetailId, closeScenarioDetail,
+    systemMapExportRef,
   } = appState;
 
   const project = projects.find((p) => p.id === activeProjectId) || null;
@@ -2020,6 +2095,7 @@ export default function ScenarioCanvas({ appState }) {
               onTogglePanels={() => setPanelsHidden((h) => !h)}
               isFullscreen={isFullscreen}
               onToggleFullscreen={() => setIsFullscreen((f) => !f)}
+              systemMapExportRef={systemMapExportRef}
             />
           </ReactFlowProvider>
 

@@ -48,11 +48,13 @@ type EmbeddedInput = {
 type ClusterMeta = {
   id: string;
   name: string;
+  description: string | null;
 };
 
 type ClusterWithCentroid = {
   id: string;
   name: string;
+  description: string | null;
   centroid: number[];
 };
 
@@ -61,10 +63,11 @@ type AssignmentMatch = {
   cluster: ClusterWithCentroid;
   similarity: number;
   confidence: "high" | "moderate";
+  rationale: string | null;
 };
 
 type NamingResult =
-  | { action: "create_new"; name: string; description: string; subtype: string }
+  | { action: "create_new"; name: string; description: string; subtype: string; rationale: string }
   | { action: "assign_to_existing"; cluster_name: string };
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
@@ -133,7 +136,7 @@ serve(async (req: Request) => {
     // ── 3. Fetch clusters for the project ──────────────────────────────────────
     const { data: clusterRows, error: clustersError } = await supabase
       .from("clusters")
-      .select("id, name")
+      .select("id, name, description")
       .eq("project_id", project_id);
 
     if (clustersError) throw clustersError;
@@ -181,7 +184,7 @@ serve(async (req: Request) => {
           .map((id) => embeddingById.get(id))
           .filter((e): e is number[] => e !== undefined);
         if (embeddings.length === 0) return null;
-        return { id: cluster.id, name: cluster.name, centroid: computeCentroid(embeddings) };
+        return { id: cluster.id, name: cluster.name, description: cluster.description ?? null, centroid: computeCentroid(embeddings) };
       })
       .filter((c): c is ClusterWithCentroid => c !== null);
 
@@ -194,12 +197,13 @@ serve(async (req: Request) => {
         return respond({ assignments: 0, message: "No clusters with embeddings found." });
       }
 
-      const matches = computeAssignmentMatches(unassignedInputs, clustersWithCentroids);
+      const rawMatches = computeAssignmentMatches(unassignedInputs, clustersWithCentroids);
 
-      if (matches.length === 0) {
+      if (rawMatches.length === 0) {
         return respond({ assignments: 0 });
       }
 
+      const matches = await enrichAssignmentsWithRationale(rawMatches);
       const rows = assignmentMatchesToRows(matches, project_id, project.workspace_id);
 
       await supabase
@@ -262,7 +266,8 @@ serve(async (req: Request) => {
     }
 
     // mode === "combined"
-    const assignmentRows = assignmentMatchesToRows(assignmentMatches, project_id, project.workspace_id);
+    const enrichedAssignmentMatches = await enrichAssignmentsWithRationale(assignmentMatches);
+    const assignmentRows = assignmentMatchesToRows(enrichedAssignmentMatches, project_id, project.workspace_id);
     const allAssignmentRows = [...assignmentRows, ...pass.assignmentRows];
     const allRows = [...allAssignmentRows, ...pass.newClusterRows];
 
@@ -337,6 +342,7 @@ function computeAssignmentMatches(
         cluster:    bestCluster,
         similarity: bestSim,
         confidence: bestSim >= ASSIGNMENT_HIGH_CONFIDENCE ? "high" : "moderate",
+        rationale:  null,
       });
     }
   }
@@ -357,6 +363,7 @@ function assignmentMatchesToRows(
     target_cluster_id:  m.cluster.id,
     input_ids:          [m.input.id],
     confidence:         m.confidence,
+    rationale:          m.rationale,
     status:             "pending",
   }));
 }
@@ -421,6 +428,8 @@ async function runNewClusterPass(
         }
 
         for (const inputId of group) {
+          const inputObj = groupInputs.find((i) => i.id === inputId) ?? groupInputs[0];
+          const rationale = await generateAssignmentRationale(inputObj, target.name, target.description);
           assignmentRows.push({
             project_id:        projectId,
             workspace_id:      workspaceId,
@@ -429,6 +438,7 @@ async function runNewClusterPass(
             target_cluster_id: target.id,
             input_ids:         [inputId],
             confidence:        null,
+            rationale,
             status:            "pending",
           });
         }
@@ -443,6 +453,7 @@ async function runNewClusterPass(
         description:  named.description,
         subtype:      named.subtype,
         input_ids:    group,
+        rationale:    named.rationale,
         status:       "pending",
       });
 
@@ -488,7 +499,7 @@ If the inputs you've been given are better described as belonging to one of the 
 { "action": "assign_to_existing", "cluster_name": "<name of the existing cluster>" }
 
 Otherwise, suggest a new cluster:
-{ "action": "create_new", "name": "...", "description": "...", "subtype": "trend" | "driver" | "tension" }
+{ "action": "create_new", "name": "...", "description": "...", "subtype": "trend" | "driver" | "tension", "rationale": "..." }
 
 Return JSON only with no preamble.
 
@@ -496,6 +507,12 @@ Rules for "create_new":
 - subtype 'trend' = an emerging pattern or direction of change
 - subtype 'driver' = a structural force shaping the future
 - subtype 'tension' = competing dynamics creating uncertainty or friction
+
+For "rationale" (1–3 sentences):
+- Explain what these inputs have in common thematically
+- Describe what pattern or dynamic they point to together
+- Explain why they form a meaningful cluster rather than a coincidental grouping
+- Write in the voice of a strategic foresight analyst. Reference the content of the inputs, not statistical similarity. Do not mention embeddings, cosine similarity, or any mathematical concepts.
 
 Naming rules — this is the most important part:
 - Names must describe what the force is DOING, not just what it IS
@@ -523,7 +540,7 @@ Bad examples (never use this style):
     },
     body: JSON.stringify({
       model:      OPENAI_MODEL,
-      max_tokens: 256,
+      max_tokens: 512,
       messages:   [{ role: "user", content: prompt }],
     }),
   });
@@ -548,7 +565,73 @@ Bad examples (never use this style):
     name:        String(parsed.name        ?? "Unnamed cluster"),
     description: String(parsed.description ?? ""),
     subtype:     VALID_SUBTYPES.includes(parsed.subtype) ? parsed.subtype : "trend",
+    rationale:   String(parsed.rationale   ?? ""),
   };
+}
+
+// ─── Assignment rationale helpers ─────────────────────────────────────────────
+
+/**
+ * Calls gpt-4o-mini to produce a one-sentence rationale explaining why an
+ * input belongs in a given cluster. Returns null on failure so the caller can
+ * still insert the row without a rationale.
+ */
+async function generateAssignmentRationale(
+  input: EmbeddedInput,
+  clusterName: string,
+  clusterDescription: string | null,
+): Promise<string | null> {
+  const clusterLine = clusterDescription
+    ? `Cluster: ${clusterName} — ${clusterDescription}`
+    : `Cluster: ${clusterName}`;
+
+  const prompt =
+`You are a strategic foresight analyst. In one sentence, explain why the following input belongs in the given cluster.
+
+Reference the content and theme of both — what they share, what dynamic connects them. Do not mention embeddings, similarity scores, or any mathematical concepts. Write as if explaining a judgment call to a colleague.
+
+Input: ${input.name}${input.description ? ` — ${input.description}` : ""}
+${clusterLine}
+
+Respond with a single sentence only. No preamble.`;
+
+  try {
+    const res = await fetch(OPENAI_API_URL, {
+      method:  "POST",
+      headers: {
+        "Content-Type":  "application/json",
+        "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
+      },
+      body: JSON.stringify({
+        model:      OPENAI_MODEL,
+        max_tokens: 128,
+        messages:   [{ role: "user", content: prompt }],
+      }),
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const sentence = (data.choices[0].message.content as string).trim();
+    return sentence || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Enriches an array of AssignmentMatch objects with per-match rationales.
+ * Failures are silenced — a failed match keeps rationale: null.
+ */
+async function enrichAssignmentsWithRationale(
+  matches: AssignmentMatch[],
+): Promise<AssignmentMatch[]> {
+  return Promise.all(
+    matches.map(async (m) => ({
+      ...m,
+      rationale: await generateAssignmentRationale(m.input, m.cluster.name, m.cluster.description),
+    })),
+  );
 }
 
 // ─── Math helpers ─────────────────────────────────────────────────────────────
