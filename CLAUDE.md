@@ -212,7 +212,7 @@ Width: `240px`. Contains three cards separated by `14px` gap.
 
 **1. Clusters card**
 - Title: "Clusters" + built count badge (`builtBg/builtText`)
-- Full-width "Build a cluster" button (`btnFull`)
+- Full-width "New cluster" button (`btnFull`)
 - Lists existing clusters (show up to 4, then "View all" affordance)
 - Each cluster shows: subtype badge + horizon badge + input count + name
 
@@ -336,6 +336,7 @@ src/
       Tag.jsx               ← QualityBadge, HorizonTag, SubtypeTag
       EmptyState.jsx
       RightPanel.jsx        ← shared right panel (Clusters + SystemMap + ProjectDetails cards)
+      ClusterAssignMenu.jsx ← shared portal-based cluster picker; used by all "Assign →" buttons
   data/
     seeds.js
   styles/

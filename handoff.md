@@ -1,6 +1,6 @@
 # Future Signals v2 — Handoff
 
-_Last updated: 2026-06-24_
+_Last updated: 2026-06-26_
 
 ---
 
@@ -40,6 +40,14 @@ Recent notable additions:
 - Inbox AI Suggested Project filter: defaults to "All projects" on fresh load; persists within session; deep-link from "Review N suggestions" still pre-selects the correct project
 - Per-project scanning controls in Account Settings
 - Security hardening: SSRF protection on `/api/scrape`, auth required on `/api/trigger-score`, RLS on `source_health`, dropped `candidates_insert` open policy, O(1) unsubscribe token verification, unsubscribe URL routed through app domain
+
+**2026-06-25/26 session — Clustering UX polish + UI standardisation:**
+- **AssignmentSugRow Option D:** The cluster assignment suggestion row in Clustering is now a click-to-expand row. Clicking anywhere on the row (except Accept/Dismiss) toggles the rationale sub-row. A rotating `›` chevron at the left of the title animates open/closed via CSS transition. Accept/Dismiss use `e.stopPropagation()`. Extracted as a named `AssignmentSugRow` component so each row has its own `useState`.
+- **Bulk assign button fix (Clustering):** The "Assign to cluster →" button in the Clustering bulk action bar was silently no-oping because `AssignPicker` returns `null` without an `anchorRect` prop. Fixed by adding `bulkAssignBtnRef` and `bulkAssignAnchorRect` state, capturing `getBoundingClientRect()` on click — same pattern as the per-row assign button.
+- **Cluster assign popover portal fix (Inputs screen):** `ClusterAssignPopover` in `ProjectDetail.jsx` was using `position: absolute` and being clipped by the table's `overflow: hidden` ancestor. Converted to `createPortal` with `position: fixed` anchored to the triggering button's bounding rect. Both per-row and batch assign buttons now store their anchor rect on click and pass it as `anchorRect`.
+- **Shared `ClusterAssignMenu` component:** `AssignPicker` (Clustering) and `ClusterAssignPopover` (ProjectDetail) consolidated into a single `src/components/shared/ClusterAssignMenu.jsx`. Portal-based, `position: fixed`. Always shows `+ New cluster` at the bottom of the list — no "No clusters yet" empty-state text. Both screens import and use this component; `onNewCluster` opens the cluster creation drawer (`setNewClusterDrawerOpen(true)` in Clustering, `setClusterDrawerOpen(true)` in ProjectDetail).
+- **Bulk action bar standardisation:** All three screens (Clustering, Inputs/ProjectDetail, Inbox) now share the same action bar spec: `background: rgb(249,249,247)`, `border: 1px solid c.border`, primary button = brand blue, secondary button = transparent + `rgb(200,200,200)` border + `rgb(102,102,102)` text, destructive = `rgb(254,226,226) / rgb(185,28,28)` no border, clear link = text-only `rgb(102,102,102)` labelled exactly `✕ Clear`. ProjectDetail bar was previously dark `c.ink` background.
+- **Copy changes:** "Build a cluster" → "New cluster" (Clustering header button and empty-state CTA). "Clear selection" → "✕ Clear" (Inbox My Inputs and AI Suggested bars). Dismiss button in AI Suggested bar restyled to secondary spec.
 
 **2026-06-24 session — System Map Inspector + canvas improvements:**
 - **Canvas subtype filter:** Filter pill (bottom-centre-right, separate from tool toolbar) lets practitioners hide Trend / Driver / Tension nodes and any edges connected to them. `hiddenSubtypes` is a `Set` in `CanvasArea`; `visibleNodes` and `visibleEdges` are derived in render without mutating RF state. Active state shows `"Filter · N"` count badge; single click on active filter clears all. Click-outside closes the popover via a `mousedown` document listener. `SlidersHorizontal` icon from lucide-react.
