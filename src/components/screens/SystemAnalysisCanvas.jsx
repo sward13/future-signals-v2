@@ -15,7 +15,6 @@ const PANELS = [
   {
     id: "key_dynamics",
     area: "dynamics",
-    icon: "◉",
     label: "Key Dynamics",
     prompt: "What are the most significant patterns, feedback loops, and interactions in this system?",
     placeholder: "The most significant pattern is a reinforcing loop between...",
@@ -24,7 +23,6 @@ const PANELS = [
   {
     id: "description",
     area: "description",
-    icon: "◎",
     label: "Description",
     prompt: "Summarise what this system is and what it is trying to explain.",
     placeholder: "This system maps the dynamics of...",
@@ -33,7 +31,6 @@ const PANELS = [
   {
     id: "critical_uncertainties",
     area: "uncertainties",
-    icon: "◈",
     label: "Critical Uncertainties",
     prompt: "What does this system not resolve? Where could it tip in fundamentally different directions?",
     type: "chips",
@@ -41,7 +38,6 @@ const PANELS = [
   {
     id: "implications",
     area: "implications",
-    icon: "◆",
     label: "Implications",
     prompt: "What does this system analysis mean for the people and organisations involved?",
     placeholder: "The primary implication for...",
@@ -50,7 +46,6 @@ const PANELS = [
   {
     id: "confidence",
     area: "confidence",
-    icon: "◌",
     label: "Confidence",
     prompt: "How well does this system map account for the dynamics at play?",
     type: "confidence",
@@ -184,7 +179,6 @@ function AnalysisPanel({ panel, value, onChange, selected, onSelect }) {
         display: "flex", alignItems: "center", gap: 5, flexShrink: 0,
         transition: "background .15s",
       }}>
-        <span style={{ fontSize: 9, color: isFocused ? "rgba(255,255,255,.5)" : c.hint }}>{panel.icon}</span>
         <span style={{ fontSize: 10, fontWeight: 500, color: isFocused ? c.white : c.ink }}>{panel.label}</span>
       </div>
 
@@ -287,13 +281,13 @@ export default function SystemAnalysisCanvas({ appState }) {
 
   // ── Canvas ───────────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: c.white }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: c.bg }}>
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div style={{
         padding: "8px 16px",
         borderBottom: `0.5px solid ${c.border}`,
-        background: c.surfaceAlt,
+        background: c.bg,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         flexShrink: 0,
       }}>

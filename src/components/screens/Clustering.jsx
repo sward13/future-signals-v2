@@ -242,7 +242,6 @@ function InputTableRow({ input, clusters, assignedCluster, onAssign, onNewCluste
           display: "flex", alignItems: "center", gap: 5,
         }}
       >
-        <span style={{ fontSize: 10, color: c.hint, flexShrink: 0 }}>{SUBTYPE_ICONS[input.subtype] || "◎"}</span>
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{input.name}</span>
       </div>
 
@@ -990,7 +989,7 @@ export default function Clustering({ appState }) {
                 {project.name}
               </div>
             </div>
-            <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Clustering</div>
+            <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Clusters</div>
           </div>
           <button onClick={() => setNewClusterDrawerOpen(true)} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}>
             <CirclePlus size={14} />New cluster
@@ -1009,7 +1008,6 @@ export default function Clustering({ appState }) {
 
           {projectClusters.length === 0 ? (
             <EmptyState
-              icon="◈"
               title="No clusters yet"
               body={
                 projectInputs.length < 3
@@ -1219,7 +1217,6 @@ export default function Clustering({ appState }) {
           {unassignedInputs.length === 0 ? (
             projectInputs.length === 0 ? (
               <EmptyState
-                icon="◎"
                 title="No inputs in this project"
                 body="Create a new input directly, or head to the Inbox to pull in existing signals."
                 ctaLabel="Add an input"

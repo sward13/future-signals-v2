@@ -9,8 +9,7 @@
 import { useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { c, inp, btnP, btnSm, btnSec, btnG } from "../../styles/tokens.js";
-import { CirclePlus, Sparkles, List, LayoutGrid } from "lucide-react";
-import { ViewToggle } from "../ViewToggle.jsx";
+import { CirclePlus, Sparkles } from "lucide-react";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { HorizTag } from "../shared/Tag.jsx";
@@ -486,7 +485,6 @@ export default function Inbox({ appState }) {
   } = appState;
 
   const [drawerOpen,        setDrawerOpen]        = useState(false);
-  const [viewMode,          setViewMode]          = useState("list");
 
   // My Inputs — search + filters
   const [manualSearch,            setManualSearch]            = useState("");
@@ -734,10 +732,7 @@ export default function Inbox({ appState }) {
     </div>
   );
 
-  const renderItems = (items, getProps, headerProps) => {
-    if (viewMode === "list") return renderList(items, getProps, headerProps);
-    return renderCards(items, getProps);
-  };
+  const renderItems = (items, getProps, headerProps) => renderList(items, getProps, headerProps);
 
   const manualGetProps = (inp) => itemProps(inp, selectedManualIds, toggleSelectManual, selectedManualIds.length > 0);
   const aiGetProps     = (inp) => itemProps(inp, selectedAiIds,     toggleSelectAi,     selectedAiIds.length > 0);
@@ -749,7 +744,6 @@ export default function Inbox({ appState }) {
     </div>
   ) : manualInputs.length === 0 ? (
     <EmptyState
-      icon="◎"
       title="Your inbox is empty."
       body="Add your first input manually, or capture signals from the web with the Chrome extension."
       ctaLabel="Add an input"
@@ -790,23 +784,13 @@ export default function Inbox({ appState }) {
         </div>
 
         {/* ── My Inputs table ──────────────────────────────────── */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>My Inputs</div>
-            {filteredManual.length > 0 && (
-              <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500 }}>
-                {filteredManual.length}
-              </span>
-            )}
-          </div>
-          <ViewToggle
-            view={viewMode}
-            onChange={setViewMode}
-            options={[
-              { value: "list", icon: <List size={14} />, title: "List view" },
-              { value: "card", icon: <LayoutGrid size={14} />, title: "Card view" },
-            ]}
-          />
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>Unassigned Inputs</div>
+          {filteredManual.length > 0 && (
+            <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500 }}>
+              {filteredManual.length}
+            </span>
+          )}
         </div>
 
         <SearchFilterBar
@@ -871,22 +855,16 @@ export default function Inbox({ appState }) {
         )}
 
         <div style={{ marginBottom: 36 }}>
-          {viewMode === "list" ? (
-            <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden" }}>
-              <ListHeader
-                checked={allManualSelected}
-                indeterminate={!allManualSelected && someManualSelected}
-                onToggleAll={toggleSelectAllManual}
-              />
-              {filteredManual.length > 0
-                ? filteredManual.map((inp) => <ListRow key={inp.id} {...manualGetProps(inp)} />)
-                : manualEmptyContent}
-            </div>
-          ) : filteredManual.length > 0 ? (
-            renderCards(filteredManual, manualGetProps)
-          ) : (
-            manualEmptyContent
-          )}
+          <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden" }}>
+            <ListHeader
+              checked={allManualSelected}
+              indeterminate={!allManualSelected && someManualSelected}
+              onToggleAll={toggleSelectAllManual}
+            />
+            {filteredManual.length > 0
+              ? filteredManual.map((inp) => <ListRow key={inp.id} {...manualGetProps(inp)} />)
+              : manualEmptyContent}
+          </div>
         </div>
 
         {/* ── AI Suggested table ───────────────────────────────── */}

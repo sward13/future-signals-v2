@@ -266,7 +266,7 @@ function SummaryCard({ icon, title, count, countLabel, emptyBody, ctaLabel, onCt
         borderBottom: count > 0 ? `0.5px solid ${c.border}` : "none",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, flex: 1, minWidth: 0 }}>
-          <span style={{ fontSize: 12, color: c.hint }}>{icon}</span>
+          {icon && <span style={{ fontSize: 12, color: c.hint }}>{icon}</span>}
           <span style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{title}</span>
           {showCount && (
             <span style={{
@@ -348,7 +348,7 @@ export default function ProjectDetail({ appState }) {
 
   if (!project) {
     return (
-      <div style={{ padding: "28px 32px", background: c.white, minHeight: "100%" }}>
+      <div style={{ padding: "28px 32px", background: c.bg, minHeight: "100%" }}>
         <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 8 }}>No project selected</div>
         <button onClick={() => setActiveScreen("dashboard")} style={{ ...btnSec, marginTop: 8 }}>
           ← Back to Dashboard
@@ -553,7 +553,7 @@ export default function ProjectDetail({ appState }) {
         </div>
       )}
 
-      <div style={{ padding: "24px 32px 64px", background: c.white, height: "100%", overflowY: "auto", boxSizing: "border-box" }}>
+      <div style={{ padding: "24px 32px 64px", background: c.bg, height: "100%", overflowY: "auto", boxSizing: "border-box" }}>
 
         {/* ── Header ──────────────────────────────────────────── */}
         <div style={{
@@ -875,7 +875,6 @@ export default function ProjectDetail({ appState }) {
           {/* ── RIGHT: Clusters & Systems summary ───────────── */}
           <div>
             <SummaryCard
-              icon="◈"
               title="Clusters"
               count={projectClusters.length}
               countLabel="built"
@@ -928,7 +927,6 @@ export default function ProjectDetail({ appState }) {
             </SummaryCard>
 
             <SummaryCard
-              icon="◆"
               title="System Map"
               count={0}
               showCount={false}

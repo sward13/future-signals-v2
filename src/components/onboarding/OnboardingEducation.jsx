@@ -9,19 +9,16 @@ import { c, btnP, btnSec } from "../../styles/tokens.js";
 
 const SLIDES = [
   {
-    icon: "◎",
     title: "Signals are early indicators of change",
     body: "A signal is any piece of evidence — an event, trend, statement, or data point — that suggests something might be shifting in your environment. Signals can be weak and emerging, or widely confirmed.",
     example: "Example: A government announces a major funding programme for nuclear fusion research.",
   },
   {
-    icon: "◈",
     title: "Clusters reveal patterns across signals",
     body: "When multiple signals point in the same direction, they form a cluster. A cluster is a named group of related signals that together describe a Trend, Driver, or Tension shaping the future.",
     example: "Example: Three signals about AI regulation cluster into 'Regulatory Pressure on Frontier AI'.",
   },
   {
-    icon: "◆",
     title: "System Maps show how clusters interact",
     body: "Clusters don't exist in isolation. Use the System Map to draw relationships between them — how one Drives, Enables, or Inhibits another. This reveals the deeper structure of the system you're studying.",
     example: "Example: 'AI Regulation' Inhibits 'Rapid AI Deployment', which Drives 'Labour Market Disruption'.",
@@ -57,7 +54,6 @@ export function OnboardingEducation({ onContinue }) {
         background: c.surfaceAlt, border: `1px solid ${c.border}`,
         borderRadius: 10, padding: "24px 22px",
       }}>
-        <div style={{ fontSize: 24, marginBottom: 12 }}>{slide.icon}</div>
         <div style={{ fontSize: 15, fontWeight: 500, color: c.ink, marginBottom: 10, lineHeight: 1.35 }}>
           {slide.title}
         </div>

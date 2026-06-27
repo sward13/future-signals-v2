@@ -264,7 +264,6 @@ function NoClustersState({ onComplete, onBack }: { onComplete: () => void; onBac
   return (
     <Shell>
       <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
-        <div style={{ fontSize: 28, marginBottom: 16 }}>◈</div>
         <h2 style={{
           fontFamily: "'Roboto', -apple-system, sans-serif",
           fontSize: 18, fontWeight: 500, color: c.ink,
