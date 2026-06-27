@@ -589,18 +589,18 @@ export default function ProjectDetail({ appState }) {
           {/* TODO: responsive pass — sidebar min-width is causing overflow at <1200px */}
           <div style={{ minWidth: 0 }}>
             {/* Row 1: tabs left, add actions right */}
-            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 10, gap: 12, borderBottom: `1px solid ${c.border}` }}>
+            <div style={{ display: "flex", alignItems: "flex-end", marginBottom: 10, gap: 12, borderBottom: `1px solid ${c.border}` }}>
               <div style={{ display: "flex", alignItems: "center" }}>
                 <FilterTab label="All"         count={projectInputs.length} active={inputTab === "all"}        onClick={() => { setInputTab("all");        setSelectedIds(new Set()); }} />
                 <FilterTab label="Unassigned"  count={unassigned.length}    active={inputTab === "unassigned"} onClick={() => { setInputTab("unassigned"); setSelectedIds(new Set()); }} />
                 <FilterTab label="In cluster"  count={inCluster.length}     active={inputTab === "incluster"}  onClick={() => { setInputTab("incluster");  setSelectedIds(new Set()); }} />
               </div>
-              {projectInputs.length > 0 && (
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => setInboxModalOpen(true)} style={{ ...btnG, fontSize: 11 }}>Add from Inbox</button>
-                  <button onClick={() => setDrawerOpen(true)} style={{ ...btnG, fontSize: 11 }}>Add</button>
-                </div>
-              )}
+              <button
+                onClick={() => setCsvImportOpen(true)}
+                style={{ fontSize: 11, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "0 0 8px", textDecoration: "underline", textDecorationColor: c.border }}
+              >
+                Import via CSV
+              </button>
             </div>
 
             {projectInputs.length === 0 ? (
@@ -972,16 +972,6 @@ export default function ProjectDetail({ appState }) {
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Import inputs — utility action */}
-            <div style={{ textAlign: "center", paddingTop: 4 }}>
-              <button
-                onClick={() => setCsvImportOpen(true)}
-                style={{ fontSize: 11, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "4px 0", textDecoration: "underline", textDecorationColor: c.border }}
-              >
-                Import inputs via CSV
-              </button>
             </div>
 
           </div>
