@@ -17,7 +17,6 @@ import { ClusterDetailDrawer } from "./components/clusters/ClusterDetailDrawer.j
 import Dashboard from "./components/screens/Dashboard.jsx";
 import Inbox from "./components/screens/Inbox.jsx";
 import ProjectDetail from "./components/screens/ProjectDetail.jsx";
-import Clustering from "./components/screens/Clustering.jsx";
 import ScenarioCanvas from "./components/screens/ScenarioCanvas.jsx";
 import NarrativeCanvas from "./components/screens/NarrativeCanvas.jsx";
 import ScenarioNarrativeCanvas from "./components/screens/ScenarioNarrativeCanvas.jsx";
@@ -37,7 +36,7 @@ function ActiveScreen({ appState, onSignOut }) {
     case "inbox": return <Inbox appState={appState} />;
     case "projects": return <Dashboard appState={appState} />;  // projects list = dashboard
     case "project": return <ProjectDetail appState={appState} />;
-    case "clustering": return <Clustering appState={appState} />;
+    case "clustering": return <ProjectDetail appState={appState} />; // redirected — merged into Inputs workspace
     case "scenarios": return <ScenarioCanvas appState={appState} />;
     case "narrative": return <NarrativeCanvas appState={appState} />;
     case "scenario_canvas": return <ScenarioNarrativeCanvas appState={appState} />;
