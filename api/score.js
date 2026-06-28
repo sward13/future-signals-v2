@@ -53,13 +53,15 @@ export default async function handler(req, res) {
     candidates_evaluated: 0,
     candidates_promoted: 0,
     errors: [],
+    scope_out_hard_penalties: 0,
+    scope_out_soft_penalties: 0,
   };
 
   try {
-    // Fetch active projects with only the fields we need
+    // Fetch active projects — now includes focus, scope_in, scope_out for richer scoring.
     const { data: projects, error: projectsError } = await supabase
       .from('projects')
-      .select('id, workspace_id, name, question, key_question_embedding, scanning_enabled')
+      .select('id, workspace_id, name, question, focus, scope_in, scope_out, key_question_embedding, scanning_enabled')
       .not('question', 'is', null)
       .neq('question', '');
 
@@ -137,7 +139,9 @@ export default async function handler(req, res) {
 
     for (const project of activeProjects) {
       try {
-        // Resolve key question embedding (cached on the project row)
+        // Resolve key question embedding (cached on the project row).
+        // This cache is maintained for the question-only string. The richer
+        // combined embedding built below is in-memory only and never written back.
         let keyQuestionEmbedding = project.key_question_embedding;
         if (keyQuestionEmbedding) {
           keyQuestionEmbedding = typeof keyQuestionEmbedding === 'string'
@@ -156,7 +160,52 @@ export default async function handler(req, res) {
             .update({ key_question_embedding: keyQuestionEmbedding })
             .eq('id', project.id);
         }
-        const kqNorm = norm(keyQuestionEmbedding);
+
+        // ── Primary embedding: question + focus (in memory, not stored) ───────
+        // Concatenate focus when present for a richer semantic signal. Falls
+        // back to the cached question-only embedding when focus is absent.
+        const hasFocus = Boolean(project.focus?.trim());
+        let primaryEmbedding;
+        let focusUsed = false;
+
+        if (hasFocus) {
+          const combinedText = `${project.question}\n${project.focus.trim()}`;
+          const embResp = await openai.embeddings.create({
+            model: 'text-embedding-3-small',
+            input: combinedText,
+          });
+          primaryEmbedding = embResp.data[0].embedding;
+          focusUsed = true;
+        } else {
+          primaryEmbedding = keyQuestionEmbedding;
+        }
+        const primaryNorm = norm(primaryEmbedding);
+
+        // ── Scope In embedding (once per project, reused across all candidates) ─
+        let scopeInEmbedding = null;
+        let scopeInNormVal = null;
+        if (Array.isArray(project.scope_in) && project.scope_in.length > 0) {
+          const embResp = await openai.embeddings.create({
+            model: 'text-embedding-3-small',
+            input: project.scope_in.join(', '),
+          });
+          scopeInEmbedding = embResp.data[0].embedding;
+          scopeInNormVal = norm(scopeInEmbedding);
+        }
+
+        // ── Scope Out embedding (once per project, reused across all candidates) ─
+        let scopeOutEmbedding = null;
+        let scopeOutNormVal = null;
+        if (Array.isArray(project.scope_out) && project.scope_out.length > 0) {
+          const embResp = await openai.embeddings.create({
+            model: 'text-embedding-3-small',
+            input: project.scope_out.join(', '),
+          });
+          scopeOutEmbedding = embResp.data[0].embedding;
+          scopeOutNormVal = norm(scopeOutEmbedding);
+        }
+
+        console.log(`[score] project="${project.name}" focus_used=${focusUsed} scope_in=${scopeInEmbedding !== null} scope_out=${scopeOutEmbedding !== null}`);
 
         // Use cached input embeddings for corpus similarity — no OpenAI calls.
         // pgvector .not('embedding','is',null) is unreliable via PostgREST; filter in JS.
@@ -178,24 +227,70 @@ export default async function handler(req, res) {
         // x N projects) within the function's time limit.
         const rows = [];
         for (const candidate of newCandidates) {
-          const keyQuestionSim = dot(candidate.embedding, keyQuestionEmbedding) / (candidate._norm * kqNorm);
+          // Primary similarity (question + focus combined)
+          const primarySim = dot(candidate.embedding, primaryEmbedding) / (candidate._norm * primaryNorm);
+
+          // Corpus similarity
           const corpusSim = corpusEmbeddings.length
             ? corpusEmbeddings.reduce((s, c) => s + dot(candidate.embedding, c.embedding) / (candidate._norm * c._norm), 0) / corpusEmbeddings.length
             : 0;
 
+          // Source credibility
           const credibility = sourceMap[candidate.source_id]?.credibility || 'general';
           const credibilityScore = CREDIBILITY_SCORES[credibility] || 50;
 
-          const score = Math.round(
-            (keyQuestionSim * 0.6 * 100) +
-            (corpusSim * 0.2 * 100) +
-            (credibilityScore * 0.2)
-          );
+          // Scope In similarity (null when scope_in is absent — contributes 0, no weight renorm)
+          const scopeInSim = scopeInEmbedding !== null
+            ? dot(candidate.embedding, scopeInEmbedding) / (candidate._norm * scopeInNormVal)
+            : null;
+
+          // Scope Out similarity (null when scope_out is absent — no penalty applied)
+          const scopeOutSim = scopeOutEmbedding !== null
+            ? dot(candidate.embedding, scopeOutEmbedding) / (candidate._norm * scopeOutNormVal)
+            : null;
+
+          // ── Weighted sum (normalised 0–1 before scaling) ──────────────────
+          // Weights: primary 50% | corpus 20% | credibility 20% | scope_in 10%
+          // Absent scope_in contributes 0; weights are not renormalised (per spec).
+          let normalizedScore =
+            (primarySim * 0.5) +
+            (corpusSim * 0.2) +
+            ((credibilityScore / 100) * 0.2) +
+            (scopeInSim !== null ? scopeInSim * 0.1 : 0);
+
+          // ── Scope Out penalty (applied post-sum, pre-scale) ───────────────
+          // Hard (>0.75 sim): score × 0.25
+          // Soft (0.5–0.75 sim): score − (sim − 0.5) × 0.4
+          let scopeOutPenaltyApplied = null;
+          if (scopeOutSim !== null) {
+            if (scopeOutSim > 0.75) {
+              normalizedScore *= 0.25;
+              scopeOutPenaltyApplied = 'hard';
+              results.scope_out_hard_penalties++;
+            } else if (scopeOutSim > 0.5) {
+              normalizedScore -= (scopeOutSim - 0.5) * 0.4;
+              scopeOutPenaltyApplied = 'soft';
+              results.scope_out_soft_penalties++;
+            }
+          }
+
+          const score = Math.max(0, Math.round(normalizedScore * 100));
+
+          if (scopeInSim !== null || scopeOutPenaltyApplied) {
+            console.debug(
+              `[score] candidate="${candidate.title?.slice(0, 60)}" ` +
+              `focus_used=${focusUsed} ` +
+              `scope_in_sim=${scopeInSim?.toFixed(3) ?? null} ` +
+              `scope_out_sim=${scopeOutSim?.toFixed(3) ?? null} ` +
+              `scope_out_penalty_applied=${scopeOutPenaltyApplied} ` +
+              `score=${score}`
+            );
+          }
 
           let classification = 'noise';
-          if (keyQuestionSim > 0.4 && corpusSim < 0.3) {
+          if (primarySim > 0.4 && corpusSim < 0.3) {
             classification = 'emerging';
-          } else if (keyQuestionSim > 0.4 && corpusSim >= 0.3) {
+          } else if (primarySim > 0.4 && corpusSim >= 0.3) {
             classification = 'reinforcing';
           }
 
@@ -206,7 +301,7 @@ export default async function handler(req, res) {
             candidate_id: candidate.id,
             score,
             classification,
-            key_question_sim: keyQuestionSim,
+            key_question_sim: primarySim,
             corpus_sim: corpusSim,
             surfaced,
           });
