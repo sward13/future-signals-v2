@@ -414,11 +414,11 @@ All tables carry `workspace_id` and (where applicable) `project_id`. `workspace_
   assumptions: string,
   stakeholders: string,
   audience: string|null,                 // added 2026-04-25
-  scope_in: string[],                    // added 2026-04-28 — in-scope topics
-  scope_out: string[],                   // added 2026-04-28 — explicitly out-of-scope topics
+  scope_in: string[],                    // added 2026-04-28 — in-scope topics; used in Layer 3 scoring as a 10% positive weight
+  scope_out: string[],                   // added 2026-04-28 — explicitly out-of-scope topics; used as a hard/soft penalty in Layer 3 scoring
   scanning_enabled: boolean,             // per-project scanner toggle; workspace_settings.scanning_enabled is the workspace-wide override (see Known database gotchas)
   last_reviewed_at: string|null,         // Inbox inactivity detection
-  key_question_embedding: number[]|null, // internal — cached embedding of `question`, set by api/score.js, not for UI use
+  key_question_embedding: number[]|null, // internal — cached embedding of `question` only; api/score.js builds a richer in-memory embedding (question + focus) at scoring time but never overwrites this cache
   created_at: string,
 }
 ```
@@ -516,7 +516,7 @@ Key decisions already made:
 | Spec | When to read |
 |---|---|
 | `docs/design-principles.md` | Before any UX, form, AI output, nudge, or navigation decision |
-| `docs/signal-scanner-spec.md` | Any work touching the scanner, candidate ingestion, scoring, or onboarding seeding |
+| `signal-scanner-spec.md` | Any work touching the scanner, candidate ingestion, scoring, or onboarding seeding |
 | `docs/onboarding-spec.md` | Any work touching the onboarding flow, project creation, or first-session experience |
 
 ---
