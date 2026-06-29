@@ -1,6 +1,6 @@
 # Future Signals v2 — Handoff
 
-_Last updated: 2026-06-26_
+_Last updated: 2026-06-28_
 
 ---
 
@@ -25,13 +25,25 @@ All core screens are built and functional:
 | Onboarding flow | Done |
 | Dashboard | Done |
 | Inbox | Done |
-| Inputs (ProjectDetail) | Done |
-| Clustering | Done |
+| Inputs workspace (ProjectDetail + ClustersPanel) | Done |
 | System Map | Done |
 | System Analysis | Done |
 | Future Models (Scenarios + Strategic Options) | Done |
 
-Recent notable additions:
+Note: the Clustering screen no longer exists as a separate route. The `clustering` case in App.jsx redirects to ProjectDetail. All clustering work happens in the 320px ClustersPanel embedded in the Inputs workspace.
+
+**2026-06-28 session — Clustering workspace refactor (complete, on `workspace-refactor` branch):**
+- **Merged Inputs + Clustering into one workspace.** The separate Clustering screen is removed. ProjectDetail now renders a two-column layout: inputs table (flex:1, left) and a fixed 320px ClustersPanel (right). Both panels are visible and interactive simultaneously — no more context-switching.
+- **ClustersPanel** (`src/components/clusters/ClustersPanel.jsx`): Manual/Suggested mode toggle, list/card view toggle, new-cluster drop zone, scrollable cluster list. Cluster detail slides in from right on click (translateX animation, `ClusterDetailPanel.jsx`).
+- **Drag-and-drop** (macOS Finder model): drag inputs onto cluster rows/cards to move; hold ⌥ Option to copy. Custom ghost element via React portal (`DragGhost.jsx`). Drop zone for "create new cluster." Multi-item drag when rows are selected.
+- **Multi-select** with shift-click range, indeterminate select-all checkbox (callback ref), sticky action bar at bottom of inputs panel (Assign → / Delete / ✕ Clear).
+- **ClusterSuggestions** (`src/components/clusters/ClusterSuggestions.jsx`): Suggested mode panel. Calls `compute-cluster-suggestions` Supabase edge function (deployed to staging `kptatqipjwihkdxdxlvh`). Assignment suggestion cards (Accept / Dismiss / Accept all / per-row Remove). New cluster suggestion cards (Create / Edit inline / Dismiss / rationale expand). Sensitivity toggle (Tight / Balanced / Exploratory). Empty + resolved states.
+- **Bug fixes:** multi-select "Assign →" was a no-op (now wired to `handleBatchAssign` via `ClusterAssignMenu`); assign dropdown was clipped by table overflow (now portal-based via `ClusterAssignMenu.jsx`).
+- **Dashboard cleanup:** removed "Recent inputs" section and the unused `ProjectPickerPopover` component.
+- **Sidebar:** Clusters nav item removed. Project nav is now: Inputs · System Map · System Analysis · Future Models · Export.
+- **Props wired end-to-end:** `projectId`, `assignInputToCluster`, `addCluster` all passed explicitly from ProjectDetail → ClustersPanel → ClusterSuggestions.
+
+Recent notable additions (pre-refactor):
 - CSV import for Inputs (sidebar entry point, template download, preview, bulk write)
 - Search + filter on Clustering screen (type / horizon / likelihood)
 - Strategic Options: Reversibility + Resource Intensity fields with colour-coded badges

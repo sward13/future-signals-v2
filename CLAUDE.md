@@ -175,7 +175,6 @@ The sidebar is **196px wide**, `background: c.bg`, with a single `0.5px` border-
 - Inbox *(global, shows unread count badge in `alertBg/alertText`)*
 - `0.5px` divider
 - Inputs *(project-scoped, shows input count)*
-- Clusters *(project-scoped, shows cluster count)*
 - System Map *(project-scoped)*
 - System Analysis *(project-scoped)*
 - Future Models *(project-scoped)*
@@ -218,28 +217,29 @@ time horizon bar  → proportional H1/H2/H3 bar with date labels
 
 ---
 
-## Right panel — structure and rules
+## Clusters panel — structure and rules
 
-Width: `240px`. Contains three cards separated by `14px` gap.
+The 320px right-hand panel in the Inputs workspace. Replaces the old three-card sidebar (Clusters summary, System Map widget, Project Details). Those sections no longer exist on the Inputs screen — project metadata is in the page header; System Map status is visible via the nav item.
 
-**1. Clusters card**
-- Title: "Clusters" + built count badge (`builtBg/builtText`)
-- Full-width "New cluster" button (`btnFull`)
-- Lists existing clusters (show up to 4, then "View all" affordance)
-- Each cluster shows: subtype badge + horizon badge + input count + name
+**Panel header (two rows):**
+- Row 1: "Clusters" label (13px semibold) + "+ New cluster" button right-aligned (`c.brandBg` bg, `c.brand` text, `c.brandBorder` border). Visible in both modes.
+- Row 2: Manual/Suggested mode toggle (left) + list/card view toggle (right, hidden in Suggested mode).
 
-**2. System Map card**
-- Title: "System Map" + binary status badge: "Built" (`builtBg/builtText`) or "Not built" (`notBuiltBg/notBuiltText`)
-- No count — there is always exactly one System Map per project, or none
-- If built: show canvas thumbnail (SVG/image snapshot), clickable → navigates to System Map. Footer strip shows node count + relationship count + "Open →"
-- If not built: explanatory text + full-width "Go to System Map →" button (`btnFull`)
+**Manual mode** (default):
+- Drop zone strip below header — dashed border, `c.faint` text "⊕ Drop inputs here to create a new cluster". Highlights `c.brand` / `c.brandBg` on drag-over. Drop opens ClusterDrawer with inputs pre-selected.
+- Scrollable cluster list — list view (compact rows: type badge · name · count) or card view (type + horizon + likelihood + name + description excerpt).
+- Drag-and-drop targets: move (default) or copy (⌥ Option held). Drop target shows "Move"/"Copy" pill in `c.brand` / green.
+- Cluster detail panel slides in from right on click (translateX, 220ms). Shows badges, name, description, linked inputs with ✕ remove per row, Delete button in footer. Closes on back-click, Escape, or clicking the inputs panel.
 
-**3. Project details card**
-- Title: "Project details" — no Edit button
-- Read-only summary: Domain, Focus, Geography, Stakeholders
-- Populated fields: `c.ink`, 11.5px
-- Empty fields: italic, `c.faint` — "Not set"
-- Editing is done via "Project settings" in the page header
+**Suggested mode:**
+- Toolbar: sensitivity toggle (Tight / Balanced / Exploratory) + "✦ Suggest clustering" button.
+- Calls `compute-cluster-suggestions` edge function. Requires `OPENAI_API_KEY` on the Supabase project.
+- Section 1 "Add to existing clusters": assignment suggestion cards — Accept / Dismiss per card, Accept all header link, Remove per input row.
+- Section 2 "New cluster suggestions": new cluster cards — Create cluster / Edit (inline) / Dismiss. Rationale expandable via "· Why this cluster?".
+- Empty states: "No suggestions yet" before first run; "All suggestions resolved" after all acted on.
+
+**Props ClustersPanel receives from ProjectDetail:**
+`projectId`, `clusters`, `inputs`, `onNewCluster`, `removeInputFromCluster`, `deleteCluster`, `showToast`, `dragIds`, `dragIsCopy`, `onDrop`, `onDropToNewCluster`, `assignInputToCluster`, `addCluster`
 
 ---
 
@@ -276,7 +276,7 @@ Width: `240px`. Contains three cards separated by `14px` gap.
 - The Inbox holds inputs that have not yet been assigned to a project (`project_id === null`). It is a workspace-level screen.
 - The Inbox's AI Suggested section has its own search/filter bar, including a Project filter (filters on `metadata.suggested_projects`). It defaults to "All projects" (no filter) on fresh page load and on first navigation to the Inbox. Within a session, the filter persists whatever the user last selected (including cleared).
 - A project's "Review N suggestions" action (Project Detail) sets `appState.inboxProjectFilter` and navigates to the Inbox — the AI Suggested Project filter picks this up as its initial selection (deep-link), pre-filtering AI Suggested to that project on arrival.
-- Clustering and System Map are project-scoped screens. They only appear in the sidebar when a project is active.
+- The System Map is project-scoped and only appears in the sidebar when a project is active. There is no separate Clustering screen — clustering is embedded inside the Inputs workspace (ProjectDetail) as the right-hand ClustersPanel.
 - At workspace level (Dashboard, Inbox, no active project) the sidebar shows only: Dashboard, Inbox. No project-scoped items.
 - Navigating to Dashboard or Inbox via the sidebar clears the active project context.
 - The Dashboard stats strip shows workspace-level counts only: Projects and Inputs in Inbox. Per-project counts appear on each project card.
@@ -298,7 +298,8 @@ All app state lives in a single `useAppState` hook (or context) at the root leve
   scenarios: [],
   projects: [],
   activeProjectId: null,
-  activeScreen: 'dashboard',  // 'dashboard' | 'inbox' | 'project' | 'clustering' | 'systemMap' | 'systemAnalysis' | 'futureModels'
+  activeScreen: 'dashboard',  // 'dashboard' | 'inbox' | 'project' | 'systemMap' | 'systemAnalysis' | 'futureModels'
+                              // Note: 'clustering' still exists as a case in App.jsx but redirects to 'project' (ProjectDetail)
   drawer: null,               // null | { type: 'newInput' | 'newCluster' | 'inputDetail' | 'clusterDetail' | 'projectSettings', data: {} }
   toast: null,                // null | { message, type: 'success' | 'error' }
 }
@@ -332,8 +333,8 @@ src/
     screens/
       Dashboard.jsx
       Inbox.jsx
-      ProjectDetail.jsx     ← Inputs screen
-      Clustering.jsx        ← Clusters screen
+      ProjectDetail.jsx     ← Inputs workspace (inputs table + embedded ClustersPanel)
+      Clustering.jsx        ← redirect only; case in App.jsx returns ProjectDetail
       SystemMap.jsx
       SystemAnalysis.jsx
       FutureModels.jsx
@@ -342,13 +343,16 @@ src/
       InputDrawer.jsx
       SeededSignalCard.jsx
     clusters/
-      ClusterCard.jsx
-      ClusterDrawer.jsx
+      ClusterCard.jsx           ← card-view item for cluster in ClustersPanel
+      ClusterDrawer.jsx         ← create/edit cluster slide-over
+      ClusterDetailPanel.jsx    ← sliding detail panel inside ClustersPanel
+      ClustersPanel.jsx         ← 320px right-hand panel (Manual/Suggested modes)
+      ClusterSuggestions.jsx    ← Suggested mode content: AI suggestion cards
+      DragGhost.jsx             ← portal-based custom drag ghost element
     shared/
       Tag.jsx               ← QualityBadge, HorizonTag, SubtypeTag
       EmptyState.jsx
-      RightPanel.jsx        ← shared right panel (Clusters + SystemMap + ProjectDetails cards)
-      ClusterAssignMenu.jsx ← shared portal-based cluster picker; used by all "Assign →" buttons
+      ClusterAssignMenu.jsx ← portal-based cluster picker; used by all "Assign →" buttons
   data/
     seeds.js
   styles/
