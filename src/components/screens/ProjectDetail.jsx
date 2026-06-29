@@ -65,36 +65,34 @@ function HorizonBar({ project }) {
   const h2Pct = ((h2End - start) / span) * 100;
 
   return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ position: "relative", height: 32, borderRadius: 8, overflow: "hidden" }}>
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ position: "relative", height: 46, borderRadius: 8, overflow: "hidden" }}>
         <div style={{
           position: "absolute", left: 0, top: 0,
           width: `${h1Pct}%`, height: "100%",
           background: c.green50, borderRight: `2px solid ${c.white}`,
-          display: "flex", alignItems: "center", justifyContent: "center",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
         }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: c.green700 }}>H1</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: c.green700, lineHeight: 1 }}>H1</span>
+          <span style={{ fontSize: 10, color: c.green700, lineHeight: 1 }}>{project.h1_start}–{project.h1_end}</span>
         </div>
         <div style={{
           position: "absolute", left: `${h1Pct}%`, top: 0,
           width: `${h2Pct - h1Pct}%`, height: "100%",
           background: c.blue50, borderRight: `2px solid ${c.white}`,
-          display: "flex", alignItems: "center", justifyContent: "center",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
         }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: c.blue700 }}>H2</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: c.blue700, lineHeight: 1 }}>H2</span>
+          <span style={{ fontSize: 10, color: c.blue700, lineHeight: 1 }}>{project.h2_start}–{project.h2_end}</span>
         </div>
         <div style={{
           position: "absolute", left: `${h2Pct}%`, top: 0, right: 0, height: "100%",
           background: c.amber50,
-          display: "flex", alignItems: "center", justifyContent: "center",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
         }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: c.amber700 }}>H3</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: c.amber700, lineHeight: 1 }}>H3</span>
+          <span style={{ fontSize: 10, color: c.amber700, lineHeight: 1 }}>{project.h3_start}–{project.h3_end}</span>
         </div>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginTop: 6 }}>
-        <div style={{ fontSize: 11, color: c.green700 }}>{project.h1_start}–{project.h1_end}</div>
-        <div style={{ fontSize: 11, color: c.blue700, textAlign: "center" }}>{project.h2_start}–{project.h2_end}</div>
-        <div style={{ fontSize: 11, color: c.amber700, textAlign: "right" }}>{project.h3_start}–{project.h3_end}</div>
       </div>
     </div>
   );
@@ -554,7 +552,10 @@ export default function ProjectDetail({ appState }) {
         </div>
       )}
 
-      <div style={{ padding: "24px 32px 64px", background: c.bg, height: "100%", overflowY: "auto", boxSizing: "border-box" }}>
+      <div style={{ display: "flex", flexDirection: "column", background: c.bg, height: "100%", overflow: "hidden" }}>
+
+        {/* ── Header section ───────────────────────────────────── */}
+        <div style={{ padding: "24px 32px 0", flexShrink: 0 }}>
 
         {/* ── Header: title row ────────────────────────────────── */}
         <div style={{
@@ -619,17 +620,19 @@ export default function ProjectDetail({ appState }) {
         {/* ── Header: time horizons bar ─────────────────────────── */}
         {project.h1_start && <HorizonBar project={project} />}
 
+        </div>{/* end header section */}
+
         {/* ── Workspace: inputs panel + clusters panel ─────── */}
-        <div style={{ display: "flex", alignItems: "stretch" }}>
+        <div style={{ display: "flex", alignItems: "stretch", flex: 1, minHeight: 0, overflow: "hidden", padding: "0 0 0 32px" }}>
 
           {/* ── LEFT: Inputs table ───────────────────────────── */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, overflowY: "auto", paddingBottom: 32 }}>
             {/* Row 1: tabs left, add actions right */}
             <div style={{ display: "flex", alignItems: "flex-end", marginBottom: 10, gap: 12, borderBottom: `1px solid ${c.border}` }}>
               <div style={{ display: "flex", alignItems: "center" }}>
                 <FilterTab label="All"         count={projectInputs.length} active={inputTab === "all"}        onClick={() => { setInputTab("all");        setSelectedIds(new Set()); }} />
                 <FilterTab label="Unassigned"  count={unassigned.length}    active={inputTab === "unassigned"} onClick={() => { setInputTab("unassigned"); setSelectedIds(new Set()); }} />
-                <FilterTab label="In cluster"  count={inCluster.length}     active={inputTab === "incluster"}  onClick={() => { setInputTab("incluster");  setSelectedIds(new Set()); }} />
+                <FilterTab label="Clustered"   count={inCluster.length}     active={inputTab === "incluster"}  onClick={() => { setInputTab("incluster");  setSelectedIds(new Set()); }} />
               </div>
               <button
                 onClick={() => setCsvImportOpen(true)}
