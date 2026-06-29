@@ -85,6 +85,7 @@ function ClusterListRow({ cluster, selected, onClick, isDropTarget, dropIsCopy, 
 // ─── ClustersPanel ─────────────────────────────────────────────────────────────
 
 export function ClustersPanel({
+  projectId = null,
   clusters = [],
   inputs = [],
   onNewCluster,
@@ -95,14 +96,11 @@ export function ClustersPanel({
   dragIsCopy = false,
   onDrop,
   onDropToNewCluster,
-  // Optional — not yet passed by ProjectDetail; wired up in a future step.
+  // Optional — wired up in a future step.
   // When absent, accept/create actions in Suggested mode are no-ops.
   assignInputToCluster,
   addCluster,
 }) {
-  // Derive project-level identifiers from the clusters list.
-  // Falls back to null when no clusters exist yet (Suggested mode is a no-op then).
-  const projectId = clusters[0]?.project_id ?? null;
   const [mode, setMode] = useState("manual");    // "manual" | "suggested"
   const [view, setView] = useState("list");       // "list" | "card"
   const [selectedClusterId, setSelectedClusterId] = useState(null);

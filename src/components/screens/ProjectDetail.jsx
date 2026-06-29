@@ -1034,6 +1034,7 @@ export default function ProjectDetail({ appState }) {
           </div>
 
           <ClustersPanel
+            projectId={project.id}
             clusters={projectClusters}
             inputs={inputs}
             onNewCluster={() => setClusterDrawerOpen(true)}
