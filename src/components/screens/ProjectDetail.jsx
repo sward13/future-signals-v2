@@ -491,7 +491,7 @@ export default function ProjectDetail({ appState }) {
   const cell = { fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, flexShrink: 0 };
 
   return (
-    <>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: c.bg }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* ── Scanner status banner ─────────────────────────────── */}
@@ -553,7 +553,7 @@ export default function ProjectDetail({ appState }) {
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", background: c.bg, height: "100%", overflow: "hidden" }}>
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
 
         {/* ── Header section ───────────────────────────────────── */}
         <div style={{ padding: "24px 32px 0", flexShrink: 0 }}>
@@ -1107,6 +1107,6 @@ export default function ProjectDetail({ appState }) {
           document.body
         );
       })()}
-    </>
+    </div>
   );
 }
