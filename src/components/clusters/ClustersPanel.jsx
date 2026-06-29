@@ -8,6 +8,7 @@ import { c } from "../../styles/tokens.js";
 import { SubtypeTag } from "../shared/Tag.jsx";
 import { ClusterCard } from "./ClusterCard.jsx";
 import { ClusterDetailPanel } from "./ClusterDetailPanel.jsx";
+import { ClusterSuggestions } from "./ClusterSuggestions.jsx";
 
 // ─── List-view row ─────────────────────────────────────────────────────────────
 
@@ -94,7 +95,14 @@ export function ClustersPanel({
   dragIsCopy = false,
   onDrop,
   onDropToNewCluster,
+  // Optional — not yet passed by ProjectDetail; wired up in a future step.
+  // When absent, accept/create actions in Suggested mode are no-ops.
+  assignInputToCluster,
+  addCluster,
 }) {
+  // Derive project-level identifiers from the clusters list.
+  // Falls back to null when no clusters exist yet (Suggested mode is a no-op then).
+  const projectId = clusters[0]?.project_id ?? null;
   const [mode, setMode] = useState("manual");    // "manual" | "suggested"
   const [view, setView] = useState("list");       // "list" | "card"
   const [selectedClusterId, setSelectedClusterId] = useState(null);
@@ -213,108 +221,119 @@ export function ClustersPanel({
         </div>
       </div>
 
-      {/* ── Drop zone strip ──────────────────────────────────── */}
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDropOnZone(true); }}
-        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropOnZone(false); }}
-        onDrop={(e) => { e.preventDefault(); setDropOnZone(false); onDropToNewCluster?.(); }}
-        style={{
-          margin: "10px 12px",
-          padding: "8px 12px",
-          border: `1px dashed ${dropOnZone ? c.brand : c.border}`,
-          borderRadius: 7,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
-          flexShrink: 0,
-          background: dropOnZone ? "#EFF6FF" : c.white,
-          transition: "background 0.12s, border-color 0.12s",
-        }}
-      >
-        <span style={{ fontSize: 11, color: dropOnZone ? c.brand : c.faint }}>
-          ⊕ Drop inputs here to create a new cluster
-        </span>
-      </div>
+      {/* ── Drop zone strip — manual mode only ───────────────── */}
+      {mode === "manual" && (
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDropOnZone(true); }}
+          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropOnZone(false); }}
+          onDrop={(e) => { e.preventDefault(); setDropOnZone(false); onDropToNewCluster?.(); }}
+          style={{
+            margin: "10px 12px",
+            padding: "8px 12px",
+            border: `1px dashed ${dropOnZone ? c.brand : c.border}`,
+            borderRadius: 7,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            flexShrink: 0,
+            background: dropOnZone ? "#EFF6FF" : c.white,
+            transition: "background 0.12s, border-color 0.12s",
+          }}
+        >
+          <span style={{ fontSize: 11, color: dropOnZone ? c.brand : c.faint }}>
+            ⊕ Drop inputs here to create a new cluster
+          </span>
+        </div>
+      )}
 
-      {/* ── Scrollable cluster list ──────────────────────────── */}
-      <div style={{ flex: 1, overflowY: "auto" }}>
+      {/* ── Scrollable cluster list — manual mode ────────────── */}
+      {mode === "manual" && (
+        <div style={{ flex: 1, overflowY: "auto" }}>
 
-        {mode === "manual" && clusters.length === 0 && (
-          <div style={{ padding: "20px 14px", fontSize: 12, color: c.hint, fontStyle: "italic", textAlign: "center", lineHeight: 1.55 }}>
-            No clusters yet.<br />Create one or drag inputs here.
-          </div>
-        )}
+          {clusters.length === 0 && (
+            <div style={{ padding: "20px 14px", fontSize: 12, color: c.hint, fontStyle: "italic", textAlign: "center", lineHeight: 1.55 }}>
+              No clusters yet.<br />Create one or drag inputs here.
+            </div>
+          )}
 
-        {mode === "manual" && view === "list" && clusters.length > 0 && (
-          <div>
-            {clusters.map((cl) => (
-              <ClusterListRow
-                key={cl.id}
-                cluster={cl}
-                selected={selectedClusterId === cl.id}
-                onClick={() => setSelectedClusterId(cl.id)}
-                isDropTarget={!!dragIds && dropTargetId === cl.id}
-                dropIsCopy={dropIsCopy}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  if (!dragIds) return;
-                  setDropTargetId(cl.id);
-                  setDropIsCopy(e.altKey);
-                }}
-                onDragLeave={(e) => {
-                  if (!e.currentTarget.contains(e.relatedTarget)) setDropTargetId(null);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const isAlt = e.altKey;
-                  setDropTargetId(null);
-                  onDrop?.(cl.id, isAlt);
-                }}
-              />
-            ))}
-          </div>
-        )}
-
-        {mode === "manual" && view === "card" && clusters.length > 0 && (
-          <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 9 }}>
-            {clusters.map((cl) => (
-              <div
-                key={cl.id}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  if (!dragIds) return;
-                  setDropTargetId(cl.id);
-                  setDropIsCopy(e.altKey);
-                }}
-                onDragLeave={(e) => {
-                  if (!e.currentTarget.contains(e.relatedTarget)) setDropTargetId(null);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const isAlt = e.altKey;
-                  setDropTargetId(null);
-                  onDrop?.(cl.id, isAlt);
-                }}
-              >
-                <ClusterCard
+          {view === "list" && clusters.length > 0 && (
+            <div>
+              {clusters.map((cl) => (
+                <ClusterListRow
+                  key={cl.id}
                   cluster={cl}
                   selected={selectedClusterId === cl.id}
                   onClick={() => setSelectedClusterId(cl.id)}
                   isDropTarget={!!dragIds && dropTargetId === cl.id}
                   dropIsCopy={dropIsCopy}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (!dragIds) return;
+                    setDropTargetId(cl.id);
+                    setDropIsCopy(e.altKey);
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget)) setDropTargetId(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const isAlt = e.altKey;
+                    setDropTargetId(null);
+                    onDrop?.(cl.id, isAlt);
+                  }}
                 />
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
 
-        {mode === "suggested" && (
-          <div style={{ padding: "20px 14px", fontSize: 12, color: c.hint, textAlign: "center", lineHeight: 1.55 }}>
-            Suggested mode coming in step 7
-          </div>
-        )}
-      </div>
+          {view === "card" && clusters.length > 0 && (
+            <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 9 }}>
+              {clusters.map((cl) => (
+                <div
+                  key={cl.id}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (!dragIds) return;
+                    setDropTargetId(cl.id);
+                    setDropIsCopy(e.altKey);
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget)) setDropTargetId(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const isAlt = e.altKey;
+                    setDropTargetId(null);
+                    onDrop?.(cl.id, isAlt);
+                  }}
+                >
+                  <ClusterCard
+                    cluster={cl}
+                    selected={selectedClusterId === cl.id}
+                    onClick={() => setSelectedClusterId(cl.id)}
+                    isDropTarget={!!dragIds && dropTargetId === cl.id}
+                    dropIsCopy={dropIsCopy}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* ── Suggested mode — AI suggestion panel ─────────────── */}
+      {mode === "suggested" && (
+        <ClusterSuggestions
+          projectId={projectId}
+          projectClusters={clusters}
+          inputs={inputs}
+          onAssignInput={assignInputToCluster}
+          onCreateCluster={addCluster}
+          showToast={showToast}
+        />
+      )}
 
       {/* ── Cluster detail panel (slides in from right) ──────── */}
       <ClusterDetailPanel
