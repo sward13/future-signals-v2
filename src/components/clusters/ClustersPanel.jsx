@@ -1,30 +1,117 @@
-import { useState } from "react";
-import { c } from "../../styles/tokens.js";
-
 /**
- * ClustersPanel — right-hand panel of the Inputs workspace.
- * Hosts Manual/Suggested mode toggle, list/card view toggle, and
- * (in later steps) the cluster list, drop zone, detail panel, and
- * suggestion cards.
- *
- * @param {{ onNewCluster: () => void }} props
+ * ClustersPanel — right-hand 320px panel of the Inputs workspace.
+ * Hosts Manual/Suggested mode toggle, cluster list (list or card view),
+ * new-cluster drop zone, and the cluster detail sliding panel.
  */
-export function ClustersPanel({ onNewCluster }) {
-  const [mode, setMode] = useState("manual"); // "manual" | "suggested"
-  const [view, setView] = useState("list");   // "list" | "card"
+import { useState, useEffect, useRef } from "react";
+import { c } from "../../styles/tokens.js";
+import { SubtypeTag } from "../shared/Tag.jsx";
+import { ClusterCard } from "./ClusterCard.jsx";
+import { ClusterDetailPanel } from "./ClusterDetailPanel.jsx";
+
+// ─── List-view row ─────────────────────────────────────────────────────────────
+
+function ClusterListRow({ cluster, selected, onClick }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "8px 14px",
+        borderBottom: `1px solid ${c.border}`,
+        background: selected ? "#EFF6FF" : hovered ? "rgba(0,0,0,0.02)" : "transparent",
+        cursor: "pointer",
+        transition: "background 0.1s",
+      }}
+    >
+      {/* Name — flex, truncates */}
+      <span style={{
+        flex: 1,
+        fontSize: 12,
+        fontWeight: 500,
+        color: selected ? c.brand : c.ink,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+        marginRight: 8,
+      }}>
+        {cluster.name}
+      </span>
+
+      {/* Type badge — 62px fixed container */}
+      <div style={{ width: 62, flexShrink: 0, display: "flex", justifyContent: "flex-end" }}>
+        <SubtypeTag sub={cluster.subtype} />
+      </div>
+
+      {/* Input count */}
+      <span style={{
+        fontSize: 10,
+        color: c.hint,
+        marginLeft: 8,
+        flexShrink: 0,
+        minWidth: 24,
+        textAlign: "right",
+      }}>
+        {cluster.input_ids?.length || 0}
+      </span>
+    </div>
+  );
+}
+
+// ─── ClustersPanel ─────────────────────────────────────────────────────────────
+
+export function ClustersPanel({
+  clusters = [],
+  inputs = [],
+  onNewCluster,
+  removeInputFromCluster,
+  deleteCluster,
+  showToast,
+}) {
+  const [mode, setMode] = useState("manual");    // "manual" | "suggested"
+  const [view, setView] = useState("list");       // "list" | "card"
+  const [selectedClusterId, setSelectedClusterId] = useState(null);
+  const panelRef = useRef(null);
+
+  // Close detail panel on Escape or click outside the clusters panel
+  useEffect(() => {
+    if (!selectedClusterId) return;
+    const onKey = (e) => { if (e.key === "Escape") setSelectedClusterId(null); };
+    const onClickOutside = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target)) {
+        setSelectedClusterId(null);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClickOutside);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onClickOutside);
+    };
+  }, [selectedClusterId]);
+
+  const selectedCluster = clusters.find((cl) => cl.id === selectedClusterId) || null;
 
   return (
-    <div style={{
-      width: 320,
-      minWidth: 280,
-      flexShrink: 0,
-      display: "flex",
-      flexDirection: "column",
-      background: c.surfaceAlt,
-      borderLeft: `1px solid ${c.border}`,
-    }}>
-
-      {/* ── Panel header ─────────────────────────────────── */}
+    <div
+      ref={panelRef}
+      style={{
+        width: 320,
+        minWidth: 280,
+        flexShrink: 0,
+        display: "flex",
+        flexDirection: "column",
+        background: c.surfaceAlt,
+        borderLeft: `1px solid ${c.border}`,
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* ── Panel header ─────────────────────────────────────── */}
       <div style={{ background: c.white, borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
 
         {/* Row 1: label + new cluster button */}
@@ -34,19 +121,11 @@ export function ClustersPanel({ onNewCluster }) {
             onClick={onNewCluster}
             style={{
               marginLeft: "auto",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              fontSize: 12,
-              fontWeight: 500,
-              padding: "5px 11px",
-              borderRadius: 6,
-              border: "1px solid #BFDBFE",
-              background: "#EFF6FF",
-              color: c.brand,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              whiteSpace: "nowrap",
+              display: "inline-flex", alignItems: "center", gap: 4,
+              fontSize: 12, fontWeight: 500, padding: "5px 11px",
+              borderRadius: 6, border: "1px solid #BFDBFE",
+              background: "#EFF6FF", color: c.brand,
+              cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
             }}
           >
             + New cluster
@@ -57,12 +136,7 @@ export function ClustersPanel({ onNewCluster }) {
         <div style={{ display: "flex", alignItems: "center", padding: "0 14px 10px" }}>
 
           {/* Mode toggle */}
-          <div style={{
-            display: "flex",
-            border: `1px solid ${c.border}`,
-            borderRadius: 6,
-            overflow: "hidden",
-          }}>
+          <div style={{ display: "flex", border: `1px solid ${c.border}`, borderRadius: 6, overflow: "hidden" }}>
             {[
               { key: "manual",    label: "Manual" },
               { key: "suggested", label: "Suggested" },
@@ -71,17 +145,12 @@ export function ClustersPanel({ onNewCluster }) {
                 key={key}
                 onClick={() => setMode(key)}
                 style={{
-                  padding: "4px 11px",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  border: "none",
+                  padding: "4px 11px", fontSize: 12, fontWeight: 500,
+                  cursor: "pointer", fontFamily: "inherit", border: "none",
                   borderRight: i === 0 ? `1px solid ${c.border}` : "none",
                   background: mode === key ? c.brand : c.white,
                   color: mode === key ? c.white : c.muted,
-                  transition: "background 0.1s, color 0.1s",
-                  whiteSpace: "nowrap",
+                  transition: "background 0.1s, color 0.1s", whiteSpace: "nowrap",
                 }}
               >
                 {label}
@@ -91,13 +160,7 @@ export function ClustersPanel({ onNewCluster }) {
 
           {/* View toggle — hidden in Suggested mode */}
           {mode === "manual" && (
-            <div style={{
-              marginLeft: "auto",
-              display: "flex",
-              border: `1px solid ${c.border}`,
-              borderRadius: 6,
-              overflow: "hidden",
-            }}>
+            <div style={{ marginLeft: "auto", display: "flex", border: `1px solid ${c.border}`, borderRadius: 6, overflow: "hidden" }}>
               {[
                 { key: "list", icon: "☰" },
                 { key: "card", icon: "⊞" },
@@ -106,14 +169,9 @@ export function ClustersPanel({ onNewCluster }) {
                   key={key}
                   onClick={() => setView(key)}
                   style={{
-                    width: 28,
-                    height: 26,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                    fontSize: 13,
+                    width: 28, height: 26, display: "flex",
+                    alignItems: "center", justifyContent: "center",
+                    cursor: "pointer", fontFamily: "inherit", fontSize: 13,
                     border: "none",
                     borderRight: i === 0 ? `1px solid ${c.border}` : "none",
                     background: view === key ? c.brand : c.white,
@@ -129,15 +187,77 @@ export function ClustersPanel({ onNewCluster }) {
         </div>
       </div>
 
-      {/* ── Panel body — placeholder until step 4/7 ──────── */}
-      <div style={{ flex: 1, padding: 16 }}>
-        {mode === "manual" ? (
-          <div style={{ fontSize: 12, color: c.hint }}>Cluster list coming in step 4</div>
-        ) : (
-          <div style={{ fontSize: 12, color: c.hint }}>Suggested mode coming in step 7</div>
+      {/* ── Drop zone strip ──────────────────────────────────── */}
+      <div style={{
+        margin: "10px 12px",
+        padding: "8px 12px",
+        border: `1px dashed ${c.border}`,
+        borderRadius: 7,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        flexShrink: 0,
+        background: c.white,
+      }}>
+        <span style={{ fontSize: 11, color: c.faint }}>⊕ Drop inputs here to create a new cluster</span>
+      </div>
+
+      {/* ── Scrollable cluster list ──────────────────────────── */}
+      <div style={{ flex: 1, overflowY: "auto" }}>
+
+        {mode === "manual" && clusters.length === 0 && (
+          <div style={{ padding: "20px 14px", fontSize: 12, color: c.hint, fontStyle: "italic", textAlign: "center", lineHeight: 1.55 }}>
+            No clusters yet.<br />Create one or drag inputs here.
+          </div>
+        )}
+
+        {mode === "manual" && view === "list" && clusters.length > 0 && (
+          <div>
+            {clusters.map((cl) => (
+              <ClusterListRow
+                key={cl.id}
+                cluster={cl}
+                selected={selectedClusterId === cl.id}
+                onClick={() => setSelectedClusterId(cl.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        {mode === "manual" && view === "card" && clusters.length > 0 && (
+          <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 9 }}>
+            {clusters.map((cl) => (
+              <ClusterCard
+                key={cl.id}
+                cluster={cl}
+                selected={selectedClusterId === cl.id}
+                onClick={() => setSelectedClusterId(cl.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        {mode === "suggested" && (
+          <div style={{ padding: "20px 14px", fontSize: 12, color: c.hint, textAlign: "center", lineHeight: 1.55 }}>
+            Suggested mode coming in step 7
+          </div>
         )}
       </div>
 
+      {/* ── Cluster detail panel (slides in from right) ──────── */}
+      <ClusterDetailPanel
+        open={!!selectedClusterId}
+        cluster={selectedCluster}
+        inputs={inputs}
+        onClose={() => setSelectedClusterId(null)}
+        onRemoveInput={removeInputFromCluster}
+        onDelete={(id) => {
+          deleteCluster(id);
+          setSelectedClusterId(null);
+          showToast?.("Cluster deleted", "success");
+        }}
+      />
     </div>
   );
 }

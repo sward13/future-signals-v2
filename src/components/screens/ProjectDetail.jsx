@@ -313,6 +313,7 @@ export default function ProjectDetail({ appState }) {
     openInputDetail, openClusterDetail, openScenarioDetail,
     addCluster, addScenario, updateProject, assignInputToCluster, deleteProject,
     duplicateInputToCluster, deleteInput,
+    removeInputFromCluster, deleteCluster,
     workspaceScanningEnabled, setInboxProjectFilter,
   } = appState;
 
@@ -912,7 +913,12 @@ export default function ProjectDetail({ appState }) {
           </div>
 
           <ClustersPanel
+            clusters={projectClusters}
+            inputs={inputs}
             onNewCluster={() => setClusterDrawerOpen(true)}
+            removeInputFromCluster={removeInputFromCluster}
+            deleteCluster={deleteCluster}
+            showToast={showToast}
           />
         </div>
       </div>
