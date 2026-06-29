@@ -334,6 +334,7 @@ export default function ProjectDetail({ appState }) {
   const [batchAssignAnchorRect,  setBatchAssignAnchorRect]  = useState(null);
   const [confirmDeleteIds,       setConfirmDeleteIds]       = useState(null);
   const batchAnchorRef = useRef(null);
+  const [lastCheckedId,  setLastCheckedId]  = useState(null);
   // Drag-and-drop
   const [dragIds,          setDragIds]          = useState(null);       // null | string[]
   const [dragPos,          setDragPos]          = useState({ x: 0, y: 0 });
@@ -438,6 +439,30 @@ export default function ProjectDetail({ appState }) {
         return next;
       });
     }
+    setLastCheckedId(null);
+  };
+
+  const handleCheckboxClick = (id, e) => {
+    if (e.shiftKey && lastCheckedId && lastCheckedId !== id) {
+      const idxA = visibleInputs.findIndex((i) => i.id === lastCheckedId);
+      const idxB = visibleInputs.findIndex((i) => i.id === id);
+      if (idxA !== -1 && idxB !== -1) {
+        const [lo, hi] = idxA < idxB ? [idxA, idxB] : [idxB, idxA];
+        const rangeIds = visibleInputs.slice(lo, hi + 1).map((i) => i.id);
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          rangeIds.forEach((rid) => next.add(rid));
+          return next;
+        });
+      }
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+      });
+    }
+    setLastCheckedId(id);
   };
 
   const handleBulkDelete = () => {
@@ -446,12 +471,14 @@ export default function ProjectDetail({ appState }) {
     showToast(`${n} input${n !== 1 ? "s" : ""} deleted`);
     setConfirmDeleteIds(null);
     setSelectedIds(new Set());
+    setLastCheckedId(null);
   };
 
   const handleBatchAssign = (cluster) => {
     selectedIds.forEach((id) => assignInputToCluster(id, cluster.id));
     showToast(`${selectedIds.size} input${selectedIds.size !== 1 ? "s" : ""} assigned to "${cluster.name}"`);
     setSelectedIds(new Set());
+    setLastCheckedId(null);
     setBatchPickerOpen(false);
   };
 
@@ -701,9 +728,9 @@ export default function ProjectDetail({ appState }) {
             {/* Row 1: tabs left, add actions right */}
             <div style={{ display: "flex", alignItems: "flex-end", marginBottom: 10, gap: 12, borderBottom: `1px solid ${c.border}` }}>
               <div style={{ display: "flex", alignItems: "center" }}>
-                <FilterTab label="All"         count={projectInputs.length} active={inputTab === "all"}        onClick={() => { setInputTab("all");        setSelectedIds(new Set()); }} />
-                <FilterTab label="Unassigned"  count={unassigned.length}    active={inputTab === "unassigned"} onClick={() => { setInputTab("unassigned"); setSelectedIds(new Set()); }} />
-                <FilterTab label="Clustered"   count={inCluster.length}     active={inputTab === "incluster"}  onClick={() => { setInputTab("incluster");  setSelectedIds(new Set()); }} />
+                <FilterTab label="All"         count={projectInputs.length} active={inputTab === "all"}        onClick={() => { setInputTab("all");        setSelectedIds(new Set()); setLastCheckedId(null); }} />
+                <FilterTab label="Unassigned"  count={unassigned.length}    active={inputTab === "unassigned"} onClick={() => { setInputTab("unassigned"); setSelectedIds(new Set()); setLastCheckedId(null); }} />
+                <FilterTab label="Clustered"   count={inCluster.length}     active={inputTab === "incluster"}  onClick={() => { setInputTab("incluster");  setSelectedIds(new Set()); setLastCheckedId(null); }} />
               </div>
               <button
                 onClick={() => setCsvImportOpen(true)}
@@ -780,56 +807,6 @@ export default function ProjectDetail({ appState }) {
                   )}
                 </div>
 
-                {/* Row 3: batch action bar (animates in when rows selected) */}
-                {someSelected && (
-                  <div style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "7px 12px", marginBottom: 8,
-                    background: "rgb(249, 249, 247)", border: `1px solid ${c.border}`, borderRadius: 8,
-                    animation: "fadeSlideIn 0.15s ease",
-                  }}>
-                    <span style={{ fontSize: 12, fontWeight: 500, color: c.ink, flex: 1 }}>
-                      {selectedIds.size} selected
-                    </span>
-                    <div style={{ position: "relative" }} ref={batchAnchorRef}>
-                      <button
-                        onClick={(e) => {
-                          if (!batchPickerOpen) setBatchAssignAnchorRect(e.currentTarget.getBoundingClientRect());
-                          setBatchPickerOpen((p) => !p);
-                        }}
-                        style={{ ...btnSm, fontSize: 11, padding: "4px 10px" }}
-                      >
-                        Assign →
-                      </button>
-                      {batchPickerOpen && (
-                        <ClusterAssignMenu
-                          clusters={projectClusters}
-                          onAssign={handleBatchAssign}
-                          onNewCluster={() => { setBatchPickerOpen(false); setClusterDrawerOpen(true); }}
-                          onClose={() => setBatchPickerOpen(false)}
-                          anchorRect={batchAssignAnchorRect}
-                        />
-                      )}
-                    </div>
-                    <button
-                      onClick={() => setConfirmDeleteIds([...selectedIds])}
-                      style={{
-                        padding: "4px 10px", borderRadius: 7, fontSize: 11, fontWeight: 500,
-                        cursor: "pointer", fontFamily: "inherit", border: "none",
-                        background: "#FEE2E2", color: "#991B1B",
-                      }}
-                    >
-                      Delete
-                    </button>
-                    <button
-                      onClick={() => setSelectedIds(new Set())}
-                      style={{ fontSize: 11, color: "rgb(102, 102, 102)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
-                    >
-                      ✕ Clear
-                    </button>
-                  </div>
-                )}
-
                 <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden" }}>
                   {/* Header row */}
                   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", height: 30, borderBottom: "0.5px solid rgba(0,0,0,0.09)" }}>
@@ -839,6 +816,7 @@ export default function ProjectDetail({ appState }) {
                         type="checkbox"
                         checked={allVisibleSelected}
                         onChange={toggleSelectAll}
+                        ref={(el) => { if (el) el.indeterminate = someSelected && !allVisibleSelected; }}
                         style={{ cursor: "pointer", accentColor: c.ink }}
                         onClick={(e) => e.stopPropagation()}
                       />
@@ -893,7 +871,7 @@ export default function ProjectDetail({ appState }) {
                         }}
                         onClick={() => openInputDetail(inp.id)}
                         onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "rgba(0,0,0,0.02)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? "rgba(0,0,0,0.03)" : c.white; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? c.brandBg : c.white; }}
                         style={{
                           display: "flex", alignItems: "center", gap: 10,
                           padding: "0 14px", height: 38,
@@ -902,7 +880,7 @@ export default function ProjectDetail({ appState }) {
                           transition: exitingIds.has(inp.id)
                             ? "opacity 0.18s ease, transform 0.18s ease"
                             : "background 0.08s",
-                          background: isSelected ? "rgba(0,0,0,0.03)" : c.white,
+                          background: isSelected ? c.brandBg : c.white,
                           opacity: exitingIds.has(inp.id) ? 0 : dragIds?.includes(inp.id) ? 0.35 : 1,
                           transform: exitingIds.has(inp.id) ? "translateX(12px)" : "none",
                         }}
@@ -912,8 +890,8 @@ export default function ProjectDetail({ appState }) {
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={() => toggleSelect(inp.id)}
-                            onClick={(e) => e.stopPropagation()}
+                            onChange={() => {}}
+                            onClick={(e) => { e.stopPropagation(); handleCheckboxClick(inp.id, e); }}
                             style={{ cursor: "pointer", accentColor: c.ink }}
                           />
                         </div>
@@ -999,6 +977,58 @@ export default function ProjectDetail({ appState }) {
                     );
                   })}
                 </div>
+
+                {/* Multi-select action bar — sticky at bottom of inputs panel */}
+                {someSelected && (
+                  <div style={{
+                    position: "sticky", bottom: 0,
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "9px 14px",
+                    background: "rgb(249, 249, 247)",
+                    borderTop: `1px solid ${c.border}`,
+                    animation: "slideUp 0.16s ease",
+                  }}>
+                    <span style={{ fontSize: 12, color: c.muted, flex: 1 }}>
+                      {selectedIds.size} selected
+                    </span>
+                    <div style={{ position: "relative" }} ref={batchAnchorRef}>
+                      <button
+                        onClick={(e) => {
+                          if (!batchPickerOpen) setBatchAssignAnchorRect(e.currentTarget.getBoundingClientRect());
+                          setBatchPickerOpen((p) => !p);
+                        }}
+                        style={{ ...btnSm, fontSize: 11, padding: "4px 10px" }}
+                      >
+                        Assign →
+                      </button>
+                      {batchPickerOpen && (
+                        <ClusterAssignMenu
+                          clusters={projectClusters}
+                          onAssign={handleBatchAssign}
+                          onNewCluster={() => { setBatchPickerOpen(false); setClusterDrawerOpen(true); }}
+                          onClose={() => setBatchPickerOpen(false)}
+                          anchorRect={batchAssignAnchorRect}
+                        />
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setConfirmDeleteIds([...selectedIds])}
+                      style={{
+                        padding: "4px 10px", borderRadius: 7, fontSize: 11, fontWeight: 500,
+                        cursor: "pointer", fontFamily: "inherit", border: "none",
+                        background: "rgb(254, 226, 226)", color: "rgb(185, 28, 28)",
+                      }}
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => { setSelectedIds(new Set()); setLastCheckedId(null); }}
+                      style={{ fontSize: 11, color: "rgb(102, 102, 102)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                    >
+                      ✕ Clear
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -1075,6 +1105,10 @@ export default function ProjectDetail({ appState }) {
       <style>{`
         @keyframes fadeSlideIn {
           from { opacity: 0; transform: translateY(-4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(100%); }
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
