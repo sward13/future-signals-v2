@@ -329,7 +329,11 @@ export function ClusterSuggestions({
   // ── Run ──────────────────────────────────────────────────────────────────────
 
   const handleRun = async () => {
-    if (!projectId || running) return;
+    if (!projectId) {
+      console.warn("[ClusterSuggestions] handleRun called with no projectId — button should be disabled");
+      return;
+    }
+    if (running) return;
     setRunning(true);
     setError(null);
     try {
@@ -440,23 +444,24 @@ export function ClusterSuggestions({
       <div style={{
         padding: "8px 12px", flexShrink: 0,
         borderBottom: `1px solid ${c.border}`,
-        display: "flex", alignItems: "center", gap: 6,
+        display: "flex", alignItems: "center", gap: 4,
         background: c.white,
       }}>
-        {/* Sensitivity toggle */}
-        <div style={{ display: "inline-flex", border: `1px solid ${c.borderMid}`, borderRadius: 6, overflow: "hidden" }}>
+        {/* Sensitivity toggle — compact padding so "Exploratory" fits at 320px */}
+        <div style={{ display: "inline-flex", flexShrink: 0, border: `1px solid ${c.borderMid}`, borderRadius: 6, overflow: "hidden" }}>
           {[["tight", "Tight"], ["balanced", "Balanced"], ["exploratory", "Exploratory"]].map(([key, label], idx) => (
             <button
               key={key}
               onClick={() => setTightness(key)}
               style={{
-                padding: "3px 8px", fontSize: 10, fontFamily: "inherit",
+                padding: "3px 5px", fontSize: 10, fontFamily: "inherit",
                 cursor: "pointer", border: "none",
                 borderLeft: idx > 0 ? `1px solid ${c.borderMid}` : "none",
                 background: tightness === key ? c.ink : "transparent",
                 color: tightness === key ? c.white : c.muted,
                 fontWeight: tightness === key ? 500 : 400,
                 transition: "background 0.12s, color 0.12s",
+                whiteSpace: "nowrap",
               }}
             >
               {label}
@@ -469,12 +474,13 @@ export function ClusterSuggestions({
           onClick={handleRun}
           disabled={running || !projectId}
           style={{
-            marginLeft: "auto",
+            marginLeft: "auto", flexShrink: 0,
             display: "flex", alignItems: "center", gap: 5,
-            padding: "4px 10px", borderRadius: 6,
+            padding: "4px 9px", borderRadius: 6,
             border: `1px solid ${c.borderMid}`,
             background: "transparent",
             color: running || !projectId ? c.muted : c.ink,
+            opacity: !projectId ? 0.5 : 1,
             fontSize: 11, fontWeight: 500,
             cursor: running || !projectId ? "default" : "pointer",
             fontFamily: "inherit", whiteSpace: "nowrap",
