@@ -17,6 +17,7 @@ import { ClusterDrawer } from "../clusters/ClusterDrawer.jsx";
 import { ScenarioDrawer } from "../scenarios/ScenarioDrawer.jsx";
 import { EditProjectDrawer } from "../projects/EditProjectDrawer.jsx";
 import { CsvImportModal } from "../inputs/CsvImportModal.jsx";
+import { ClustersPanel } from "../clusters/ClustersPanel.jsx";
 
 const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
 const COL = { check: 28, type: 80, quality: 120, steepled: 100, horizon: 55, action: 90, menu: 28 };
@@ -555,10 +556,10 @@ export default function ProjectDetail({ appState }) {
 
       <div style={{ padding: "24px 32px 64px", background: c.bg, height: "100%", overflowY: "auto", boxSizing: "border-box" }}>
 
-        {/* ── Header ──────────────────────────────────────────── */}
+        {/* ── Header: title row ────────────────────────────────── */}
         <div style={{
           display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-          marginBottom: 16, gap: 16,
+          marginBottom: 12, gap: 16,
         }}>
           <div>
             <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
@@ -574,20 +575,55 @@ export default function ProjectDetail({ appState }) {
           </div>
         </div>
 
-        {/* ── Horizon bar ─────────────────────────────────────── */}
-        {project.h1_start && (
-          <div style={{ padding: "14px 18px", background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 500, color: c.muted, marginBottom: 10 }}>Time horizons</div>
-            <HorizonBar project={project} />
+        {/* ── Header: key question ─────────────────────────────── */}
+        {project.question && (
+          <div style={{
+            padding: "9px 14px",
+            background: "#F0F7FF",
+            border: "1px solid #BFDBFE",
+            borderRadius: 8,
+            marginBottom: 10,
+          }}>
+            <div style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.07em", color: c.brand, marginBottom: 3 }}>
+              Key question
+            </div>
+            <div style={{ fontSize: 13, fontStyle: "italic", color: c.ink, lineHeight: 1.5 }}>
+              {project.question}
+            </div>
           </div>
         )}
 
-        {/* ── Two-column body ──────────────────────────────────── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 20, alignItems: "start" }}>
+        {/* ── Header: project metadata strip ───────────────────── */}
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+          {[
+            { label: "Domain",       value: project.domain },
+            { label: "Focus",        value: project.unit || project.focus },
+            { label: "Geography",    value: project.geo },
+            { label: "Stakeholders", value: project.stakeholders },
+          ].map(({ label, value }, i) => (
+            <div key={label} style={{ display: "flex", alignItems: "center" }}>
+              {i > 0 && (
+                <div style={{ width: 1, height: 14, background: c.borderMid, margin: "0 10px", flexShrink: 0 }} />
+              )}
+              <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, fontWeight: 500, marginRight: 5 }}>
+                {label}
+              </span>
+              {value
+                ? <span style={{ fontSize: 12, color: c.ink }}>{value}</span>
+                : <span style={{ fontSize: 12, color: c.hint, fontStyle: "italic" }}>Not set</span>
+              }
+            </div>
+          ))}
+        </div>
+
+        {/* ── Header: time horizons bar ─────────────────────────── */}
+        {project.h1_start && <HorizonBar project={project} />}
+
+        {/* ── Workspace: inputs panel + clusters panel ─────── */}
+        <div style={{ display: "flex", alignItems: "stretch" }}>
 
           {/* ── LEFT: Inputs table ───────────────────────────── */}
-          {/* TODO: responsive pass — sidebar min-width is causing overflow at <1200px */}
-          <div style={{ minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             {/* Row 1: tabs left, add actions right */}
             <div style={{ display: "flex", alignItems: "flex-end", marginBottom: 10, gap: 12, borderBottom: `1px solid ${c.border}` }}>
               <div style={{ display: "flex", alignItems: "center" }}>
@@ -872,109 +908,9 @@ export default function ProjectDetail({ appState }) {
             )}
           </div>
 
-          {/* ── RIGHT: Clusters & Systems summary ───────────── */}
-          <div>
-            <SummaryCard
-              title="Clusters"
-              count={projectClusters.length}
-              countLabel="built"
-              showCount={false}
-              emptyBody={
-                projectInputs.length < 3
-                  ? `Add at least 3 inputs before clustering. You have ${projectInputs.length} so far.`
-                  : "Group your inputs into themes and drivers."
-              }
-              ctaLabel={projectInputs.length >= 3 ? "Go to Clusters →" : undefined}
-              onCta={() => setActiveScreen("clustering")}
-              addButton={
-                <button
-                  onClick={() => setClusterDrawerOpen(true)}
-                  style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
-                >
-                  Build a cluster
-                </button>
-              }
-            >
-              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                {projectClusters.slice(0, 5).map((cl) => (
-                  <div
-                    key={cl.id}
-                    onClick={() => openClusterDetail(cl.id)}
-                    style={{
-                      padding: "9px 12px", background: c.surfaceAlt,
-                      border: `1px solid ${c.border}`, borderRadius: 8, cursor: "pointer",
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.borderColor = c.borderMid}
-                    onMouseLeave={(e) => e.currentTarget.style.borderColor = c.border}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
-                      <SubtypeTag sub={cl.subtype} />
-                      <HorizTag h={cl.horizon} />
-                      <span style={{ fontSize: 10, color: c.hint, marginLeft: "auto" }}>{cl.input_ids?.length || 0} inputs</span>
-                    </div>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{cl.name}</div>
-                  </div>
-                ))}
-                {projectClusters.length > 5 && (
-                  <button
-                    onClick={() => setActiveScreen("clustering")}
-                    style={{ fontSize: 11, color: c.brand, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left", padding: "2px 0" }}
-                  >
-                    View all clusters →
-                  </button>
-                )}
-              </div>
-            </SummaryCard>
-
-            <SummaryCard
-              title="System Map"
-              count={0}
-              showCount={false}
-              emptyBody="The System Map is built from clusters. Complete your clustering step first."
-              ctaLabel={!projectHasSystemMap && projectClusters.length > 0 ? "Go to System Map →" : undefined}
-              onCta={() => setActiveScreen("scenarios")}
-              addButton={
-                <button
-                  onClick={() => setActiveScreen("scenarios")}
-                  style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
-                >
-                  Go to System Map
-                </button>
-              }
-            >
-              {null}
-            </SummaryCard>
-
-            {/* Project details — read-only */}
-            <div style={{ padding: "12px 14px", background: c.white, border: `1px solid ${c.border}`, borderRadius: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>Project details</div>
-                <button
-                  onClick={() => openEditDrawer()}
-                  style={{ fontSize: 10, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
-                >
-                  Edit ›
-                </button>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {[
-                  { label: "Domain",       value: project.domain },
-                  { label: "Focus",        value: project.unit || project.focus },
-                  { label: "Geography",    value: project.geo },
-                  { label: "Stakeholders", value: project.stakeholders },
-                ].map(({ label, value }) => (
-                  <div key={label}>
-                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 1 }}>{label}</div>
-                    {value
-                      ? <div style={{ fontSize: 12, color: c.ink }}>{value}</div>
-                      : <div style={{ fontSize: 11, color: c.hint, fontStyle: "italic" }}>Not set</div>
-                    }
-                  </div>
-                ))}
-              </div>
-            </div>
-
-          </div>
+          <ClustersPanel
+            onNewCluster={() => setClusterDrawerOpen(true)}
+          />
         </div>
       </div>
 

@@ -16,6 +16,18 @@ Future Signals v2 is a strategic foresight SPA built with React + Vite. It guide
 
 ---
 
+## Staging environment (workspace-refactor branch)
+
+- **Staging Supabase project ID:** `kptatqipjwihkdxdxlvh`
+- **Staging URL:** `https://kptatqipjwihkdxdxlvh.supabase.co`
+- **Production Supabase project ID:** `tbxjudpxzovbasuomekq` (do not run experimental migrations here)
+- **Regenerate types against staging:** `supabase gen types typescript --project-id kptatqipjwihkdxdxlvh > src/types/database.types.ts`
+- **Migration workflow:** run new migrations on staging first via `supabase db push --db-url <staging-db-url>`, then on production when merging to master
+- **Vercel preview deployments** on the `workspace-refactor` branch automatically use staging credentials (`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` pointed at staging)
+- **DB passwords** are not stored here — retrieve from Supabase Dashboard → Project Settings → Database
+
+---
+
 ## Design principles — read before any UX or form decision
 
 **`docs/design-principles.md`** is the authoritative source for all design and UX decisions. Read it before making any decision involving forms, fields, AI outputs, nudges, navigation, or empty states.
