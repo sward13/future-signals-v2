@@ -1045,6 +1045,8 @@ export default function ProjectDetail({ appState }) {
             dragIsCopy={dragIsCopy}
             onDrop={handleDrop}
             onDropToNewCluster={handleDropToNewCluster}
+            assignInputToCluster={assignInputToCluster}
+            addCluster={addCluster}
           />
         </div>
       </div>

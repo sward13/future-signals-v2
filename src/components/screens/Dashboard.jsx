@@ -45,50 +45,6 @@ function formatDate(str) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// ─── Project picker popover (for Recent inputs hover action) ──────────────────
-
-function ProjectPickerPopover({ projects, onSelect, onClose, onCreateProject }) {
-  return (
-    <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
-      <div style={{
-        position: "absolute", top: "100%", right: 0, marginTop: 4,
-        background: c.white, border: `1px solid ${c.border}`,
-        borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
-        minWidth: 220, zIndex: 51, overflow: "hidden",
-      }}>
-        {projects.length === 0 ? (
-          <div style={{ padding: "14px 16px" }}>
-            <div style={{ fontSize: 12, color: c.hint, marginBottom: 8 }}>No projects yet.</div>
-            <button onClick={() => { onClose(); onCreateProject(); }} style={{ fontSize: 11, color: c.blue700, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-              + Create project
-            </button>
-          </div>
-        ) : (
-          <div style={{ maxHeight: 220, overflowY: "auto" }}>
-            {projects.map((p) => (
-              <button key={p.id} onClick={() => onSelect(p)} style={{
-                display: "block", width: "100%", padding: "9px 14px",
-                background: "transparent", border: "none", borderBottom: `1px solid ${c.border}`,
-                textAlign: "left", cursor: "pointer", fontFamily: "inherit",
-                fontSize: 12, color: c.ink,
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}>
-                {p.name}
-              </button>
-            ))}
-          </div>
-        )}
-        <div style={{ padding: "6px 14px", borderTop: `1px solid ${c.border}` }}>
-          <button onClick={onClose} style={{ fontSize: 11, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-            Cancel
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
-
 // ─── Project card ─────────────────────────────────────────────────────────────
 
 function ProjectCard({ project, inputCount, clusterCount, systemMapCount, analysisCount, futuresTotal, onClick }) {
@@ -226,7 +182,7 @@ export default function Dashboard({ appState }) {
     inputs, clusters, scenarios, preferredFutures, strategicOptions,
     projects, analyses, canvasNodes,
     setActiveScreen, openProjectModal, openProject,
-    addInput, openInputDetail, showToast,
+    addInput, showToast,
   } = appState;
 
   const [inputDrawerOpen, setInputDrawerOpen] = useState(false);
@@ -241,9 +197,6 @@ export default function Dashboard({ appState }) {
   };
 
   const inboxCount   = inputs.filter((i) => i.project_id === null && !(i.is_seeded && i.metadata?.source === "scanner" && i.metadata?.dismissed)).length;
-  const recentInputs = [...inputs.filter((i) => i.project_id === null)]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 3);
 
   const handleAddInput = (fields) => {
     addInput(fields);
@@ -394,82 +347,6 @@ export default function Dashboard({ appState }) {
           </div>
         )}
 
-        {/* Recent inputs */}
-        {recentInputs.length > 0 && (
-          <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>Recent inputs</div>
-              <button onClick={() => setActiveScreen("inbox")} style={{ ...btnG, fontSize: 11 }}>
-                View all →
-              </button>
-            </div>
-            <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden" }}>
-              {/* Header row */}
-              {(() => {
-                const cell = { fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, flexShrink: 0 };
-                return (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", height: 30, borderBottom: "0.5px solid rgba(0,0,0,0.09)" }}>
-                    <div style={{ flex: 1, minWidth: 0, ...cell }}>Title</div>
-                    <div style={{ width: COL.type,     ...cell }}>Type</div>
-                    <div style={{ width: COL.quality,  ...cell }}>Strength</div>
-                    <div style={{ width: COL.horizon,  ...cell }}>Horizon</div>
-                    <div style={{ width: COL.steepled, ...cell }}>STEEPLED</div>
-                  </div>
-                );
-              })()}
-              {/* Data rows */}
-              {recentInputs.map((inp) => {
-                const steepled = inp.steepled || [];
-                const visible2 = steepled.slice(0, 2);
-                const overflow = steepled.length - 2;
-                return (
-                  <div
-                    key={inp.id}
-                    onClick={() => openInputDetail(inp.id)}
-                    onMouseEnter={(e) => e.currentTarget.style.background = "rgba(0,0,0,0.02)"}
-                    onMouseLeave={(e) => e.currentTarget.style.background = c.white}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 10,
-                      padding: "0 14px", height: 38,
-                      borderBottom: `1px solid ${c.border}`,
-                      background: c.white,
-                      transition: "background 0.08s",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {/* Title */}
-                    <div style={{ flex: 1, fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
-                      {inp.name}
-                    </div>
-                    {/* Type */}
-                    <div style={{ width: COL.type, flexShrink: 0, fontSize: 11, color: c.muted }}>
-                      {inp.subtype
-                        ? inp.subtype.charAt(0).toUpperCase() + inp.subtype.slice(1)
-                        : <span style={{ color: c.hint }}>—</span>}
-                    </div>
-                    {/* Strength / Confidence */}
-                    <div style={{ width: COL.quality, flexShrink: 0 }}>
-                      <StrengthCell strength={inp.signal_strength} confidence={inp.source_confidence} />
-                    </div>
-                    {/* Horizon */}
-                    <div style={{ width: COL.horizon, flexShrink: 0, fontSize: 11, color: inp.horizon ? c.muted : c.hint }}>
-                      {inp.horizon || "—"}
-                    </div>
-                    {/* STEEPLED */}
-                    <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
-                      {visible2.map((t) => (
-                        <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: c.surfaceAlt, color: c.muted }}>
-                          {STEEPLED_ABB[t] || t}
-                        </span>
-                      ))}
-                      {overflow > 0 && <span style={{ fontSize: 9, color: c.hint }}>+{overflow}</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
 
       <InputDrawer

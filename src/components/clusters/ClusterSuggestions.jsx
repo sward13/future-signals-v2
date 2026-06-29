@@ -329,11 +329,7 @@ export function ClusterSuggestions({
   // ── Run ──────────────────────────────────────────────────────────────────────
 
   const handleRun = async () => {
-    if (!projectId) {
-      console.warn("[ClusterSuggestions] handleRun called with no projectId — button should be disabled");
-      return;
-    }
-    if (running) return;
+    if (!projectId || running) return;
     setRunning(true);
     setError(null);
     try {
