@@ -11,21 +11,29 @@ import { ClusterDetailPanel } from "./ClusterDetailPanel.jsx";
 
 // ─── List-view row ─────────────────────────────────────────────────────────────
 
-function ClusterListRow({ cluster, selected, onClick }) {
+function ClusterListRow({ cluster, selected, onClick, isDropTarget, dropIsCopy, onDragOver, onDragLeave, onDrop }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
       style={{
         display: "flex",
         alignItems: "center",
         padding: "8px 14px",
         borderBottom: `1px solid ${c.border}`,
-        background: selected ? "#EFF6FF" : hovered ? "rgba(0,0,0,0.02)" : "transparent",
+        background: isDropTarget
+          ? (dropIsCopy ? "#F0FDF4" : "#EFF6FF")
+          : selected ? "#EFF6FF" : hovered ? "rgba(0,0,0,0.02)" : "transparent",
         cursor: "pointer",
         transition: "background 0.1s",
+        outline: isDropTarget ? `2px solid ${dropIsCopy ? "#16a34a" : c.brand}` : "none",
+        outlineOffset: -2,
+        position: "relative",
       }}
     >
       {/* Name — flex, truncates */}
@@ -47,17 +55,28 @@ function ClusterListRow({ cluster, selected, onClick }) {
         <SubtypeTag sub={cluster.subtype} />
       </div>
 
-      {/* Input count */}
-      <span style={{
-        fontSize: 10,
-        color: c.hint,
-        marginLeft: 8,
-        flexShrink: 0,
-        minWidth: 24,
-        textAlign: "right",
-      }}>
-        {cluster.input_ids?.length || 0}
-      </span>
+      {/* Input count or Move/Copy pill */}
+      {isDropTarget ? (
+        <span style={{
+          fontSize: 10, fontWeight: 600, marginLeft: 8, flexShrink: 0,
+          padding: "1px 7px", borderRadius: 4,
+          background: dropIsCopy ? "#16a34a" : c.brand,
+          color: "#fff",
+        }}>
+          {dropIsCopy ? "Copy" : "Move"}
+        </span>
+      ) : (
+        <span style={{
+          fontSize: 10,
+          color: c.hint,
+          marginLeft: 8,
+          flexShrink: 0,
+          minWidth: 24,
+          textAlign: "right",
+        }}>
+          {cluster.input_ids?.length || 0}
+        </span>
+      )}
     </div>
   );
 }
@@ -71,10 +90,17 @@ export function ClustersPanel({
   removeInputFromCluster,
   deleteCluster,
   showToast,
+  dragIds = null,
+  dragIsCopy = false,
+  onDrop,
+  onDropToNewCluster,
 }) {
   const [mode, setMode] = useState("manual");    // "manual" | "suggested"
   const [view, setView] = useState("list");       // "list" | "card"
   const [selectedClusterId, setSelectedClusterId] = useState(null);
+  const [dropTargetId, setDropTargetId] = useState(null);
+  const [dropIsCopy,   setDropIsCopy]   = useState(false);
+  const [dropOnZone,   setDropOnZone]   = useState(false);
   const panelRef = useRef(null);
 
   // Close detail panel on Escape or click outside the clusters panel
@@ -188,19 +214,27 @@ export function ClustersPanel({
       </div>
 
       {/* ── Drop zone strip ──────────────────────────────────── */}
-      <div style={{
-        margin: "10px 12px",
-        padding: "8px 12px",
-        border: `1px dashed ${c.border}`,
-        borderRadius: 7,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        flexShrink: 0,
-        background: c.white,
-      }}>
-        <span style={{ fontSize: 11, color: c.faint }}>⊕ Drop inputs here to create a new cluster</span>
+      <div
+        onDragOver={(e) => { e.preventDefault(); if (dragIds) setDropOnZone(true); }}
+        onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropOnZone(false); }}
+        onDrop={(e) => { e.preventDefault(); setDropOnZone(false); if (dragIds) onDropToNewCluster?.(); }}
+        style={{
+          margin: "10px 12px",
+          padding: "8px 12px",
+          border: `1px dashed ${dropOnZone ? c.brand : c.border}`,
+          borderRadius: 7,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          flexShrink: 0,
+          background: dropOnZone ? "#EFF6FF" : c.white,
+          transition: "background 0.12s, border-color 0.12s",
+        }}
+      >
+        <span style={{ fontSize: 11, color: dropOnZone ? c.brand : c.faint }}>
+          ⊕ Drop inputs here to create a new cluster
+        </span>
       </div>
 
       {/* ── Scrollable cluster list ──────────────────────────── */}
@@ -220,6 +254,23 @@ export function ClustersPanel({
                 cluster={cl}
                 selected={selectedClusterId === cl.id}
                 onClick={() => setSelectedClusterId(cl.id)}
+                isDropTarget={!!dragIds && dropTargetId === cl.id}
+                dropIsCopy={dropIsCopy}
+                onDragOver={(e) => {
+                  if (!dragIds) return;
+                  e.preventDefault();
+                  setDropTargetId(cl.id);
+                  setDropIsCopy(e.altKey);
+                }}
+                onDragLeave={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget)) setDropTargetId(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const isAlt = e.altKey;
+                  setDropTargetId(null);
+                  onDrop?.(cl.id, isAlt);
+                }}
               />
             ))}
           </div>
@@ -228,12 +279,32 @@ export function ClustersPanel({
         {mode === "manual" && view === "card" && clusters.length > 0 && (
           <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 9 }}>
             {clusters.map((cl) => (
-              <ClusterCard
+              <div
                 key={cl.id}
-                cluster={cl}
-                selected={selectedClusterId === cl.id}
-                onClick={() => setSelectedClusterId(cl.id)}
-              />
+                onDragOver={(e) => {
+                  if (!dragIds) return;
+                  e.preventDefault();
+                  setDropTargetId(cl.id);
+                  setDropIsCopy(e.altKey);
+                }}
+                onDragLeave={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget)) setDropTargetId(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const isAlt = e.altKey;
+                  setDropTargetId(null);
+                  onDrop?.(cl.id, isAlt);
+                }}
+              >
+                <ClusterCard
+                  cluster={cl}
+                  selected={selectedClusterId === cl.id}
+                  onClick={() => setSelectedClusterId(cl.id)}
+                  isDropTarget={!!dragIds && dropTargetId === cl.id}
+                  dropIsCopy={dropIsCopy}
+                />
+              </div>
             ))}
           </div>
         )}

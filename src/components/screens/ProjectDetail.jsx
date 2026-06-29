@@ -2,7 +2,7 @@
  * ProjectDetail screen — project metadata, two-column layout:
  * left = inputs table with filter tabs, right = clusters/systems summary.
  */
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { CirclePlus } from "lucide-react";
 import { useScannerStatus } from "../../hooks/useScannerStatus.js";
@@ -18,6 +18,7 @@ import { ScenarioDrawer } from "../scenarios/ScenarioDrawer.jsx";
 import { EditProjectDrawer } from "../projects/EditProjectDrawer.jsx";
 import { CsvImportModal } from "../inputs/CsvImportModal.jsx";
 import { ClustersPanel } from "../clusters/ClustersPanel.jsx";
+import { DragGhost } from "../clusters/DragGhost.jsx";
 
 const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
 const COL = { check: 28, type: 80, quality: 120, steepled: 100, horizon: 55, action: 90, menu: 28 };
@@ -333,6 +334,18 @@ export default function ProjectDetail({ appState }) {
   const [batchAssignAnchorRect,  setBatchAssignAnchorRect]  = useState(null);
   const [confirmDeleteIds,       setConfirmDeleteIds]       = useState(null);
   const batchAnchorRef = useRef(null);
+  // Drag-and-drop
+  const [dragIds,          setDragIds]          = useState(null);       // null | string[]
+  const [dragPos,          setDragPos]          = useState({ x: 0, y: 0 });
+  const [dragIsCopy,       setDragIsCopy]       = useState(false);
+  const [exitingIds,       setExitingIds]       = useState(new Set());
+  const [clusterPreInputIds, setClusterPreInputIds] = useState([]);
+  const blankImgRef = useRef(null);
+  if (!blankImgRef.current) {
+    const img = new Image();
+    img.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+    blankImgRef.current = img;
+  }
   // Search + filters
   const [searchQuery,       setSearchQuery]       = useState("");
   const [filterType,        setFilterType]        = useState(null);
@@ -345,6 +358,17 @@ export default function ProjectDetail({ appState }) {
 
   const project = projects.find((p) => p.id === activeProjectId) ?? null;
   const { status: scanStatus, foundCount, dismiss: dismissScan } = useScannerStatus(project, inputs);
+
+  // Track cursor position and Alt key state while a drag is in progress
+  useEffect(() => {
+    if (!dragIds) return;
+    const onOver = (e) => {
+      setDragPos({ x: e.clientX, y: e.clientY });
+      setDragIsCopy(e.altKey);
+    };
+    document.addEventListener("dragover", onOver);
+    return () => document.removeEventListener("dragover", onOver);
+  }, [dragIds]);
 
   if (!project) {
     return (
@@ -448,6 +472,7 @@ export default function ProjectDetail({ appState }) {
     const n = (fields.input_ids || []).length;
     showToast(n > 0 ? `Cluster created with ${n} input${n !== 1 ? "s" : ""}` : "Cluster created — no inputs linked yet");
     setClusterDrawerOpen(false);
+    setClusterPreInputIds([]);
   };
 
   const openEditDrawer = (scrollTo = null) => {
@@ -482,6 +507,46 @@ export default function ProjectDetail({ appState }) {
     setAssignPickerFor(null);
   };
 
+  const handleDrop = (clusterId, isAlt) => {
+    const droppedIds = [...(dragIds || [])];
+    if (!droppedIds.length) return;
+    const cluster = projectClusters.find((cl) => cl.id === clusterId);
+    setDragIds(null);
+    if (!isAlt) {
+      if (inputTab === "unassigned") {
+        // Animate rows out before removing from list
+        setExitingIds(new Set(droppedIds));
+        const prevMap = {};
+        droppedIds.forEach((id) => { const prev = getInputCluster(id); if (prev) prevMap[id] = prev.id; });
+        setTimeout(() => {
+          setExitingIds(new Set());
+          droppedIds.forEach((id) => {
+            if (prevMap[id] && prevMap[id] !== clusterId) removeInputFromCluster(id, prevMap[id]);
+            assignInputToCluster(id, clusterId);
+          });
+        }, 185);
+      } else {
+        droppedIds.forEach((id) => {
+          const prev = getInputCluster(id);
+          if (prev && prev.id !== clusterId) removeInputFromCluster(id, prev.id);
+          assignInputToCluster(id, clusterId);
+        });
+      }
+      const n = droppedIds.length;
+      showToast(n === 1 ? `Input moved to "${cluster?.name}"` : `${n} inputs moved to "${cluster?.name}"`);
+    } else {
+      droppedIds.forEach((id) => duplicateInputToCluster(id, clusterId));
+      const n = droppedIds.length;
+      showToast(n === 1 ? `Input copied to "${cluster?.name}"` : `${n} inputs copied to "${cluster?.name}"`);
+    }
+  };
+
+  const handleDropToNewCluster = () => {
+    setClusterPreInputIds([...(dragIds || [])]);
+    setClusterDrawerOpen(true);
+    setDragIds(null);
+  };
+
   const handleDuplicateToCluster = async (inputId, destCluster) => {
     setDupePicker(null);
     const result = await duplicateInputToCluster(inputId, destCluster.id);
@@ -489,6 +554,11 @@ export default function ProjectDetail({ appState }) {
   };
 
   const cell = { fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, flexShrink: 0 };
+  const dragLabel = dragIds
+    ? dragIds.length === 1
+      ? (projectInputs.find((i) => i.id === dragIds[0])?.name || "1 input")
+      : `${dragIds.length} inputs`
+    : "";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: c.bg }}>
@@ -805,6 +875,22 @@ export default function ProjectDetail({ appState }) {
                     return (
                       <div
                         key={inp.id}
+                        draggable
+                        onDragStart={(e) => {
+                          if (e.target.closest('input[type="checkbox"]') || e.target.closest('button')) return;
+                          const ids = selectedIds.has(inp.id) && selectedIds.size > 1
+                            ? [...selectedIds]
+                            : [inp.id];
+                          setDragIds(ids);
+                          setDragIsCopy(false);
+                          if (blankImgRef.current) e.dataTransfer.setDragImage(blankImgRef.current, 0, 0);
+                          e.dataTransfer.effectAllowed = "copyMove";
+                        }}
+                        onDragEnd={() => {
+                          setDragIds(null);
+                          setDragIsCopy(false);
+                          setExitingIds(new Set());
+                        }}
                         onClick={() => openInputDetail(inp.id)}
                         onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "rgba(0,0,0,0.02)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? "rgba(0,0,0,0.03)" : c.white; }}
@@ -812,8 +898,13 @@ export default function ProjectDetail({ appState }) {
                           display: "flex", alignItems: "center", gap: 10,
                           padding: "0 14px", height: 38,
                           borderBottom: `1px solid ${c.border}`,
-                          cursor: "pointer", transition: "background 0.08s",
+                          cursor: "pointer",
+                          transition: exitingIds.has(inp.id)
+                            ? "opacity 0.18s ease, transform 0.18s ease"
+                            : "background 0.08s",
                           background: isSelected ? "rgba(0,0,0,0.03)" : c.white,
+                          opacity: exitingIds.has(inp.id) ? 0 : dragIds?.includes(inp.id) ? 0.35 : 1,
+                          transform: exitingIds.has(inp.id) ? "translateX(12px)" : "none",
                         }}
                       >
                         {/* Checkbox */}
@@ -919,6 +1010,10 @@ export default function ProjectDetail({ appState }) {
             removeInputFromCluster={removeInputFromCluster}
             deleteCluster={deleteCluster}
             showToast={showToast}
+            dragIds={dragIds}
+            dragIsCopy={dragIsCopy}
+            onDrop={handleDrop}
+            onDropToNewCluster={handleDropToNewCluster}
           />
         </div>
       </div>
@@ -942,10 +1037,11 @@ export default function ProjectDetail({ appState }) {
 
       <ClusterDrawer
         open={clusterDrawerOpen}
-        onClose={() => setClusterDrawerOpen(false)}
+        onClose={() => { setClusterDrawerOpen(false); setClusterPreInputIds([]); }}
         onSave={handleCreateCluster}
         projectId={project.id}
         projectInputs={projectInputs}
+        preselectedInputIds={clusterPreInputIds}
         onAddInput={(fields) => { addInput({ ...fields, project_id: project.id }); showToast("Input added"); }}
         projects={projects}
       />
@@ -1107,6 +1203,14 @@ export default function ProjectDetail({ appState }) {
           document.body
         );
       })()}
+
+      <DragGhost
+        active={!!dragIds}
+        label={dragLabel}
+        x={dragPos.x}
+        y={dragPos.y}
+        isCopy={dragIsCopy}
+      />
     </div>
   );
 }

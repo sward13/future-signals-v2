@@ -16,7 +16,7 @@ function LikelihoodTag({ l }) {
   return <Tag label={l} color={col} bg={bg} border={brd} />;
 }
 
-export function ClusterCard({ cluster, selected = false, onClick }) {
+export function ClusterCard({ cluster, selected = false, onClick, isDropTarget = false, dropIsCopy = false }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -25,23 +25,35 @@ export function ClusterCard({ cluster, selected = false, onClick }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: selected ? "#EFF6FF" : c.white,
-        border: `1px solid ${selected ? c.brand : hovered ? c.borderMid : c.border}`,
+        background: isDropTarget ? (dropIsCopy ? "#F0FDF4" : "#EFF6FF") : selected ? "#EFF6FF" : c.white,
+        border: `2px solid ${isDropTarget ? (dropIsCopy ? "#16a34a" : c.brand) : selected ? c.brand : hovered ? c.borderMid : c.border}`,
         borderRadius: 9,
         padding: "11px 13px",
         cursor: "pointer",
-        boxShadow: hovered && !selected ? "0 2px 8px rgba(0,0,0,0.07)" : "none",
-        transition: "border-color 0.12s, box-shadow 0.12s",
+        boxShadow: hovered && !selected && !isDropTarget ? "0 2px 8px rgba(0,0,0,0.07)" : "none",
+        transition: "border-color 0.12s, box-shadow 0.12s, background 0.12s",
+        position: "relative",
       }}
     >
-      {/* Top row: badges + input count */}
+      {/* Top row: badges + input count / drop pill */}
       <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 7 }}>
         <SubtypeTag sub={cluster.subtype} />
         <HorizTag h={cluster.horizon} />
         {cluster.likelihood && <LikelihoodTag l={cluster.likelihood} />}
-        <span style={{ marginLeft: "auto", fontSize: 10, color: c.hint, flexShrink: 0 }}>
-          {cluster.input_ids?.length || 0} inputs
-        </span>
+        {isDropTarget ? (
+          <span style={{
+            marginLeft: "auto", fontSize: 10, fontWeight: 600, flexShrink: 0,
+            padding: "1px 7px", borderRadius: 4,
+            background: dropIsCopy ? "#16a34a" : c.brand,
+            color: "#fff",
+          }}>
+            {dropIsCopy ? "Copy" : "Move"}
+          </span>
+        ) : (
+          <span style={{ marginLeft: "auto", fontSize: 10, color: c.hint, flexShrink: 0 }}>
+            {cluster.input_ids?.length || 0} inputs
+          </span>
+        )}
       </div>
 
       {/* Name */}
