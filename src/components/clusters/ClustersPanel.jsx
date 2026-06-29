@@ -215,9 +215,9 @@ export function ClustersPanel({
 
       {/* ── Drop zone strip ──────────────────────────────────── */}
       <div
-        onDragOver={(e) => { e.preventDefault(); if (dragIds) setDropOnZone(true); }}
+        onDragOver={(e) => { e.preventDefault(); setDropOnZone(true); }}
         onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropOnZone(false); }}
-        onDrop={(e) => { e.preventDefault(); setDropOnZone(false); if (dragIds) onDropToNewCluster?.(); }}
+        onDrop={(e) => { e.preventDefault(); setDropOnZone(false); onDropToNewCluster?.(); }}
         style={{
           margin: "10px 12px",
           padding: "8px 12px",
@@ -257,8 +257,8 @@ export function ClustersPanel({
                 isDropTarget={!!dragIds && dropTargetId === cl.id}
                 dropIsCopy={dropIsCopy}
                 onDragOver={(e) => {
-                  if (!dragIds) return;
                   e.preventDefault();
+                  if (!dragIds) return;
                   setDropTargetId(cl.id);
                   setDropIsCopy(e.altKey);
                 }}
@@ -282,8 +282,8 @@ export function ClustersPanel({
               <div
                 key={cl.id}
                 onDragOver={(e) => {
-                  if (!dragIds) return;
                   e.preventDefault();
+                  if (!dragIds) return;
                   setDropTargetId(cl.id);
                   setDropIsCopy(e.altKey);
                 }}
