@@ -207,7 +207,7 @@ function PreferredFutureCard({ pf, scenarioName, onClick }) {
           <div key={label}>
             <div style={{
               fontSize: 10, fontWeight: 500, color: c.hint,
-              letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 4,
+              letterSpacing: "0.06em", marginBottom: 4,
             }}>
               {label}
             </div>
@@ -359,7 +359,7 @@ export default function FutureModels({ appState }) {
       {/* ── Page header ─────────────────────────────────────────────── */}
       <div style={{ marginBottom: 20 }}>
         <div style={{
-          fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em",
+          fontSize: 10, letterSpacing: "0.08em",
           color: c.hint, marginBottom: 4,
         }}>
           {project.name}

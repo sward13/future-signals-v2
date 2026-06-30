@@ -73,7 +73,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
           display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexShrink: 0,
         }}>
           <div>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 2 }}>
+            <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 2 }}>
               New cluster
             </div>
             <div style={{ fontSize: 17, fontWeight: 500, color: c.ink }}>Build a cluster</div>

@@ -335,7 +335,7 @@ export function ScannerInboxStep({
           <div
             style={{
               fontSize: 10, fontWeight: 500,
-              textTransform: "uppercase", letterSpacing: "0.07em",
+              letterSpacing: "0.07em",
               color: c.brand, marginBottom: 8,
             }}
           >
@@ -372,7 +372,7 @@ export function ScannerInboxStep({
             <div
               style={{
                 fontSize: 9, fontWeight: 500,
-                textTransform: "uppercase", letterSpacing: "0.08em",
+                letterSpacing: "0.08em",
                 color: "#3B82F6", marginBottom: 3,
               }}
             >

@@ -54,13 +54,13 @@ export default function PreferredFutureRead({ appState }) {
 
   const sideLabel = {
     fontSize: 10, fontWeight: 500, color: c.hint,
-    letterSpacing: "0.07em", textTransform: "uppercase",
+    letterSpacing: "0.07em",
     marginBottom: 8,
   };
 
   const sectionHeading = {
     fontSize: 10, fontWeight: 500, color: c.hint,
-    letterSpacing: "0.07em", textTransform: "uppercase",
+    letterSpacing: "0.07em",
     marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid ${c.border}`,
   };
 
@@ -113,7 +113,7 @@ export default function PreferredFutureRead({ appState }) {
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
               fontSize: 10, fontWeight: 500, color: c.hint,
-              letterSpacing: "0.08em", textTransform: "uppercase",
+              letterSpacing: "0.08em",
               marginBottom: 10,
             }}>
               Preferred Future

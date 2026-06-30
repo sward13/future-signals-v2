@@ -17,7 +17,7 @@ function ZoneDivider({ label }) {
       <div style={{ flex: 1, height: 1, background: c.border }} />
       <span style={{
         fontSize: 10, fontWeight: 500, color: c.hint,
-        letterSpacing: "0.08em", textTransform: "uppercase",
+        letterSpacing: "0.08em",
       }}>
         {label}
       </span>
@@ -205,7 +205,7 @@ export default function PreferredFutureForm({ appState, mode }) {
 
         {/* Eyebrow */}
         <div style={{
-          fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em",
+          fontSize: 10, letterSpacing: "0.08em",
           color: c.hint, marginBottom: 12,
         }}>
           {mode === "new" ? "New preferred future" : "Edit preferred future"}

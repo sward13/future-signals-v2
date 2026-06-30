@@ -470,7 +470,7 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
       }}>
         {/* Header */}
         <div style={{ padding: "18px 22px 14px", borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 4 }}>
+          <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 4 }}>
             Define relationship
           </div>
           <div style={{ fontSize: 15, fontWeight: 500, color: c.ink }}>
@@ -636,7 +636,7 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
         padding: "13px 14px 10px", borderBottom: `1px solid ${c.border}`, flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: unaddedClusters.length > 0 ? 8 : 0 }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.08em", color: c.hint }}>
             Clusters
           </div>
           <button
@@ -741,7 +741,7 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
       {/* Relationship legend */}
       <div style={{ padding: "12px 14px", borderTop: `1px solid ${c.border}`, flexShrink: 0 }}>
         <div style={{
-          fontSize: 9, textTransform: "uppercase", letterSpacing: "0.07em",
+          fontSize: 9, letterSpacing: "0.07em",
           color: c.hint, marginBottom: 8,
         }}>Legend</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -800,7 +800,7 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>Inspector</div>
+          <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint }}>Inspector</div>
           <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "3px 6px", fontSize: 13, color: c.hint }}>›</button>
         </div>
         <div style={{
@@ -823,7 +823,7 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>Cluster</div>
+          <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint }}>Cluster</div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <button onClick={() => onEditCluster(cluster)} style={{ ...btnSec, fontSize: 11, padding: "4px 12px" }}>Edit</button>
             <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "0 5px", color: c.hint, fontSize: 13 }}>›</button>
@@ -859,7 +859,7 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>Relationship</div>
+          <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint }}>Relationship</div>
           <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
             <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "0 5px", color: c.hint, fontSize: 13 }}>›</button>
             <button onClick={onClose} style={{ ...btnG, padding: "0 4px", color: c.hint, fontSize: 15 }}>×</button>
@@ -919,7 +919,7 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>System</div>
+          <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint }}>System</div>
           <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
             <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "0 5px", color: c.hint, fontSize: 13 }}>›</button>
             <button onClick={onClose} style={{ ...btnG, padding: "0 4px", color: c.hint, fontSize: 15 }}>×</button>
@@ -961,7 +961,7 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
 
   const thStyle = {
     padding: "8px 14px", fontSize: 10, fontWeight: 600,
-    textTransform: "uppercase", letterSpacing: "0.06em", color: c.hint,
+    letterSpacing: "0.06em", color: c.hint,
     background: c.surfaceAlt, borderBottom: `1px solid ${c.border}`,
   };
   const selStyle = {
@@ -1993,7 +1993,7 @@ export default function ScenarioCanvas({ appState }) {
       {/* Top bar */}
       <div style={{ padding: "14px 22px 12px", background: c.white, borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.09em", color: c.hint }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.09em", color: c.hint }}>
             {project.name}
           </div>
         </div>

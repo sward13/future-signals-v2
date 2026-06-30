@@ -201,15 +201,15 @@ export const HorizonSlider = memo(function HorizonSlider({ startYear, endYear, h
       {/* Horizon breakdown cards */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 14 }}>
         <div style={{ padding: "9px 12px", borderRadius: 8, background: c.green50, border: `1px solid ${c.greenBorder}` }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: c.green700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>H1 · Near</div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: c.green700, letterSpacing: "0.06em", marginBottom: 3 }}>H1 · Near</div>
           <div style={{ fontSize: 13, fontWeight: 500, color: c.green700 }}>{startYear}–{h1EndYear}</div>
         </div>
         <div style={{ padding: "9px 12px", borderRadius: 8, background: c.blue50, border: `1px solid ${c.blueBorder}` }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: c.blue700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>H2 · Transition</div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: c.blue700, letterSpacing: "0.06em", marginBottom: 3 }}>H2 · Transition</div>
           <div style={{ fontSize: 13, fontWeight: 500, color: c.blue700 }}>{h1EndYear}–{h2EndYear}</div>
         </div>
         <div style={{ padding: "9px 12px", borderRadius: 8, background: c.amber50, border: `1px solid ${c.amberBorder}` }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: c.amber700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>H3 · Emerging</div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: c.amber700, letterSpacing: "0.06em", marginBottom: 3 }}>H3 · Emerging</div>
           <div style={{ fontSize: 13, fontWeight: 500, color: c.amber700 }}>{h2EndYear}–{endYear}</div>
         </div>
       </div>
@@ -485,7 +485,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
           borderBottom: `1px solid ${c.border}`,
           flexShrink: 0,
         }}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
+          <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
             New project
           </div>
           <div style={{ fontSize: 20, fontWeight: 500, color: c.ink }}>What are you investigating?</div>
@@ -570,13 +570,13 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
 
           {/* ── Methodology fields ────────────────────────────────────── */}
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, letterSpacing: "0.07em", color: c.hint, marginBottom: 16 }}>
               Methodology <div style={{ flex: 1, height: 1, background: c.border }} />
             </div>
 
             {/* Project Scope group */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 10 }}>
+              <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint, marginBottom: 10 }}>
                 Project scope
               </div>
               <div style={{ marginBottom: 10 }}>

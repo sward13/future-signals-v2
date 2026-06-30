@@ -318,7 +318,7 @@ export function CsvImportModal({ open, onClose, projectId, addInput, showToast }
             <>
               {/* Step 1 — template */}
               <div style={{ marginBottom: 22 }}>
-                <div style={{ fontSize: 12, fontWeight: 500, color: c.hint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 500, color: c.hint, letterSpacing: "0.06em", marginBottom: 8 }}>
                   Step 1 — Download template
                 </div>
                 <button
@@ -341,7 +341,7 @@ export function CsvImportModal({ open, onClose, projectId, addInput, showToast }
 
               {/* Step 2 — upload */}
               <div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: c.hint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 500, color: c.hint, letterSpacing: "0.06em", marginBottom: 8 }}>
                   Step 2 — Upload your file
                 </div>
 
@@ -401,7 +401,7 @@ export function CsvImportModal({ open, onClose, projectId, addInput, showToast }
                 {/* Header row */}
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", background: c.surfaceAlt, borderBottom: `1px solid ${c.border}` }}>
                   {["Name", "Subtype", "Signal Strength", "Horizon"].map((h) => (
-                    <div key={h} style={{ padding: "7px 10px", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: c.hint }}>
+                    <div key={h} style={{ padding: "7px 10px", fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", color: c.hint }}>
                       {h}
                     </div>
                   ))}

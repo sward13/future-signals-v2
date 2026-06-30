@@ -159,7 +159,6 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
             style={{
               fontSize: 10,
               fontWeight: 500,
-              textTransform: "uppercase",
               letterSpacing: "0.07em",
               color: c.brand,
               marginBottom: 8,

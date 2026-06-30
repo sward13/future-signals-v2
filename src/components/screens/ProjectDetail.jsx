@@ -580,7 +580,7 @@ export default function ProjectDetail({ appState }) {
     if (result) showToast(`Copied to "${destCluster.name}"`);
   };
 
-  const cell = { fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, flexShrink: 0 };
+  const cell = { fontSize: 10, letterSpacing: "0.07em", color: c.hint, flexShrink: 0 };
   const dragLabel = dragIds
     ? dragIds.length === 1
       ? (projectInputs.find((i) => i.id === dragIds[0])?.name || "1 input")
@@ -661,7 +661,7 @@ export default function ProjectDetail({ appState }) {
           marginBottom: 12, gap: 16,
         }}>
           <div>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
+            <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
               {project.name}
             </div>
             <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Inputs</div>
@@ -683,8 +683,8 @@ export default function ProjectDetail({ appState }) {
             borderRadius: 8,
             marginBottom: 10,
           }}>
-            <div style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.07em", color: c.brand, marginBottom: 3 }}>
-              Key question
+            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.07em", color: c.brand, marginBottom: 3 }}>
+              Key Question
             </div>
             <div style={{ fontSize: 13, fontStyle: "italic", color: c.ink, lineHeight: 1.5 }}>
               {project.question}
@@ -704,7 +704,7 @@ export default function ProjectDetail({ appState }) {
               {i > 0 && (
                 <div style={{ width: 1, height: 14, background: c.borderMid, margin: "0 10px", flexShrink: 0 }} />
               )}
-              <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, fontWeight: 500, marginRight: 5 }}>
+              <span style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint, fontWeight: 500, marginRight: 5 }}>
                 {label}
               </span>
               {value
@@ -1192,7 +1192,7 @@ export default function ProjectDetail({ appState }) {
             }}>
               <div style={{
                 padding: "8px 14px 4px",
-                fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em",
+                fontSize: 10, letterSpacing: "0.07em",
                 color: c.muted, fontWeight: 500,
               }}>
                 Copy to cluster

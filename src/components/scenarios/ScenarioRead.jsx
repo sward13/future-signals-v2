@@ -53,7 +53,7 @@ export default function ScenarioRead({ appState }) {
 
   const sideLabel = {
     fontSize: 10, fontWeight: 500, color: c.hint,
-    letterSpacing: "0.07em", textTransform: "uppercase",
+    letterSpacing: "0.07em",
     marginBottom: 8,
   };
 
@@ -100,7 +100,7 @@ export default function ScenarioRead({ appState }) {
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
               fontSize: 10, fontWeight: 500, color: c.hint,
-              letterSpacing: "0.08em", textTransform: "uppercase",
+              letterSpacing: "0.08em",
               marginBottom: 10,
             }}>
               Scenario
@@ -131,7 +131,7 @@ export default function ScenarioRead({ appState }) {
               <div style={{ marginBottom: 28 }}>
                 <div style={{
                   fontSize: 10, fontWeight: 500, color: c.hint,
-                  letterSpacing: "0.07em", textTransform: "uppercase",
+                  letterSpacing: "0.07em",
                   marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid ${c.border}`,
                 }}>
                   Key differences from today
@@ -161,7 +161,7 @@ export default function ScenarioRead({ appState }) {
               <div style={{ marginBottom: 28 }}>
                 <div style={{
                   fontSize: 10, fontWeight: 500, color: c.hint,
-                  letterSpacing: "0.07em", textTransform: "uppercase",
+                  letterSpacing: "0.07em",
                   marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid ${c.border}`,
                 }}>
                   Narrative

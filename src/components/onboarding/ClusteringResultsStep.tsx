@@ -400,7 +400,7 @@ function ResultsState({
       {/* Card header */}
       <div style={{
         fontSize: 10, fontWeight: 500,
-        textTransform: "uppercase", letterSpacing: "0.07em",
+        letterSpacing: "0.07em",
         color: c.brand, marginBottom: 8,
       }}>
         Your first clusters
@@ -432,7 +432,7 @@ function ResultsState({
         }}>
           <div style={{
             fontSize: 10, fontWeight: 500,
-            textTransform: "uppercase", letterSpacing: "0.07em",
+            letterSpacing: "0.07em",
             color: c.faint, marginBottom: 10,
           }}>
             What these types mean

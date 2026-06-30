@@ -128,7 +128,6 @@ export function ExperienceLevelStep({ onNext, onSelect }: Props) {
             style={{
               fontSize: 10,
               fontWeight: 500,
-              textTransform: "uppercase",
               letterSpacing: "0.07em",
               color: c.brand,
               marginBottom: 8,
