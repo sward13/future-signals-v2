@@ -4,7 +4,7 @@
  * plus optional methodology fields behind a disclosure toggle.
  * @param {{ open: boolean, onClose: () => void, onSave: (fields: object) => void }} props
  */
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { c, inp, ta, sel, btnP, btnG, fl, fh, badg } from "../../styles/tokens.js";
 import { DOMAINS } from "../../data/seeds.js";
 
@@ -14,7 +14,7 @@ import { DOMAINS } from "../../data/seeds.js";
  * HorizonSlider — graphical drag-handle slider that sets H1/H2/H3 boundaries.
  * @param {{ startYear: number, endYear: number, h1Pct: number, h2Pct: number, onH1Change: fn, onH2Change: fn }} props
  */
-export function HorizonSlider({ startYear, endYear, h1Pct, h2Pct, onH1Change, onH2Change }) {
+export const HorizonSlider = memo(function HorizonSlider({ startYear, endYear, h1Pct, h2Pct, onH1Change, onH2Change }) {
   const containerRef = useRef(null);
   const [dragging, setDragging] = useState(null); // null | 0 (h1 handle) | 1 (h2 handle)
 
@@ -215,7 +215,7 @@ export function HorizonSlider({ startYear, endYear, h1Pct, h2Pct, onH1Change, on
       </div>
     </div>
   );
-}
+});
 
 // ─── Range year controls ───────────────────────────────────────────────────────
 
@@ -251,7 +251,7 @@ export function YearInput({ label, value, onChange, min, max }) {
 
 // ─── Chip (tag) input ─────────────────────────────────────────────────────────
 
-export function ChipInput({ values, onChange, placeholder }) {
+export const ChipInput = memo(function ChipInput({ values, onChange, placeholder }) {
   const [text, setText] = useState("");
 
   const addChip = () => {
@@ -302,7 +302,7 @@ export function ChipInput({ values, onChange, placeholder }) {
       </div>
     </div>
   );
-}
+});
 
 // ─── Mode selector ─────────────────────────────────────────────────────────────
 
