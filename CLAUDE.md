@@ -144,6 +144,97 @@ const badg  = { fontSize:10, padding:"1px 6px", borderRadius:4, background:"#f0f
 
 ---
 
+## Styling: Tailwind CSS v4
+
+### Setup
+
+Tailwind CSS v4 is installed via the `@tailwindcss/vite` plugin. There is **no `tailwind.config.js`** — all theme customization lives in the `@theme` block at the top of `src/index.css`. The plugin is registered in `vite.config.js` alongside the React plugin.
+
+### Color tokens
+
+All 33 colors from the `c{}` object in `src/styles/tokens.js` are registered as `--color-*` custom properties. Each one generates `bg-{name}`, `text-{name}`, and `border-{name}` utility classes automatically.
+
+| `tokens.js` key | CSS variable | Example classes |
+|---|---|---|
+| `bg` | `--color-bg` | `bg-bg`, `text-bg` |
+| `white` | `--color-white` | `bg-white`, `text-white` |
+| `surfaceAlt` | `--color-surface-alt` | `bg-surface-alt` |
+| `fieldBg` | `--color-field-bg` | `bg-field-bg` |
+| `canvas` | `--color-canvas` | `bg-canvas` |
+| `ink` | `--color-ink` | `text-ink`, `bg-ink` |
+| `muted` | `--color-muted` | `text-muted` |
+| `faint` | `--color-faint` | `text-faint` |
+| `hint` | `--color-hint` | `text-hint` |
+| `border` | `--color-border` | `border-border` |
+| `borderMid` | `--color-border-mid` | `border-border-mid` |
+| `brand` | `--color-brand` | `bg-brand`, `text-brand`, `border-brand` |
+| `green50` | `--color-green-50` | `bg-green-50` |
+| `green700` | `--color-green-700` | `text-green-700` |
+| `greenBorder` | `--color-green-border` | `border-green-border` |
+| `blue50` | `--color-blue-50` | `bg-blue-50` |
+| `blue700` | `--color-blue-700` | `text-blue-700` |
+| `blueBorder` | `--color-blue-border` | `border-blue-border` |
+| `amber50` | `--color-amber-50` | `bg-amber-50` |
+| `amber700` | `--color-amber-700` | `text-amber-700` |
+| `amberBorder` | `--color-amber-border` | `border-amber-border` |
+| `violet50` | `--color-violet-50` | `bg-violet-50` |
+| `violet700` | `--color-violet-700` | `text-violet-700` |
+| `violetBorder` | `--color-violet-border` | `border-violet-border` |
+| `cyan50` | `--color-cyan-50` | `bg-cyan-50` |
+| `cyan700` | `--color-cyan-700` | `text-cyan-700` |
+| `cyanBorder` | `--color-cyan-border` | `border-cyan-border` |
+| `red50` | `--color-red-50` | `bg-red-50` |
+| `red800` | `--color-red-800` | `text-red-800` |
+| `redBorder` | `--color-red-border` | `border-red-border` |
+| `teal50` | `--color-teal-50` | `bg-teal-50` |
+| `teal700` | `--color-teal-700` | `text-teal-700` |
+| `tealBorder` | `--color-teal-border` | `border-teal-border` |
+
+### Spacing tokens
+
+Seven off-grid values from the primitive objects (`inp`, `btnP`, etc.) are defined as custom spacing tokens. Values already on the 4px base grid (`4px=1`, `8px=2`, `12px=3`, `16px=4`) and Tailwind's fractional defaults (`6px=1.5`, `10px=2.5`) are **not** redefined — use Tailwind's built-in scale directly for those.
+
+**Naming convention:** Tailwind v4 CSS variable names cannot contain dots, so the decimal separator is encoded as an underscore. The class suffix still uses a dot. Example: class `p-1.75` → CSS variable `--spacing-1_75`.
+
+| CSS variable | Value | Class suffix | Source in tokens.js |
+|---|---|---|---|
+| `--spacing-px` | `1px` | `p-px`, `m-px`, etc. | `badg` padding-y |
+| `--spacing-1_25` | `0.3125rem` (5px) | `p-1.25`, `gap-1.25`, etc. | `fl` margin-bottom |
+| `--spacing-1_75` | `0.4375rem` (7px) | `p-1.75`, `rounded-1.75`, etc. | `btnSm`/`btnG` padding-y, border-radius |
+| `--spacing-2_25` | `0.5625rem` (9px) | `p-2.25`, `py-2.25`, etc. | `inp`/`btnSec` padding-y |
+| `--spacing-2_75` | `0.6875rem` (11px) | `px-2.75`, etc. | `inp` padding-x |
+| `--spacing-4_5` | `1.125rem` (18px) | `px-4.5`, etc. | `btnSec` padding-x |
+| `--spacing-5_5` | `1.375rem` (22px) | `px-5.5`, etc. | `btnP` padding-x |
+
+### 0.5px borders
+
+Where a `0.5px` border is required (e.g. the sidebar border-right, panel dividers), use a border-width token (`border-[0.5px]` arbitrary value) rather than a raw inline style. Do not add a custom `--spacing` entry for sub-pixel values.
+
+### Migration status and tokens.js
+
+**`src/styles/tokens.js` is still the active design system** for any component not yet migrated to Tailwind classes. Do not remove or modify it until migration is complete.
+
+- Components that **have not** been migrated: continue importing from `tokens.js` using inline styles as before.
+- Components that **have** been migrated to Tailwind classes: must **not** import from `tokens.js`. The Tailwind classes and the `@theme` variables are the sole source of style for migrated components.
+- The `@theme` block in `src/index.css` and `tokens.js` must stay in sync — if a token value changes, update both.
+
+### Dynamic and conditional classes
+
+Use **`clsx`** for any component that assembles class strings conditionally. Do not use inline ternaries directly inside a `className` string or string concatenation.
+
+```jsx
+// ✓ correct
+import clsx from 'clsx';
+<div className={clsx('base-class', isActive && 'bg-brand text-white', hasError && 'border-red-border')} />
+
+// ✗ avoid
+<div className={`base-class ${isActive ? 'bg-brand text-white' : ''}`} />
+```
+
+`clsx` is installed (`npm install clsx` — already in `package.json`).
+
+---
+
 ## Typography
 
 **Heading font:** Roboto (Google Fonts)
