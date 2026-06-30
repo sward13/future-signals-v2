@@ -10,11 +10,12 @@
   /* ── Colors (c{} in tokens.js) ─────────────────────────────────────── */
 
   /* Surfaces */
-  --color-bg:          #f5f4f0;
-  --color-white:       #ffffff;
-  --color-surface-alt: #f9f9f7;
-  --color-field-bg:    #fafaf8;
-  --color-canvas:      #f7f6f2;
+  --color-bg:           #f5f4f0;
+  --color-white:        #ffffff;
+  --color-surface-alt:  #f9f9f7;
+  --color-field-bg:     #fafaf8;
+  --color-canvas:       #f7f6f2;
+  --color-surface-hover: rgba(0,0,0,0.02);
 
   /* Text */
   --color-ink:         #111111;
@@ -27,10 +28,14 @@
   --color-border-mid:  rgba(0,0,0,0.18);
 
   /* Brand */
-  --color-brand:       #3B82F6;
+  --color-brand:        #3B82F6;
+  --color-brand-bg:     #EFF6FF;
+  --color-brand-border: #BFDBFE;
 
   /* Semantic — green */
+  --color-green-25:     #F0FDF4;
   --color-green-50:     #EAF3DE;
+  --color-green-600:    #16a34a;
   --color-green-700:    #3B6D11;
   --color-green-border: #C0DD97;
 

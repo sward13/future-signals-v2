@@ -152,7 +152,7 @@ Tailwind CSS v4 is installed via the `@tailwindcss/vite` plugin. There is **no `
 
 ### Color tokens
 
-All 33 colors from the `c{}` object in `src/styles/tokens.js` are registered as `--color-*` custom properties. Each one generates `bg-{name}`, `text-{name}`, and `border-{name}` utility classes automatically.
+All 38 colors from the `c{}` object in `src/styles/tokens.js` are registered as `--color-*` custom properties. Each one generates `bg-{name}`, `text-{name}`, and `border-{name}` utility classes automatically.
 
 | `tokens.js` key | CSS variable | Example classes |
 |---|---|---|
@@ -161,6 +161,7 @@ All 33 colors from the `c{}` object in `src/styles/tokens.js` are registered as 
 | `surfaceAlt` | `--color-surface-alt` | `bg-surface-alt` |
 | `fieldBg` | `--color-field-bg` | `bg-field-bg` |
 | `canvas` | `--color-canvas` | `bg-canvas` |
+| `surfaceHover` | `--color-surface-hover` | `bg-surface-hover` |
 | `ink` | `--color-ink` | `text-ink`, `bg-ink` |
 | `muted` | `--color-muted` | `text-muted` |
 | `faint` | `--color-faint` | `text-faint` |
@@ -168,7 +169,11 @@ All 33 colors from the `c{}` object in `src/styles/tokens.js` are registered as 
 | `border` | `--color-border` | `border-border` |
 | `borderMid` | `--color-border-mid` | `border-border-mid` |
 | `brand` | `--color-brand` | `bg-brand`, `text-brand`, `border-brand` |
+| `brandBg` | `--color-brand-bg` | `bg-brand-bg` |
+| `brandBorder` | `--color-brand-border` | `border-brand-border` |
+| `green25` | `--color-green-25` | `bg-green-25` |
 | `green50` | `--color-green-50` | `bg-green-50` |
+| `green600` | `--color-green-600` | `bg-green-600`, `text-green-600`, `outline-green-600` |
 | `green700` | `--color-green-700` | `text-green-700` |
 | `greenBorder` | `--color-green-border` | `border-green-border` |
 | `blue50` | `--color-blue-50` | `bg-blue-50` |

@@ -11,35 +11,13 @@ import { ClusterDetailPanel } from "./ClusterDetailPanel.jsx";
 import { ClusterSuggestions } from "./ClusterSuggestions.jsx";
 
 /*
- * Flagged values — not covered by the 33 color tokens or 7 spacing tokens in @theme.
- * These should be resolved in a follow-up tokens.js / @theme update:
+ * Remaining arbitrary values — no clean token equivalent exists yet:
  *
- *  #EFF6FF      brandBg per CLAUDE.md design spec — missing from tokens.js and @theme.
- *               Used: selected row bg, drag-move highlight, "New cluster" btn bg,
- *               drop zone active bg. → bg-[#EFF6FF] arbitrary until token is added.
- *
- *  #BFDBFE      brandBorder per CLAUDE.md design spec — missing from tokens.js and @theme.
- *               Used: "New cluster" button border. → border-[#BFDBFE] arbitrary.
- *
- *  #F0FDF4      Tailwind's default green-50. Our --color-green-50 is #EAF3DE (different),
- *               so bg-green-50 would not match. Used: drag-copy row highlight.
- *               → bg-[#F0FDF4] arbitrary.
- *
- *  rgba(0,0,0,0.02)  List-row hover background. Not in any token.
- *               → bg-black/[2%] using Tailwind opacity modifier.
- *
- *  #16a34a      Copy-action green (≈ Tailwind green-600 in sRGB, but v4 uses oklch so
- *               bg-green-600 may not be an exact match). → bg-[#16a34a] / outline-[#16a34a].
- *
- *  h-[26px]     View toggle button height. 26px is not on the 4px grid. → h-[26px].
- *
- *  text-[13px]  "Clusters" label, view toggle icon. Off Tailwind's type scale. → arbitrary.
- *  text-[11px]  Drop zone hint text. → arbitrary.
- *  text-[10px]  Move/Copy pill, input count. → arbitrary.
- *
- *  leading-[1.55]  Empty state line height. Non-standard. → arbitrary.
- *  rounded-[7px]   Drop zone border-radius (7px). Not in Tailwind's radius scale. → arbitrary.
- *  [outline-offset:-2px]  Negative outline-offset on drop-target rows. No built-in utility.
+ *  h-[26px]           View toggle button height. 26px not on 4px grid.
+ *  text-[13px/11px/10px]  Off Tailwind's type scale.
+ *  leading-[1.55]     Non-standard line height.
+ *  rounded-[7px]      7px border-radius not in Tailwind's radius scale.
+ *  [outline-offset:-2px]  Negative outline-offset; no built-in utility.
  */
 
 // ─── List-view row ─────────────────────────────────────────────────────────────
@@ -56,10 +34,10 @@ function ClusterListRow({ cluster, selected, onClick, isDropTarget, dropIsCopy, 
       onDrop={onDrop}
       className={clsx(
         'flex items-center px-3.5 py-2 border-b border-border cursor-pointer transition-colors duration-100 relative',
-        isDropTarget && dropIsCopy  && 'bg-[#F0FDF4] outline outline-2 outline-[#16a34a] [outline-offset:-2px]',
-        isDropTarget && !dropIsCopy && 'bg-[#EFF6FF] outline outline-2 outline-brand [outline-offset:-2px]',
-        !isDropTarget && selected   && 'bg-[#EFF6FF]',
-        !isDropTarget && !selected  && hovered && 'bg-black/[2%]',
+        isDropTarget && dropIsCopy  && 'bg-green-25 outline outline-2 outline-green-600 [outline-offset:-2px]',
+        isDropTarget && !dropIsCopy && 'bg-brand-bg outline outline-2 outline-brand [outline-offset:-2px]',
+        !isDropTarget && selected   && 'bg-brand-bg',
+        !isDropTarget && !selected  && hovered && 'bg-surface-hover',
       )}
     >
       {/* Name — flex, truncates */}
@@ -79,7 +57,7 @@ function ClusterListRow({ cluster, selected, onClick, isDropTarget, dropIsCopy, 
       {isDropTarget ? (
         <span className={clsx(
           'text-[10px] font-semibold ml-2 shrink-0 py-px px-1.75 rounded',
-          dropIsCopy ? 'bg-[#16a34a] text-white' : 'bg-brand text-white',
+          dropIsCopy ? 'bg-green-600 text-white' : 'bg-brand text-white',
         )}>
           {dropIsCopy ? "Copy" : "Move"}
         </span>
@@ -151,7 +129,7 @@ export function ClustersPanel({
           <span className="text-[13px] font-semibold text-ink">Clusters</span>
           <button
             onClick={onNewCluster}
-            className="ml-auto inline-flex items-center gap-1 text-xs font-medium py-1.25 px-2.75 rounded-md border border-[#BFDBFE] bg-[#EFF6FF] text-brand cursor-pointer whitespace-nowrap"
+            className="ml-auto inline-flex items-center gap-1 text-xs font-medium py-1.25 px-2.75 rounded-md border border-brand-border bg-brand-bg text-brand cursor-pointer whitespace-nowrap"
           >
             + New cluster
           </button>
@@ -213,7 +191,7 @@ export function ClustersPanel({
           className={clsx(
             'mx-3 my-2.5 px-3 py-2 rounded-[7px] flex items-center justify-center gap-1.5 shrink-0 transition-colors duration-[120ms]',
             dropOnZone
-              ? 'border border-dashed border-brand bg-[#EFF6FF]'
+              ? 'border border-dashed border-brand bg-brand-bg'
               : 'border border-dashed border-border bg-white',
           )}
         >
