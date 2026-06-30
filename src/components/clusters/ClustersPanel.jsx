@@ -4,11 +4,43 @@
  * new-cluster drop zone, and the cluster detail sliding panel.
  */
 import { useState, useEffect, useRef } from "react";
-import { c } from "../../styles/tokens.js";
+import clsx from "clsx";
 import { SubtypeTag } from "../shared/Tag.jsx";
 import { ClusterCard } from "./ClusterCard.jsx";
 import { ClusterDetailPanel } from "./ClusterDetailPanel.jsx";
 import { ClusterSuggestions } from "./ClusterSuggestions.jsx";
+
+/*
+ * Flagged values — not covered by the 33 color tokens or 7 spacing tokens in @theme.
+ * These should be resolved in a follow-up tokens.js / @theme update:
+ *
+ *  #EFF6FF      brandBg per CLAUDE.md design spec — missing from tokens.js and @theme.
+ *               Used: selected row bg, drag-move highlight, "New cluster" btn bg,
+ *               drop zone active bg. → bg-[#EFF6FF] arbitrary until token is added.
+ *
+ *  #BFDBFE      brandBorder per CLAUDE.md design spec — missing from tokens.js and @theme.
+ *               Used: "New cluster" button border. → border-[#BFDBFE] arbitrary.
+ *
+ *  #F0FDF4      Tailwind's default green-50. Our --color-green-50 is #EAF3DE (different),
+ *               so bg-green-50 would not match. Used: drag-copy row highlight.
+ *               → bg-[#F0FDF4] arbitrary.
+ *
+ *  rgba(0,0,0,0.02)  List-row hover background. Not in any token.
+ *               → bg-black/[2%] using Tailwind opacity modifier.
+ *
+ *  #16a34a      Copy-action green (≈ Tailwind green-600 in sRGB, but v4 uses oklch so
+ *               bg-green-600 may not be an exact match). → bg-[#16a34a] / outline-[#16a34a].
+ *
+ *  h-[26px]     View toggle button height. 26px is not on the 4px grid. → h-[26px].
+ *
+ *  text-[13px]  "Clusters" label, view toggle icon. Off Tailwind's type scale. → arbitrary.
+ *  text-[11px]  Drop zone hint text. → arbitrary.
+ *  text-[10px]  Move/Copy pill, input count. → arbitrary.
+ *
+ *  leading-[1.55]  Empty state line height. Non-standard. → arbitrary.
+ *  rounded-[7px]   Drop zone border-radius (7px). Not in Tailwind's radius scale. → arbitrary.
+ *  [outline-offset:-2px]  Negative outline-offset on drop-target rows. No built-in utility.
+ */
 
 // ─── List-view row ─────────────────────────────────────────────────────────────
 
@@ -22,59 +54,37 @@ function ClusterListRow({ cluster, selected, onClick, isDropTarget, dropIsCopy, 
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        padding: "8px 14px",
-        borderBottom: `1px solid ${c.border}`,
-        background: isDropTarget
-          ? (dropIsCopy ? "#F0FDF4" : "#EFF6FF")
-          : selected ? "#EFF6FF" : hovered ? "rgba(0,0,0,0.02)" : "transparent",
-        cursor: "pointer",
-        transition: "background 0.1s",
-        outline: isDropTarget ? `2px solid ${dropIsCopy ? "#16a34a" : c.brand}` : "none",
-        outlineOffset: -2,
-        position: "relative",
-      }}
+      className={clsx(
+        'flex items-center px-3.5 py-2 border-b border-border cursor-pointer transition-colors duration-100 relative',
+        isDropTarget && dropIsCopy  && 'bg-[#F0FDF4] outline outline-2 outline-[#16a34a] [outline-offset:-2px]',
+        isDropTarget && !dropIsCopy && 'bg-[#EFF6FF] outline outline-2 outline-brand [outline-offset:-2px]',
+        !isDropTarget && selected   && 'bg-[#EFF6FF]',
+        !isDropTarget && !selected  && hovered && 'bg-black/[2%]',
+      )}
     >
       {/* Name — flex, truncates */}
-      <span style={{
-        flex: 1,
-        fontSize: 12,
-        fontWeight: 500,
-        color: selected ? c.brand : c.ink,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-        marginRight: 8,
-      }}>
+      <span className={clsx(
+        'flex-1 text-xs font-medium overflow-hidden text-ellipsis whitespace-nowrap mr-2',
+        selected ? 'text-brand' : 'text-ink',
+      )}>
         {cluster.name}
       </span>
 
       {/* Type badge — 62px fixed container */}
-      <div style={{ width: 62, flexShrink: 0, display: "flex", justifyContent: "flex-end" }}>
+      <div className="w-[62px] shrink-0 flex justify-end">
         <SubtypeTag sub={cluster.subtype} />
       </div>
 
       {/* Input count or Move/Copy pill */}
       {isDropTarget ? (
-        <span style={{
-          fontSize: 10, fontWeight: 600, marginLeft: 8, flexShrink: 0,
-          padding: "1px 7px", borderRadius: 4,
-          background: dropIsCopy ? "#16a34a" : c.brand,
-          color: "#fff",
-        }}>
+        <span className={clsx(
+          'text-[10px] font-semibold ml-2 shrink-0 py-px px-1.75 rounded',
+          dropIsCopy ? 'bg-[#16a34a] text-white' : 'bg-brand text-white',
+        )}>
           {dropIsCopy ? "Copy" : "Move"}
         </span>
       ) : (
-        <span style={{
-          fontSize: 10,
-          color: c.hint,
-          marginLeft: 8,
-          flexShrink: 0,
-          minWidth: 24,
-          textAlign: "right",
-        }}>
+        <span className="text-[10px] text-hint ml-2 shrink-0 min-w-6 text-right">
           {cluster.input_ids?.length || 0}
         </span>
       )}
@@ -131,44 +141,27 @@ export function ClustersPanel({
   return (
     <div
       ref={panelRef}
-      style={{
-        width: 320,
-        minWidth: 280,
-        flexShrink: 0,
-        display: "flex",
-        flexDirection: "column",
-        background: c.surfaceAlt,
-        borderLeft: `1px solid ${c.border}`,
-        position: "relative",
-        overflow: "hidden",
-      }}
+      className="w-80 min-w-[280px] shrink-0 flex flex-col bg-surface-alt border-l border-border relative overflow-hidden"
     >
       {/* ── Panel header ─────────────────────────────────────── */}
-      <div style={{ background: c.white, borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
+      <div className="bg-white border-b border-border shrink-0">
 
         {/* Row 1: label + new cluster button */}
-        <div style={{ display: "flex", alignItems: "center", padding: "11px 14px 8px" }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: c.ink }}>Clusters</span>
+        <div className="flex items-center pt-2.75 pb-2 px-3.5">
+          <span className="text-[13px] font-semibold text-ink">Clusters</span>
           <button
             onClick={onNewCluster}
-            style={{
-              marginLeft: "auto",
-              display: "inline-flex", alignItems: "center", gap: 4,
-              fontSize: 12, fontWeight: 500, padding: "5px 11px",
-              borderRadius: 6, border: "1px solid #BFDBFE",
-              background: "#EFF6FF", color: c.brand,
-              cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
-            }}
+            className="ml-auto inline-flex items-center gap-1 text-xs font-medium py-1.25 px-2.75 rounded-md border border-[#BFDBFE] bg-[#EFF6FF] text-brand cursor-pointer whitespace-nowrap"
           >
             + New cluster
           </button>
         </div>
 
         {/* Row 2: mode toggle (left) + view toggle (right, hidden in Suggested) */}
-        <div style={{ display: "flex", alignItems: "center", padding: "0 14px 10px" }}>
+        <div className="flex items-center pb-2.5 px-3.5">
 
           {/* Mode toggle */}
-          <div style={{ display: "flex", border: `1px solid ${c.border}`, borderRadius: 6, overflow: "hidden" }}>
+          <div className="flex border border-border rounded-md overflow-hidden">
             {[
               { key: "manual",    label: "Manual" },
               { key: "suggested", label: "Suggested" },
@@ -176,14 +169,11 @@ export function ClustersPanel({
               <button
                 key={key}
                 onClick={() => setMode(key)}
-                style={{
-                  padding: "4px 11px", fontSize: 12, fontWeight: 500,
-                  cursor: "pointer", fontFamily: "inherit", border: "none",
-                  borderRight: i === 0 ? `1px solid ${c.border}` : "none",
-                  background: mode === key ? c.brand : c.white,
-                  color: mode === key ? c.white : c.muted,
-                  transition: "background 0.1s, color 0.1s", whiteSpace: "nowrap",
-                }}
+                className={clsx(
+                  'px-2.75 py-1 text-xs font-medium cursor-pointer transition-colors duration-100 whitespace-nowrap',
+                  i === 0 && 'border-r border-border',
+                  mode === key ? 'bg-brand text-white' : 'bg-white text-muted',
+                )}
               >
                 {label}
               </button>
@@ -192,7 +182,7 @@ export function ClustersPanel({
 
           {/* View toggle — hidden in Suggested mode */}
           {mode === "manual" && (
-            <div style={{ marginLeft: "auto", display: "flex", border: `1px solid ${c.border}`, borderRadius: 6, overflow: "hidden" }}>
+            <div className="ml-auto flex border border-border rounded-md overflow-hidden">
               {[
                 { key: "list", icon: "☰" },
                 { key: "card", icon: "⊞" },
@@ -200,16 +190,11 @@ export function ClustersPanel({
                 <button
                   key={key}
                   onClick={() => setView(key)}
-                  style={{
-                    width: 28, height: 26, display: "flex",
-                    alignItems: "center", justifyContent: "center",
-                    cursor: "pointer", fontFamily: "inherit", fontSize: 13,
-                    border: "none",
-                    borderRight: i === 0 ? `1px solid ${c.border}` : "none",
-                    background: view === key ? c.brand : c.white,
-                    color: view === key ? c.white : c.muted,
-                    transition: "background 0.1s, color 0.1s",
-                  }}
+                  className={clsx(
+                    'w-7 h-[26px] flex items-center justify-center cursor-pointer text-[13px] transition-colors duration-100',
+                    i === 0 && 'border-r border-border',
+                    view === key ? 'bg-brand text-white' : 'bg-white text-muted',
+                  )}
                 >
                   {icon}
                 </button>
@@ -225,21 +210,14 @@ export function ClustersPanel({
           onDragOver={(e) => { e.preventDefault(); setDropOnZone(true); }}
           onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropOnZone(false); }}
           onDrop={(e) => { e.preventDefault(); setDropOnZone(false); onDropToNewCluster?.(); }}
-          style={{
-            margin: "10px 12px",
-            padding: "8px 12px",
-            border: `1px dashed ${dropOnZone ? c.brand : c.border}`,
-            borderRadius: 7,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            flexShrink: 0,
-            background: dropOnZone ? "#EFF6FF" : c.white,
-            transition: "background 0.12s, border-color 0.12s",
-          }}
+          className={clsx(
+            'mx-3 my-2.5 px-3 py-2 rounded-[7px] flex items-center justify-center gap-1.5 shrink-0 transition-colors duration-[120ms]',
+            dropOnZone
+              ? 'border border-dashed border-brand bg-[#EFF6FF]'
+              : 'border border-dashed border-border bg-white',
+          )}
         >
-          <span style={{ fontSize: 11, color: dropOnZone ? c.brand : c.faint }}>
+          <span className={clsx('text-[11px]', dropOnZone ? 'text-brand' : 'text-faint')}>
             ⊕ Drop inputs here to create a new cluster
           </span>
         </div>
@@ -247,10 +225,10 @@ export function ClustersPanel({
 
       {/* ── Scrollable cluster list — manual mode ────────────── */}
       {mode === "manual" && (
-        <div style={{ flex: 1, overflowY: "auto" }}>
+        <div className="flex-1 overflow-y-auto">
 
           {clusters.length === 0 && (
-            <div style={{ padding: "20px 14px", fontSize: 12, color: c.hint, fontStyle: "italic", textAlign: "center", lineHeight: 1.55 }}>
+            <div className="px-3.5 py-5 text-xs text-hint italic text-center leading-[1.55]">
               No clusters yet.<br />Create one or drag inputs here.
             </div>
           )}
@@ -286,7 +264,7 @@ export function ClustersPanel({
           )}
 
           {view === "card" && clusters.length > 0 && (
-            <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 9 }}>
+            <div className="px-3 py-2.5 flex flex-col gap-2.25">
               {clusters.map((cl) => (
                 <div
                   key={cl.id}
