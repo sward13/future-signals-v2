@@ -1,9 +1,9 @@
 # Future Signals v2 — Design Principles
 
-**Location in repo:** `docs/design-principles.md`  
+**Location in repo:** `design-principles.md`  
 **Referenced by:** `CLAUDE.md`  
 **Audience:** Design and product decisions (Sam, John); implementation decisions (Claude Code)  
-**Last updated:** April 2026
+**Last updated:** June 2026
 
 ---
 
@@ -193,7 +193,8 @@ Use these terms consistently across the product, code, and documentation.
 | Project | Brief, Brief (as a noun for the creation form is fine as UI label only) |
 | Focus | Unit of Analysis |
 | System Map | Relationship Canvas, Map |
-| Signal quality: Emerging / Established / Confirmed | Weak / Strong / Confirmed |
+| Signal Strength: Weak / Moderate / Strong | Emerging / Established / Confirmed (old signal_quality values) |
+| Source Confidence: Low / Medium / High | — |
 | Cluster subtypes: Trend / Driver / Tension | — |
 | Input subtypes: Signal / Issue / Projection / Plan / Obstacle | — |
 | Scenario archetypes: Continuation / Collapse / Constraint / Transformation | — |

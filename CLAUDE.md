@@ -4,7 +4,7 @@
 
 Future Signals v2 is a strategic foresight SPA built with React + Vite. It guides practitioners through a structured methodology: Inputs → Clusters → System Map → System Analysis → Future Models. The Vercel prototype phase is complete — we are now building the production app with Supabase (Postgres + pgvector + RLS) as the backend.
 
-**Stack:** React 18, Vite, React Flow (`@xyflow/react`), Supabase (auth + database + storage), Vercel (hosting), inline styles using the design token system below.
+**Stack:** React 18, Vite, React Flow (`@xyflow/react`), Supabase (auth + database + storage), Vercel (hosting), Tailwind CSS v4 (via `@tailwindcss/vite`) for migrated components; `tokens.js` inline styles for legacy components.
 
 **AI model stack:** OpenAI only — `text-embedding-3-small` for embeddings, `gpt-4o-mini` for classification/tagging, `gpt-4o` for enrichment and synthesis. Do NOT reference or use any Anthropic/Claude API in implementation.
 
@@ -30,7 +30,7 @@ Future Signals v2 is a strategic foresight SPA built with React + Vite. It guide
 
 ## Design principles — read before any UX or form decision
 
-**`docs/design-principles.md`** is the authoritative source for all design and UX decisions. Read it before making any decision involving forms, fields, AI outputs, nudges, navigation, or empty states.
+**`design-principles.md`** is the authoritative source for all design and UX decisions. Read it before making any decision involving forms, fields, AI outputs, nudges, navigation, or empty states.
 
 Key rules extracted here for fast access — but the full document has the reasoning behind each one:
 
@@ -41,7 +41,7 @@ Key rules extracted here for fast access — but the full document has the reaso
 5. **No gate between stages.** Practitioners can navigate to any project stage at any time, regardless of whether earlier stages are "complete." Never block navigation on prior completion.
 6. **Nudges have lifespans.** Any nudge implementation must include suppression logic: if ignored twice, suppress for 30 days. Nudges are preferences, not defaults — practitioners opt in.
 7. **Re-entry surfaces answer "where was I and what's new?" —** not "here is your progress toward completion." Dashboard and project headers are re-entry surfaces, not progress trackers.
-8. **Terminology is locked.** Use the table in the Terminology section below and in `docs/design-principles.md`. No synonyms, no drift.
+8. **Terminology is locked.** Use the table in the Terminology section below and in `design-principles.md`. No synonyms, no drift.
 
 **Quick Start field sets by entity (minimum sufficient to create):**
 
@@ -644,9 +644,9 @@ Key decisions already made:
 
 | Spec | When to read |
 |---|---|
-| `docs/design-principles.md` | Before any UX, form, AI output, nudge, or navigation decision |
+| `design-principles.md` | Before any UX, form, AI output, nudge, or navigation decision |
 | `signal-scanner-spec.md` | Any work touching the scanner, candidate ingestion, scoring, or onboarding seeding |
-| `docs/onboarding-spec.md` | Any work touching the onboarding flow, project creation, or first-session experience |
+| `FutureSignals_Onboarding_ProgressiveDisclosure_Spec.md` | Any work touching the onboarding flow, project creation, or first-session experience |
 
 ---
 

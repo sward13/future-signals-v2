@@ -1,6 +1,6 @@
 # Future Signals v2 — Handoff
 
-_Last updated: 2026-06-28_
+_Last updated: 2026-06-29_
 
 ---
 
@@ -31,6 +31,13 @@ All core screens are built and functional:
 | Future Models (Scenarios + Strategic Options) | Done |
 
 Note: the Clustering screen no longer exists as a separate route. The `clustering` case in App.jsx redirects to ProjectDetail. All clustering work happens in the 320px ClustersPanel embedded in the Inputs workspace.
+
+**2026-06-29 session — Tailwind CSS v4 migration + CSV import fix (on `workspace-refactor` branch):**
+- **Tailwind CSS v4 installed** via `@tailwindcss/vite` Vite plugin — no `tailwind.config.js`. `@import "tailwindcss"` added to `src/index.css`.
+- **Design system mapped to `@theme`:** All 38 color tokens from `tokens.js c{}` registered as `--color-*` custom properties. Seven off-grid spacing tokens and two typography tokens (`--text-ui: 13px`, `--leading-body: 1.55`) also in `@theme`. `clsx` installed for conditional class composition.
+- **ClustersPanel.jsx migrated** — first component fully converted from `tokens.js` inline styles to Tailwind v4 classes. Token gaps resolved by adding `surfaceHover`, `brandBg`, `brandBorder`, `green25`, `green600` to both `tokens.js` and `@theme`.
+- **CSV import updated** (`CsvImportModal.jsx`): column mapping now matches current export schema (`Name, Subtype, Description, Source URL, STEEPLED, Horizon, Signal Strength, Source Confidence, Date Added`). Removed stale `signal_quality`, `title`, `type`, `time_horizon` references.
+- **CLAUDE.md updated** with full Tailwind v4 section: setup, 38-token color table, spacing tokens, typography tokens, border-radius two-tier design note (`rounded-[7px]` is intentional — don't replace with `rounded-lg`), migration rules, `clsx` convention.
 
 **2026-06-28 session — Clustering workspace refactor (complete, on `workspace-refactor` branch):**
 - **Merged Inputs + Clustering into one workspace.** The separate Clustering screen is removed. ProjectDetail now renders a two-column layout: inputs table (flex:1, left) and a fixed 320px ClustersPanel (right). Both panels are visible and interactive simultaneously — no more context-switching.
