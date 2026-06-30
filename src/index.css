@@ -91,6 +91,12 @@
   --spacing-2_75: 0.6875rem; /* 11px — inp: padding-x */
   --spacing-4_5:  1.125rem;  /* 18px — btnSec: padding-x */
   --spacing-5_5:  1.375rem;  /* 22px — btnP: padding-x */
+
+  /* ── Typography ──────────────────────────────────────────────────────── */
+  /* Not in tokens.js — c{} is color-only; primitive objects (inp, ta, btnP)
+   * hold composite styles. These scalars have no natural home there. */
+  --text-ui:      0.8125rem; /* 13px — primary UI text: inp, btnP, btnSec (115 occurrences) */
+  --leading-body: 1.55;      /* body/prose line-height: ta, descriptions, canvas labels (20+ occurrences) */
 }
 
 *, *::before, *::after {

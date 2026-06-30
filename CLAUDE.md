@@ -211,6 +211,23 @@ Seven off-grid values from the primitive objects (`inp`, `btnP`, etc.) are defin
 | `--spacing-4_5` | `1.125rem` (18px) | `px-4.5`, etc. | `btnSec` padding-x |
 | `--spacing-5_5` | `1.375rem` (22px) | `px-5.5`, etc. | `btnP` padding-x |
 
+### Typography tokens
+
+Two scalars extracted from the inline-style primitive objects and promoted to `@theme`. Not in `tokens.js` — `c{}` is color-only; the primitive objects hold composite styles. These scalars have no natural home in either structure.
+
+| CSS variable | Value | Tailwind class | Source in tokens.js |
+|---|---|---|---|
+| `--text-ui` | `0.8125rem` (13px) | `text-ui` | `inp.fontSize`, `btnP.fontSize`, `btnSec.fontSize` — 115+ occurrences |
+| `--leading-body` | `1.55` | `leading-body` | `ta.lineHeight`, descriptions, canvas labels — 20+ occurrences |
+
+### Border-radius: intentional two-tier design
+
+The design system uses two distinct radius values:
+- **8px (`rounded-lg`)** — containers, inputs, modals, drawers
+- **7px (`rounded-[7px]`)** — compact interactive elements: toggle buttons, small action pills
+
+`rounded-[7px]` is **not an inconsistency** — do not replace it with `rounded-lg`. When button components are migrated to Tailwind, add `--radius-btn: 7px` to `@theme` and replace all `rounded-[7px]` uses at that time — not before.
+
 ### 0.5px borders
 
 Where a `0.5px` border is required (e.g. the sidebar border-right, panel dividers), use a border-width token (`border-[0.5px]` arbitrary value) rather than a raw inline style. Do not add a custom `--spacing` entry for sub-pixel values.

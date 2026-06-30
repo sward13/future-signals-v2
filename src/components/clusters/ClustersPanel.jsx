@@ -15,8 +15,9 @@ import { ClusterSuggestions } from "./ClusterSuggestions.jsx";
  *
  *  h-[26px]           View toggle button height. 26px not on 4px grid.
  *  text-[13px/11px/10px]  Off Tailwind's type scale.
- *  leading-[1.55]     Non-standard line height.
  *  rounded-[7px]      7px border-radius not in Tailwind's radius scale.
+ *                     This is an intentional design tier (compact elements vs 8px containers)
+ *                     — tokenize as --radius-btn when button components are migrated.
  *  [outline-offset:-2px]  Negative outline-offset; no built-in utility.
  */
 
@@ -126,7 +127,7 @@ export function ClustersPanel({
 
         {/* Row 1: label + new cluster button */}
         <div className="flex items-center pt-2.75 pb-2 px-3.5">
-          <span className="text-[13px] font-semibold text-ink">Clusters</span>
+          <span className="text-ui font-semibold text-ink">Clusters</span>
           <button
             onClick={onNewCluster}
             className="ml-auto inline-flex items-center gap-1 text-xs font-medium py-1.25 px-2.75 rounded-md border border-brand-border bg-brand-bg text-brand cursor-pointer whitespace-nowrap"
@@ -169,7 +170,7 @@ export function ClustersPanel({
                   key={key}
                   onClick={() => setView(key)}
                   className={clsx(
-                    'w-7 h-[26px] flex items-center justify-center cursor-pointer text-[13px] transition-colors duration-100',
+                    'w-7 h-[26px] flex items-center justify-center cursor-pointer text-ui transition-colors duration-100',
                     i === 0 && 'border-r border-border',
                     view === key ? 'bg-brand text-white' : 'bg-white text-muted',
                   )}
@@ -206,7 +207,7 @@ export function ClustersPanel({
         <div className="flex-1 overflow-y-auto">
 
           {clusters.length === 0 && (
-            <div className="px-3.5 py-5 text-xs text-hint italic text-center leading-[1.55]">
+            <div className="px-3.5 py-5 text-xs text-hint italic text-center leading-body">
               No clusters yet.<br />Create one or drag inputs here.
             </div>
           )}
