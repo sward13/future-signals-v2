@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Drawer } from "../layout/Drawer.jsx";
+import { AddSourceModal } from "../shared/AddSourceModal.jsx";
 import { c } from "../../styles/tokens.js";
 
 const lbl = {
@@ -81,10 +82,16 @@ export function ScanningPreferencesDrawer({
   workspaceScanningEnabled,
   updateProject,
   updateProjectSource,
+  addSource,
+  addProjectSource,
+  workspaceId,
+  showToast,
 }) {
   // Hooks must run unconditionally — early return moved to after all useMemo calls
   // to prevent React error #310 (hook count mismatch between renders).
   // Neither memo depends on project; they only need projectSources.
+  const [addOpen, setAddOpen] = useState(false);
+
   const curated = useMemo(
     () => (projectSources || []).filter((ps) => ps.sources?.source_type === "curated"),
     [projectSources]
@@ -102,6 +109,16 @@ export function ScanningPreferencesDrawer({
 
   const scopeIn = project.scope_in || [];
   const scopeOut = project.scope_out || [];
+
+  async function handleAdded(fields) {
+    setAddOpen(false);
+    try {
+      const source = await addSource(fields);
+      await addProjectSource({ source_id: source.id, project_id: project.id, source });
+    } catch {
+      showToast("Failed to add source", "error");
+    }
+  }
 
   function handleSourceToggle(id, nextOptedIn) {
     updateProjectSource(id, { opted_in: nextOptedIn });
@@ -124,7 +141,19 @@ export function ScanningPreferencesDrawer({
 
         {/* Sources */}
         <div>
-          <div style={lbl}>Sources</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+            <div style={{ ...lbl, marginBottom: 0 }}>Sources</div>
+            <button
+              onClick={() => setAddOpen(true)}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                fontSize: 11.5, color: c.brand, fontFamily: "inherit",
+                padding: 0, fontWeight: 500,
+              }}
+            >
+              + Add source
+            </button>
+          </div>
           {!hasSources ? (
             <div style={{ fontSize: 12, color: c.hint, fontStyle: "italic" }}>
               No sources configured for this project.
@@ -217,6 +246,12 @@ export function ScanningPreferencesDrawer({
           onClick={handleScanningToggle}
         />
       </div>
+      <AddSourceModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onAdded={handleAdded}
+        defaultDomain={project.domain ?? null}
+      />
     </Drawer>
   );
 }

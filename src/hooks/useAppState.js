@@ -505,6 +505,14 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     return { ...row, last_fetched_at: null, created_at: new Date().toISOString() };
   }, [workspaceId]);
 
+  const addProjectSource = useCallback(async ({ source_id, project_id, source }) => {
+    const id = newId();
+    const row = { id, source_id, project_id, opted_in: true };
+    const { error } = await supabase.from("project_sources").insert(row);
+    if (error) throw error;
+    setProjectSources(prev => [...prev, { ...row, created_at: new Date().toISOString(), sources: source }]);
+  }, []);
+
   // ── Inputs ────────────────────────────────────────────────────────────────
 
   const addInput = useCallback((fields) => {
@@ -1763,6 +1771,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     updateProjectSource,
     deleteSource,
     addSource,
+    addProjectSource,
     addCanvasNode,
     removeCanvasNode,
     updateCanvasNodePos,

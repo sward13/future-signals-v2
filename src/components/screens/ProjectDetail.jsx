@@ -204,6 +204,7 @@ export default function ProjectDetail({ appState }) {
     workspaceScanningEnabled, setInboxProjectFilter,
     projectSources, updateProjectSource,
     openScanningPrefs, setOpenScanningPrefs,
+    workspaceId, addSource, addProjectSource,
   } = appState;
 
   const [drawerOpen,        setDrawerOpen]        = useState(false);
@@ -730,6 +731,10 @@ export default function ProjectDetail({ appState }) {
         workspaceScanningEnabled={workspaceScanningEnabled}
         updateProject={updateProject}
         updateProjectSource={updateProjectSource}
+        addSource={addSource}
+        addProjectSource={addProjectSource}
+        workspaceId={workspaceId}
+        showToast={showToast}
       />
 
       <CsvImportModal
