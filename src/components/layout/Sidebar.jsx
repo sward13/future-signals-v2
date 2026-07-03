@@ -19,7 +19,7 @@
 import logoLight from "../../assets/logo_light.svg";
 import { c } from "../../styles/tokens.js";
 import {
-  Home, Inbox as InboxIcon, SquareArrowRight,
+  Home, Inbox as InboxIcon, Eye, SquareArrowRight,
   Network, LayoutDashboard, ChartNoAxesCombined, Download,
 } from "lucide-react";
 
@@ -39,6 +39,7 @@ const NAV_ITEMS = [
 ];
 
 const PROJECT_ITEMS = [
+  { icon: <Eye size={16} />,              label: "Overview",        screen: "project-overview" },
   { icon: <SquareArrowRight size={16} />, label: "Inputs",          screen: "project" },
   { icon: <Network size={16} />,          label: "System Map",      screen: "scenarios" },
   { icon: <LayoutDashboard size={16} />,  label: "System Analysis", screen: "analysis" },
@@ -60,6 +61,7 @@ export function Sidebar({
   onExport,
   projects = [],
   setActiveProjectId,
+  openProject,
 }) {
   const inProject = !!activeProject;
 
@@ -167,7 +169,7 @@ export function Sidebar({
             {projects.slice(0, 8).map((p) => (
               <button
                 key={p.id}
-                onClick={() => { setActiveProjectId(p.id); setActiveScreen("project"); }}
+                onClick={() => openProject(p.id)}
                 style={{
                   display: "block", width: "100%", padding: "5px 14px",
                   textAlign: "left", background: "transparent", border: "none",

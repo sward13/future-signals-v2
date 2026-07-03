@@ -365,7 +365,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   /** Navigate into a project — sets activeProjectId and switches screen. */
   const openProject = useCallback((id) => {
     setActiveProjectId(id);
-    setActiveScreen("project");
+    setActiveScreen("project-overview");
     if (id) {
       supabase
         .from("projects")

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { c, btnSec } from "../../styles/tokens.js";
 import { HorizonBar } from "../shared/HorizonBar.jsx";
 import { analysisHasCont } from "./SystemAnalysisCanvas.jsx";
-import EditProjectDrawer from "../projects/EditProjectDrawer.jsx";
+import { EditProjectDrawer } from "../projects/EditProjectDrawer.jsx";
 
 // ─── Analysis panel spec (minimal — full spec lives in SystemAnalysisCanvas) ──
 
@@ -194,6 +194,9 @@ export default function ProjectOverview({ appState }) {
     relationships,
     projectSources,
     setActiveScreen,
+    updateProject,
+    deleteProject,
+    workspaceScanningEnabled,
   } = appState;
 
   const project = projects.find(p => p.id === activeProjectId) || null;
@@ -575,7 +578,13 @@ export default function ProjectOverview({ appState }) {
       </div>
 
       {editDrawerOpen && (
-        <EditProjectDrawer appState={appState} onClose={() => setEditDrawerOpen(false)} />
+        <EditProjectDrawer
+          project={project}
+          onClose={() => setEditDrawerOpen(false)}
+          onSave={(fields) => updateProject(project.id, fields)}
+          onDelete={() => deleteProject(project.id)}
+          workspaceScanningEnabled={workspaceScanningEnabled}
+        />
       )}
     </div>
   );
