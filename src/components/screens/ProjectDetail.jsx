@@ -1,44 +1,20 @@
-/**
- * ProjectDetail screen — project metadata, two-column layout:
- * left = inputs table with filter tabs, right = clusters/systems summary.
- */
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { CirclePlus } from "lucide-react";
 import { useScannerStatus } from "../../hooks/useScannerStatus.js";
-import { c, inp, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
+import { c, inp, btnP, btnSec } from "../../styles/tokens.js";
 import { STEEPLED } from "../../data/seeds.js";
 import { HorizTag, SubtypeTag } from "../shared/Tag.jsx";
 
-import { EmptyState } from "../shared/EmptyState.jsx";
-import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { AddFromInboxModal } from "../inputs/AddFromInboxModal.jsx";
 
-import { ScenarioDrawer } from "../scenarios/ScenarioDrawer.jsx";
 import { EditProjectDrawer } from "../projects/EditProjectDrawer.jsx";
 import { ScanningPreferencesDrawer } from "../projects/ScanningPreferencesDrawer.jsx";
 import { CsvImportModal } from "../inputs/CsvImportModal.jsx";
-import { ClustersPanel } from "../clusters/ClustersPanel.jsx";
-import { DragGhost } from "../clusters/DragGhost.jsx";
 
 const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
-const COL = { check: 28, type: 80, quality: 120, steepled: 100, horizon: 55, action: 90, menu: 28 };
-
-// Returns the next available "Untitled" / "Untitled N" name for a project's cluster list.
-// Sequence: "Untitled", "Untitled 2", "Untitled 3", … (gaps are reused, not skipped).
-function nextUntitledName(clusters) {
-  const used = new Set();
-  for (const cl of clusters) {
-    if (cl.name === "Untitled") used.add(0);
-    const m = cl.name?.match(/^Untitled (\d+)$/);
-    if (m) used.add(Number(m[1]));
-  }
-  if (!used.has(0)) return "Untitled";
-  let n = 2;
-  while (used.has(n)) n++;
-  return `Untitled ${n}`;
-}
+const COL = { check: 28, type: 80, quality: 120, steepled: 100, horizon: 55, menu: 28 };
 
 const STRENGTH_COLORS = {
   weak:     [c.amber700, c.amber50, c.amberBorder],
@@ -69,9 +45,6 @@ function StrengthCell({ strength, confidence }) {
 }
 
 const INPUT_TYPE_OPTS = ["signal","issue","projection","plan","obstacle","source"];
-
-
-// ─── Cluster assign popover ────────────────────────────────────────────────────
 
 // ─── Filter tab ────────────────────────────────────────────────────────────────
 
@@ -219,74 +192,15 @@ function ConfirmDeleteModal({ count, onConfirm, onCancel }) {
   );
 }
 
-// ─── Right-column summary card ─────────────────────────────────────────────────
-
-function SummaryCard({ icon, title, count, countLabel, emptyBody, ctaLabel, onCta, addButton, children, showCount = true }) {
-  return (
-    <div style={{
-      background: c.white,
-      border: `0.5px solid ${c.border}`,
-      borderRadius: 8,
-      overflow: "hidden",
-      marginBottom: 12,
-    }}>
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "11px 16px",
-        borderBottom: count > 0 ? `0.5px solid ${c.border}` : "none",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, flex: 1, minWidth: 0 }}>
-          {icon && <span style={{ fontSize: 12, color: c.hint }}>{icon}</span>}
-          <span style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{title}</span>
-          {showCount && (
-            <span style={{
-              fontSize: 10, padding: "2px 7px", borderRadius: 8,
-              background: count > 0 ? c.ink : "rgba(0,0,0,0.06)",
-              color: count > 0 ? c.white : c.hint,
-              fontWeight: 500,
-            }}>
-              {count} {countLabel}
-            </span>
-          )}
-        </div>
-        {addButton}
-      </div>
-      {count > 0 ? (
-        <div style={{ padding: "10px 14px" }}>
-          {children}
-        </div>
-      ) : (
-        <div style={{ padding: "16px 16px" }}>
-          <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.55, marginBottom: ctaLabel ? 10 : 0 }}>{emptyBody}</div>
-          {ctaLabel && (
-            <button onClick={onCta} style={{
-              fontSize: 11, color: c.ink, background: "transparent", border: `1px solid ${c.borderMid}`,
-              borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontFamily: "inherit",
-            }}>
-              {ctaLabel}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
-/**
- * @param {{ appState: object }} props
- */
 export default function ProjectDetail({ appState }) {
   const {
-    activeProjectId, projects, inputs, clusters, scenarios, canvasNodes,
+    activeProjectId, projects, inputs, clusters,
     addInput, saveInputsToProject, showToast, setActiveScreen, setActiveProjectId,
-    openInputDetail, openClusterDetail, openScenarioDetail,
-    addCluster, addScenario, updateProject, updateCluster, assignInputToCluster, deleteProject,
+    openInputDetail,
+    updateProject, deleteProject,
     duplicateInputToCluster, deleteInput,
-    removeInputFromCluster, deleteCluster,
     workspaceScanningEnabled, setInboxProjectFilter,
     projectSources, updateProjectSource,
     openScanningPrefs, setOpenScanningPrefs,
@@ -296,32 +210,14 @@ export default function ProjectDetail({ appState }) {
   const [inboxModalOpen,    setInboxModalOpen]    = useState(false);
   const [scanPrefOpen,      setScanPrefOpen]      = useState(false);
 
-  const [scenarioDrawerOpen,setScenarioDrawerOpen]= useState(false);
   const [editDrawerOpen,    setEditDrawerOpen]    = useState(false);
   const [editScrollTo,      setEditScrollTo]      = useState(null);
   const [csvImportOpen,     setCsvImportOpen]     = useState(false);
   const [inputTab,          setInputTab]          = useState("all");
-  const [assignPickerFor,        setAssignPickerFor]        = useState(null);
-  const [assignPickerAnchorRect, setAssignPickerAnchorRect] = useState(null);
   // Multi-select
-  const [selectedIds,            setSelectedIds]            = useState(new Set());
-  const [batchPickerOpen,        setBatchPickerOpen]        = useState(false);
-  const [batchAssignAnchorRect,  setBatchAssignAnchorRect]  = useState(null);
-  const [confirmDeleteIds,       setConfirmDeleteIds]       = useState(null);
-  const batchAnchorRef = useRef(null);
-  const [lastCheckedId,  setLastCheckedId]  = useState(null);
-  // Drag-and-drop
-  const [dragIds,          setDragIds]          = useState(null);       // null | string[]
-  const [dragPos,          setDragPos]          = useState({ x: 0, y: 0 });
-  const [dragIsCopy,       setDragIsCopy]       = useState(false);
-  const [exitingIds,       setExitingIds]       = useState(new Set());
-
-  const blankImgRef = useRef(null);
-  if (!blankImgRef.current) {
-    const img = new Image();
-    img.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-    blankImgRef.current = img;
-  }
+  const [selectedIds,       setSelectedIds]       = useState(new Set());
+  const [confirmDeleteIds,  setConfirmDeleteIds]  = useState(null);
+  const [lastCheckedId,     setLastCheckedId]     = useState(null);
   // Search + filters
   const [searchQuery,       setSearchQuery]       = useState("");
   const [filterType,        setFilterType]        = useState(null);
@@ -343,17 +239,6 @@ export default function ProjectDetail({ appState }) {
     }
   }, [openScanningPrefs]);
 
-  // Track cursor position and Alt key state while a drag is in progress
-  useEffect(() => {
-    if (!dragIds) return;
-    const onOver = (e) => {
-      setDragPos({ x: e.clientX, y: e.clientY });
-      setDragIsCopy(e.altKey);
-    };
-    document.addEventListener("dragover", onOver);
-    return () => document.removeEventListener("dragover", onOver);
-  }, [dragIds]);
-
   if (!project) {
     return (
       <div style={{ padding: "28px 32px", background: c.bg, minHeight: "100%" }}>
@@ -365,9 +250,7 @@ export default function ProjectDetail({ appState }) {
     );
   }
 
-  const projectClusters  = clusters.filter((cl) => cl.project_id === project.id);
-  const projectScenarios = scenarios.filter((s)  => s.project_id === project.id);
-  const projectHasSystemMap = canvasNodes.some((n) => n.projectId === project.id);
+  const projectClusters = clusters.filter((cl) => cl.project_id === project.id);
   // Include inputs directly assigned to the project AND inputs referenced in
   // any of the project's clusters (cluster assignment does not update project_id).
   const clusterInputIdSet = new Set(projectClusters.flatMap((cl) => cl.input_ids || []));
@@ -376,9 +259,7 @@ export default function ProjectDetail({ appState }) {
   );
   const inboxInputs = inputs.filter((i) => i.project_id === null && !clusterInputIdSet.has(i.id));
 
-  // Determine assigned cluster(s) for an input
-  const getInputCluster  = (inputId) => projectClusters.find((cl) => cl.input_ids?.includes(inputId)) || null;
-  const getInputClusters = (inputId) => projectClusters.filter((cl) => cl.input_ids?.includes(inputId));
+  const getInputCluster = (inputId) => projectClusters.find((cl) => cl.input_ids?.includes(inputId)) || null;
 
   const unassigned = projectInputs.filter((i) => !getInputCluster(i.id));
   const inCluster  = projectInputs.filter((i) =>  getInputCluster(i.id));
@@ -400,13 +281,6 @@ export default function ProjectDetail({ appState }) {
   // Helpers for multi-select
   const allVisibleSelected = visibleInputs.length > 0 && visibleInputs.every((i) => selectedIds.has(i.id));
   const someSelected = selectedIds.size > 0;
-
-  const toggleSelect = (id) =>
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
 
   const toggleSelectAll = () => {
     if (allVisibleSelected) {
@@ -457,14 +331,6 @@ export default function ProjectDetail({ appState }) {
     setLastCheckedId(null);
   };
 
-  const handleBatchAssign = (cluster) => {
-    selectedIds.forEach((id) => assignInputToCluster(id, cluster.id));
-    showToast(`${selectedIds.size} input${selectedIds.size !== 1 ? "s" : ""} assigned to "${cluster.name}"`);
-    setSelectedIds(new Set());
-    setLastCheckedId(null);
-    setBatchPickerOpen(false);
-  };
-
   const handleAddInput = (fields) => {
     addInput({ ...fields, project_id: project.id });
     showToast("Input added to project");
@@ -475,14 +341,6 @@ export default function ProjectDetail({ appState }) {
     saveInputsToProject(ids, project.id);
     setInboxModalOpen(false);
     showToast(`${ids.length} input${ids.length !== 1 ? "s" : ""} added to "${project.name}"`);
-  };
-
-  const createUntitledCluster = (inputIds = []) => {
-    const name = nextUntitledName(projectClusters);
-    addCluster({ name, project_id: project.id, input_ids: inputIds });
-    showToast(inputIds.length > 0
-      ? `"${name}" created with ${inputIds.length} input${inputIds.length !== 1 ? "s" : ""}`
-      : `"${name}" created`);
   };
 
   const openEditDrawer = (scrollTo = null) => {
@@ -503,60 +361,6 @@ export default function ProjectDetail({ appState }) {
     setActiveScreen("dashboard");
   };
 
-  const handleCreateScenario = (fields) => {
-    const newScenario = addScenario({ ...fields, project_id: project.id });
-    setScenarioDrawerOpen(false);
-    if (newScenario) openScenarioDetail(newScenario.id);
-    setActiveScreen("scenarios");
-    showToast("System created — start mapping relationships");
-  };
-
-  const handleAssignToCluster = (inputId, cluster) => {
-    assignInputToCluster(inputId, cluster.id);
-    showToast(`Input assigned to "${cluster.name}"`);
-    setAssignPickerFor(null);
-  };
-
-  const handleDrop = (clusterId, isAlt) => {
-    const droppedIds = [...(dragIds || [])];
-    if (!droppedIds.length) return;
-    const cluster = projectClusters.find((cl) => cl.id === clusterId);
-    setDragIds(null);
-    if (!isAlt) {
-      if (inputTab === "unassigned") {
-        // Animate rows out before removing from list
-        setExitingIds(new Set(droppedIds));
-        const prevMap = {};
-        droppedIds.forEach((id) => { const prev = getInputCluster(id); if (prev) prevMap[id] = prev.id; });
-        setTimeout(() => {
-          setExitingIds(new Set());
-          droppedIds.forEach((id) => {
-            if (prevMap[id] && prevMap[id] !== clusterId) removeInputFromCluster(id, prevMap[id]);
-            assignInputToCluster(id, clusterId);
-          });
-        }, 185);
-      } else {
-        droppedIds.forEach((id) => {
-          const prev = getInputCluster(id);
-          if (prev && prev.id !== clusterId) removeInputFromCluster(id, prev.id);
-          assignInputToCluster(id, clusterId);
-        });
-      }
-      const n = droppedIds.length;
-      showToast(n === 1 ? `Input moved to "${cluster?.name}"` : `${n} inputs moved to "${cluster?.name}"`);
-    } else {
-      droppedIds.forEach((id) => duplicateInputToCluster(id, clusterId));
-      const n = droppedIds.length;
-      showToast(n === 1 ? `Input copied to "${cluster?.name}"` : `${n} inputs copied to "${cluster?.name}"`);
-    }
-  };
-
-  const handleDropToNewCluster = () => {
-    const ids = [...(dragIds || [])];
-    setDragIds(null);
-    createUntitledCluster(ids);
-  };
-
   const handleDuplicateToCluster = async (inputId, destCluster) => {
     setDupePicker(null);
     const result = await duplicateInputToCluster(inputId, destCluster.id);
@@ -564,11 +368,6 @@ export default function ProjectDetail({ appState }) {
   };
 
   const cell = { fontSize: 10, letterSpacing: "0.07em", color: c.hint, flexShrink: 0 };
-  const dragLabel = dragIds
-    ? dragIds.length === 1
-      ? (projectInputs.find((i) => i.id === dragIds[0])?.name || "1 input")
-      : `${dragIds.length} inputs`
-    : "";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: c.bg }}>
@@ -647,7 +446,7 @@ export default function ProjectDetail({ appState }) {
             <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
               {project.name}
             </div>
-            <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Inputs</div>
+            <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Scan</div>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
             <button onClick={() => setScanPrefOpen(true)} style={{ ...btnSec, fontSize: 12, padding: "8px 16px" }}>
@@ -662,335 +461,236 @@ export default function ProjectDetail({ appState }) {
 
         </div>{/* end header section */}
 
-        {/* ── Workspace: inputs panel + clusters panel ─────── */}
-        <div style={{ display: "flex", alignItems: "stretch", flex: 1, minHeight: 0, overflow: "hidden", padding: "0 0 0 32px" }}>
-
-          {/* ── LEFT: Inputs table ───────────────────────────── */}
-          <div style={{ flex: 1, minWidth: 0, overflowY: "auto", paddingBottom: 32 }}>
-            {/* Row 1: tabs left, add actions right */}
-            <div style={{ display: "flex", alignItems: "flex-end", marginBottom: 10, gap: 12, borderBottom: `1px solid ${c.border}` }}>
-              <div style={{ display: "flex", alignItems: "center" }}>
-                <FilterTab label="All"         count={projectInputs.length} active={inputTab === "all"}        onClick={() => { setInputTab("all");        setSelectedIds(new Set()); setLastCheckedId(null); }} />
-                <FilterTab label="Unassigned"  count={unassigned.length}    active={inputTab === "unassigned"} onClick={() => { setInputTab("unassigned"); setSelectedIds(new Set()); setLastCheckedId(null); }} />
-                <FilterTab label="Clustered"   count={inCluster.length}     active={inputTab === "incluster"}  onClick={() => { setInputTab("incluster");  setSelectedIds(new Set()); setLastCheckedId(null); }} />
-              </div>
-              <button
-                onClick={() => setCsvImportOpen(true)}
-                style={{ fontSize: 11, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "0 0 8px", textDecoration: "underline", textDecorationColor: c.border }}
-              >
-                Import via CSV
-              </button>
+        {/* ── Inputs table ─────────────────────────────────────── */}
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", paddingBottom: 32, padding: "0 32px 32px" }}>
+          {/* Row 1: tabs left, import link right */}
+          <div style={{ display: "flex", alignItems: "flex-end", marginBottom: 10, gap: 12, borderBottom: `1px solid ${c.border}` }}>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <FilterTab label="All"         count={projectInputs.length} active={inputTab === "all"}        onClick={() => { setInputTab("all");        setSelectedIds(new Set()); setLastCheckedId(null); }} />
+              <FilterTab label="Unassigned"  count={unassigned.length}    active={inputTab === "unassigned"} onClick={() => { setInputTab("unassigned"); setSelectedIds(new Set()); setLastCheckedId(null); }} />
+              <FilterTab label="Clustered"   count={inCluster.length}     active={inputTab === "incluster"}  onClick={() => { setInputTab("incluster");  setSelectedIds(new Set()); setLastCheckedId(null); }} />
             </div>
-
-            {projectInputs.length === 0 ? (
-              <div style={{
-                background: c.white, border: `1px dashed ${c.border}`,
-                borderRadius: 12, padding: "36px 24px", textAlign: "center",
-              }}>
-                <div style={{ fontSize: 26, opacity: 0.12, marginBottom: 10 }}>◎</div>
-                <div style={{ fontSize: 14, fontWeight: 500, color: c.muted, marginBottom: 5 }}>No inputs yet</div>
-                <div style={{ fontSize: 12, color: c.hint, lineHeight: 1.6, marginBottom: 18 }}>
-                  No inputs yet — add one to get started.
-                </div>
-                <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                  <button onClick={() => setDrawerOpen(true)} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}><CirclePlus size={14} />Add an input</button>
-                  <button onClick={() => setInboxModalOpen(true)} style={{ ...btnSec, fontSize: 13 }}>Add from Inbox</button>
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Row 2: search + filter chips */}
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search inputs…"
-                    style={{
-                      ...inp, width: 240, padding: "5px 10px", fontSize: 12,
-                      border: `1px solid ${c.border}`, borderRadius: 6,
-                    }}
-                  />
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
-                    <FilterDropdown
-                      label="Type"
-                      value={filterType}
-                      options={INPUT_TYPE_OPTS.map((v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }))}
-                      onChange={setFilterType}
-                      onClear={() => setFilterType(null)}
-                      isOpen={openFilterDropdown === "type"}
-                      onToggle={() => setOpenFilterDropdown(openFilterDropdown === "type" ? null : "type")}
-                    />
-                    <FilterDropdown
-                      label="Horizon"
-                      value={filterHorizon}
-                      options={["H1","H2","H3"].map((v) => ({ value: v, label: v }))}
-                      onChange={setFilterHorizon}
-                      onClear={() => setFilterHorizon(null)}
-                      isOpen={openFilterDropdown === "horizon"}
-                      onToggle={() => setOpenFilterDropdown(openFilterDropdown === "horizon" ? null : "horizon")}
-                    />
-                    <FilterDropdown
-                      label="STEEPLED"
-                      value={filterSteepled}
-                      options={STEEPLED.map((v) => ({ value: v, label: v }))}
-                      onChange={setFilterSteepled}
-                      onClear={() => setFilterSteepled(null)}
-                      isOpen={openFilterDropdown === "steepled"}
-                      onToggle={() => setOpenFilterDropdown(openFilterDropdown === "steepled" ? null : "steepled")}
-                    />
-                  </div>
-                  {anyFilterActive && (
-                    <button
-                      onClick={() => { setSearchQuery(""); setFilterType(null); setFilterHorizon(null); setFilterSteepled(null); }}
-                      style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
-                    >
-                      Clear all
-                    </button>
-                  )}
-                </div>
-
-                <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden" }}>
-                  {/* Header row */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", height: 30, borderBottom: "0.5px solid rgba(0,0,0,0.09)" }}>
-                    {/* Select-all checkbox */}
-                    <div style={{ width: COL.check, flexShrink: 0, display: "flex", alignItems: "center" }}>
-                      <input
-                        type="checkbox"
-                        checked={allVisibleSelected}
-                        onChange={toggleSelectAll}
-                        ref={(el) => { if (el) el.indeterminate = someSelected && !allVisibleSelected; }}
-                        style={{ cursor: "pointer", accentColor: c.ink }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0, ...cell }}>Title</div>
-                    <div style={{ width: COL.type,    ...cell }}>Type</div>
-                    <div style={{ width: COL.quality, ...cell }}>Strength</div>
-                    <div style={{ width: COL.steepled,...cell }}>STEEPLED</div>
-                    <div style={{ width: COL.horizon,    ...cell }}>Horizon</div>
-                    <div style={{ width: COL.action, flexShrink: 0, ...cell }}>Cluster</div>
-                    <div style={{ width: COL.menu, flexShrink: 0 }} />
-                  </div>
-
-                  {/* Data rows */}
-                  {visibleInputs.length === 0 ? (
-                    <div style={{ padding: "20px 14px", fontSize: 12, color: c.hint, textAlign: "center" }}>
-                      No inputs match the current filters.{" "}
-                      {anyFilterActive && (
-                        <button
-                          onClick={() => { setSearchQuery(""); setFilterType(null); setFilterHorizon(null); setFilterSteepled(null); }}
-                          style={{ fontSize: 12, color: c.ink, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}
-                        >
-                          Clear filters
-                        </button>
-                      )}
-                    </div>
-                  ) : visibleInputs.map((inp) => {
-                    const steepled = inp.steepled || [];
-                    const vis2     = steepled.slice(0, 2);
-                    const overflow = steepled.length - 2;
-                    const assignedCluster  = getInputCluster(inp.id);
-                    const assignedClusters = getInputClusters(inp.id);
-                    const isSelected = selectedIds.has(inp.id);
-                    return (
-                      <div
-                        key={inp.id}
-                        draggable
-                        onDragStart={(e) => {
-                          if (e.target.closest('input[type="checkbox"]') || e.target.closest('button')) return;
-                          const ids = selectedIds.has(inp.id) && selectedIds.size > 1
-                            ? [...selectedIds]
-                            : [inp.id];
-                          setDragIds(ids);
-                          setDragIsCopy(false);
-                          if (blankImgRef.current) e.dataTransfer.setDragImage(blankImgRef.current, 0, 0);
-                          e.dataTransfer.effectAllowed = "copyMove";
-                        }}
-                        onDragEnd={() => {
-                          setDragIds(null);
-                          setDragIsCopy(false);
-                          setExitingIds(new Set());
-                        }}
-                        onClick={() => openInputDetail(inp.id)}
-                        onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "rgba(0,0,0,0.02)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? c.brandBg : c.white; }}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 10,
-                          padding: "0 14px", height: 38,
-                          borderBottom: `1px solid ${c.border}`,
-                          cursor: "pointer",
-                          transition: exitingIds.has(inp.id)
-                            ? "opacity 0.18s ease, transform 0.18s ease"
-                            : "background 0.08s",
-                          background: isSelected ? c.brandBg : c.white,
-                          opacity: exitingIds.has(inp.id) ? 0 : dragIds?.includes(inp.id) ? 0.35 : 1,
-                          transform: exitingIds.has(inp.id) ? "translateX(12px)" : "none",
-                        }}
-                      >
-                        {/* Checkbox */}
-                        <div style={{ width: COL.check, flexShrink: 0, display: "flex", alignItems: "center" }}>
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {}}
-                            onClick={(e) => { e.stopPropagation(); handleCheckboxClick(inp.id, e); }}
-                            style={{ cursor: "pointer", accentColor: c.ink }}
-                          />
-                        </div>
-                        {/* Title */}
-                        <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
-                          {inp.name}
-                        </div>
-                        {/* Type */}
-                        <div style={{ width: COL.type, flexShrink: 0 }}>
-                          <InputTypeBadge subtype={inp.subtype} />
-                        </div>
-                        {/* Signal Strength / Source Confidence */}
-                        <div style={{ width: COL.quality, flexShrink: 0 }}>
-                          <StrengthCell strength={inp.signal_strength} confidence={inp.source_confidence} />
-                        </div>
-                        {/* STEEPLED */}
-                        <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
-                          {vis2.map((t) => (
-                            <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: c.surfaceAlt, color: c.muted }}>
-                              {STEEPLED_ABB[t] || t}
-                            </span>
-                          ))}
-                          {overflow > 0 && <span style={{ fontSize: 9, color: c.hint }}>+{overflow}</span>}
-                        </div>
-                        {/* Horizon */}
-                        <div style={{ width: COL.horizon, flexShrink: 0 }}>
-                          {inp.horizon ? <HorizTag h={inp.horizon} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
-                        </div>
-                        {/* Cluster */}
-                        <div style={{ width: COL.action, flexShrink: 0, display: "flex", alignItems: "center", position: "relative" }}>
-                          {assignedClusters.length === 0 ? (
-                            <>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (assignPickerFor !== inp.id) setAssignPickerAnchorRect(e.currentTarget.getBoundingClientRect());
-                                  setAssignPickerFor(assignPickerFor === inp.id ? null : inp.id);
-                                }}
-                                style={{ ...btnSm, fontSize: 10, padding: "3px 8px", whiteSpace: "nowrap" }}
-                              >
-                                Assign →
-                              </button>
-                              {assignPickerFor === inp.id && (
-                                <ClusterAssignMenu
-                                  clusters={projectClusters}
-                                  onAssign={(cl) => handleAssignToCluster(inp.id, cl)}
-                                  onNewCluster={() => { setAssignPickerFor(null); createUntitledCluster(); }}
-                                  onClose={() => setAssignPickerFor(null)}
-                                  anchorRect={assignPickerAnchorRect}
-                                />
-                              )}
-                            </>
-                          ) : assignedClusters.length === 1 ? (
-                            <span style={{ fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {assignedClusters[0].name}
-                            </span>
-                          ) : (
-                            <span style={{ fontSize: 10.5, padding: "2px 8px", borderRadius: 4, background: c.bg, color: c.muted, whiteSpace: "nowrap" }}>
-                              {assignedClusters.length} clusters
-                            </span>
-                          )}
-                        </div>
-                        {/* Three-dot context menu trigger */}
-                        <div style={{ width: COL.menu, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              setRowMenu((prev) => prev?.inputId === inp.id ? null : { inputId: inp.id, rect });
-                              setDupePicker(null);
-                            }}
-                            style={{
-                              background: "none", border: "none", cursor: "pointer",
-                              fontSize: 14, color: c.muted, padding: "2px 4px",
-                              borderRadius: 4, fontFamily: "inherit", lineHeight: 1,
-                            }}
-                            title="More actions"
-                          >
-                            ⋯
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Multi-select action bar — sticky at bottom of inputs panel */}
-                {someSelected && (
-                  <div style={{
-                    position: "sticky", bottom: 0,
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "9px 14px",
-                    background: "rgb(249, 249, 247)",
-                    borderTop: `1px solid ${c.border}`,
-                    animation: "slideUp 0.16s ease",
-                  }}>
-                    <span style={{ fontSize: 12, color: c.muted, flex: 1 }}>
-                      {selectedIds.size} selected
-                    </span>
-                    <div style={{ position: "relative" }} ref={batchAnchorRef}>
-                      <button
-                        onClick={(e) => {
-                          if (!batchPickerOpen) setBatchAssignAnchorRect(e.currentTarget.getBoundingClientRect());
-                          setBatchPickerOpen((p) => !p);
-                        }}
-                        style={{ ...btnSm, fontSize: 11, padding: "4px 10px" }}
-                      >
-                        Assign →
-                      </button>
-                      {batchPickerOpen && (
-                        <ClusterAssignMenu
-                          clusters={projectClusters}
-                          onAssign={handleBatchAssign}
-                          onNewCluster={() => { setBatchPickerOpen(false); createUntitledCluster(); }}
-                          onClose={() => setBatchPickerOpen(false)}
-                          anchorRect={batchAssignAnchorRect}
-                        />
-                      )}
-                    </div>
-                    <button
-                      onClick={() => setConfirmDeleteIds([...selectedIds])}
-                      style={{
-                        padding: "4px 10px", borderRadius: 7, fontSize: 11, fontWeight: 500,
-                        cursor: "pointer", fontFamily: "inherit", border: "none",
-                        background: "rgb(254, 226, 226)", color: "rgb(185, 28, 28)",
-                      }}
-                    >
-                      Delete
-                    </button>
-                    <button
-                      onClick={() => { setSelectedIds(new Set()); setLastCheckedId(null); }}
-                      style={{ fontSize: 11, color: "rgb(102, 102, 102)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
-                    >
-                      ✕ Clear
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
+            <button
+              onClick={() => setCsvImportOpen(true)}
+              style={{ fontSize: 11, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: "0 0 8px", textDecoration: "underline", textDecorationColor: c.border }}
+            >
+              Import via CSV
+            </button>
           </div>
 
-          <ClustersPanel
-            projectId={project.id}
-            clusters={projectClusters}
-            inputs={inputs}
-            onNewCluster={() => createUntitledCluster()}
-            removeInputFromCluster={removeInputFromCluster}
-            deleteCluster={deleteCluster}
-            showToast={showToast}
-            dragIds={dragIds}
-            dragIsCopy={dragIsCopy}
-            onDrop={handleDrop}
-            onDropToNewCluster={handleDropToNewCluster}
-            assignInputToCluster={assignInputToCluster}
-            addCluster={addCluster}
-            updateCluster={updateCluster}
-          />
+          {projectInputs.length === 0 ? (
+            <div style={{
+              background: c.white, border: `1px dashed ${c.border}`,
+              borderRadius: 12, padding: "36px 24px", textAlign: "center",
+            }}>
+              <div style={{ fontSize: 26, opacity: 0.12, marginBottom: 10 }}>◎</div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: c.muted, marginBottom: 5 }}>No inputs yet</div>
+              <div style={{ fontSize: 12, color: c.hint, lineHeight: 1.6, marginBottom: 18 }}>
+                No inputs yet — add one to get started.
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                <button onClick={() => setDrawerOpen(true)} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}><CirclePlus size={14} />Add an input</button>
+                <button onClick={() => setInboxModalOpen(true)} style={{ ...btnSec, fontSize: 13 }}>Add from Inbox</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Row 2: search + filter chips */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search inputs…"
+                  style={{
+                    ...inp, width: 240, padding: "5px 10px", fontSize: 12,
+                    border: `1px solid ${c.border}`, borderRadius: 6,
+                  }}
+                />
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
+                  <FilterDropdown
+                    label="Type"
+                    value={filterType}
+                    options={INPUT_TYPE_OPTS.map((v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }))}
+                    onChange={setFilterType}
+                    onClear={() => setFilterType(null)}
+                    isOpen={openFilterDropdown === "type"}
+                    onToggle={() => setOpenFilterDropdown(openFilterDropdown === "type" ? null : "type")}
+                  />
+                  <FilterDropdown
+                    label="Horizon"
+                    value={filterHorizon}
+                    options={["H1","H2","H3"].map((v) => ({ value: v, label: v }))}
+                    onChange={setFilterHorizon}
+                    onClear={() => setFilterHorizon(null)}
+                    isOpen={openFilterDropdown === "horizon"}
+                    onToggle={() => setOpenFilterDropdown(openFilterDropdown === "horizon" ? null : "horizon")}
+                  />
+                  <FilterDropdown
+                    label="STEEPLED"
+                    value={filterSteepled}
+                    options={STEEPLED.map((v) => ({ value: v, label: v }))}
+                    onChange={setFilterSteepled}
+                    onClear={() => setFilterSteepled(null)}
+                    isOpen={openFilterDropdown === "steepled"}
+                    onToggle={() => setOpenFilterDropdown(openFilterDropdown === "steepled" ? null : "steepled")}
+                  />
+                </div>
+                {anyFilterActive && (
+                  <button
+                    onClick={() => { setSearchQuery(""); setFilterType(null); setFilterHorizon(null); setFilterSteepled(null); }}
+                    style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+
+              <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden" }}>
+                {/* Header row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", height: 30, borderBottom: "0.5px solid rgba(0,0,0,0.09)" }}>
+                  <div style={{ width: COL.check, flexShrink: 0, display: "flex", alignItems: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={allVisibleSelected}
+                      onChange={toggleSelectAll}
+                      ref={(el) => { if (el) el.indeterminate = someSelected && !allVisibleSelected; }}
+                      style={{ cursor: "pointer", accentColor: c.ink }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, ...cell }}>Title</div>
+                  <div style={{ width: COL.type,    ...cell }}>Type</div>
+                  <div style={{ width: COL.quality, ...cell }}>Strength</div>
+                  <div style={{ width: COL.steepled,...cell }}>STEEPLED</div>
+                  <div style={{ width: COL.horizon,    ...cell }}>Horizon</div>
+                  <div style={{ width: COL.menu, flexShrink: 0 }} />
+                </div>
+
+                {/* Data rows */}
+                {visibleInputs.length === 0 ? (
+                  <div style={{ padding: "20px 14px", fontSize: 12, color: c.hint, textAlign: "center" }}>
+                    No inputs match the current filters.{" "}
+                    {anyFilterActive && (
+                      <button
+                        onClick={() => { setSearchQuery(""); setFilterType(null); setFilterHorizon(null); setFilterSteepled(null); }}
+                        style={{ fontSize: 12, color: c.ink, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                  </div>
+                ) : visibleInputs.map((inp) => {
+                  const steepled = inp.steepled || [];
+                  const vis2     = steepled.slice(0, 2);
+                  const overflow = steepled.length - 2;
+                  const isSelected = selectedIds.has(inp.id);
+                  return (
+                    <div
+                      key={inp.id}
+                      onClick={() => openInputDetail(inp.id)}
+                      onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "rgba(0,0,0,0.02)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? c.brandBg : c.white; }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 10,
+                        padding: "0 14px", height: 38,
+                        borderBottom: `1px solid ${c.border}`,
+                        cursor: "pointer",
+                        transition: "background 0.08s",
+                        background: isSelected ? c.brandBg : c.white,
+                      }}
+                    >
+                      {/* Checkbox */}
+                      <div style={{ width: COL.check, flexShrink: 0, display: "flex", alignItems: "center" }}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {}}
+                          onClick={(e) => { e.stopPropagation(); handleCheckboxClick(inp.id, e); }}
+                          style={{ cursor: "pointer", accentColor: c.ink }}
+                        />
+                      </div>
+                      {/* Title */}
+                      <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+                        {inp.name}
+                      </div>
+                      {/* Type */}
+                      <div style={{ width: COL.type, flexShrink: 0 }}>
+                        <InputTypeBadge subtype={inp.subtype} />
+                      </div>
+                      {/* Signal Strength / Source Confidence */}
+                      <div style={{ width: COL.quality, flexShrink: 0 }}>
+                        <StrengthCell strength={inp.signal_strength} confidence={inp.source_confidence} />
+                      </div>
+                      {/* STEEPLED */}
+                      <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
+                        {vis2.map((t) => (
+                          <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: c.surfaceAlt, color: c.muted }}>
+                            {STEEPLED_ABB[t] || t}
+                          </span>
+                        ))}
+                        {overflow > 0 && <span style={{ fontSize: 9, color: c.hint }}>+{overflow}</span>}
+                      </div>
+                      {/* Horizon */}
+                      <div style={{ width: COL.horizon, flexShrink: 0 }}>
+                        {inp.horizon ? <HorizTag h={inp.horizon} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+                      </div>
+                      {/* Three-dot context menu trigger */}
+                      <div style={{ width: COL.menu, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setRowMenu((prev) => prev?.inputId === inp.id ? null : { inputId: inp.id, rect });
+                            setDupePicker(null);
+                          }}
+                          style={{
+                            background: "none", border: "none", cursor: "pointer",
+                            fontSize: 14, color: c.muted, padding: "2px 4px",
+                            borderRadius: 4, fontFamily: "inherit", lineHeight: 1,
+                          }}
+                          title="More actions"
+                        >
+                          ⋯
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Multi-select action bar — sticky at bottom */}
+              {someSelected && (
+                <div style={{
+                  position: "sticky", bottom: 0,
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "9px 14px",
+                  background: "rgb(249, 249, 247)",
+                  borderTop: `1px solid ${c.border}`,
+                  animation: "slideUp 0.16s ease",
+                }}>
+                  <span style={{ fontSize: 12, color: c.muted, flex: 1 }}>
+                    {selectedIds.size} selected
+                  </span>
+                  <button
+                    onClick={() => setConfirmDeleteIds([...selectedIds])}
+                    style={{
+                      padding: "4px 10px", borderRadius: 7, fontSize: 11, fontWeight: 500,
+                      cursor: "pointer", fontFamily: "inherit", border: "none",
+                      background: "rgb(254, 226, 226)", color: "rgb(185, 28, 28)",
+                    }}
+                  >
+                    Delete
+                  </button>
+                  <button
+                    onClick={() => { setSelectedIds(new Set()); setLastCheckedId(null); }}
+                    style={{ fontSize: 11, color: "rgb(102, 102, 102)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    ✕ Clear
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -1010,13 +710,6 @@ export default function ProjectDetail({ appState }) {
         projectName={project.name}
         onCreateNew={() => { setInboxModalOpen(false); setDrawerOpen(true); }}
       />
-
-      {scenarioDrawerOpen && (
-        <ScenarioDrawer
-          onClose={() => setScenarioDrawerOpen(false)}
-          onSave={handleCreateScenario}
-        />
-      )}
 
       {editDrawerOpen && (
         <EditProjectDrawer
@@ -1182,14 +875,6 @@ export default function ProjectDetail({ appState }) {
           document.body
         );
       })()}
-
-      <DragGhost
-        active={!!dragIds}
-        label={dragLabel}
-        x={dragPos.x}
-        y={dragPos.y}
-        isCopy={dragIsCopy}
-      />
     </div>
   );
 }
