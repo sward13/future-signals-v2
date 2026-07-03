@@ -50,6 +50,35 @@ export default function ClusterScreen({ appState }) {
   const [dragPos,    setDragPos]    = useState({ x: 0, y: 0 });
   const [dragIsCopy, setDragIsCopy] = useState(false);
 
+  // Input drawer resize state
+  const [drawerHeight, setDrawerHeight] = useState(() => {
+    const saved = localStorage.getItem("clusterDrawerHeight");
+    return saved ? Number(saved) : 240;
+  });
+  const [resizing, setResizing] = useState(false);
+  const resizeRef = useRef(null); // { startY, startHeight }
+
+  useEffect(() => {
+    if (!resizing) return;
+    const onMouseMove = (e) => {
+      if (!resizeRef.current) return;
+      const delta = resizeRef.current.startY - e.clientY; // drag up = taller
+      const next = Math.max(120, Math.min(window.innerHeight * 0.6, resizeRef.current.startHeight + delta));
+      setDrawerHeight(next);
+    };
+    const onMouseUp = () => setResizing(false);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [resizing]);
+
+  useEffect(() => {
+    localStorage.setItem("clusterDrawerHeight", String(Math.round(drawerHeight)));
+  }, [drawerHeight]);
+
   const blankImgRef = useRef(null);
   if (!blankImgRef.current) {
     const img = new Image();
@@ -177,10 +206,36 @@ export default function ClusterScreen({ appState }) {
           style={{ flex: 1, minHeight: 0, width: "100%", minWidth: 0, borderLeft: "none" }}
         />
 
-        {/* ── Input rail (bottom, fixed height — resizable in step 2) */}
+        {/* ── Resize handle ──────────────────────────────────────── */}
+        <div
+          onMouseDown={(e) => {
+            e.preventDefault();
+            resizeRef.current = { startY: e.clientY, startHeight: drawerHeight };
+            setResizing(true);
+          }}
+          style={{
+            height: 7,
+            flexShrink: 0,
+            cursor: "row-resize",
+            background: c.bg,
+            borderTop: `1px solid ${c.borderMid}`,
+            borderBottom: `1px solid ${c.border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            userSelect: "none",
+          }}
+        >
+          <div style={{ display: "flex", gap: 3 }}>
+            {[0, 1, 2].map((i) => (
+              <div key={i} style={{ width: 3, height: 3, borderRadius: "50%", background: c.faint }} />
+            ))}
+          </div>
+        </div>
+
+        {/* ── Input rail (bottom, resizable height) ──────────────── */}
         <div style={{
-          height: 240, flexShrink: 0, overflowY: "auto",
-          borderTop: `1px solid ${c.borderMid}`,
+          height: drawerHeight, flexShrink: 0, overflowY: "auto",
           padding: "0 32px 16px",
           background: c.bg,
         }}>
