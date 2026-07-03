@@ -259,6 +259,11 @@ Where a `0.5px` border is required (e.g. the sidebar border-right, panel divider
 - Components that **have** been migrated to Tailwind classes: must **not** import from `tokens.js`. The Tailwind classes and the `@theme` variables are the sole source of style for migrated components.
 - The `@theme` block in `src/index.css` and `tokens.js` must stay in sync — if a token value changes, update both.
 
+**Migrated components (no `tokens.js` import):**
+- `src/components/shared/HorizonBar.jsx`
+- `src/components/clusters/ClustersPanel.jsx`
+- `src/components/screens/ProjectOverview.jsx`
+
 ### Dynamic and conditional classes
 
 Use **`clsx`** for any component that assembles class strings conditionally. Do not use inline ternaries directly inside a `className` string or string concatenation.

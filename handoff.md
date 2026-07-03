@@ -33,6 +33,14 @@ All core screens are built and functional:
 
 Note: the Clustering screen no longer exists as a separate route. The `clustering` case in App.jsx redirects to ProjectDetail. All clustering work happens in the 320px ClustersPanel embedded in the Inputs workspace.
 
+**2026-07-02 session — Tailwind migration: ProjectOverview.jsx (on `workspace-refactor` branch):**
+- **`ProjectOverview.jsx` fully migrated** to Tailwind v4 — removes the last `tokens.js` import from this file. All inline style objects replaced with Tailwind utility classes; `clsx` used for conditional composition.
+- **`PHASE_STATUS` converted** from style objects (`borderTop`, `labelColor`) to class-name objects (`topClass`, `labelClass`). The "Active this week" border uses `border-t-green-600` → our custom `--color-green-600: #16a34a` (same hex as original `c.green600`); label uses `text-green-700` → `--color-green-700: #3B6D11`.
+- **`PhaseCard` hover shadow** converted from imperative `onMouseEnter`/`onMouseLeave` DOM mutation to `hover:shadow-hover` (the `--shadow-hover` `@theme` token generates the `shadow-hover` utility).
+- **`HorizonScatter` SVG colours** converted from resolved `c.*` hex literals to `var(--color-*)` CSS variable strings — works in modern browsers for SVG presentation attributes.
+- **`AnalysisFillGrid`** replaced `cellBase`/`cellStyle` style-object functions with a `cellClass(panel, isKd)` helper using `clsx`. The KD cell's `items-start` / other cells' `items-center` split across branches to avoid cascade ambiguity (never appear together in the same `className` string).
+- **Migrated components to date:** `ClustersPanel.jsx`, `HorizonBar.jsx`, `ProjectOverview.jsx`.
+
 **2026-07-02 session — Project Overview screen (on `workspace-refactor` branch):**
 - **`ProjectOverview.jsx`** built as the new default project landing screen (`src/components/screens/ProjectOverview.jsx`). Sections: project name eyebrow + "Overview" title + ⚙ Project settings button; key question card (60/40 question / Domain+Geography split); proportional HorizonBar; scanner card ("N new signals since your last visit" using `priorVisitedAt` captured at mount before the `last_visited_at` stamp lands); collapsible context card (Focus, Audience, Stakeholders, Assumptions, In/Out scope); 5 phase cards.
 - **Phase cards:** Scan · Cluster · System Map · System Analysis · Future Models. Each card shows a colour-coded `borderTop` status (Active today = brand blue, Active this week = green, earlier/not started = `c.border`) and a "Continue here" pill on the most-recently-active stage. System Analysis card shows a 3×2 `AnalysisFillGrid` using the exported `analysisHasCont` helper. Cluster card shows subtype pills + `HorizonScatter` SVG (dots per H1/H2/H3 zone).
