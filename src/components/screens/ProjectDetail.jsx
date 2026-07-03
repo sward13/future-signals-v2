@@ -274,6 +274,7 @@ export default function ProjectDetail({ appState }) {
     removeInputFromCluster, deleteCluster,
     workspaceScanningEnabled, setInboxProjectFilter,
     projectSources, updateProjectSource,
+    openScanningPrefs, setOpenScanningPrefs,
   } = appState;
 
   const [drawerOpen,        setDrawerOpen]        = useState(false);
@@ -318,6 +319,14 @@ export default function ProjectDetail({ appState }) {
 
   const project = projects.find((p) => p.id === activeProjectId) ?? null;
   const { status: scanStatus, foundCount, dismiss: dismissScan } = useScannerStatus(project, inputs);
+
+  // Open ScanningPreferencesDrawer when navigated here via Overview "Manage sources"
+  useEffect(() => {
+    if (openScanningPrefs) {
+      setScanPrefOpen(true);
+      setOpenScanningPrefs(false);
+    }
+  }, [openScanningPrefs]);
 
   // Track cursor position and Alt key state while a drag is in progress
   useEffect(() => {

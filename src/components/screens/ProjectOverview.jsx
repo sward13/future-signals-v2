@@ -166,6 +166,8 @@ export default function ProjectOverview({ appState }) {
     relationships,
     projectSources,
     setActiveScreen,
+    setInboxProjectFilter,
+    setOpenScanningPrefs,
     updateProject,
     deleteProject,
     workspaceScanningEnabled,
@@ -331,14 +333,14 @@ export default function ProjectOverview({ appState }) {
           <div className="flex gap-2 shrink-0">
             {aiSuggestionCount > 0 && (
               <button
-                onClick={() => setActiveScreen("inbox")}
+                onClick={() => { setInboxProjectFilter(activeProjectId); setActiveScreen("inbox"); }}
                 className="text-xs py-1.5 px-3.5 rounded-btn bg-brand-bg text-brand border border-brand-border cursor-pointer [font-family:inherit]"
               >
                 Review {aiSuggestionCount} →
               </button>
             )}
             <button
-              onClick={() => setActiveScreen("inbox")}
+              onClick={() => { setOpenScanningPrefs(true); setActiveScreen("project"); }}
               className="py-1.5 px-3.5 rounded-container bg-transparent text-muted border border-border-mid text-xs cursor-pointer [font-family:inherit]"
             >
               Manage sources

@@ -79,6 +79,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [activePFId, setActivePFId] = useState(null);
   // undefined = first visit (apply default); null = user explicitly cleared; "uuid" = deep-link/selected
   const [inboxProjectFilter, setInboxProjectFilter] = useState(undefined);
+  // Cross-screen signal: Overview "Manage sources" sets this true; ProjectDetail reads and clears it
+  const [openScanningPrefs, setOpenScanningPrefs] = useState(false);
 
   const toastTimer = useRef(null);
   const refreshInputsRef  = useRef(null);
@@ -1755,6 +1757,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     showToast,
     inboxProjectFilter,
     setInboxProjectFilter,
+    openScanningPrefs,
+    setOpenScanningPrefs,
     systemMapExportRef,
   };
 }
