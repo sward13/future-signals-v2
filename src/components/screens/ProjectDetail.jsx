@@ -14,7 +14,7 @@ import { EmptyState } from "../shared/EmptyState.jsx";
 import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { AddFromInboxModal } from "../inputs/AddFromInboxModal.jsx";
-import { ClusterDrawer } from "../clusters/ClusterDrawer.jsx";
+
 import { ScenarioDrawer } from "../scenarios/ScenarioDrawer.jsx";
 import { EditProjectDrawer } from "../projects/EditProjectDrawer.jsx";
 import { ScanningPreferencesDrawer } from "../projects/ScanningPreferencesDrawer.jsx";
@@ -24,6 +24,21 @@ import { DragGhost } from "../clusters/DragGhost.jsx";
 
 const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
 const COL = { check: 28, type: 80, quality: 120, steepled: 100, horizon: 55, action: 90, menu: 28 };
+
+// Returns the next available "Untitled" / "Untitled N" name for a project's cluster list.
+// Sequence: "Untitled", "Untitled 2", "Untitled 3", … (gaps are reused, not skipped).
+function nextUntitledName(clusters) {
+  const used = new Set();
+  for (const cl of clusters) {
+    if (cl.name === "Untitled") used.add(0);
+    const m = cl.name?.match(/^Untitled (\d+)$/);
+    if (m) used.add(Number(m[1]));
+  }
+  if (!used.has(0)) return "Untitled";
+  let n = 2;
+  while (used.has(n)) n++;
+  return `Untitled ${n}`;
+}
 
 const STRENGTH_COLORS = {
   weak:     [c.amber700, c.amber50, c.amberBorder],
@@ -280,7 +295,7 @@ export default function ProjectDetail({ appState }) {
   const [drawerOpen,        setDrawerOpen]        = useState(false);
   const [inboxModalOpen,    setInboxModalOpen]    = useState(false);
   const [scanPrefOpen,      setScanPrefOpen]      = useState(false);
-  const [clusterDrawerOpen, setClusterDrawerOpen] = useState(false);
+
   const [scenarioDrawerOpen,setScenarioDrawerOpen]= useState(false);
   const [editDrawerOpen,    setEditDrawerOpen]    = useState(false);
   const [editScrollTo,      setEditScrollTo]      = useState(null);
@@ -300,7 +315,7 @@ export default function ProjectDetail({ appState }) {
   const [dragPos,          setDragPos]          = useState({ x: 0, y: 0 });
   const [dragIsCopy,       setDragIsCopy]       = useState(false);
   const [exitingIds,       setExitingIds]       = useState(new Set());
-  const [clusterPreInputIds, setClusterPreInputIds] = useState([]);
+
   const blankImgRef = useRef(null);
   if (!blankImgRef.current) {
     const img = new Image();
@@ -462,12 +477,12 @@ export default function ProjectDetail({ appState }) {
     showToast(`${ids.length} input${ids.length !== 1 ? "s" : ""} added to "${project.name}"`);
   };
 
-  const handleCreateCluster = (fields) => {
-    addCluster({ ...fields, project_id: project.id });
-    const n = (fields.input_ids || []).length;
-    showToast(n > 0 ? `Cluster created with ${n} input${n !== 1 ? "s" : ""}` : "Cluster created — no inputs linked yet");
-    setClusterDrawerOpen(false);
-    setClusterPreInputIds([]);
+  const createUntitledCluster = (inputIds = []) => {
+    const name = nextUntitledName(projectClusters);
+    addCluster({ name, project_id: project.id, input_ids: inputIds });
+    showToast(inputIds.length > 0
+      ? `"${name}" created with ${inputIds.length} input${inputIds.length !== 1 ? "s" : ""}`
+      : `"${name}" created`);
   };
 
   const openEditDrawer = (scrollTo = null) => {
@@ -537,9 +552,9 @@ export default function ProjectDetail({ appState }) {
   };
 
   const handleDropToNewCluster = () => {
-    setClusterPreInputIds([...(dragIds || [])]);
-    setClusterDrawerOpen(true);
+    const ids = [...(dragIds || [])];
     setDragIds(null);
+    createUntitledCluster(ids);
   };
 
   const handleDuplicateToCluster = async (inputId, destCluster) => {
@@ -865,7 +880,7 @@ export default function ProjectDetail({ appState }) {
                                 <ClusterAssignMenu
                                   clusters={projectClusters}
                                   onAssign={(cl) => handleAssignToCluster(inp.id, cl)}
-                                  onNewCluster={() => { setAssignPickerFor(null); setClusterDrawerOpen(true); }}
+                                  onNewCluster={() => { setAssignPickerFor(null); createUntitledCluster(); }}
                                   onClose={() => setAssignPickerFor(null)}
                                   anchorRect={assignPickerAnchorRect}
                                 />
@@ -932,7 +947,7 @@ export default function ProjectDetail({ appState }) {
                         <ClusterAssignMenu
                           clusters={projectClusters}
                           onAssign={handleBatchAssign}
-                          onNewCluster={() => { setBatchPickerOpen(false); setClusterDrawerOpen(true); }}
+                          onNewCluster={() => { setBatchPickerOpen(false); createUntitledCluster(); }}
                           onClose={() => setBatchPickerOpen(false)}
                           anchorRect={batchAssignAnchorRect}
                         />
@@ -964,7 +979,7 @@ export default function ProjectDetail({ appState }) {
             projectId={project.id}
             clusters={projectClusters}
             inputs={inputs}
-            onNewCluster={() => setClusterDrawerOpen(true)}
+            onNewCluster={() => createUntitledCluster()}
             removeInputFromCluster={removeInputFromCluster}
             deleteCluster={deleteCluster}
             showToast={showToast}
@@ -993,17 +1008,6 @@ export default function ProjectDetail({ appState }) {
         inboxInputs={inboxInputs}
         projectName={project.name}
         onCreateNew={() => { setInboxModalOpen(false); setDrawerOpen(true); }}
-      />
-
-      <ClusterDrawer
-        open={clusterDrawerOpen}
-        onClose={() => { setClusterDrawerOpen(false); setClusterPreInputIds([]); }}
-        onSave={handleCreateCluster}
-        projectId={project.id}
-        projectInputs={projectInputs}
-        preselectedInputIds={clusterPreInputIds}
-        onAddInput={(fields) => { addInput({ ...fields, project_id: project.id }); showToast("Input added"); }}
-        projects={projects}
       />
 
       {scenarioDrawerOpen && (
