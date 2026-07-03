@@ -97,7 +97,17 @@ export function ClustersPanel({
   const [dropTargetId, setDropTargetId] = useState(null);
   const [dropIsCopy,   setDropIsCopy]   = useState(false);
   const [dropOnZone,   setDropOnZone]   = useState(false);
+  const [filterUntitled, setFilterUntitled] = useState(false);
   const panelRef = useRef(null);
+
+  const isUntitled = (cl) => /^Untitled( \d+)?$/.test(cl.name);
+  const untitledCount = clusters.filter(isUntitled).length;
+  const visibleClusters = filterUntitled ? clusters.filter(isUntitled) : clusters;
+
+  // Auto-clear filter when no untitled clusters remain (all renamed or deleted)
+  useEffect(() => {
+    if (untitledCount === 0) setFilterUntitled(false);
+  }, [untitledCount]);
 
   // Close detail panel on Escape or click outside the clusters panel
   useEffect(() => {
@@ -203,6 +213,35 @@ export function ClustersPanel({
         </div>
       )}
 
+      {/* ── Untitled filter — manual mode, only when untitled clusters exist ── */}
+      {mode === "manual" && untitledCount > 0 && (
+        <div className="px-3.5 py-1.5 flex items-center border-b border-border bg-white shrink-0">
+          <button
+            onClick={() => setFilterUntitled((v) => !v)}
+            className={clsx(
+              'flex items-center gap-1.5 text-[11px] cursor-pointer bg-transparent border-none p-0 font-[inherit]',
+              filterUntitled ? 'text-brand font-medium' : 'text-hint',
+            )}
+          >
+            Untitled
+            <span className={clsx(
+              'text-[10px] px-1 py-px rounded-chip',
+              filterUntitled ? 'bg-brand-bg text-brand' : 'bg-surface-alt text-faint',
+            )}>
+              {untitledCount}
+            </span>
+          </button>
+          {filterUntitled && (
+            <button
+              onClick={() => setFilterUntitled(false)}
+              className="ml-auto text-[10px] text-hint cursor-pointer bg-transparent border-none font-[inherit] p-0"
+            >
+              Show all
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ── Scrollable cluster list — manual mode ────────────── */}
       {mode === "manual" && (
         <div className="flex-1 overflow-y-auto">
@@ -215,7 +254,7 @@ export function ClustersPanel({
 
           {view === "list" && clusters.length > 0 && (
             <div>
-              {clusters.map((cl) => (
+              {visibleClusters.map((cl) => (
                 <ClusterListRow
                   key={cl.id}
                   cluster={cl}
@@ -245,7 +284,7 @@ export function ClustersPanel({
 
           {view === "card" && clusters.length > 0 && (
             <div className="px-3 py-2.5 flex flex-col gap-2.25">
-              {clusters.map((cl) => (
+              {visibleClusters.map((cl) => (
                 <div
                   key={cl.id}
                   onDragOver={(e) => {
