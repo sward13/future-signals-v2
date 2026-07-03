@@ -287,6 +287,7 @@ The sidebar is **196px wide**, `background: c.bg`, with a single `0.5px` border-
 - Dashboard *(global)*
 - Inbox *(global, shows unread count badge in `alertBg/alertText`)*
 - `0.5px` divider
+- Overview *(project-scoped, first item — default landing screen when opening a project)*
 - Inputs *(project-scoped, shows input count)*
 - System Map *(project-scoped)*
 - System Analysis *(project-scoped)*
@@ -303,30 +304,40 @@ The sidebar is **196px wide**, `background: c.bg`, with a single `0.5px` border-
 
 ---
 
-## Page header — Inputs screen pattern
+## Page header — Overview screen (project landing)
 
-This pattern applies to all project-scoped screens.
+`ProjectOverview.jsx` is the default landing screen when a project is opened (`openProject(id)` navigates to `"project-overview"`). It owns all project-context header content. Other project-scoped screens have minimal headers — just an eyebrow + screen title.
 
+**Overview screen layout (top to bottom):**
 ```
-breadcrumb        → "Projects › {project name}"  (11px, c.faint)
-title row         → {Project name} (22px/500) + [Project settings ⚙] + [Domain tag] + CTAs (right-aligned)
-key question block→ blue left-border card (see below)
-time horizon bar  → proportional H1/H2/H3 bar with date labels
-```
-
-**Key question block:**
-```js
-{
-  padding: "9px 14px",
-  borderLeft: `2px solid ${c.brand}`,
-  background: c.brandDeep,
-  borderRadius: "0 6px 6px 0",
-}
-// Label: 9px, uppercase, tracked, c.brand — "KEY QUESTION"
-// Body: 13px, italic, c.ink
+eyebrow           → project.name (11px, c.faint)
+title row         → "Overview" (22px/500) + [⚙ Project settings] right-aligned
+key question card → 60% question (13px italic) / 40% Domain + Geography
+HorizonBar        → proportional H1/H2/H3 coloured band (shared component)
+scanner card      → "N new signals since your last visit" + source count + CTA buttons
+context card      → collapsible: Focus, Audience, Stakeholders, Assumptions, In scope, Out of scope
+phase cards       → 5-column grid: Scan · Cluster · System Map · System Analysis · Future Models
 ```
 
-**"Project settings" button** (not "Edit project") — opens the full project configuration panel (name, domain, key question, time horizons, focus, geography, stakeholders). Use a gear icon (⚙). Style as `btnSec`.
+**Phase card status borders:**
+- Active today (< 24 h) → `borderTop: 3px solid c.brand` + "Active today" label
+- Active this week (< 7 d) → `borderTop: 3px solid c.green600` + "Active this week" label
+- Not started / earlier → `borderTop: 3px solid c.border`, no label
+- Most-recently-active stage gets a "Continue here" pill (`background: c.brand, color: c.white`)
+
+**"N new signals since your last visit"** compares `inputs.created_at` to `priorVisitedAt`, captured at component mount via `useState(() => project?.last_visited_at ?? null)`. `openProject()` stamps `last_visited_at` fire-and-forget (no `setProjects` call), so state still holds the prior session's value at mount time.
+
+**`projectSources`** is fetched per active project in a `useEffect` on `activeProjectId` in `useAppState.js` (the `project_sources` table has no `workspace_id` — must be scoped by `project_id`). Exposed as `appState.projectSources`.
+
+**"Project settings" button** (not "Edit project") — opens `EditProjectDrawer`. Gear icon ⚙, styled `btnSec`. The drawer's prop API: `{ project, onClose, onSave, onDelete, workspaceScanningEnabled }` — not `appState`.
+
+**Inputs screen header (trimmed):**
+The Inputs screen (`ProjectDetail.jsx`) no longer shows the key question, metadata strip, or HorizonBar. Those now live on Overview. The Inputs header contains only:
+```
+eyebrow  → project.name (10px, c.hint, letter-spacing 0.08em)
+title    → "Inputs" (22px/500)
+CTAs     → "Add from Inbox" + "Add an input" (right-aligned)
+```
 
 ---
 
@@ -389,6 +400,7 @@ The 320px right-hand panel in the Inputs workspace. Replaces the old three-card 
 - The Inbox holds inputs that have not yet been assigned to a project (`project_id === null`). It is a workspace-level screen.
 - The Inbox's AI Suggested section has its own search/filter bar, including a Project filter (filters on `metadata.suggested_projects`). It defaults to "All projects" (no filter) on fresh page load and on first navigation to the Inbox. Within a session, the filter persists whatever the user last selected (including cleared).
 - A project's "Review N suggestions" action (Project Detail) sets `appState.inboxProjectFilter` and navigates to the Inbox — the AI Suggested Project filter picks this up as its initial selection (deep-link), pre-filtering AI Suggested to that project on arrival.
+- **Overview is the default project landing screen.** `openProject(id)` navigates to `"project-overview"`, not `"project"` (Inputs). Every entry path to a project — Dashboard card click, Inbox links, sidebar project list, new project creation — lands on Overview first.
 - The System Map is project-scoped and only appears in the sidebar when a project is active. There is no separate Clustering screen — clustering is embedded inside the Inputs workspace (ProjectDetail) as the right-hand ClustersPanel.
 - At workspace level (Dashboard, Inbox, no active project) the sidebar shows only: Dashboard, Inbox. No project-scoped items.
 - Navigating to Dashboard or Inbox via the sidebar clears the active project context.
@@ -411,8 +423,9 @@ All app state lives in a single `useAppState` hook (or context) at the root leve
   scenarios: [],
   projects: [],
   activeProjectId: null,
-  activeScreen: 'dashboard',  // 'dashboard' | 'inbox' | 'project' | 'systemMap' | 'systemAnalysis' | 'futureModels'
+  activeScreen: 'dashboard',  // 'dashboard' | 'inbox' | 'project-overview' | 'project' | 'scenarios' | 'analysis' | 'future-models'
                               // Note: 'clustering' still exists as a case in App.jsx but redirects to 'project' (ProjectDetail)
+                              // openProject(id) navigates to 'project-overview' — Overview is the default project landing screen
   drawer: null,               // null | { type: 'newInput' | 'newCluster' | 'inputDetail' | 'clusterDetail' | 'projectSettings', data: {} }
   toast: null,                // null | { message, type: 'success' | 'error' }
 }
@@ -446,6 +459,7 @@ src/
     screens/
       Dashboard.jsx
       Inbox.jsx
+      ProjectOverview.jsx   ← default project landing: key question, horizons, scanner, phase cards
       ProjectDetail.jsx     ← Inputs workspace (inputs table + embedded ClustersPanel)
       Clustering.jsx        ← redirect only; case in App.jsx returns ProjectDetail
       SystemMap.jsx
@@ -465,6 +479,7 @@ src/
     shared/
       Tag.jsx               ← QualityBadge, HorizonTag, SubtypeTag
       EmptyState.jsx
+      HorizonBar.jsx        ← proportional H1/H2/H3 time horizon band; used by ProjectOverview
       ClusterAssignMenu.jsx ← portal-based cluster picker; used by all "Assign →" buttons
   data/
     seeds.js
@@ -547,6 +562,7 @@ All tables carry `workspace_id` and (where applicable) `project_id`. `workspace_
   scope_out: string[],                   // added 2026-04-28 — explicitly out-of-scope topics; used as a hard/soft penalty in Layer 3 scoring
   scanning_enabled: boolean,             // per-project scanner toggle; workspace_settings.scanning_enabled is the workspace-wide override (see Known database gotchas)
   last_reviewed_at: string|null,         // Inbox inactivity detection
+  last_visited_at: string|null,          // stamped fire-and-forget in openProject(); used by ProjectOverview for "N new signals since your last visit"
   key_question_embedding: number[]|null, // internal — cached embedding of `question` only; api/score.js builds a richer in-memory embedding (question + focus) at scoring time but never overwrites this cache
   created_at: string,
 }
@@ -666,7 +682,7 @@ Key decisions already made:
 - `user_preferences` table (added 2026-06-14) holds per-user digest preferences (`digest_unsubscribed`), keyed by `user_id` referencing `auth.users.id`, RLS enabled. A row may not exist for every user — always `maybeSingle()` on reads and `upsert` on writes.
 
 ### `database.types.ts` can lag behind `supabase/migrations/`
-Regenerated 2026-06-14. **Known gap as of 2026-06-23:** `canvas_text_nodes` table (added in `20260624_canvas_text_nodes.sql`) is not yet in the generated types file — use raw Supabase queries or cast as needed until it's regenerated. `supabase migration list` shows local and remote in sync. **For schema questions, always treat `supabase/migrations/` (read chronologically, latest wins) as the source of truth, not `database.types.ts`** — this file will drift again after future migrations until it's regenerated.
+Regenerated 2026-07-02. Now includes `canvas_text_nodes`, `projects.last_visited_at`, and `analyses.updated_at`. **For schema questions, always treat `supabase/migrations/` (read chronologically, latest wins) as the source of truth, not `database.types.ts`** — this file will drift again after future migrations until regenerated with: `supabase gen types typescript --project-id kptatqipjwihkdxdxlvh > src/types/database.types.ts`
 
 ### RLS patterns
 Two patterns are in use, depending on the table's key column:

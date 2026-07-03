@@ -1,6 +1,6 @@
 # Future Signals v2 — Handoff
 
-_Last updated: 2026-06-29_
+_Last updated: 2026-07-02_
 
 ---
 
@@ -25,12 +25,24 @@ All core screens are built and functional:
 | Onboarding flow | Done |
 | Dashboard | Done |
 | Inbox | Done |
+| **Project Overview** (default landing — key question, horizons, scanner, phase cards) | **Done** |
 | Inputs workspace (ProjectDetail + ClustersPanel) | Done |
 | System Map | Done |
 | System Analysis | Done |
 | Future Models (Scenarios + Strategic Options) | Done |
 
 Note: the Clustering screen no longer exists as a separate route. The `clustering` case in App.jsx redirects to ProjectDetail. All clustering work happens in the 320px ClustersPanel embedded in the Inputs workspace.
+
+**2026-07-02 session — Project Overview screen (on `workspace-refactor` branch):**
+- **`ProjectOverview.jsx`** built as the new default project landing screen (`src/components/screens/ProjectOverview.jsx`). Sections: project name eyebrow + "Overview" title + ⚙ Project settings button; key question card (60/40 question / Domain+Geography split); proportional HorizonBar; scanner card ("N new signals since your last visit" using `priorVisitedAt` captured at mount before the `last_visited_at` stamp lands); collapsible context card (Focus, Audience, Stakeholders, Assumptions, In/Out scope); 5 phase cards.
+- **Phase cards:** Scan · Cluster · System Map · System Analysis · Future Models. Each card shows a colour-coded `borderTop` status (Active today = brand blue, Active this week = green, earlier/not started = `c.border`) and a "Continue here" pill on the most-recently-active stage. System Analysis card shows a 3×2 `AnalysisFillGrid` using the exported `analysisHasCont` helper. Cluster card shows subtype pills + `HorizonScatter` SVG (dots per H1/H2/H3 zone).
+- **`HorizonBar` extracted** from `ProjectDetail.jsx` into `src/components/shared/HorizonBar.jsx`. Both ProjectOverview and the shared file use it; ProjectDetail no longer imports it.
+- **`analysisHasCont` exported** from `SystemAnalysisCanvas.jsx` for reuse in the Overview fill grid.
+- **`projectSources` added** to `useAppState.js` — fetched per active project on `activeProjectId` change (the `project_sources` table has no `workspace_id`; scoped by `project_id`). Exposed as `appState.projectSources`.
+- **`projects.last_visited_at` stamped** fire-and-forget in `openProject()`. Column already existed in the DB; `database.types.ts` regenerated from staging to surface it (also adds `canvas_text_nodes` and `analyses.updated_at`).
+- **`canvas_text_nodes.created_at`** added to the state mapping in `fetchCanvasTextNodes` (was selected via `*` but dropped). `latestMapTs` in ProjectOverview now takes the MAX of relationship timestamps and text node timestamps — placing a text annotation counts as System Map activity.
+- **Routing wired:** `openProject(id)` navigates to `"project-overview"`; `"project-overview"` case added to `App.jsx` switch and scroll exclusion list; Overview added as first `PROJECT_ITEMS` entry in `Sidebar.jsx` (Eye icon); `openProject` threaded through `AppShell` → `Sidebar` to fix the sidebar project-list bypass (was calling `setActiveProjectId + setActiveScreen` directly, now calls `openProject()`).
+- **Inputs screen header trimmed:** key question block, metadata strip (Domain/Focus/Geography/Stakeholders), and HorizonBar removed from `ProjectDetail.jsx`. The Inputs header now shows only the project name eyebrow + "Inputs" title + CTAs. Content surfaces once, on Overview.
 
 **2026-06-29 session — Tailwind CSS v4 migration + CSV import fix (on `workspace-refactor` branch):**
 - **Tailwind CSS v4 installed** via `@tailwindcss/vite` Vite plugin — no `tailwind.config.js`. `@import "tailwindcss"` added to `src/index.css`.
