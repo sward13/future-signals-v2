@@ -90,6 +90,7 @@ export function ClustersPanel({
   assignInputToCluster,
   addCluster,
   updateCluster,
+  style,
 }) {
   const [mode, setMode] = useState("manual");    // "manual" | "suggested"
   const [view, setView] = useState("list");       // "list" | "card"
@@ -131,6 +132,7 @@ export function ClustersPanel({
   return (
     <div
       ref={panelRef}
+      style={style}
       className="w-80 min-w-[280px] shrink-0 flex flex-col bg-surface-alt border-l border-border relative overflow-hidden"
     >
       {/* ── Panel header ─────────────────────────────────────── */}

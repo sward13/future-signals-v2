@@ -155,15 +155,39 @@ export default function ClusterScreen({ appState }) {
         <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Cluster</div>
       </div>
 
-      {/* ── Two-column workspace ──────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "stretch", flex: 1, minHeight: 0, overflow: "hidden", padding: "0 0 0 32px" }}>
+      {/* ── Stacked workspace ────────────────────────────────────── */}
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
 
-        {/* ── Input rail ────────────────────────────────────────── */}
-        <div style={{ flex: 1, minWidth: 0, overflowY: "auto", paddingBottom: 32 }}>
+        {/* ── ClustersPanel (top, fills available height) ──────── */}
+        <ClustersPanel
+          projectId={project.id}
+          clusters={projectClusters}
+          inputs={inputs}
+          onNewCluster={() => createUntitledCluster()}
+          removeInputFromCluster={removeInputFromCluster}
+          deleteCluster={deleteCluster}
+          showToast={showToast}
+          dragIds={dragIds}
+          dragIsCopy={dragIsCopy}
+          onDrop={handleDrop}
+          onDropToNewCluster={handleDropToNewCluster}
+          assignInputToCluster={assignInputToCluster}
+          addCluster={addCluster}
+          updateCluster={updateCluster}
+          style={{ flex: 1, minHeight: 0, width: "100%", minWidth: 0, borderLeft: "none" }}
+        />
+
+        {/* ── Input rail (bottom, fixed height — resizable in step 2) */}
+        <div style={{
+          height: 240, flexShrink: 0, overflowY: "auto",
+          borderTop: `1px solid ${c.borderMid}`,
+          padding: "0 32px 16px",
+          background: c.bg,
+        }}>
           {projectInputs.length === 0 ? (
             <div style={{
               background: c.white, border: `1px dashed ${c.border}`,
-              borderRadius: 12, padding: "36px 24px", marginTop: 20, textAlign: "center",
+              borderRadius: 12, padding: "28px 24px", marginTop: 16, textAlign: "center",
             }}>
               <div style={{ fontSize: 14, fontWeight: 500, color: c.muted, marginBottom: 5 }}>No inputs yet</div>
               <div style={{ fontSize: 12, color: c.hint, lineHeight: 1.6 }}>
@@ -171,7 +195,7 @@ export default function ClusterScreen({ appState }) {
               </div>
             </div>
           ) : (
-            <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden", marginTop: 16 }}>
+            <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden", marginTop: 12 }}>
               {/* Rail header */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", height: 30, borderBottom: "0.5px solid rgba(0,0,0,0.09)" }}>
                 <div style={{ flex: 1, minWidth: 0, ...cell }}>Input</div>
@@ -258,24 +282,6 @@ export default function ClusterScreen({ appState }) {
             </div>
           )}
         </div>
-
-        {/* ── ClustersPanel ──────────────────────────────────────── */}
-        <ClustersPanel
-          projectId={project.id}
-          clusters={projectClusters}
-          inputs={inputs}
-          onNewCluster={() => createUntitledCluster()}
-          removeInputFromCluster={removeInputFromCluster}
-          deleteCluster={deleteCluster}
-          showToast={showToast}
-          dragIds={dragIds}
-          dragIsCopy={dragIsCopy}
-          onDrop={handleDrop}
-          onDropToNewCluster={handleDropToNewCluster}
-          assignInputToCluster={assignInputToCluster}
-          addCluster={addCluster}
-          updateCluster={updateCluster}
-        />
       </div>
 
       <DragGhost
