@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Future Signals",
+  "description": "Capture the active tab into your Future Signals Inbox.",
+  "version": "0.1.0",
+  "permissions": ["storage", "sidePanel", "activeTab", "tabs"],
+  "host_permissions": ["https://*/*", "http://*/*"],
+  "action": {
+    "default_title": "Open Future Signals"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*/*", "http://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
