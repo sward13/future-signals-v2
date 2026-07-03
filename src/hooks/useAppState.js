@@ -470,6 +470,17 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     }
   }, [workspaceId, showToast]);
 
+  const updateProjectSource = useCallback((id, fields) => {
+    setProjectSources((prev) => prev.map((ps) => ps.id === id ? { ...ps, ...fields } : ps));
+    supabase
+      .from("project_sources")
+      .update(fields)
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) showToast("Failed to update source", "error");
+      });
+  }, [showToast]);
+
   // ── Inputs ────────────────────────────────────────────────────────────────
 
   const addInput = useCallback((fields) => {
@@ -1725,6 +1736,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     canvasTextNodes,
     relationships,
     projectSources,
+    updateProjectSource,
     addCanvasNode,
     removeCanvasNode,
     updateCanvasNodePos,
