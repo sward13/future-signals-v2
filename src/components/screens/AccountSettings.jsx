@@ -1,11 +1,208 @@
-/**
- * AccountSettings screen — edit profile (display name, email) and change password.
- * Profile and security sections save independently.
- * @param {{ appState: object }} props
- */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { c, inp, btnSm, btnSec, btnG, fl, fh } from "../../styles/tokens.js";
+
+// ─── Shared primitives ────────────────────────────────────────────────────────
+
+function SectionTab({ label, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: "6px 2px",
+        fontSize: 12,
+        cursor: "pointer",
+        fontFamily: "inherit",
+        background: "transparent",
+        color: active ? c.ink : c.muted,
+        border: "none",
+        borderBottom: active ? `2px solid ${c.brand}` : "2px solid transparent",
+        fontWeight: active ? 500 : 400,
+        marginRight: 14,
+        marginBottom: -1,
+        transition: "color 0.1s, border-color 0.1s",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+const CRED_LABELS = {
+  institutional: "Institutional",
+  specialist:    "Specialist",
+  general:       "General",
+  unvetted:      "Unvetted",
+};
+
+function CredBadge({ credibility }) {
+  const label = CRED_LABELS[credibility] ?? credibility;
+  const isInstitutional = credibility === "institutional";
+  const isSpecialist    = credibility === "specialist";
+  const bg    = isInstitutional ? c.green50  : isSpecialist ? c.amber50  : "rgba(0,0,0,0.05)";
+  const color = isInstitutional ? c.green700 : isSpecialist ? c.amber700 : c.muted;
+  return (
+    <span style={{
+      fontSize: 9, padding: "1px 5px", borderRadius: 3,
+      background: bg, color, fontWeight: 500, whiteSpace: "nowrap",
+    }}>
+      {label}
+    </span>
+  );
+}
+
+// ─── Sources section ──────────────────────────────────────────────────────────
+
+function SourcesSection({ workspaceId }) {
+  const [sources,  setSources]  = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [filter,   setFilter]   = useState("all");   // "all" | "curated" | "user"
+  const [search,   setSearch]   = useState("");
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("sources")
+          .select("id, name, url, domain, source_type, credibility, active, owner_id")
+          .eq("active", true)
+          .or(`owner_id.is.null,owner_id.eq.${workspaceId}`)
+          .order("name");
+        if (error) throw error;
+        if (!cancelled) setSources(data ?? []);
+      } catch {
+        // non-fatal — degrade to empty list
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [workspaceId]);
+
+  const filtered = useMemo(() => {
+    let list = sources;
+    if (filter === "curated") list = list.filter(s => s.source_type === "curated");
+    if (filter === "user")    list = list.filter(s => s.source_type !== "curated");
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(s =>
+        s.name?.toLowerCase().includes(q) || s.domain?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [sources, filter, search]);
+
+  // Group by domain; unnamed domains sorted last
+  const grouped = useMemo(() => {
+    const map = {};
+    filtered.forEach(s => {
+      const key = s.domain || "";
+      if (!map[key]) map[key] = [];
+      map[key].push(s);
+    });
+    return Object.entries(map).sort(([a], [b]) => {
+      if (!a && b)  return 1;
+      if (a  && !b) return -1;
+      return a.localeCompare(b);
+    });
+  }, [filtered]);
+
+  const curatedCount = sources.filter(s => s.source_type === "curated").length;
+  const userCount    = sources.filter(s => s.source_type !== "curated").length;
+
+  return (
+    <div>
+      {/* Filter tabs + search row */}
+      <div style={{
+        display: "flex", alignItems: "center",
+        borderBottom: `1px solid ${c.border}`,
+        marginBottom: 12,
+      }}>
+        <SectionTab label="All"        active={filter === "all"}     onClick={() => setFilter("all")} />
+        <SectionTab label="Curated"    active={filter === "curated"} onClick={() => setFilter("curated")} />
+        <SectionTab label="My sources" active={filter === "user"}    onClick={() => setFilter("user")} />
+        <div style={{ flex: 1 }} />
+        <input
+          style={{
+            ...inp,
+            width: 130, padding: "4px 9px", fontSize: 11.5,
+            marginBottom: 6,
+          }}
+          type="text"
+          placeholder="Search…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+
+      {loading && (
+        <div style={{ fontSize: 12, color: c.hint, padding: "12px 0" }}>Loading sources…</div>
+      )}
+
+      {!loading && grouped.length === 0 && (
+        <div style={{ fontSize: 12, color: c.hint, fontStyle: "italic", padding: "12px 0" }}>
+          {search || filter !== "all" ? "No sources match your filter." : "No sources found."}
+        </div>
+      )}
+
+      {!loading && grouped.map(([domain, rows]) => (
+        <div key={domain || "_none"} style={{ marginBottom: 14 }}>
+          {/* Group header */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            paddingBottom: 5, borderBottom: `1px solid ${c.border}`, marginBottom: 2,
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 500, color: c.muted }}>
+              {domain || "No domain"}
+            </span>
+            <span style={{ fontSize: 11, color: c.faint }}>{rows.length}</span>
+          </div>
+
+          {rows.map(src => (
+            <div key={src.id} style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "7px 0",
+              borderBottom: `0.5px solid ${c.border}`,
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ fontSize: 12.5, color: c.ink }}>{src.name}</span>
+                  {src.source_type !== "curated" && (
+                    <span style={{
+                      fontSize: 9.5, padding: "1px 5px", borderRadius: 3,
+                      background: "rgba(0,0,0,0.05)", color: c.muted,
+                    }}>
+                      My source
+                    </span>
+                  )}
+                </div>
+                {src.url && (
+                  <div style={{
+                    fontSize: 11, color: c.hint, marginTop: 1,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {src.url}
+                  </div>
+                )}
+              </div>
+              <CredBadge credibility={src.credibility} />
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {/* Footer count */}
+      {!loading && sources.length > 0 && (
+        <div style={{ fontSize: 11, color: c.faint, paddingTop: 6 }}>
+          {curatedCount} curated · {userCount} added by you
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Password input with show/hide toggle ─────────────────────────────────────
 
@@ -64,7 +261,7 @@ function SectionCard({ children }) {
 // ─── Main screen ───────────────────────────────────────────────────────────────
 
 export default function AccountSettings({ appState, onSignOut }) {
-  const { user, projects, workspaceScanningEnabled, updateWorkspaceScanningEnabled, updateProject, showToast } = appState;
+  const { user, workspaceId, projects, workspaceScanningEnabled, updateWorkspaceScanningEnabled, updateProject, showToast } = appState;
 
   // ── Timeout cleanup ─────────────────────────────────────────────────────────
 
@@ -451,6 +648,12 @@ export default function AccountSettings({ appState, onSignOut }) {
               }} />
             </button>
           </div>
+        </SectionCard>
+
+        {/* ── Sources section ──────────────────────────────────────── */}
+        <SectionCard>
+          <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 14 }}>Sources</div>
+          <SourcesSection workspaceId={workspaceId} />
         </SectionCard>
 
         {/* ── Security section ─────────────────────────────────────── */}
