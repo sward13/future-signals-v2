@@ -359,50 +359,50 @@ export default function ProjectOverview({ appState }) {
           </button>
           {contextExpanded && (
             <div className="px-4 pb-4 grid grid-cols-2 gap-y-2.5 gap-x-7">
-              {project.focus && (
-                <div>
-                  <div className="text-[10px] text-faint mb-[3px]">Focus</div>
-                  <div className="text-xs text-ink leading-normal">{project.focus}</div>
-                </div>
-              )}
-              {project.audience && (
-                <div>
-                  <div className="text-[10px] text-faint mb-[3px]">Audience</div>
-                  <div className="text-xs text-ink leading-normal">{project.audience}</div>
-                </div>
-              )}
-              {project.stakeholders && (
-                <div>
-                  <div className="text-[10px] text-faint mb-[3px]">Stakeholders</div>
-                  <div className="text-xs text-ink leading-normal">{project.stakeholders}</div>
-                </div>
-              )}
-              {project.assumptions && (
-                <div>
-                  <div className="text-[10px] text-faint mb-[3px]">Assumptions</div>
-                  <div className="text-xs text-ink leading-normal">{project.assumptions}</div>
-                </div>
-              )}
-              {project.scope_in?.length > 0 && (
-                <div>
-                  <div className="text-[10px] text-faint mb-1.25">In scope</div>
-                  <div className="flex flex-wrap gap-1">
-                    {project.scope_in.map(s => (
-                      <span key={s} className="text-[11px] py-0.5 px-2 rounded-pill bg-green-50 text-green-700 border border-green-border">{s}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {project.scope_out?.length > 0 && (
-                <div>
-                  <div className="text-[10px] text-faint mb-1.25">Out of scope</div>
-                  <div className="flex flex-wrap gap-1">
-                    {project.scope_out.map(s => (
-                      <span key={s} className="text-[11px] py-0.5 px-2 rounded-pill bg-surface-alt text-muted border border-border">{s}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div>
+                <div className="text-[10px] text-faint mb-[3px]">Focus</div>
+                {project.focus
+                  ? <div className="text-xs text-ink leading-normal">{project.focus}</div>
+                  : <div className="text-xs text-hint italic">Not set</div>}
+              </div>
+              <div>
+                <div className="text-[10px] text-faint mb-[3px]">Audience</div>
+                {project.audience
+                  ? <div className="text-xs text-ink leading-normal">{project.audience}</div>
+                  : <div className="text-xs text-hint italic">Not set</div>}
+              </div>
+              <div>
+                <div className="text-[10px] text-faint mb-[3px]">Stakeholders</div>
+                {project.stakeholders
+                  ? <div className="text-xs text-ink leading-normal">{project.stakeholders}</div>
+                  : <div className="text-xs text-hint italic">Not set</div>}
+              </div>
+              <div>
+                <div className="text-[10px] text-faint mb-[3px]">Assumptions</div>
+                {project.assumptions
+                  ? <div className="text-xs text-ink leading-normal">{project.assumptions}</div>
+                  : <div className="text-xs text-hint italic">Not set</div>}
+              </div>
+              <div>
+                <div className="text-[10px] text-faint mb-1.25">In scope</div>
+                {project.scope_in?.length > 0
+                  ? <div className="flex flex-wrap gap-1">
+                      {project.scope_in.map(s => (
+                        <span key={s} className="text-[11px] py-0.5 px-2 rounded-pill bg-green-50 text-green-700 border border-green-border">{s}</span>
+                      ))}
+                    </div>
+                  : <div className="text-xs text-hint italic">Not set</div>}
+              </div>
+              <div>
+                <div className="text-[10px] text-faint mb-1.25">Out of scope</div>
+                {project.scope_out?.length > 0
+                  ? <div className="flex flex-wrap gap-1">
+                      {project.scope_out.map(s => (
+                        <span key={s} className="text-[11px] py-0.5 px-2 rounded-pill bg-surface-alt text-muted border border-border">{s}</span>
+                      ))}
+                    </div>
+                  : <div className="text-xs text-hint italic">Not set</div>}
+              </div>
             </div>
           )}
         </div>
