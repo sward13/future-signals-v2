@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { c, btnSec } from "../../styles/tokens.js";
+import clsx from "clsx";
 import { HorizonBar } from "../shared/HorizonBar.jsx";
 import { analysisHasCont } from "./SystemAnalysisCanvas.jsx";
 import { EditProjectDrawer } from "../projects/EditProjectDrawer.jsx";
@@ -25,10 +25,10 @@ function phaseStatusKey(ts) {
 }
 
 const PHASE_STATUS = {
-  "not-started": { borderTop: `3px solid ${c.border}`,    label: null,              labelColor: null },
-  "active-today": { borderTop: `3px solid ${c.brand}`,    label: "Active today",    labelColor: c.brand },
-  "active-week":  { borderTop: `3px solid ${c.green600}`, label: "Active this week",labelColor: c.green700 },
-  "earlier":      { borderTop: `3px solid ${c.border}`,   label: null,              labelColor: null },
+  "not-started":  { topClass: "border-t-border",   label: null,               labelClass: null },
+  "active-today": { topClass: "border-t-brand",     label: "Active today",     labelClass: "text-brand" },
+  "active-week":  { topClass: "border-t-green-600", label: "Active this week", labelClass: "text-green-700" },
+  "earlier":      { topClass: "border-t-border",    label: null,               labelClass: null },
 };
 
 function relativeTime(ts) {
@@ -42,65 +42,42 @@ function relativeTime(ts) {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function PhaseCard({ name, statusKey, isResume, onClick, children }) {
-  const { borderTop, label, labelColor } = PHASE_STATUS[statusKey];
+  const { topClass, label, labelClass } = PHASE_STATUS[statusKey];
   return (
     <div
       onClick={onClick}
-      style={{
-        background: c.white,
-        border: `1px solid ${c.border}`,
-        borderTop,
-        borderRadius: 8,
-        overflow: "hidden",
-        cursor: onClick ? "pointer" : "default",
-        display: "flex",
-        flexDirection: "column",
-        transition: "box-shadow 0.15s",
-      }}
-      onMouseEnter={e => { if (onClick) e.currentTarget.style.boxShadow = "0 1px 6px rgba(0,0,0,0.07)"; }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; }}
+      className={clsx(
+        "bg-white border border-border border-t-[3px] rounded-container overflow-hidden",
+        "flex flex-col transition-shadow duration-150",
+        onClick ? "cursor-pointer hover:shadow-hover" : "cursor-default",
+        topClass
+      )}
     >
-      <div style={{
-        padding: "9px 11px 7px",
-        borderBottom: `1px solid ${c.border}`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        flexShrink: 0,
-      }}>
-        <span style={{ fontSize: 11, fontWeight: 500, color: c.ink }}>{name}</span>
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+      <div className="pt-2.25 px-2.75 pb-1.75 border-b border-border flex items-center justify-between shrink-0">
+        <span className="text-[11px] font-medium text-ink">{name}</span>
+        <div className="flex items-center gap-1.25">
           {label && (
-            <span style={{ fontSize: 9, color: labelColor }}>{label}</span>
+            <span className={clsx("text-[9px]", labelClass)}>{label}</span>
           )}
           {isResume && (
-            <span style={{
-              fontSize: 9, fontWeight: 500,
-              padding: "2px 6px", borderRadius: 10,
-              background: c.brand, color: c.white,
-            }}>
+            <span className="text-[9px] font-medium py-0.5 px-1.5 rounded-pill bg-brand text-white">
               Continue here
             </span>
           )}
         </div>
       </div>
-      <div style={{ padding: "9px 11px 11px", flex: 1 }}>
+      <div className="pt-2.25 px-2.75 pb-2.75 flex-1">
         {children}
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, accent }) {
+function Stat({ label, value, accentClass }) {
   return (
-    <div style={{
-      display: "flex",
-      alignItems: "baseline",
-      justifyContent: "space-between",
-      padding: "2px 0",
-    }}>
-      <span style={{ fontSize: 11, color: c.muted }}>{label}</span>
-      <span style={{ fontSize: 12, fontWeight: 500, color: accent || c.ink }}>{value}</span>
+    <div className="flex items-baseline justify-between py-0.5">
+      <span className="text-[11px] text-muted">{label}</span>
+      <span className={clsx("text-xs font-medium", accentClass || "text-ink")}>{value}</span>
     </div>
   );
 }
@@ -109,12 +86,20 @@ function HorizonScatter({ clusters }) {
   if (!clusters.length) return null;
   const zones = { H1: [], H2: [], H3: [] };
   clusters.forEach(cl => { if (zones[cl.horizon]) zones[cl.horizon].push(cl); });
-  const zoneColors = { H1: c.green600, H2: c.blue700, H3: c.amber700 };
-  const zoneBg    = { H1: c.green50,  H2: c.blue50,  H3: c.amber50  };
+  const zoneColors = {
+    H1: "var(--color-green-600)",
+    H2: "var(--color-blue-700)",
+    H3: "var(--color-amber-700)",
+  };
+  const zoneBg = {
+    H1: "var(--color-green-50)",
+    H2: "var(--color-blue-50)",
+    H3: "var(--color-amber-50)",
+  };
   const W = 170, H = 36, zw = W / 3;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: H, display: "block", marginTop: 6 }}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[36px] block mt-1.5">
       {["H1", "H2", "H3"].map((hz, zi) => {
         const x0 = zi * zw;
         return (
@@ -140,39 +125,26 @@ function AnalysisFillGrid({ analysis }) {
   const getVal = (id) => analysis?.[id];
   const filled = (panel) => analysisHasCont(panel.type, getVal(panel.id));
 
-  const cellBase = {
-    borderRadius: 4,
-    padding: "3px 6px",
-    display: "flex",
-    alignItems: "center",
-    fontSize: 10,
-  };
-
-  const cellStyle = (panel) => ({
-    ...cellBase,
-    background: filled(panel) ? c.green25 : c.surfaceAlt,
-    border: `1px solid ${filled(panel) ? c.greenBorder : c.border}`,
-    color: filled(panel) ? c.green700 : c.faint,
-    fontWeight: filled(panel) ? 500 : 400,
-  });
+  const cellClass = (panel, isKd = false) =>
+    clsx(
+      "rounded-chip px-1.5 flex text-[10px] border",
+      isKd
+        ? "items-start py-1.25 row-span-2"
+        : "items-center py-[3px]",
+      filled(panel)
+        ? "bg-green-25 border-green-border text-green-700 font-medium"
+        : "bg-surface-alt border-border text-faint"
+    );
 
   const [kd, desc, uncert, impl, conf] = ANALYSIS_PANELS;
 
   return (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr 1fr",
-      gridTemplateRows: "auto auto",
-      gap: 3,
-      marginTop: 6,
-    }}>
-      <div style={{ ...cellStyle(kd), gridRow: "1 / 3", alignItems: "flex-start", paddingTop: 5, paddingBottom: 5 }}>
-        {kd.label}
-      </div>
-      <div style={cellStyle(desc)}>{desc.label}</div>
-      <div style={cellStyle(impl)}>{impl.label}</div>
-      <div style={cellStyle(uncert)}>{uncert.label}</div>
-      <div style={cellStyle(conf)}>{conf.label}</div>
+    <div className="grid grid-cols-3 grid-rows-2 gap-[3px] mt-1.5">
+      <div className={cellClass(kd, true)}>{kd.label}</div>
+      <div className={cellClass(desc)}>{desc.label}</div>
+      <div className={cellClass(impl)}>{impl.label}</div>
+      <div className={cellClass(uncert)}>{uncert.label}</div>
+      <div className={cellClass(conf)}>{conf.label}</div>
     </div>
   );
 }
@@ -296,17 +268,17 @@ export default function ProjectOverview({ appState }) {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ height: "100%", overflowY: "auto", background: c.bg }}>
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 28px 48px" }}>
+    <div className="h-full overflow-y-auto bg-bg">
+      <div className="max-w-[900px] mx-auto pt-6 px-7 pb-12">
 
         {/* Title row */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 11, color: c.faint, marginBottom: 4 }}>{project.name}</div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <h1 style={{ fontSize: 22, fontWeight: 500, color: c.ink, margin: 0 }}>Overview</h1>
+        <div className="mb-5">
+          <div className="text-[11px] text-faint mb-1">{project.name}</div>
+          <div className="flex items-center justify-between">
+            <h1 className="text-[22px] font-medium text-ink m-0">Overview</h1>
             <button
               onClick={() => setEditDrawerOpen(true)}
-              style={{ ...btnSec, fontSize: 12, padding: "6px 14px" }}
+              className="py-1.5 px-3.5 rounded-container bg-transparent text-muted border border-border-mid text-xs cursor-pointer [font-family:inherit]"
             >
               ⚙ Project settings
             </button>
@@ -314,41 +286,26 @@ export default function ProjectOverview({ appState }) {
         </div>
 
         {/* Key Question card */}
-        <div style={{
-          background: c.white,
-          border: `1px solid ${c.border}`,
-          borderRadius: 8,
-          padding: "14px 16px",
-          marginBottom: 12,
-          display: "flex",
-          gap: 20,
-        }}>
-          <div style={{ flex: "0 0 60%", minWidth: 0 }}>
-            <div style={{ fontSize: 9, fontWeight: 500, letterSpacing: "0.08em", color: c.brand, textTransform: "uppercase", marginBottom: 6 }}>
+        <div className="bg-white border border-border rounded-container py-3.5 px-4 mb-3 flex gap-5">
+          <div className="basis-3/5 shrink-0 grow-0 min-w-0">
+            <div className="text-[9px] font-medium tracking-[0.08em] text-brand uppercase mb-1.5">
               KEY QUESTION
             </div>
-            <div style={{ fontSize: 13, color: c.ink, fontStyle: "italic", lineHeight: 1.55 }}>
-              {project.question || <span style={{ color: c.faint }}>No key question set.</span>}
+            <div className="text-ui text-ink italic leading-body">
+              {project.question || <span className="text-faint">No key question set.</span>}
             </div>
           </div>
-          <div style={{
-            flex: 1,
-            borderLeft: `1px solid ${c.border}`,
-            paddingLeft: 20,
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}>
+          <div className="flex-1 border-l border-border pl-5 flex flex-col gap-2.5">
             {project.domain && (
               <div>
-                <div style={{ fontSize: 10, color: c.faint, marginBottom: 2 }}>Domain</div>
-                <div style={{ fontSize: 12, color: c.ink }}>{project.domain}</div>
+                <div className="text-[10px] text-faint mb-0.5">Domain</div>
+                <div className="text-xs text-ink">{project.domain}</div>
               </div>
             )}
             {project.geo && (
               <div>
-                <div style={{ fontSize: 10, color: c.faint, marginBottom: 2 }}>Geography</div>
-                <div style={{ fontSize: 12, color: c.ink }}>{project.geo}</div>
+                <div className="text-[10px] text-faint mb-0.5">Geography</div>
+                <div className="text-xs text-ink">{project.geo}</div>
               </div>
             )}
           </div>
@@ -358,46 +315,31 @@ export default function ProjectOverview({ appState }) {
         {project.h1_start && <HorizonBar project={project} />}
 
         {/* Scanner card */}
-        <div style={{
-          background: c.white,
-          border: `1px solid ${c.border}`,
-          borderRadius: 8,
-          padding: "12px 16px",
-          marginBottom: 12,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 16,
-        }}>
+        <div className="bg-white border border-border rounded-container py-3 px-4 mb-3 flex items-center justify-between gap-4">
           <div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 3 }}>
+            <div className="text-ui font-medium text-ink mb-[3px]">
               {newSignalCount > 0
                 ? `${newSignalCount} new signal${newSignalCount !== 1 ? "s" : ""} since your last visit`
                 : "No new signals since your last visit"}
             </div>
-            <div style={{ fontSize: 12, color: c.muted }}>
+            <div className="text-xs text-muted">
               {activeSources.length > 0
                 ? `Scanning active · ${activeSources.length} source${activeSources.length !== 1 ? "s" : ""}`
                 : "No sources active"}
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          <div className="flex gap-2 shrink-0">
             {aiSuggestionCount > 0 && (
               <button
                 onClick={() => setActiveScreen("inbox")}
-                style={{
-                  fontSize: 12, padding: "6px 14px", borderRadius: 7,
-                  background: c.brandBg, color: c.brand,
-                  border: `1px solid ${c.brandBorder}`,
-                  cursor: "pointer", fontFamily: "inherit",
-                }}
+                className="text-xs py-1.5 px-3.5 rounded-btn bg-brand-bg text-brand border border-brand-border cursor-pointer [font-family:inherit]"
               >
                 Review {aiSuggestionCount} →
               </button>
             )}
             <button
               onClick={() => setActiveScreen("inbox")}
-              style={{ ...btnSec, fontSize: 12, padding: "6px 14px" }}
+              className="py-1.5 px-3.5 rounded-container bg-transparent text-muted border border-border-mid text-xs cursor-pointer [font-family:inherit]"
             >
               Manage sources
             </button>
@@ -405,73 +347,56 @@ export default function ProjectOverview({ appState }) {
         </div>
 
         {/* Context card (collapsible) */}
-        <div style={{
-          background: c.white,
-          border: `1px solid ${c.border}`,
-          borderRadius: 8,
-          marginBottom: 24,
-          overflow: "hidden",
-        }}>
+        <div className="bg-white border border-border rounded-container mb-6 overflow-hidden">
           <button
             onClick={() => setContextExpanded(e => !e)}
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "10px 16px",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              fontFamily: "inherit",
-              textAlign: "left",
-            }}
+            className="w-full flex items-center justify-between py-2.5 px-4 bg-transparent border-0 cursor-pointer [font-family:inherit] text-left"
           >
-            <span style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>Project context</span>
-            <span style={{ fontSize: 10, color: c.faint }}>{contextExpanded ? "▲" : "▼"}</span>
+            <span className="text-xs font-medium text-ink">Project context</span>
+            <span className="text-[10px] text-faint">{contextExpanded ? "▲" : "▼"}</span>
           </button>
           {contextExpanded && (
-            <div style={{ padding: "0 16px 16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 28px" }}>
+            <div className="px-4 pb-4 grid grid-cols-2 gap-y-2.5 gap-x-7">
               {project.focus && (
                 <div>
-                  <div style={{ fontSize: 10, color: c.faint, marginBottom: 3 }}>Focus</div>
-                  <div style={{ fontSize: 12, color: c.ink, lineHeight: 1.5 }}>{project.focus}</div>
+                  <div className="text-[10px] text-faint mb-[3px]">Focus</div>
+                  <div className="text-xs text-ink leading-normal">{project.focus}</div>
                 </div>
               )}
               {project.audience && (
                 <div>
-                  <div style={{ fontSize: 10, color: c.faint, marginBottom: 3 }}>Audience</div>
-                  <div style={{ fontSize: 12, color: c.ink, lineHeight: 1.5 }}>{project.audience}</div>
+                  <div className="text-[10px] text-faint mb-[3px]">Audience</div>
+                  <div className="text-xs text-ink leading-normal">{project.audience}</div>
                 </div>
               )}
               {project.stakeholders && (
                 <div>
-                  <div style={{ fontSize: 10, color: c.faint, marginBottom: 3 }}>Stakeholders</div>
-                  <div style={{ fontSize: 12, color: c.ink, lineHeight: 1.5 }}>{project.stakeholders}</div>
+                  <div className="text-[10px] text-faint mb-[3px]">Stakeholders</div>
+                  <div className="text-xs text-ink leading-normal">{project.stakeholders}</div>
                 </div>
               )}
               {project.assumptions && (
                 <div>
-                  <div style={{ fontSize: 10, color: c.faint, marginBottom: 3 }}>Assumptions</div>
-                  <div style={{ fontSize: 12, color: c.ink, lineHeight: 1.5 }}>{project.assumptions}</div>
+                  <div className="text-[10px] text-faint mb-[3px]">Assumptions</div>
+                  <div className="text-xs text-ink leading-normal">{project.assumptions}</div>
                 </div>
               )}
               {project.scope_in?.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 10, color: c.faint, marginBottom: 5 }}>In scope</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  <div className="text-[10px] text-faint mb-1.25">In scope</div>
+                  <div className="flex flex-wrap gap-1">
                     {project.scope_in.map(s => (
-                      <span key={s} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: c.green50, color: c.green700, border: `1px solid ${c.greenBorder}` }}>{s}</span>
+                      <span key={s} className="text-[11px] py-0.5 px-2 rounded-pill bg-green-50 text-green-700 border border-green-border">{s}</span>
                     ))}
                   </div>
                 </div>
               )}
               {project.scope_out?.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 10, color: c.faint, marginBottom: 5 }}>Out of scope</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  <div className="text-[10px] text-faint mb-1.25">Out of scope</div>
+                  <div className="flex flex-wrap gap-1">
                     {project.scope_out.map(s => (
-                      <span key={s} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>{s}</span>
+                      <span key={s} className="text-[11px] py-0.5 px-2 rounded-pill bg-surface-alt text-muted border border-border">{s}</span>
                     ))}
                   </div>
                 </div>
@@ -481,7 +406,7 @@ export default function ProjectOverview({ appState }) {
         </div>
 
         {/* Phase cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+        <div className="grid grid-cols-5 gap-2.5">
 
           {/* Scan */}
           <PhaseCard
@@ -492,10 +417,10 @@ export default function ProjectOverview({ appState }) {
           >
             <Stat label="Inputs" value={projectInputs.length} />
             {aiSuggestionCount > 0 && (
-              <Stat label="AI suggestions" value={aiSuggestionCount} accent={c.brand} />
+              <Stat label="AI suggestions" value={aiSuggestionCount} accentClass="text-brand" />
             )}
             {latestScanTs && (
-              <div style={{ fontSize: 10, color: c.faint, marginTop: 7 }}>{relativeTime(latestScanTs)}</div>
+              <div className="text-[10px] text-faint mt-1.75">{relativeTime(latestScanTs)}</div>
             )}
           </PhaseCard>
 
@@ -508,19 +433,19 @@ export default function ProjectOverview({ appState }) {
           >
             <Stat label="Clusters" value={projectClusters.length} />
             {projectClusters.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 5 }}>
+              <div className="flex flex-wrap gap-[3px] mt-1.25">
                 {clusterBySubtype.Trend > 0 && (
-                  <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 10, background: c.violet50, color: c.violet700 }}>
+                  <span className="text-[9px] py-px px-1.5 rounded-pill bg-violet-50 text-violet-700">
                     {clusterBySubtype.Trend} Trend
                   </span>
                 )}
                 {clusterBySubtype.Driver > 0 && (
-                  <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 10, background: c.violet50, color: c.violet700 }}>
+                  <span className="text-[9px] py-px px-1.5 rounded-pill bg-violet-50 text-violet-700">
                     {clusterBySubtype.Driver} Driver
                   </span>
                 )}
                 {clusterBySubtype.Tension > 0 && (
-                  <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 10, background: c.amber50, color: c.amber700 }}>
+                  <span className="text-[9px] py-px px-1.5 rounded-pill bg-amber-50 text-amber-700">
                     {clusterBySubtype.Tension} Tension
                   </span>
                 )}
@@ -528,7 +453,7 @@ export default function ProjectOverview({ appState }) {
             )}
             {projectClusters.length > 0 && <HorizonScatter clusters={projectClusters} />}
             {latestClusterTs && (
-              <div style={{ fontSize: 10, color: c.faint, marginTop: 5 }}>{relativeTime(latestClusterTs)}</div>
+              <div className="text-[10px] text-faint mt-1.25">{relativeTime(latestClusterTs)}</div>
             )}
           </PhaseCard>
 
@@ -542,7 +467,7 @@ export default function ProjectOverview({ appState }) {
             <Stat label="Nodes" value={projectNodes.length} />
             <Stat label="Connections" value={projectRels.length} />
             {latestMapTs && (
-              <div style={{ fontSize: 10, color: c.faint, marginTop: 7 }}>{relativeTime(latestMapTs)}</div>
+              <div className="text-[10px] text-faint mt-1.75">{relativeTime(latestMapTs)}</div>
             )}
           </PhaseCard>
 
@@ -555,7 +480,7 @@ export default function ProjectOverview({ appState }) {
           >
             <AnalysisFillGrid analysis={analysis} />
             {latestAnalysisTs && (
-              <div style={{ fontSize: 10, color: c.faint, marginTop: 7 }}>{relativeTime(latestAnalysisTs)}</div>
+              <div className="text-[10px] text-faint mt-1.75">{relativeTime(latestAnalysisTs)}</div>
             )}
           </PhaseCard>
 
@@ -570,7 +495,7 @@ export default function ProjectOverview({ appState }) {
             <Stat label="Preferred Futures" value={projectFutures.length} />
             <Stat label="Strat. Options" value={projectOptions.length} />
             {latestFuturesTs && (
-              <div style={{ fontSize: 10, color: c.faint, marginTop: 7 }}>{relativeTime(latestFuturesTs)}</div>
+              <div className="text-[10px] text-faint mt-1.75">{relativeTime(latestFuturesTs)}</div>
             )}
           </PhaseCard>
 
