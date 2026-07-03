@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { c, inp, btnSm, btnSec, btnG, fl, fh } from "../../styles/tokens.js";
 import { ConfirmModal } from "../shared/ConfirmModal.jsx";
+import { AddSourceModal } from "../shared/AddSourceModal.jsx";
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -54,11 +55,12 @@ function CredBadge({ credibility }) {
 
 // ─── Sources section ──────────────────────────────────────────────────────────
 
-function SourcesSection({ workspaceId, deleteSource, showToast }) {
-  const [sources,  setSources]  = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [filter,   setFilter]   = useState("all");   // "all" | "curated" | "user"
-  const [search,   setSearch]   = useState("");
+function SourcesSection({ workspaceId, addSource, deleteSource, showToast }) {
+  const [sources,     setSources]     = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [filter,      setFilter]      = useState("all");   // "all" | "curated" | "user"
+  const [search,      setSearch]      = useState("");
+  const [addOpen,     setAddOpen]     = useState(false);
   // { source: <row>, optInCount: number } when confirm modal is open, else null
   const [confirmDelete, setConfirmDelete] = useState(null);
 
@@ -138,6 +140,16 @@ function SourcesSection({ workspaceId, deleteSource, showToast }) {
     }
   }
 
+  async function handleAdded(fields) {
+    setAddOpen(false);
+    try {
+      const row = await addSource(fields);
+      setSources(prev => [...prev, row].sort((a, b) => a.name.localeCompare(b.name)));
+    } catch {
+      showToast("Failed to add source", "error");
+    }
+  }
+
   return (
     <div>
       {/* Filter tabs + search row */}
@@ -150,6 +162,16 @@ function SourcesSection({ workspaceId, deleteSource, showToast }) {
         <SectionTab label="Curated"    active={filter === "curated"} onClick={() => setFilter("curated")} />
         <SectionTab label="My sources" active={filter === "user"}    onClick={() => setFilter("user")} />
         <div style={{ flex: 1 }} />
+        <button
+          onClick={() => setAddOpen(true)}
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            fontSize: 11.5, color: c.brand, fontFamily: "inherit",
+            padding: "0 8px 6px 0", fontWeight: 500,
+          }}
+        >
+          + Add source
+        </button>
         <input
           style={{
             ...inp,
@@ -252,6 +274,13 @@ function SourcesSection({ workspaceId, deleteSource, showToast }) {
           onCancel={() => setConfirmDelete(null)}
         />
       )}
+
+      <AddSourceModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onAdded={handleAdded}
+        defaultDomain={null}
+      />
     </div>
   );
 }
@@ -313,7 +342,7 @@ function SectionCard({ children }) {
 // ─── Main screen ───────────────────────────────────────────────────────────────
 
 export default function AccountSettings({ appState, onSignOut }) {
-  const { user, workspaceId, projects, workspaceScanningEnabled, updateWorkspaceScanningEnabled, updateProject, showToast, deleteSource } = appState;
+  const { user, workspaceId, projects, workspaceScanningEnabled, updateWorkspaceScanningEnabled, updateProject, showToast, deleteSource, addSource } = appState;
 
   // ── Timeout cleanup ─────────────────────────────────────────────────────────
 
@@ -705,7 +734,7 @@ export default function AccountSettings({ appState, onSignOut }) {
         {/* ── Sources section ──────────────────────────────────────── */}
         <SectionCard>
           <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 14 }}>Sources</div>
-          <SourcesSection workspaceId={workspaceId} deleteSource={deleteSource} showToast={showToast} />
+          <SourcesSection workspaceId={workspaceId} addSource={addSource} deleteSource={deleteSource} showToast={showToast} />
         </SectionCard>
 
         {/* ── Security section ─────────────────────────────────────── */}
