@@ -220,13 +220,32 @@ Two scalars extracted from the inline-style primitive objects and promoted to `@
 | `--text-ui` | `0.8125rem` (13px) | `text-ui` | `inp.fontSize`, `btnP.fontSize`, `btnSec.fontSize` — 115+ occurrences |
 | `--leading-body` | `1.55` | `leading-body` | `ta.lineHeight`, descriptions, canvas labels — 20+ occurrences |
 
-### Border-radius: intentional two-tier design
+### Border-radius tokens
 
-The design system uses two distinct radius values:
-- **8px (`rounded-lg`)** — containers, inputs, modals, drawers
-- **7px (`rounded-[7px]`)** — compact interactive elements: toggle buttons, small action pills
+All four radius values are now in `@theme` as `--radius-*` tokens. Tailwind v4 generates `rounded-{name}` utility classes from these automatically.
 
-`rounded-[7px]` is **not an inconsistency** — do not replace it with `rounded-lg`. When button components are migrated to Tailwind, add `--radius-btn: 7px` to `@theme` and replace all `rounded-[7px]` uses at that time — not before.
+| CSS variable | Value | Tailwind class | Use |
+|---|---|---|---|
+| `--radius-container` | `8px` | `rounded-container` | Containers, inputs, modals, drawers, cards |
+| `--radius-btn` | `7px` | `rounded-btn` | Compact interactive elements: toggle buttons, small action pills |
+| `--radius-pill` | `10px` | `rounded-pill` | Pill badges: resume pill, scope tags, subtype chips |
+| `--radius-chip` | `4px` | `rounded-chip` | Micro chips: AnalysisFillGrid cells, tight inline labels |
+
+`rounded-btn` is **not an inconsistency** with `rounded-container` — it is an intentional second tier for compact elements. Do not replace `rounded-btn` with `rounded-container`. Do not use `rounded-[7px]` or `rounded-lg` — use the named tokens.
+
+When inline-style components that currently use raw `borderRadius` values are migrated to Tailwind, replace:
+- `borderRadius: 8` → `rounded-container`
+- `borderRadius: 7` → `rounded-btn`
+- `borderRadius: 10` → `rounded-pill`
+- `borderRadius: 4` → `rounded-chip`
+
+### Shadow token
+
+| CSS variable | Value | Use |
+|---|---|---|
+| `--shadow-hover` | `0 1px 6px rgba(0,0,0,0.07)` | Card hover lift (e.g. phase cards on Overview) |
+
+Use as an arbitrary value in Tailwind: `shadow-[var(--shadow-hover)]`, or in inline styles as `boxShadow: "var(--shadow-hover)"` once the component is migrated.
 
 ### 0.5px borders
 
