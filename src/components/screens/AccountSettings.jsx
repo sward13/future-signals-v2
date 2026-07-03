@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { c, inp, btnSm, btnSec, btnG, fl, fh } from "../../styles/tokens.js";
+import { ConfirmModal } from "../shared/ConfirmModal.jsx";
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -53,11 +54,13 @@ function CredBadge({ credibility }) {
 
 // ─── Sources section ──────────────────────────────────────────────────────────
 
-function SourcesSection({ workspaceId }) {
+function SourcesSection({ workspaceId, deleteSource, showToast }) {
   const [sources,  setSources]  = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [filter,   setFilter]   = useState("all");   // "all" | "curated" | "user"
   const [search,   setSearch]   = useState("");
+  // { source: <row>, optInCount: number } when confirm modal is open, else null
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -112,6 +115,28 @@ function SourcesSection({ workspaceId }) {
 
   const curatedCount = sources.filter(s => s.source_type === "curated").length;
   const userCount    = sources.filter(s => s.source_type !== "curated").length;
+
+  async function handleDeleteClick(src) {
+    const { data } = await supabase
+      .from("project_sources")
+      .select("id")
+      .eq("source_id", src.id)
+      .eq("opted_in", true);
+    const optInCount = data?.length ?? 0;
+    setConfirmDelete({ source: src, optInCount });
+  }
+
+  async function handleDeleteConfirm() {
+    const { source } = confirmDelete;
+    setConfirmDelete(null);
+    setSources(prev => prev.filter(s => s.id !== source.id));
+    try {
+      await deleteSource(source.id);
+    } catch {
+      setSources(prev => [...prev, source].sort((a, b) => a.name.localeCompare(b.name)));
+      showToast("Failed to delete source", "error");
+    }
+  }
 
   return (
     <div>
@@ -189,6 +214,21 @@ function SourcesSection({ workspaceId }) {
                 )}
               </div>
               <CredBadge credibility={src.credibility} />
+              {src.owner_id !== null && (
+                <button
+                  onClick={() => handleDeleteClick(src)}
+                  title="Delete source"
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    padding: "2px 4px", color: c.faint, fontSize: 14, lineHeight: 1,
+                    flexShrink: 0, fontFamily: "inherit",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.color = "#DC2626"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = c.faint; }}
+                >
+                  ×
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -199,6 +239,18 @@ function SourcesSection({ workspaceId }) {
         <div style={{ fontSize: 11, color: c.faint, paddingTop: 6 }}>
           {curatedCount} curated · {userCount} added by you
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmModal
+          message={
+            confirmDelete.optInCount > 0
+              ? `Delete "${confirmDelete.source.name}"? It's currently active in ${confirmDelete.optInCount} project${confirmDelete.optInCount !== 1 ? "s" : ""} and will be removed from their scanning sources.`
+              : `Delete "${confirmDelete.source.name}"?`
+          }
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   );
@@ -261,7 +313,7 @@ function SectionCard({ children }) {
 // ─── Main screen ───────────────────────────────────────────────────────────────
 
 export default function AccountSettings({ appState, onSignOut }) {
-  const { user, workspaceId, projects, workspaceScanningEnabled, updateWorkspaceScanningEnabled, updateProject, showToast } = appState;
+  const { user, workspaceId, projects, workspaceScanningEnabled, updateWorkspaceScanningEnabled, updateProject, showToast, deleteSource } = appState;
 
   // ── Timeout cleanup ─────────────────────────────────────────────────────────
 
@@ -653,7 +705,7 @@ export default function AccountSettings({ appState, onSignOut }) {
         {/* ── Sources section ──────────────────────────────────────── */}
         <SectionCard>
           <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 14 }}>Sources</div>
-          <SourcesSection workspaceId={workspaceId} />
+          <SourcesSection workspaceId={workspaceId} deleteSource={deleteSource} showToast={showToast} />
         </SectionCard>
 
         {/* ── Security section ─────────────────────────────────────── */}

@@ -483,6 +483,11 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       });
   }, [showToast]);
 
+  const deleteSource = useCallback(async (id) => {
+    const { error } = await supabase.from("sources").delete().eq("id", id);
+    if (error) throw error;
+  }, []);
+
   // ── Inputs ────────────────────────────────────────────────────────────────
 
   const addInput = useCallback((fields) => {
@@ -1739,6 +1744,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     relationships,
     projectSources,
     updateProjectSource,
+    deleteSource,
     addCanvasNode,
     removeCanvasNode,
     updateCanvasNodePos,
