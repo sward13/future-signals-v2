@@ -9,7 +9,7 @@ import { useScannerStatus } from "../../hooks/useScannerStatus.js";
 import { c, inp, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { STEEPLED } from "../../data/seeds.js";
 import { HorizTag, SubtypeTag } from "../shared/Tag.jsx";
-import { HorizonBar } from "../shared/HorizonBar.jsx";
+
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
@@ -629,50 +629,6 @@ export default function ProjectDetail({ appState }) {
             <button onClick={() => setDrawerOpen(true)} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}><CirclePlus size={14} />Add an input</button>
           </div>
         </div>
-
-        {/* ── Header: key question ─────────────────────────────── */}
-        {project.question && (
-          <div style={{
-            padding: "9px 14px",
-            background: "#F0F7FF",
-            border: "1px solid #BFDBFE",
-            borderRadius: 8,
-            marginBottom: 10,
-          }}>
-            <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.07em", color: c.brand, marginBottom: 3 }}>
-              Key Question
-            </div>
-            <div style={{ fontSize: 13, fontStyle: "italic", color: c.ink, lineHeight: 1.5 }}>
-              {project.question}
-            </div>
-          </div>
-        )}
-
-        {/* ── Header: project metadata strip ───────────────────── */}
-        <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
-          {[
-            { label: "Domain",       value: project.domain },
-            { label: "Focus",        value: project.unit || project.focus },
-            { label: "Geography",    value: project.geo },
-            { label: "Stakeholders", value: project.stakeholders },
-          ].map(({ label, value }, i) => (
-            <div key={label} style={{ display: "flex", alignItems: "center" }}>
-              {i > 0 && (
-                <div style={{ width: 1, height: 14, background: c.borderMid, margin: "0 10px", flexShrink: 0 }} />
-              )}
-              <span style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint, fontWeight: 500, marginRight: 5 }}>
-                {label}
-              </span>
-              {value
-                ? <span style={{ fontSize: 12, color: c.ink }}>{value}</span>
-                : <span style={{ fontSize: 12, color: c.hint, fontStyle: "italic" }}>Not set</span>
-              }
-            </div>
-          ))}
-        </div>
-
-        {/* ── Header: time horizons bar ─────────────────────────── */}
-        {project.h1_start && <HorizonBar project={project} />}
 
         </div>{/* end header section */}
 
