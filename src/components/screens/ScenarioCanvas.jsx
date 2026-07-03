@@ -680,7 +680,7 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
       <div style={{ flex: 1, overflowY: "auto" }}>
         {clusters.length === 0 ? (
           <div style={{ padding: "16px 14px", fontSize: 11, color: c.hint, lineHeight: 1.5 }}>
-            No clusters in this project yet. Create some in the Clustering screen first.
+            No clusters in this project yet. Create some in the Cluster screen first.
           </div>
         ) : (() => {
           const filteredClusters = clusterSearch.trim()

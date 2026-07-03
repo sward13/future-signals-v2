@@ -2,7 +2,7 @@
  * Sidebar — primary navigation with two states:
  *   Workspace level (no active project): Dashboard, Inbox, Projects only.
  *   Project level (active project): same top nav + PROJECT section with
- *     Inputs, Clustering, Systems scoped to that project.
+ *     Scan, Cluster, Systems scoped to that project.
  * @param {{
  *   activeScreen: string,
  *   setActiveScreen: (screen: string) => void,
