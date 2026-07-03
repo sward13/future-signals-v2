@@ -56,6 +56,9 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [canvasTextNodes, setCanvasTextNodes] = useState([]);
   const [relationships, setRelationships] = useState([]);
 
+  // Per-project scanner sources
+  const [projectSources, setProjectSources] = useState([]);
+
   const connectionsRef = useRef(connections);
   connectionsRef.current = connections;
 
@@ -111,6 +114,27 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       }
     }
   }, [projects, activeProjectId]);
+
+  // ── Project sources — re-fetched whenever the active project changes ───────
+
+  useEffect(() => {
+    if (!activeProjectId) {
+      setProjectSources([]);
+      return;
+    }
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("project_sources")
+          .select("*, sources(*)")
+          .eq("project_id", activeProjectId);
+        if (error) throw error;
+        setProjectSources(data ?? []);
+      } catch {
+        // non-fatal — Overview scanner card degrades gracefully without source count
+      }
+    })();
+  }, [activeProjectId]);
 
   // ── Supabase data fetching ────────────────────────────────────────────────
 
@@ -341,7 +365,14 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const openProject = useCallback((id) => {
     setActiveProjectId(id);
     setActiveScreen("project");
-  }, []);
+    if (id) {
+      supabase
+        .from("projects")
+        .update({ last_visited_at: new Date().toISOString() })
+        .eq("id", id)
+        .then();
+    }
+  }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Projects ──────────────────────────────────────────────────────────────
 
@@ -1692,6 +1723,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     canvasNodes,
     canvasTextNodes,
     relationships,
+    projectSources,
     addCanvasNode,
     removeCanvasNode,
     updateCanvasNodePos,

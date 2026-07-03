@@ -60,6 +60,13 @@ function getDefault(panel) {
   return "";
 }
 
+/** Returns true if the given panel value contains practitioner-entered content. */
+export function analysisHasCont(panelType, value) {
+  if (panelType === "text")  return (value || "").trim().length > 0;
+  if (panelType === "chips") return (value || []).length > 0;
+  return value !== null && value !== undefined;
+}
+
 // ─── Chips sub-panel ───────────────────────────────────────────────────────────
 
 function ChipsPanel({ value = [], onChange, onFocus }) {
@@ -145,11 +152,7 @@ function ConfidencePanel({ value, onChange, prompt }) {
 function AnalysisPanel({ panel, value, onChange, selected, onSelect }) {
   const isFocused = selected === panel.id;
 
-  const hasCont = panel.type === "text"
-    ? (value || "").trim().length > 0
-    : panel.type === "chips"
-    ? (value || []).length > 0
-    : value !== null && value !== undefined;
+  const hasCont = analysisHasCont(panel.type, value);
 
   // Prompt: shown in header area for text/chips when focused or empty; confidence renders it inline
   const showPrompt = panel.type !== "confidence" && (isFocused || !hasCont);

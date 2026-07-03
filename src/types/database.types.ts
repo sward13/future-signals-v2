@@ -62,6 +62,7 @@ export type Database = {
           implications: string | null
           key_dynamics: string | null
           project_id: string
+          updated_at: string | null
           workspace_id: string
         }
         Insert: {
@@ -73,6 +74,7 @@ export type Database = {
           implications?: string | null
           key_dynamics?: string | null
           project_id: string
+          updated_at?: string | null
           workspace_id: string
         }
         Update: {
@@ -84,6 +86,7 @@ export type Database = {
           implications?: string | null
           key_dynamics?: string | null
           project_id?: string
+          updated_at?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -204,6 +207,66 @@ export type Database = {
           },
           {
             foreignKeyName: "canvas_nodes_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      canvas_text_nodes: {
+        Row: {
+          bold: boolean
+          color: string
+          created_at: string
+          font_family: string
+          font_size: number
+          id: string
+          italic: boolean
+          project_id: string
+          text: string
+          workspace_id: string
+          x: number
+          y: number
+        }
+        Insert: {
+          bold?: boolean
+          color?: string
+          created_at?: string
+          font_family?: string
+          font_size?: number
+          id?: string
+          italic?: boolean
+          project_id: string
+          text?: string
+          workspace_id: string
+          x?: number
+          y?: number
+        }
+        Update: {
+          bold?: boolean
+          color?: string
+          created_at?: string
+          font_family?: string
+          font_size?: number
+          id?: string
+          italic?: boolean
+          project_id?: string
+          text?: string
+          workspace_id?: string
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvas_text_nodes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvas_text_nodes_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -676,6 +739,7 @@ export type Database = {
           id: string
           key_question_embedding: string | null
           last_reviewed_at: string | null
+          last_visited_at: string | null
           name: string
           question: string | null
           scanning_enabled: boolean
@@ -700,6 +764,7 @@ export type Database = {
           id?: string
           key_question_embedding?: string | null
           last_reviewed_at?: string | null
+          last_visited_at?: string | null
           name: string
           question?: string | null
           scanning_enabled?: boolean
@@ -724,6 +789,7 @@ export type Database = {
           id?: string
           key_question_embedding?: string | null
           last_reviewed_at?: string | null
+          last_visited_at?: string | null
           name?: string
           question?: string | null
           scanning_enabled?: boolean
@@ -1197,6 +1263,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      duplicate_input_to_cluster: {
+        Args: {
+          p_dest_cluster_id: string
+          p_source_id: string
+          p_workspace_id: string
+        }
+        Returns: {
+          created_at: string
+          description: string
+          horizon: string
+          id: string
+          is_seeded: boolean
+          metadata: Json
+          name: string
+          project_id: string
+          signal_quality: string
+          signal_strength: string
+          source_confidence: string
+          source_url: string
+          steepled: string[]
+          subtype: string
+          workspace_id: string
+        }[]
+      }
       find_similar_input_pairs: {
         Args: { p_project_id: string; p_threshold?: number }
         Returns: {
