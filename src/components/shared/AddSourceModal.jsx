@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { c, inp, btnSm, btnSec, fl } from "../../styles/tokens.js";
 import { DOMAINS } from "../../data/seeds.js";
+import { supabase } from "../../lib/supabase.js";
 
 function validateUrl(raw) {
   if (!raw.trim()) return "URL is required.";
@@ -12,11 +13,20 @@ function validateUrl(raw) {
 }
 
 export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null }) {
-  const [url,       setUrl]       = useState("");
-  const [name,      setName]      = useState("");
-  const [domain,    setDomain]    = useState(defaultDomain ?? "");
-  const [errors,    setErrors]    = useState({});
+  const [url,        setUrl]        = useState("");
+  const [name,       setName]       = useState("");
+  const [domain,     setDomain]     = useState(defaultDomain ?? "");
+  const [errors,     setErrors]     = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [preview,    setPreview]    = useState(null); // { feedTitle, items }
+
+  // Tracks the URL that was last fetched so we skip re-fetching the same URL on
+  // repeated blurs, matching the pattern in InputDrawer's handleUrlBlur.
+  const lastFetchedUrl   = useRef("");
+  // True once the practitioner has typed in the Name field so auto-populate
+  // doesn't overwrite a manual entry.
+  const nameEditedByUser = useRef(false);
 
   // Reset form each time the modal opens
   useEffect(() => {
@@ -26,10 +36,53 @@ export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null })
       setDomain(defaultDomain ?? "");
       setErrors({});
       setSubmitting(false);
+      setPreviewing(false);
+      setPreview(null);
+      lastFetchedUrl.current   = "";
+      nameEditedByUser.current = false;
     }
   }, [open, defaultDomain]);
 
   if (!open) return null;
+
+  async function fetchPreview(rawUrl) {
+    const trimmed = rawUrl.trim();
+    if (!trimmed || trimmed === lastFetchedUrl.current) return;
+    if (validateUrl(trimmed)) return; // client-side invalid — don't bother
+
+    lastFetchedUrl.current = trimmed;
+    setPreviewing(true);
+    setPreview(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`/api/validate-feed?url=${encodeURIComponent(trimmed)}`, {
+        headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
+      if (!res.ok) { setPreviewing(false); return; }
+      const data = await res.json();
+      setPreview(data);
+      // Auto-populate name only if practitioner hasn't manually typed in the field
+      if (!nameEditedByUser.current && !name && data.feedTitle) {
+        setName(data.feedTitle);
+      }
+    } catch {
+      // Silent fail — preview is an enhancement, not a gate
+    } finally {
+      setPreviewing(false);
+    }
+  }
+
+  function handleUrlChange(e) {
+    const val = e.target.value;
+    setUrl(val);
+    setErrors(p => ({ ...p, url: undefined }));
+    // URL changed: allow the next blur to auto-populate name again
+    if (val.trim() !== lastFetchedUrl.current) {
+      nameEditedByUser.current = false;
+      setPreview(null);
+    }
+  }
 
   function validate() {
     const errs = {};
@@ -78,13 +131,42 @@ export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null })
             type="url"
             placeholder="https://example.com/feed.xml"
             value={url}
-            onChange={e => { setUrl(e.target.value); setErrors(p => ({ ...p, url: undefined })); }}
+            onChange={handleUrlChange}
+            onBlur={e => fetchPreview(e.target.value)}
             autoFocus
           />
-          {errors.url
-            ? <div style={{ fontSize: 11, color: c.red800, marginTop: 3 }}>{errors.url}</div>
-            : <div style={{ fontSize: 11, color: c.hint, marginTop: 3 }}>Paste the URL of any RSS or Atom feed.</div>
-          }
+          {errors.url ? (
+            <div style={{ fontSize: 11, color: c.red800, marginTop: 3 }}>{errors.url}</div>
+          ) : previewing ? (
+            <div style={{ fontSize: 11, color: c.hint, marginTop: 3 }}>Checking feed…</div>
+          ) : (
+            <div style={{ fontSize: 11, color: c.hint, marginTop: 3 }}>Paste the URL of any RSS or Atom feed.</div>
+          )}
+
+          {/* Preview items */}
+          {preview?.items?.length > 0 && (
+            <div style={{
+              marginTop: 8,
+              padding: "8px 10px",
+              background: c.surfaceAlt,
+              border: `0.5px solid ${c.border}`,
+              borderRadius: 6,
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 500, color: c.faint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>
+                Recent items
+              </div>
+              {preview.items.map((title, i) => (
+                <div key={i} style={{
+                  fontSize: 11, color: c.muted, lineHeight: 1.45,
+                  paddingLeft: 10, position: "relative",
+                  marginBottom: i < preview.items.length - 1 ? 3 : 0,
+                }}>
+                  <span style={{ position: "absolute", left: 0, color: c.faint }}>·</span>
+                  {title}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Name */}
@@ -95,7 +177,11 @@ export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null })
             type="text"
             placeholder="e.g. MIT Technology Review"
             value={name}
-            onChange={e => { setName(e.target.value); setErrors(p => ({ ...p, name: undefined })); }}
+            onChange={e => {
+              setName(e.target.value);
+              nameEditedByUser.current = true;
+              setErrors(p => ({ ...p, name: undefined }));
+            }}
           />
           {errors.name && <div style={{ fontSize: 11, color: c.red800, marginTop: 3 }}>{errors.name}</div>}
         </div>
@@ -125,12 +211,13 @@ export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null })
               pointerEvents: "none", color: c.faint, fontSize: 10,
             }}>▾</span>
           </div>
-          {errors.domain
-            ? <div style={{ fontSize: 11, color: c.red800, marginTop: 3 }}>{errors.domain}</div>
-            : <div style={{ fontSize: 11, color: c.hint, marginTop: 3 }}>
-                Scopes this source to matching projects. Required.
-              </div>
-          }
+          {errors.domain ? (
+            <div style={{ fontSize: 11, color: c.red800, marginTop: 3 }}>{errors.domain}</div>
+          ) : (
+            <div style={{ fontSize: 11, color: c.hint, marginTop: 3 }}>
+              Scopes this source to matching projects. Required.
+            </div>
+          )}
         </div>
 
         {/* Footer */}
