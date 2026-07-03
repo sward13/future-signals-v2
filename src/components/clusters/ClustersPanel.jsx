@@ -89,6 +89,7 @@ export function ClustersPanel({
   // When absent, accept/create actions in Suggested mode are no-ops.
   assignInputToCluster,
   addCluster,
+  updateCluster,
 }) {
   const [mode, setMode] = useState("manual");    // "manual" | "suggested"
   const [view, setView] = useState("list");       // "list" | "card"
@@ -302,6 +303,7 @@ export function ClustersPanel({
           setSelectedClusterId(null);
           showToast?.("Cluster deleted", "success");
         }}
+        updateCluster={updateCluster}
       />
     </div>
   );

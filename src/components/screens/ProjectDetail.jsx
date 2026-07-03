@@ -284,7 +284,7 @@ export default function ProjectDetail({ appState }) {
     activeProjectId, projects, inputs, clusters, scenarios, canvasNodes,
     addInput, saveInputsToProject, showToast, setActiveScreen, setActiveProjectId,
     openInputDetail, openClusterDetail, openScenarioDetail,
-    addCluster, addScenario, updateProject, assignInputToCluster, deleteProject,
+    addCluster, addScenario, updateProject, updateCluster, assignInputToCluster, deleteProject,
     duplicateInputToCluster, deleteInput,
     removeInputFromCluster, deleteCluster,
     workspaceScanningEnabled, setInboxProjectFilter,
@@ -989,6 +989,7 @@ export default function ProjectDetail({ appState }) {
             onDropToNewCluster={handleDropToNewCluster}
             assignInputToCluster={assignInputToCluster}
             addCluster={addCluster}
+            updateCluster={updateCluster}
           />
         </div>
       </div>
