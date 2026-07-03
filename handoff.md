@@ -1,6 +1,6 @@
 # Future Signals v2 — Handoff
 
-_Last updated: 2026-07-02_
+_Last updated: 2026-07-03_
 
 ---
 
@@ -26,12 +26,23 @@ All core screens are built and functional:
 | Dashboard | Done |
 | Inbox | Done |
 | **Project Overview** (default landing — key question, horizons, scanner, phase cards) | **Done** |
-| Inputs workspace (ProjectDetail + ClustersPanel) | Done |
+| **Scan** screen (`ProjectDetail.jsx`, screen key `"project"`) — inputs table, tabs, duplicate-to-cluster | **Done** |
+| **Cluster** screen (`ClusterScreen.jsx`, screen key `"cluster"`) — InputRail + ClustersPanel + drag state | **Done** |
 | System Map | Done |
 | System Analysis | Done |
 | Future Models (Scenarios + Strategic Options) | Done |
 
-Note: the Clustering screen no longer exists as a separate route. The `clustering` case in App.jsx redirects to ProjectDetail. All clustering work happens in the 320px ClustersPanel embedded in the Inputs workspace.
+Note: Scan and Cluster are now separate sidebar items and separate screens. `Clustering.jsx` is dead code (no longer imported). The `"clustering"` case in App.jsx is a legacy redirect to `ClusterScreen` to handle any stored localStorage state.
+
+**2026-07-03 session — Scan/Cluster screen split (on `workspace-refactor` branch):**
+- **`ProjectDetail.jsx` stripped** to Scan-only: all clustering concerns removed (ClustersPanel, DragGhost, ClusterAssignMenu, drag state, Cluster column, Assign buttons). Heading renamed "Inputs" → "Scan". `handleDuplicateToCluster`, the dupe picker, and the All/Unassigned/Clustered tabs are kept (they reference clusters but don't own clustering).
+- **`ClusterScreen.jsx` created** (`src/components/screens/ClusterScreen.jsx`): two-column layout — a lean InputRail (name + type badge + Assign→/cluster-name per row, draggable) on the left, ClustersPanel unchanged on the right. All drag state (`dragIds`, `dragPos`, `dragIsCopy`, `blankImgRef`) now lives here. `handleDrop` simplified (no animation branch — InputRail shows all inputs regardless of tab). `createUntitledCluster` and `nextUntitledName` moved here from ProjectDetail.
+- **Sidebar**: "Scan" (was "Inputs") and "Cluster" (new, screen `"cluster"`) are now separate nav items. `projCounts` key updated from `"clustering"` → `"cluster"` so the count badge displays correctly.
+- **Routing**: `App.jsx` has `case "cluster"` → ClusterScreen, `case "clustering"` → ClusterScreen (legacy localStorage fallback), `"cluster"` added to AppShell scroll-exclusion list.
+- **Overview phase cards**: Cluster card `onClick` → `setActiveScreen("cluster")`. Scan card + "Manage sources" button remain on `"project"`.
+- **Context card fix**: All 6 fields (Focus, Audience, Stakeholders, Assumptions, In/Out scope) always render with italic "Not set" fallback — previously hidden when empty.
+- **Stale copy fixed**: `ScenarioCanvas.jsx` empty-state "Clustering screen" → "Cluster screen".
+- **Chrome extension scaffold committed**: `extension/` directory with full MVP source (background, content script, sidepanel, lib utils). See Chrome extension section below.
 
 **2026-07-02 session — Tailwind migration: ProjectOverview.jsx (on `workspace-refactor` branch):**
 - **`ProjectOverview.jsx` fully migrated** to Tailwind v4 — removes the last `tokens.js` import from this file. All inline style objects replaced with Tailwind utility classes; `clsx` used for conditional composition.

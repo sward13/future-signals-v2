@@ -312,7 +312,8 @@ The sidebar is **196px wide**, `background: c.bg`, with a single `0.5px` border-
 - Inbox *(global, shows unread count badge in `alertBg/alertText`)*
 - `0.5px` divider
 - Overview *(project-scoped, first item — default landing screen when opening a project)*
-- Inputs *(project-scoped, shows input count)*
+- Scan *(project-scoped, shows input count — screen key `"project"`, file `ProjectDetail.jsx`)*
+- Cluster *(project-scoped, shows cluster count — screen key `"cluster"`, file `ClusterScreen.jsx`)*
 - System Map *(project-scoped)*
 - System Analysis *(project-scoped)*
 - Future Models *(project-scoped)*
@@ -323,7 +324,7 @@ The sidebar is **196px wide**, `background: c.bg`, with a single `0.5px` border-
 
 **Visibility rules:**
 - Dashboard and Inbox are always visible.
-- Divider and all project-scoped items (Inputs → Export) are only visible when `activeProjectId` is set.
+- Divider and all project-scoped items (Scan → Export) are only visible when `activeProjectId` is set.
 - Navigating to Dashboard or Inbox clears the active project context.
 
 ---
@@ -355,11 +356,11 @@ phase cards       → 5-column grid: Scan · Cluster · System Map · System Ana
 
 **"Project settings" button** (not "Edit project") — opens `EditProjectDrawer`. Gear icon ⚙, styled `btnSec`. The drawer's prop API: `{ project, onClose, onSave, onDelete, workspaceScanningEnabled }` — not `appState`.
 
-**Inputs screen header (trimmed):**
-The Inputs screen (`ProjectDetail.jsx`) no longer shows the key question, metadata strip, or HorizonBar. Those now live on Overview. The Inputs header contains only:
+**Scan screen header (trimmed):**
+The Scan screen (`ProjectDetail.jsx`) no longer shows the key question, metadata strip, or HorizonBar. Those now live on Overview. The Scan header contains only:
 ```
 eyebrow  → project.name (10px, c.hint, letter-spacing 0.08em)
-title    → "Inputs" (22px/500)
+title    → "Scan" (22px/500)
 CTAs     → "Add from Inbox" + "Add an input" (right-aligned)
 ```
 
@@ -367,7 +368,7 @@ CTAs     → "Add from Inbox" + "Add an input" (right-aligned)
 
 ## Clusters panel — structure and rules
 
-The 320px right-hand panel in the Inputs workspace. Replaces the old three-card sidebar (Clusters summary, System Map widget, Project Details). Those sections no longer exist on the Inputs screen — project metadata is in the page header; System Map status is visible via the nav item.
+The 320px right-hand panel in the Cluster workspace (`ClusterScreen.jsx`). Project metadata lives on Overview; System Map status is visible via the nav item.
 
 **Panel header (two rows):**
 - Row 1: "Clusters" label (13px semibold) + "+ New cluster" button right-aligned (`c.brandBg` bg, `c.brand` text, `c.brandBorder` border). Visible in both modes.
@@ -386,8 +387,8 @@ The 320px right-hand panel in the Inputs workspace. Replaces the old three-card 
 - Section 2 "New cluster suggestions": new cluster cards — Create cluster / Edit (inline) / Dismiss. Rationale expandable via "· Why this cluster?".
 - Empty states: "No suggestions yet" before first run; "All suggestions resolved" after all acted on.
 
-**Props ClustersPanel receives from ProjectDetail:**
-`projectId`, `clusters`, `inputs`, `onNewCluster`, `removeInputFromCluster`, `deleteCluster`, `showToast`, `dragIds`, `dragIsCopy`, `onDrop`, `onDropToNewCluster`, `assignInputToCluster`, `addCluster`
+**Props ClustersPanel receives from ClusterScreen:**
+`projectId`, `clusters`, `inputs`, `onNewCluster`, `removeInputFromCluster`, `deleteCluster`, `showToast`, `dragIds`, `dragIsCopy`, `onDrop`, `onDropToNewCluster`, `assignInputToCluster`, `addCluster`, `updateCluster`
 
 ---
 
@@ -425,7 +426,7 @@ The 320px right-hand panel in the Inputs workspace. Replaces the old three-card 
 - The Inbox's AI Suggested section has its own search/filter bar, including a Project filter (filters on `metadata.suggested_projects`). It defaults to "All projects" (no filter) on fresh page load and on first navigation to the Inbox. Within a session, the filter persists whatever the user last selected (including cleared).
 - A project's "Review N suggestions" action (Project Detail) sets `appState.inboxProjectFilter` and navigates to the Inbox — the AI Suggested Project filter picks this up as its initial selection (deep-link), pre-filtering AI Suggested to that project on arrival.
 - **Overview is the default project landing screen.** `openProject(id)` navigates to `"project-overview"`, not `"project"` (Inputs). Every entry path to a project — Dashboard card click, Inbox links, sidebar project list, new project creation — lands on Overview first.
-- The System Map is project-scoped and only appears in the sidebar when a project is active. There is no separate Clustering screen — clustering is embedded inside the Inputs workspace (ProjectDetail) as the right-hand ClustersPanel.
+- The System Map is project-scoped and only appears in the sidebar when a project is active. Scan and Cluster are separate screens: `ProjectDetail.jsx` (`"project"`) is inputs-only; `ClusterScreen.jsx` (`"cluster"`) contains the InputRail + ClustersPanel and owns all drag-and-drop state.
 - At workspace level (Dashboard, Inbox, no active project) the sidebar shows only: Dashboard, Inbox. No project-scoped items.
 - Navigating to Dashboard or Inbox via the sidebar clears the active project context.
 - The Dashboard stats strip shows workspace-level counts only: Projects and Inputs in Inbox. Per-project counts appear on each project card.
@@ -447,8 +448,9 @@ All app state lives in a single `useAppState` hook (or context) at the root leve
   scenarios: [],
   projects: [],
   activeProjectId: null,
-  activeScreen: 'dashboard',  // 'dashboard' | 'inbox' | 'project-overview' | 'project' | 'scenarios' | 'analysis' | 'future-models'
-                              // Note: 'clustering' still exists as a case in App.jsx but redirects to 'project' (ProjectDetail)
+  activeScreen: 'dashboard',  // 'dashboard' | 'inbox' | 'project-overview' | 'project' | 'cluster' | 'scenarios' | 'analysis' | 'future-models'
+                              // 'project' = Scan screen (ProjectDetail.jsx); 'cluster' = Cluster screen (ClusterScreen.jsx)
+                              // 'clustering' is a legacy case in App.jsx that redirects to ClusterScreen (preserved for localStorage restore)
                               // openProject(id) navigates to 'project-overview' — Overview is the default project landing screen
   drawer: null,               // null | { type: 'newInput' | 'newCluster' | 'inputDetail' | 'clusterDetail' | 'projectSettings', data: {} }
   toast: null,                // null | { message, type: 'success' | 'error' }
@@ -484,8 +486,9 @@ src/
       Dashboard.jsx
       Inbox.jsx
       ProjectOverview.jsx   ← default project landing: key question, horizons, scanner, phase cards
-      ProjectDetail.jsx     ← Inputs workspace (inputs table + embedded ClustersPanel)
-      Clustering.jsx        ← redirect only; case in App.jsx returns ProjectDetail
+      ProjectDetail.jsx     ← Scan screen (inputs table only; no clustering; screen key "project")
+      ClusterScreen.jsx     ← Cluster screen (InputRail + ClustersPanel + all drag state; screen key "cluster")
+      Clustering.jsx        ← dead code; no longer imported (legacy file, safe to delete later)
       SystemMap.jsx
       SystemAnalysis.jsx
       FutureModels.jsx
