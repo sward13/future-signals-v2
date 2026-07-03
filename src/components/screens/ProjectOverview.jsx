@@ -190,6 +190,7 @@ export default function ProjectOverview({ appState }) {
     preferredFutures,
     strategicOptions,
     canvasNodes,
+    canvasTextNodes,
     relationships,
     projectSources,
     setActiveScreen,
@@ -215,6 +216,7 @@ export default function ProjectOverview({ appState }) {
   const projectOptions     = (strategicOptions || []).filter(o => o.project_id === activeProjectId);
   const projectNodes       = (canvasNodes || []).filter(n => n.projectId === activeProjectId);
   const projectRels        = (relationships || []).filter(r => r.project_id === activeProjectId);
+  const projectTextNodes   = (canvasTextNodes || []).filter(n => n.projectId === activeProjectId);
 
   // ── Scanner ─────────────────────────────────────────────────────────────────
   const newSignalCount = useMemo(() => {
@@ -253,9 +255,12 @@ export default function ProjectOverview({ appState }) {
   }, [projectClusters]);
 
   const latestMapTs = useMemo(() => {
-    const sorted = projectRels.map(r => r.created_at).filter(Boolean).sort();
+    const sorted = [
+      ...projectRels.map(r => r.created_at),
+      ...projectTextNodes.map(n => n.created_at),
+    ].filter(Boolean).sort();
     return sorted[sorted.length - 1] || null;
-  }, [projectRels]);
+  }, [projectRels, projectTextNodes]);
 
   const latestAnalysisTs = analysis?.updated_at || null;
 

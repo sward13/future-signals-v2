@@ -257,6 +257,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
           bold: n.bold,
           italic: n.italic,
           color: n.color,
+          created_at: n.created_at,
         })));
       } catch {
         showToast("Failed to load canvas text nodes", "error");
