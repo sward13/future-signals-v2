@@ -17,6 +17,7 @@ import { AddFromInboxModal } from "../inputs/AddFromInboxModal.jsx";
 import { ClusterDrawer } from "../clusters/ClusterDrawer.jsx";
 import { ScenarioDrawer } from "../scenarios/ScenarioDrawer.jsx";
 import { EditProjectDrawer } from "../projects/EditProjectDrawer.jsx";
+import { ScanningPreferencesDrawer } from "../projects/ScanningPreferencesDrawer.jsx";
 import { CsvImportModal } from "../inputs/CsvImportModal.jsx";
 import { ClustersPanel } from "../clusters/ClustersPanel.jsx";
 import { DragGhost } from "../clusters/DragGhost.jsx";
@@ -272,10 +273,12 @@ export default function ProjectDetail({ appState }) {
     duplicateInputToCluster, deleteInput,
     removeInputFromCluster, deleteCluster,
     workspaceScanningEnabled, setInboxProjectFilter,
+    projectSources, updateProjectSource,
   } = appState;
 
   const [drawerOpen,        setDrawerOpen]        = useState(false);
   const [inboxModalOpen,    setInboxModalOpen]    = useState(false);
+  const [scanPrefOpen,      setScanPrefOpen]      = useState(false);
   const [clusterDrawerOpen, setClusterDrawerOpen] = useState(false);
   const [scenarioDrawerOpen,setScenarioDrawerOpen]= useState(false);
   const [editDrawerOpen,    setEditDrawerOpen]    = useState(false);
@@ -623,6 +626,9 @@ export default function ProjectDetail({ appState }) {
             <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Inputs</div>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            <button onClick={() => setScanPrefOpen(true)} style={{ ...btnSec, fontSize: 12, padding: "8px 16px" }}>
+              Scanning preferences
+            </button>
             <button onClick={() => setInboxModalOpen(true)} style={{ ...btnSec, fontSize: 12, padding: "8px 16px" }}>
               Add from Inbox
             </button>
@@ -1008,6 +1014,16 @@ export default function ProjectDetail({ appState }) {
           workspaceScanningEnabled={workspaceScanningEnabled}
         />
       )}
+
+      <ScanningPreferencesDrawer
+        open={scanPrefOpen}
+        onClose={() => setScanPrefOpen(false)}
+        project={project}
+        projectSources={projectSources}
+        workspaceScanningEnabled={workspaceScanningEnabled}
+        updateProject={updateProject}
+        updateProjectSource={updateProjectSource}
+      />
 
       <CsvImportModal
         open={csvImportOpen}
