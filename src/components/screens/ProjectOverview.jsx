@@ -55,12 +55,12 @@ function PhaseCard({ name, statusKey, isResume, onClick, children }) {
     >
       <div className="pt-2.25 px-2.75 pb-1.75 border-b border-border flex items-center justify-between shrink-0">
         <span className="text-[11px] font-medium text-ink">{name}</span>
-        <div className="flex items-center gap-1.25">
+        <div className="flex flex-wrap items-center gap-1.25 justify-end">
           {label && (
-            <span className={clsx("text-[9px]", labelClass)}>{label}</span>
+            <span className={clsx("text-[9px] shrink-0", labelClass)}>{label}</span>
           )}
           {isResume && (
-            <span className="text-[9px] font-medium py-0.5 px-1.5 rounded-pill bg-brand text-white">
+            <span className="text-[9px] font-medium py-0.5 px-1.5 rounded-pill bg-brand text-white shrink-0">
               Continue here
             </span>
           )}
@@ -127,24 +127,24 @@ function AnalysisFillGrid({ analysis }) {
 
   const cellClass = (panel, isKd = false) =>
     clsx(
-      "rounded-chip px-1.5 flex text-[10px] border",
+      "rounded-chip px-1.5 flex overflow-hidden border",
       isKd
         ? "items-start py-1.25 row-span-2"
         : "items-center py-[3px]",
       filled(panel)
-        ? "bg-green-25 border-green-border text-green-700 font-medium"
-        : "bg-surface-alt border-border text-faint"
+        ? "bg-green-25 border-green-border"
+        : "bg-surface-alt border-border"
     );
 
   const [kd, desc, uncert, impl, conf] = ANALYSIS_PANELS;
 
   return (
     <div className="grid grid-cols-3 grid-rows-2 gap-[3px] mt-1.5">
-      <div className={cellClass(kd, true)}>{kd.label}</div>
-      <div className={cellClass(desc)}>{desc.label}</div>
-      <div className={cellClass(impl)}>{impl.label}</div>
-      <div className={cellClass(uncert)}>{uncert.label}</div>
-      <div className={cellClass(conf)}>{conf.label}</div>
+      <div className={cellClass(kd, true)} title={kd.label} />
+      <div className={cellClass(desc)} title={desc.label} />
+      <div className={cellClass(impl)} title={impl.label} />
+      <div className={cellClass(uncert)} title={uncert.label} />
+      <div className={cellClass(conf)} title={conf.label} />
     </div>
   );
 }
@@ -271,7 +271,7 @@ export default function ProjectOverview({ appState }) {
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="h-full overflow-y-auto bg-bg">
-      <div className="max-w-[900px] mx-auto pt-6 px-7 pb-12">
+      <div className="max-w-[1120px] mx-auto pt-6 px-7 pb-12">
 
         {/* Title row */}
         <div className="mb-5">
