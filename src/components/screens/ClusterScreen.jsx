@@ -1,8 +1,12 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { c, btnSec, btnSm } from "../../styles/tokens.js";
+import { HorizTag } from "../shared/Tag.jsx";
+import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
 import { ClustersPanel } from "../clusters/ClustersPanel.jsx";
 import { DragGhost } from "../clusters/DragGhost.jsx";
+import { STEEPLED } from "../../data/seeds.js";
 
 // Returns the next available "Untitled" / "Untitled N" name for a project's cluster list.
 // Sequence: "Untitled", "Untitled 2", "Untitled 3", … (gaps are reused, not skipped).
@@ -17,6 +21,53 @@ function nextUntitledName(clusters) {
   let n = 2;
   while (used.has(n)) n++;
   return `Untitled ${n}`;
+}
+
+const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
+const COL = { check: 28, type: 70, strength: 55, confidence: 55, steepled: 80, horizon: 50, cluster: 90, menu: 24 };
+const INPUT_TYPE_OPTS = ["signal","issue","projection","plan","obstacle","source"];
+
+const STRENGTH_COLORS = {
+  weak:     [c.amber700, c.amber50, c.amberBorder],
+  moderate: [c.blue700,  c.blue50,  c.blueBorder],
+  strong:   [c.green700, c.green50, c.greenBorder],
+};
+const CONFIDENCE_COLORS = {
+  low:    [c.amber700, c.amber50, c.amberBorder],
+  medium: [c.blue700,  c.blue50,  c.blueBorder],
+  high:   [c.green700, c.green50, c.greenBorder],
+};
+
+// ─── Filter tab ────────────────────────────────────────────────────────────────
+
+function FilterTab({ label, count, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 5,
+        padding: "5px 2px", fontSize: 12,
+        cursor: "pointer", fontFamily: "inherit",
+        background: "transparent",
+        color: active ? c.ink : c.muted,
+        border: "none",
+        borderBottom: active ? `2px solid ${c.brand}` : "2px solid transparent",
+        fontWeight: active ? 500 : 400,
+        transition: "color 0.1s, border-color 0.1s",
+        marginRight: 12,
+        marginBottom: -1,
+      }}
+    >
+      {label}
+      <span style={{
+        fontSize: 10, padding: "0 4px", borderRadius: 6,
+        background: active ? c.brandBg : "rgba(0,0,0,0.06)",
+        color: active ? c.brand : c.muted,
+      }}>
+        {count}
+      </span>
+    </button>
+  );
 }
 
 // ─── Input type badge ──────────────────────────────────────────────────────────
@@ -86,9 +137,23 @@ export default function ClusterScreen({ appState }) {
     blankImgRef.current = img;
   }
 
-  // Non-drag assign picker
+  // Non-drag single-row assign picker
   const [assignPickerFor,        setAssignPickerFor]        = useState(null);
   const [assignPickerAnchorRect, setAssignPickerAnchorRect] = useState(null);
+
+  // Tab + search + filter state
+  const [inputTab,           setInputTab]           = useState("all");
+  const [searchQuery,        setSearchQuery]        = useState("");
+  const [filterType,         setFilterType]         = useState(null);
+  const [filterHorizon,      setFilterHorizon]      = useState(null);
+  const [filterSteepled,     setFilterSteepled]     = useState(null);
+  const [openFilterDropdown, setOpenFilterDropdown] = useState(null);
+
+  // Multi-select + batch assign state
+  const [selectedIds,          setSelectedIds]          = useState(new Set());
+  const [lastCheckedId,        setLastCheckedId]        = useState(null);
+  const [batchPickerOpen,      setBatchPickerOpen]      = useState(false);
+  const [batchAssignAnchorRect,setBatchAssignAnchorRect]= useState(null);
 
   const project = projects.find((p) => p.id === activeProjectId) ?? null;
 
@@ -138,6 +203,63 @@ export default function ClusterScreen({ appState }) {
     showToast(`Input assigned to "${cluster.name}"`);
     setAssignPickerFor(null);
   };
+
+  // ── Tab / filter derived values ──────────────────────────────────────────────
+  const unassigned = projectInputs.filter((i) => !getInputCluster(i.id));
+  const inCluster  = projectInputs.filter((i) =>  getInputCluster(i.id));
+
+  const tabInputs =
+    inputTab === "unassigned" ? unassigned :
+    inputTab === "incluster"  ? inCluster :
+    [...unassigned, ...inCluster];
+
+  const visibleInputs = tabInputs
+    .filter((i) => !searchQuery    || i.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter((i) => !filterType     || i.subtype === filterType)
+    .filter((i) => !filterHorizon  || i.horizon === filterHorizon)
+    .filter((i) => !filterSteepled || (i.steepled || []).includes(filterSteepled));
+
+  const anyFilterActive = !!(searchQuery || filterType || filterHorizon || filterSteepled);
+  const allVisibleSelected = visibleInputs.length > 0 && visibleInputs.every((i) => selectedIds.has(i.id));
+  const someSelected = selectedIds.size > 0;
+
+  // ── Multi-select handlers ────────────────────────────────────────────────────
+  const toggleSelectAll = () => {
+    if (allVisibleSelected) {
+      setSelectedIds((prev) => { const next = new Set(prev); visibleInputs.forEach((i) => next.delete(i.id)); return next; });
+    } else {
+      setSelectedIds((prev) => { const next = new Set(prev); visibleInputs.forEach((i) => next.add(i.id)); return next; });
+    }
+    setLastCheckedId(null);
+  };
+
+  const handleCheckboxClick = (id, e) => {
+    if (e.shiftKey && lastCheckedId && lastCheckedId !== id) {
+      const idxA = visibleInputs.findIndex((i) => i.id === lastCheckedId);
+      const idxB = visibleInputs.findIndex((i) => i.id === id);
+      if (idxA !== -1 && idxB !== -1) {
+        const [lo, hi] = idxA < idxB ? [idxA, idxB] : [idxB, idxA];
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          visibleInputs.slice(lo, hi + 1).forEach((i) => next.add(i.id));
+          return next;
+        });
+      }
+    } else {
+      setSelectedIds((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+    }
+    setLastCheckedId(id);
+  };
+
+  const handleBatchAssign = (cluster) => {
+    selectedIds.forEach((id) => assignInputToCluster(id, cluster.id));
+    showToast(`${selectedIds.size} input${selectedIds.size !== 1 ? "s" : ""} assigned to "${cluster.name}"`);
+    setSelectedIds(new Set());
+    setLastCheckedId(null);
+    setBatchPickerOpen(false);
+  };
+
+  const clearTabFilters = () => { setInputTab("all"); setSelectedIds(new Set()); setLastCheckedId(null); };
 
   const handleDrop = (clusterId, isAlt) => {
     const droppedIds = [...(dragIds || [])];
@@ -236,105 +358,267 @@ export default function ClusterScreen({ appState }) {
         {/* ── Input rail (bottom, resizable height) ──────────────── */}
         <div style={{
           height: drawerHeight, flexShrink: 0, overflowY: "auto",
-          padding: "0 32px 16px",
+          padding: "0 32px 8px",
           background: c.bg,
         }}>
+          {/* Tabs row */}
+          <div style={{ display: "flex", alignItems: "flex-end", borderBottom: `1px solid ${c.border}`, marginBottom: 8 }}>
+            <FilterTab label="All"        count={projectInputs.length} active={inputTab === "all"}        onClick={() => { setInputTab("all");        setSelectedIds(new Set()); setLastCheckedId(null); }} />
+            <FilterTab label="Unassigned" count={unassigned.length}    active={inputTab === "unassigned"} onClick={() => { setInputTab("unassigned"); setSelectedIds(new Set()); setLastCheckedId(null); }} />
+            <FilterTab label="Clustered"  count={inCluster.length}     active={inputTab === "incluster"}  onClick={() => { setInputTab("incluster");  setSelectedIds(new Set()); setLastCheckedId(null); }} />
+          </div>
+
           {projectInputs.length === 0 ? (
             <div style={{
               background: c.white, border: `1px dashed ${c.border}`,
-              borderRadius: 12, padding: "28px 24px", marginTop: 16, textAlign: "center",
+              borderRadius: 12, padding: "20px 24px", textAlign: "center",
             }}>
-              <div style={{ fontSize: 14, fontWeight: 500, color: c.muted, marginBottom: 5 }}>No inputs yet</div>
-              <div style={{ fontSize: 12, color: c.hint, lineHeight: 1.6 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: c.muted, marginBottom: 4 }}>No inputs yet</div>
+              <div style={{ fontSize: 12, color: c.hint, lineHeight: 1.5 }}>
                 Add inputs on the Scan screen, then drag them to clusters here.
               </div>
             </div>
           ) : (
-            <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden", marginTop: 12 }}>
-              {/* Rail header */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", height: 30, borderBottom: "0.5px solid rgba(0,0,0,0.09)" }}>
-                <div style={{ flex: 1, minWidth: 0, ...cell }}>Input</div>
-                <div style={{ width: 80,  ...cell }}>Type</div>
-                <div style={{ width: 90,  ...cell }}>Cluster</div>
+            <>
+              {/* Search + filter row */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search inputs…"
+                  style={{
+                    width: 200, padding: "4px 9px", fontSize: 12,
+                    border: `1px solid ${c.border}`, borderRadius: 6,
+                    background: c.white, color: c.ink, fontFamily: "inherit", outline: "none",
+                  }}
+                />
+                <FilterDropdown
+                  label="Type"
+                  value={filterType}
+                  options={INPUT_TYPE_OPTS.map((v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }))}
+                  onChange={setFilterType}
+                  onClear={() => setFilterType(null)}
+                  isOpen={openFilterDropdown === "type"}
+                  onToggle={() => setOpenFilterDropdown(openFilterDropdown === "type" ? null : "type")}
+                />
+                <FilterDropdown
+                  label="Horizon"
+                  value={filterHorizon}
+                  options={["H1","H2","H3"].map((v) => ({ value: v, label: v }))}
+                  onChange={setFilterHorizon}
+                  onClear={() => setFilterHorizon(null)}
+                  isOpen={openFilterDropdown === "horizon"}
+                  onToggle={() => setOpenFilterDropdown(openFilterDropdown === "horizon" ? null : "horizon")}
+                />
+                <FilterDropdown
+                  label="STEEPLED"
+                  value={filterSteepled}
+                  options={STEEPLED.map((v) => ({ value: v, label: v }))}
+                  onChange={setFilterSteepled}
+                  onClear={() => setFilterSteepled(null)}
+                  isOpen={openFilterDropdown === "steepled"}
+                  onToggle={() => setOpenFilterDropdown(openFilterDropdown === "steepled" ? null : "steepled")}
+                />
+                {anyFilterActive && (
+                  <button
+                    onClick={() => { setSearchQuery(""); setFilterType(null); setFilterHorizon(null); setFilterSteepled(null); }}
+                    style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                  >
+                    Clear all
+                  </button>
+                )}
               </div>
 
-              {/* Rail rows */}
-              {projectInputs.map((inp) => {
-                const assignedClusters = getInputClusters(inp.id);
-                const isDragging = dragIds?.includes(inp.id);
-                return (
-                  <div
-                    key={inp.id}
-                    draggable
-                    onDragStart={(e) => {
-                      if (e.target.closest('button')) return;
-                      setDragIds([inp.id]);
-                      setDragIsCopy(false);
-                      if (blankImgRef.current) e.dataTransfer.setDragImage(blankImgRef.current, 0, 0);
-                      e.dataTransfer.effectAllowed = "copyMove";
-                    }}
-                    onDragEnd={() => {
-                      setDragIds(null);
-                      setDragIsCopy(false);
-                    }}
-                    onMouseEnter={(e) => { if (!isDragging) e.currentTarget.style.background = "rgba(0,0,0,0.02)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = c.white; }}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 10,
-                      padding: "0 14px", height: 38,
-                      borderBottom: `1px solid ${c.border}`,
-                      cursor: "grab",
-                      background: c.white,
-                      opacity: isDragging ? 0.35 : 1,
-                      transition: "opacity 0.1s",
-                    }}
-                  >
-                    {/* Name */}
-                    <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
-                      {inp.name}
-                    </div>
-                    {/* Type */}
-                    <div style={{ width: 80, flexShrink: 0 }}>
-                      <InputTypeBadge subtype={inp.subtype} />
-                    </div>
-                    {/* Cluster assignment / Assign button */}
-                    <div style={{ width: 90, flexShrink: 0, display: "flex", alignItems: "center", position: "relative" }}>
-                      {assignedClusters.length === 0 ? (
-                        <>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (assignPickerFor !== inp.id) setAssignPickerAnchorRect(e.currentTarget.getBoundingClientRect());
-                              setAssignPickerFor(assignPickerFor === inp.id ? null : inp.id);
-                            }}
-                            style={{ ...btnSm, fontSize: 10, padding: "3px 8px", whiteSpace: "nowrap" }}
-                          >
-                            Assign →
-                          </button>
-                          {assignPickerFor === inp.id && (
-                            <ClusterAssignMenu
-                              clusters={projectClusters}
-                              onAssign={(cl) => handleAssignToCluster(inp.id, cl)}
-                              onNewCluster={() => { setAssignPickerFor(null); createUntitledCluster([inp.id]); }}
-                              onClose={() => setAssignPickerFor(null)}
-                              anchorRect={assignPickerAnchorRect}
-                            />
-                          )}
-                        </>
-                      ) : assignedClusters.length === 1 ? (
-                        <span style={{ fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {assignedClusters[0].name}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 10.5, padding: "2px 8px", borderRadius: 4, background: c.bg, color: c.muted, whiteSpace: "nowrap" }}>
-                          {assignedClusters.length} clusters
-                        </span>
-                      )}
-                    </div>
+              {/* Table */}
+              <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden" }}>
+                {/* Header row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", height: 30, borderBottom: "0.5px solid rgba(0,0,0,0.09)" }}>
+                  <div style={{ width: COL.check, flexShrink: 0, display: "flex", alignItems: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={allVisibleSelected}
+                      onChange={toggleSelectAll}
+                      ref={(el) => { if (el) el.indeterminate = someSelected && !allVisibleSelected; }}
+                      style={{ cursor: "pointer", accentColor: c.ink }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
                   </div>
-                );
-              })}
-            </div>
+                  <div style={{ flex: 1, minWidth: 0, ...cell }}>Input</div>
+                  <div style={{ width: COL.type,       ...cell }}>Type</div>
+                  <div style={{ width: COL.strength,   ...cell }}>Strength</div>
+                  <div style={{ width: COL.confidence, ...cell }}>Confidence</div>
+                  <div style={{ width: COL.steepled,   ...cell }}>STEEPLED</div>
+                  <div style={{ width: COL.horizon,    ...cell }}>Horizon</div>
+                  <div style={{ width: COL.cluster,    ...cell }}>Cluster</div>
+                  <div style={{ width: COL.menu, flexShrink: 0 }} />
+                </div>
+
+                {/* Data rows */}
+                {visibleInputs.length === 0 ? (
+                  <div style={{ padding: "16px 14px", fontSize: 12, color: c.hint, textAlign: "center" }}>
+                    No inputs match the current filters.
+                  </div>
+                ) : visibleInputs.map((inp) => {
+                  const assignedClusters = getInputClusters(inp.id);
+                  const isDragging = dragIds?.includes(inp.id);
+                  const isSelected = selectedIds.has(inp.id);
+                  const steepled = inp.steepled || [];
+                  const vis2 = steepled.slice(0, 2);
+                  const overflow = steepled.length - 2;
+                  return (
+                    <div
+                      key={inp.id}
+                      draggable
+                      onDragStart={(e) => {
+                        if (e.target.closest('button') || e.target.type === 'checkbox') return;
+                        setDragIds([inp.id]);
+                        setDragIsCopy(false);
+                        if (blankImgRef.current) e.dataTransfer.setDragImage(blankImgRef.current, 0, 0);
+                        e.dataTransfer.effectAllowed = "copyMove";
+                      }}
+                      onDragEnd={() => { setDragIds(null); setDragIsCopy(false); }}
+                      onMouseEnter={(e) => { if (!isDragging && !isSelected) e.currentTarget.style.background = "rgba(0,0,0,0.02)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? c.brandBg : c.white; }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 10,
+                        padding: "0 14px", height: 38,
+                        borderBottom: `1px solid ${c.border}`,
+                        cursor: "grab",
+                        background: isSelected ? c.brandBg : c.white,
+                        opacity: isDragging ? 0.35 : 1,
+                        transition: "opacity 0.1s, background 0.08s",
+                      }}
+                    >
+                      {/* Checkbox */}
+                      <div style={{ width: COL.check, flexShrink: 0, display: "flex", alignItems: "center" }}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {}}
+                          onClick={(e) => { e.stopPropagation(); handleCheckboxClick(inp.id, e); }}
+                          style={{ cursor: "pointer", accentColor: c.ink }}
+                        />
+                      </div>
+                      {/* Title */}
+                      <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+                        {inp.name}
+                      </div>
+                      {/* Type */}
+                      <div style={{ width: COL.type, flexShrink: 0 }}>
+                        <InputTypeBadge subtype={inp.subtype} />
+                      </div>
+                      {/* Signal Strength */}
+                      <div style={{ width: COL.strength, flexShrink: 0 }}>
+                        {inp.signal_strength ? (() => {
+                          const [col, bg, brd] = STRENGTH_COLORS[inp.signal_strength] || [c.hint, c.surfaceAlt, c.border];
+                          return <span style={{ fontSize: 10, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.signal_strength.charAt(0).toUpperCase() + inp.signal_strength.slice(1)}</span>;
+                        })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+                      </div>
+                      {/* Source Confidence */}
+                      <div style={{ width: COL.confidence, flexShrink: 0 }}>
+                        {inp.source_confidence ? (() => {
+                          const [col, bg, brd] = CONFIDENCE_COLORS[inp.source_confidence] || [c.hint, c.surfaceAlt, c.border];
+                          return <span style={{ fontSize: 9, padding: "1px 4px", borderRadius: 4, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.source_confidence.charAt(0).toUpperCase() + inp.source_confidence.slice(1)}</span>;
+                        })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+                      </div>
+                      {/* STEEPLED */}
+                      <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
+                        {vis2.map((t) => (
+                          <span key={t} style={{ fontSize: 9, padding: "1px 4px", borderRadius: 4, background: c.surfaceAlt, color: c.muted }}>
+                            {STEEPLED_ABB[t] || t}
+                          </span>
+                        ))}
+                        {overflow > 0 && <span style={{ fontSize: 9, color: c.hint }}>+{overflow}</span>}
+                      </div>
+                      {/* Horizon */}
+                      <div style={{ width: COL.horizon, flexShrink: 0 }}>
+                        {inp.horizon ? <HorizTag h={inp.horizon} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+                      </div>
+                      {/* Cluster assignment / Assign button */}
+                      <div style={{ width: COL.cluster, flexShrink: 0, display: "flex", alignItems: "center", position: "relative" }}>
+                        {assignedClusters.length === 0 ? (
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (assignPickerFor !== inp.id) setAssignPickerAnchorRect(e.currentTarget.getBoundingClientRect());
+                                setAssignPickerFor(assignPickerFor === inp.id ? null : inp.id);
+                              }}
+                              style={{ ...btnSm, fontSize: 10, padding: "3px 8px", whiteSpace: "nowrap" }}
+                            >
+                              Assign →
+                            </button>
+                            {assignPickerFor === inp.id && (
+                              <ClusterAssignMenu
+                                clusters={projectClusters}
+                                onAssign={(cl) => handleAssignToCluster(inp.id, cl)}
+                                onNewCluster={() => { setAssignPickerFor(null); createUntitledCluster([inp.id]); }}
+                                onClose={() => setAssignPickerFor(null)}
+                                anchorRect={assignPickerAnchorRect}
+                              />
+                            )}
+                          </>
+                        ) : assignedClusters.length === 1 ? (
+                          <span style={{ fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {assignedClusters[0].name}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 10.5, padding: "2px 6px", borderRadius: 4, background: c.bg, color: c.muted, whiteSpace: "nowrap" }}>
+                            {assignedClusters.length} clusters
+                          </span>
+                        )}
+                      </div>
+                      {/* Drag grip indicator */}
+                      <div style={{ width: COL.menu, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ fontSize: 12, color: c.faint, lineHeight: 1 }}>⠿</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Multi-select action bar */}
+              {someSelected && (
+                <div style={{
+                  position: "sticky", bottom: 0,
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "7px 14px",
+                  background: c.bg,
+                  borderTop: `1px solid ${c.border}`,
+                }}>
+                  <span style={{ fontSize: 12, color: c.muted, flex: 1 }}>
+                    {selectedIds.size} selected
+                  </span>
+                  <div style={{ position: "relative" }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!batchPickerOpen) setBatchAssignAnchorRect(e.currentTarget.getBoundingClientRect());
+                        setBatchPickerOpen(!batchPickerOpen);
+                      }}
+                      style={{ ...btnSm, fontSize: 11, padding: "4px 12px", whiteSpace: "nowrap" }}
+                    >
+                      Assign {selectedIds.size} →
+                    </button>
+                    {batchPickerOpen && (
+                      <ClusterAssignMenu
+                        clusters={projectClusters}
+                        onAssign={handleBatchAssign}
+                        onNewCluster={() => { setBatchPickerOpen(false); createUntitledCluster([...selectedIds]); setSelectedIds(new Set()); setLastCheckedId(null); }}
+                        onClose={() => setBatchPickerOpen(false)}
+                        anchorRect={batchAssignAnchorRect}
+                      />
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { setSelectedIds(new Set()); setLastCheckedId(null); }}
+                    style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    ✕ Clear
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

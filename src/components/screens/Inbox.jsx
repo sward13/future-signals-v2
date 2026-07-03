@@ -14,7 +14,7 @@ import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { HorizTag } from "../shared/Tag.jsx";
 import { AddToProjectButton } from "../shared/AddToProjectButton.jsx";
-import { FilterDropdown } from "./ProjectDetail.jsx";
+import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { STEEPLED } from "../../data/seeds.js";
 
 const STEEPLED_ABB  = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
