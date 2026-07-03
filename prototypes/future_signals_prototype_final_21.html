@@ -1,0 +1,2248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Future Signals — Cluster Layout (Interactive)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;background:#e8e7e3;color:#111;font-size:13px;line-height:1.4}
+.shell{display:flex;height:100vh;overflow:hidden}
+
+.sidebar{width:180px;flex-shrink:0;background:#fff;border-right:0.5px solid rgba(0,0,0,0.1);display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.logo{padding:12px 14px;border-bottom:0.5px solid rgba(0,0,0,0.1);display:flex;align-items:center;gap:7px;flex-shrink:0}
+.logo-icon{width:22px;height:22px;background:#111;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-icon svg{width:12px;height:12px;fill:#fff}
+.logo-text{font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase}
+.nav-section{padding:4px 6px;flex-shrink:0}
+.nav-label{padding:6px 8px 2px;font-size:9.5px;color:#bbb;text-transform:uppercase;letter-spacing:0.07em}
+.nav-item{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:5px;cursor:pointer;color:#888;font-size:11.5px;user-select:none}
+.nav-item:hover{background:rgba(0,0,0,0.04)}
+.nav-item.active{background:rgba(0,0,0,0.06);color:#111}
+.nav-icon{width:13px;height:13px;flex-shrink:0;opacity:0.5}
+.nav-item.active .nav-icon{opacity:1}
+.nav-badge{margin-left:auto;font-size:9.5px;background:rgba(0,0,0,0.07);color:#888;padding:1px 5px;border-radius:8px}
+
+.sidebar-switcher{flex-shrink:0;border-top:0.5px solid rgba(0,0,0,0.08);padding:10px 10px 12px}
+.ss-label{font-size:9.5px;color:#bbb;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px}
+.ss-btn{display:flex;align-items:center;gap:7px;width:100%;padding:5px 8px;border-radius:5px;border:none;background:transparent;color:#888;font-size:11.5px;cursor:pointer;font-family:inherit;text-align:left}
+.ss-btn:hover{background:rgba(0,0,0,0.04)}
+.ss-btn.active{background:rgba(0,0,0,0.06);color:#111;font-weight:500}
+.ss-icon{width:14px;height:14px;flex-shrink:0;opacity:0.5}
+.ss-btn.active .ss-icon{opacity:1}
+.ss-divider{height:0.5px;background:rgba(0,0,0,0.07);margin:6px 0}
+.ss-sub-label{font-size:9.5px;color:#bbb;text-transform:uppercase;letter-spacing:0.07em;margin:6px 0 4px}
+.ss-state-btn{display:block;width:100%;padding:4px 8px;border-radius:4px;border:0.5px solid rgba(0,0,0,0.14);background:#fff;color:#666;font-size:11px;cursor:pointer;font-family:inherit;text-align:left;margin-bottom:3px}
+.ss-state-btn:hover{background:#f5f4f0}
+.ss-state-btn.active{background:#3B6D11;color:#fff;border-color:#3B6D11}
+
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.variants{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.variant{display:none;flex-direction:column;flex:1;overflow:hidden}
+.variant.active{display:flex}
+
+.btn{padding:5px 12px;border-radius:6px;border:0.5px solid rgba(0,0,0,0.2);background:#fff;color:#666;font-size:11.5px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px}
+.btn:hover{background:#f5f4f0}
+.btn-p{background:#111;color:#fff;border-color:#111}
+.btn-p:hover{background:#333}
+.filt{padding:3px 8px;border:0.5px solid rgba(0,0,0,0.14);border-radius:4px;background:#fff;font-size:11px;color:#666;cursor:pointer}
+.icon-btn{padding:4px 7px;border:0.5px solid rgba(0,0,0,0.14);border-radius:4px;background:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#666}
+.icon-btn.active{background:#111;color:#fff;border-color:#111}
+.tbar{padding:7px 14px;border-bottom:0.5px solid rgba(0,0,0,0.1);display:flex;align-items:center;gap:6px;flex-shrink:0}
+
+/* CLUSTER CARDS */
+.canvas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;align-content:start}
+.ccard{background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:7px;padding:11px;display:flex;flex-direction:column;transition:border-color 0.1s,box-shadow 0.1s}
+.ccard:hover{border-color:rgba(0,0,0,0.25)}
+.ccard.drop-target{border-color:#1a56e8;box-shadow:0 0 0 3px rgba(26,86,232,0.12);background:#f0f5ff}
+.ccard-hdr{display:flex;align-items:center;gap:4px;margin-bottom:7px}
+.cbadge{display:inline-flex;padding:2px 6px;border-radius:3px;font-size:9.5px;font-weight:500}
+.cb-trend{background:#EAF3DE;color:#3B6D11}
+.cb-tension{background:#FCEBEB;color:#791F1F}
+.cb-driver{background:#E6F1FB;color:#185FA5}
+.ch-b{font-size:9.5px;color:#bbb;margin-left:auto}
+.cname{font-size:12px;font-weight:500;color:#111;line-height:1.35;margin-bottom:5px}
+.cdesc{font-size:11px;color:#999;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px}
+.cfoot{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
+.ccount{font-size:10.5px;color:#888}
+.cpill{display:inline-flex;padding:2px 6px;border-radius:3px;font-size:9.5px;font-weight:500}
+.cp-plausible{background:#EAF3DE;color:#3B6D11}
+.cp-uncertain{background:#FAEEDA;color:#854F0B}
+.cp-unlikely{background:#FCEBEB;color:#791F1F}
+
+/* CLUSTER LIST */
+.clist-wrapper{background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:7px;overflow:hidden}
+.crow{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:0.5px solid rgba(0,0,0,0.07);cursor:pointer;transition:background 0.1s}
+.crow:last-child{border-bottom:none}
+.crow:hover{background:#fafaf8}
+.crow.drop-target{background:#f0f5ff;border-left:2px solid #1a56e8}
+.crow-name{flex:1;font-size:12px;font-weight:500;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crow-meta{display:flex;align-items:center;gap:6px;flex-shrink:0}
+
+/* INPUT ROWS */
+.irow{display:flex;align-items:center;border-bottom:0.5px solid rgba(0,0,0,0.07);min-height:33px;gap:7px;padding:0 10px;cursor:grab;transition:background 0.1s,opacity 0.1s}
+.irow:hover{background:rgba(0,0,0,0.02)}
+.irow.dragging{opacity:0.35;cursor:grabbing}
+.drag-h{color:#ccc;font-size:11px;flex-shrink:0;user-select:none}
+.ititle{flex:1;font-size:11.5px;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imeta{font-size:10.5px;color:#bbb;white-space:nowrap;flex-shrink:0}
+.imore{width:16px;flex-shrink:0;color:#ccc;text-align:center;font-size:12px}
+
+/* DRAG GHOST */
+#drag-ghost{position:fixed;pointer-events:none;z-index:9999;background:#fff;border:1.5px solid #1a56e8;border-radius:6px;padding:7px 12px;font-size:11.5px;color:#111;box-shadow:0 4px 16px rgba(0,0,0,0.15);max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none}
+
+/* DROP ZONES */
+.dz{border:1.5px dashed rgba(0,0,0,0.15);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:11.5px;cursor:pointer;gap:6px;height:44px;flex-shrink:0;transition:all 0.15s}
+.dz:hover,.dz.drag-over{border-color:#1a56e8;color:#1a56e8;background:rgba(26,86,232,0.04)}
+.dz.drag-over{border-style:solid}
+
+/* RESIZE HANDLES */
+.resize-h{flex-shrink:0;height:6px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;border-top:0.5px solid rgba(0,0,0,0.1);border-bottom:0.5px solid rgba(0,0,0,0.08);background:#fafaf8;user-select:none}
+.resize-v{flex-shrink:0;width:6px;cursor:ew-resize;display:flex;align-items:center;justify-content:center;border-left:0.5px solid rgba(0,0,0,0.08);border-right:0.5px solid rgba(0,0,0,0.1);background:#fafaf8;user-select:none}
+.rdots{display:flex;gap:3px}.rdots-v{display:flex;flex-direction:column;gap:3px}
+.rdot{width:3px;height:3px;border-radius:50%;background:rgba(0,0,0,0.2)}
+
+/* TABS */
+.tab-grp{display:flex;border:0.5px solid rgba(0,0,0,0.13);border-radius:4px;overflow:hidden;flex-shrink:0}
+.tab{padding:3px 8px;font-size:11px;cursor:pointer;color:#666;background:#fff;border-right:0.5px solid rgba(0,0,0,0.1)}
+.tab:last-child{border-right:none}
+.tab.active{background:#111;color:#fff}
+.col-hdr-strip{display:flex;align-items:center;padding:3px 10px;background:#fafaf8;border-bottom:0.5px solid rgba(0,0,0,0.06);flex-shrink:0}
+
+/* EMPTY STATE */
+.empty-hero{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#bbb;text-align:center;padding:32px 16px;flex:1}
+.empty-title{font-size:13px;font-weight:500;color:#888}
+.empty-desc{font-size:11.5px;color:#bbb;max-width:200px;line-height:1.5}
+
+/* TOAST */
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;z-index:9998;opacity:0;transition:opacity 0.2s;pointer-events:none}
+
+/* ── OVERVIEW ──────────────────────────────────────── */
+.overview-body{padding:14px 20px 20px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:12px}
+.card{background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:8px;padding:14px;transition:border-color 0.15s}
+.card.editing{border-color:rgba(26,86,232,0.35);box-shadow:0 0 0 3px rgba(26,86,232,0.07)}
+.card-title{font-size:10px;font-weight:500;color:#bbb;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px}
+.field-group{display:flex;flex-direction:column;gap:2px}
+.field-label{font-size:10px;color:#bbb;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px}
+.field-value{font-size:12.5px;color:#111;padding:3px 0;border-radius:4px}
+.field-value.unset{color:#bbb;font-style:italic}
+.editing .field-value{cursor:text;padding:3px 6px;background:rgba(0,0,0,0.03)}
+.editing .field-value:hover{background:rgba(0,0,0,0.05)}
+.editing .field-value:focus{outline:none;background:#fff;box-shadow:0 0 0 1.5px #1a56e8;color:#111;font-style:normal}
+.key-q-value{font-size:14px;color:#111;line-height:1.5;font-style:italic;margin-bottom:10px;padding:3px 0;border-radius:4px}
+.editing .key-q-value{cursor:text;padding:3px 6px;background:rgba(0,0,0,0.03)}
+.editing .key-q-value:hover{background:rgba(0,0,0,0.05)}
+.editing .key-q-value:focus{outline:none;background:#fff;box-shadow:0 0 0 1.5px #1a56e8;font-style:normal}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.mf-value{font-size:12.5px;color:#111}
+.mf-value.unset{color:#bbb;font-style:italic}
+.edit-hint{font-size:11px;color:#1a56e8;margin-left:8px;opacity:0;transition:opacity 0.15s}
+.editing-mode .edit-hint{opacity:1}
+.hz-bar{display:grid;grid-template-columns:1fr 1.4fr 1.4fr;border-radius:6px;overflow:hidden;border:0.5px solid rgba(0,0,0,0.1)}
+.hz{padding:8px 12px}
+.hz1{background:#EAF3DE}.hz2{background:#E6F1FB;border-left:0.5px solid rgba(0,0,0,0.1)}.hz3{background:#FAEEDA;border-left:0.5px solid rgba(0,0,0,0.1)}
+.hz-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em}
+.hz1 .hz-lbl{color:#3B6D11}.hz2 .hz-lbl{color:#185FA5}.hz3 .hz-lbl{color:#854F0B}
+.hz-rng{font-size:11px;color:#666;margin-top:2px}
+.scanner-card{background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:8px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.scanner-title{font-size:13px;font-weight:500;color:#111;margin-bottom:3px}
+.scanner-desc{font-size:12px;color:#888;line-height:1.45}
+.tgl-track{width:36px;height:20px;border-radius:10px;background:#111;position:relative;cursor:pointer;flex-shrink:0}
+.tgl-track.off{background:rgba(0,0,0,0.2)}
+.tgl-thumb{width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;right:2px}
+.tgl-track.off .tgl-thumb{right:auto;left:2px}
+.phase-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.phase-card{background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:8px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:6px}
+.phase-card:hover{border-color:rgba(0,0,0,0.25)}
+.phase-card.state-recent{border-top:2px solid #3B6D11}
+.phase-card.state-active{border-top:2px solid #1a56e8}
+.phase-card.state-untouched{border-top:2px solid rgba(0,0,0,0.1)}
+.phase-card.is-resume{box-shadow:0 0 0 1.5px rgba(26,86,232,0.35)}
+.resume-pill{background:#1a56e8;color:#fff;font-size:9px;font-weight:600;padding:2px 6px;border-radius:10px;letter-spacing:0.02em;white-space:nowrap}
+.phase-header{display:flex;align-items:center;justify-content:space-between}
+.phase-name{font-size:11px;font-weight:500;color:#111}
+.phase-status{font-size:10px;padding:1px 6px;border-radius:3px}
+.status-recent{background:#EAF3DE;color:#3B6D11}
+.status-active{background:#E6F1FB;color:#185FA5}
+.status-untouched{background:rgba(0,0,0,0.06);color:#bbb}
+.status-earlier{background:rgba(0,0,0,0.06);color:#888}
+.phase-detail{display:flex;flex-direction:column;gap:5px;flex:1}
+.phase-stat{display:flex;align-items:baseline;justify-content:space-between;gap:4px}
+.phase-stat-label{font-size:10.5px;color:#bbb;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.phase-stat-value{font-size:12px;font-weight:500;color:#111;flex-shrink:0}
+.phase-bar{height:3px;border-radius:2px;background:rgba(0,0,0,0.07);overflow:hidden;margin-top:1px}
+.phase-bar-fill{height:100%;border-radius:2px;background:#111}
+.hz-mini{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;margin-top:2px}
+.hz-mini-seg{border-radius:2px;height:14px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600}
+.hz-mini-seg.h1{background:#EAF3DE;color:#3B6D11}
+.hz-mini-seg.h2{background:#E6F1FB;color:#185FA5}
+.hz-mini-seg.h3{background:#FAEEDA;color:#854F0B}
+.map-thumb{background:#f5f4f0;border-radius:4px;height:68px;display:flex;align-items:stretch;justify-content:center;overflow:hidden;margin-top:6px}
+.fm-row{display:flex;align-items:center;gap:6px;margin-top:2px}
+.fm-item{flex:1;background:#f5f4f0;border-radius:4px;padding:4px 6px;text-align:center}
+.fm-item-val{font-size:13px;font-weight:500;color:#111}
+.fm-item-label{font-size:9px;color:#bbb;margin-top:1px}
+.method-hdr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:12px 14px}
+.method-body{padding:0 14px 12px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* ── END OVERVIEW ─────────────────────────────────── */
+
+/* ── SCAN VIEW ──────────────────────────────────────── */
+.scan-layout{display:flex;flex:1;overflow:hidden}
+.scan-main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.scan-toolbar{padding:7px 14px;border-bottom:0.5px solid rgba(0,0,0,0.1);display:flex;align-items:center;gap:6px;flex-shrink:0}
+.scan-tab-grp{display:flex;border:0.5px solid rgba(0,0,0,0.14);border-radius:5px;overflow:hidden;flex-shrink:0}
+.scan-tab{padding:4px 10px;font-size:11.5px;cursor:pointer;color:#666;background:#fff;border-right:0.5px solid rgba(0,0,0,0.1);user-select:none}
+.scan-tab:last-child{border-right:none}
+.scan-tab.active{background:#111;color:#fff}
+.scan-col-hdr{display:flex;align-items:center;padding:5px 14px;background:#fafaf8;border-bottom:0.5px solid rgba(0,0,0,0.08);flex-shrink:0}
+.scan-ch{font-size:9.5px;color:#bbb;font-weight:500;text-transform:uppercase;letter-spacing:0.05em}
+.scan-input-list{overflow-y:auto;flex:1}
+.scan-irow{display:flex;align-items:center;padding:0 14px;border-bottom:0.5px solid rgba(0,0,0,0.07);min-height:35px;gap:8px;cursor:pointer}
+.scan-irow:hover{background:rgba(0,0,0,0.02)}
+.scan-ititle{flex:1;font-size:12.5px;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scan-itype{width:48px;flex-shrink:0;font-size:11px;color:#888}
+.scan-itags{display:flex;gap:3px;width:84px;flex-shrink:0;overflow:hidden}
+.scan-itag{font-size:10px;padding:1px 5px;border-radius:3px;background:rgba(0,0,0,0.06);color:#888;white-space:nowrap}
+.scan-icluster{width:120px;flex-shrink:0;overflow:hidden}
+.scan-ctag{font-size:11px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.scan-assign-btn{font-size:11px;padding:3px 8px;border-radius:4px;background:#1a56e8;color:#fff;border:none;cursor:pointer;font-family:inherit;white-space:nowrap}
+.scan-imore{width:20px;flex-shrink:0;color:#ccc;text-align:center;font-size:13px}
+.scan-sb{width:220px;flex-shrink:0;border-left:0.5px solid rgba(0,0,0,0.1);background:#fff;display:flex;flex-direction:column;overflow:hidden}
+.scan-sb-hdr{padding:10px 13px;border-bottom:0.5px solid rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fafaf8}
+.scan-sb-title{font-size:10px;font-weight:500;color:#bbb;text-transform:uppercase;letter-spacing:0.07em}
+.scan-sb-edit{font-size:11px;color:#1a56e8;cursor:pointer}
+.scan-sb-body{overflow-y:auto;flex:1;padding:11px 13px;display:flex;flex-direction:column;gap:12px}
+.scan-pref-lbl{font-size:10.5px;font-weight:500;color:#888;margin-bottom:3px}
+.scan-pref-val{font-size:12px;color:#111}
+.scan-pref-val.unset{color:#bbb;font-style:italic}
+.scan-ptag{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;background:#fafaf8;border:0.5px solid rgba(0,0,0,0.1);font-size:11px;color:#666;margin:2px 2px 0 0}
+.scan-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;border-top:0.5px solid rgba(0,0,0,0.1);flex-shrink:0}
+.scan-tgl-track{width:30px;height:17px;border-radius:10px;background:#111;position:relative;cursor:pointer;flex-shrink:0}
+.scan-tgl-thumb{width:13px;height:13px;border-radius:50%;background:#fff;position:absolute;top:2px;right:2px}
+/* ── END SCAN VIEW ───────────────────────────────────── */
+
+/* ── SOURCES ─────────────────────────────────────────── */
+.src-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid rgba(0,0,0,0.06)}
+.src-row:last-child{border-bottom:none}
+.src-toggle{width:24px;height:14px;border-radius:7px;position:relative;cursor:pointer;flex-shrink:0;transition:background 0.15s}
+.src-toggle.on{background:#111}
+.src-toggle.off{background:rgba(0,0,0,0.15)}
+.src-toggle-thumb{width:10px;height:10px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:left 0.15s}
+.src-toggle.on .src-toggle-thumb{left:12px}
+.src-toggle.off .src-toggle-thumb{left:2px}
+.src-name{flex:1;font-size:12px;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.src-name.off{color:#bbb}
+.src-cred{font-size:9.5px;padding:1px 5px;border-radius:3px;flex-shrink:0}
+.src-cred-inst{background:#EAF3DE;color:#3B6D11}
+.src-cred-spec{background:#E6F1FB;color:#185FA5}
+.src-cred-gen{background:#FAEEDA;color:#854F0B}
+.src-cred-unvet{background:rgba(0,0,0,0.06);color:#888}
+.src-section-lbl{font-size:9.5px;font-weight:500;color:#bbb;text-transform:uppercase;letter-spacing:0.07em;padding:8px 0 4px;display:flex;align-items:center;justify-content:space-between}
+.src-user-tag{font-size:9.5px;padding:1px 5px;border-radius:3px;background:rgba(0,0,0,0.05);color:#888}
+.src-delete{font-size:11px;color:#ccc;cursor:pointer;flex-shrink:0;padding:0 2px}
+.src-delete:hover{color:#791F1F}
+
+/* Add source modal */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:200;display:flex;align-items:center;justify-content:center}
+.modal-backdrop.hidden{display:none}
+.modal{background:#fff;border-radius:10px;width:440px;box-shadow:0 8px 32px rgba(0,0,0,0.18);overflow:hidden}
+.modal-hdr{padding:14px 16px;border-bottom:0.5px solid rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:14px;font-weight:500;color:#111}
+.modal-close{font-size:16px;color:#bbb;cursor:pointer;line-height:1;padding:2px 4px}
+.modal-close:hover{color:#111}
+.modal-body{padding:16px}
+.modal-field{margin-bottom:14px}
+.modal-label{font-size:11px;font-weight:500;color:#888;margin-bottom:5px;display:block}
+.modal-input{width:100%;padding:7px 10px;border:0.5px solid rgba(0,0,0,0.18);border-radius:6px;font-size:13px;color:#111;font-family:inherit;outline:none;background:#fff}
+.modal-input:focus{border-color:#1a56e8;box-shadow:0 0 0 2px rgba(26,86,232,0.1)}
+.modal-input::placeholder{color:#bbb}
+.modal-hint{font-size:11px;color:#bbb;margin-top:4px;line-height:1.4}
+.modal-tag-row{display:flex;gap:5px;flex-wrap:wrap}
+.modal-domain-tag{padding:4px 10px;border-radius:5px;border:0.5px solid rgba(0,0,0,0.15);background:#fff;font-size:11.5px;color:#666;cursor:pointer;font-family:inherit}
+.modal-domain-tag:hover{background:#f5f4f0}
+.modal-domain-tag.selected{background:#111;color:#fff;border-color:#111}
+.modal-footer{padding:12px 16px;border-top:0.5px solid rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.modal-cancel{padding:6px 14px;border-radius:6px;border:0.5px solid rgba(0,0,0,0.18);background:#fff;color:#666;font-size:12px;cursor:pointer;font-family:inherit}
+.modal-cancel:hover{background:#f5f4f0}
+.modal-submit{padding:6px 14px;border-radius:6px;border:none;background:#111;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500}
+.modal-submit:hover{background:#333}
+.modal-preview{background:#fafaf8;border-radius:6px;padding:10px 12px;border:0.5px solid rgba(0,0,0,0.08);font-size:12px;color:#666;line-height:1.5;margin-top:4px}
+.modal-preview-title{font-size:12.5px;font-weight:500;color:#111;margin-bottom:3px}
+
+/* Dashboard sources view */
+.dash-src-view{display:none;flex-direction:column;flex:1;overflow:hidden}
+.dash-src-view.active{display:flex}
+.dash-domain-section{margin-bottom:20px}
+.dash-domain-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid rgba(0,0,0,0.1);margin-bottom:6px}
+.dash-domain-name{font-size:12px;font-weight:500;color:#111}
+.dash-domain-count{font-size:11px;color:#bbb}
+.dash-src-card{background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:7px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.dash-src-card:hover{border-color:rgba(0,0,0,0.22)}
+.dash-src-card.off{opacity:0.55}
+.dash-src-info{flex:1;min-width:0}
+.dash-src-name{font-size:12.5px;font-weight:500;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dash-src-url{font-size:11px;color:#bbb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+.dash-src-toggle{width:32px;height:18px;border-radius:9px;position:relative;cursor:pointer;flex-shrink:0;transition:background 0.15s}
+.dash-src-toggle.on{background:#111}
+.dash-src-toggle.off{background:rgba(0,0,0,0.15)}
+.dash-src-toggle-thumb{width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;transition:left 0.15s}
+.dash-src-toggle.on .dash-src-toggle-thumb{left:16px}
+.dash-src-toggle.off .dash-src-toggle-thumb{left:2px}
+.dash-add-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:6px;border:0.5px solid rgba(0,0,0,0.15);background:#fff;font-size:11.5px;color:#666;cursor:pointer;font-family:inherit}
+.dash-add-btn:hover{background:#f5f4f0}
+/* ── END SOURCES ─────────────────────────────────────── */
+
+/* ── SCAN MODES & AI SUGGESTED ──────────────────────────── */
+.cand-card{background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:8px;padding:13px 14px;margin-bottom:8px;display:flex;gap:12px}
+.cand-card:hover{border-color:rgba(0,0,0,0.22)}
+.cand-card.emerging{border-left:3px solid #854F0B}
+.cand-card.reinforcing{border-left:3px solid #185FA5}
+.cand-body{flex:1;min-width:0}
+.cand-title{font-size:13px;font-weight:500;color:#111;margin-bottom:4px;line-height:1.35}
+.cand-title a{color:#111;text-decoration:none}
+.cand-title a:hover{color:#1a56e8;text-decoration:underline}
+.cand-summary{font-size:11.5px;color:#666;line-height:1.55;margin-bottom:8px}
+.cand-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cand-source{font-size:11px;color:#888}
+.cand-source-cred{font-size:10px;padding:1px 5px;border-radius:3px;background:rgba(0,0,0,0.05);color:#888}
+.cand-date{font-size:10.5px;color:#bbb}
+.cand-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0;padding-top:2px}
+.cand-promote{padding:5px 12px;border-radius:5px;border:none;background:#111;color:#fff;font-size:11.5px;cursor:pointer;font-family:inherit;white-space:nowrap;font-weight:500}
+.cand-promote:hover{background:#333}
+.cand-dismiss{padding:5px 12px;border-radius:5px;border:0.5px solid rgba(0,0,0,0.15);background:#fff;color:#888;font-size:11.5px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.cand-dismiss:hover{background:#f5f4f0;color:#791F1F}
+.cand-cluster-match{font-size:10.5px;color:#185FA5;margin-top:4px}
+.section-hdr{display:flex;align-items:center;gap:8px;margin-bottom:10px;margin-top:4px}
+.section-hdr-label{font-size:12px;font-weight:500;color:#111}
+.section-hdr-pill{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500}
+.pill-emerging{background:#FAEEDA;color:#854F0B}
+.pill-reinforcing{background:#E6F1FB;color:#185FA5}
+.section-hdr-desc{font-size:11px;color:#bbb;flex:1}
+.section-divider{height:0.5px;background:rgba(0,0,0,0.08);margin:16px 0}
+/* inbox candidate cards */
+.inbox-cand{background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:7px;padding:11px 13px;margin-bottom:7px;display:flex;gap:10px;align-items:flex-start}
+.inbox-cand:hover{border-color:rgba(0,0,0,0.2)}
+.inbox-cand-body{flex:1;min-width:0}
+.inbox-cand-title{font-size:12.5px;font-weight:500;color:#111;margin-bottom:2px}
+.inbox-cand-project{font-size:11px;color:#888;margin-bottom:5px}
+.inbox-cand-summary{font-size:11.5px;color:#666;line-height:1.5;margin-bottom:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.inbox-cand-meta{display:flex;align-items:center;gap:7px}
+.inbox-cand-actions{display:flex;gap:6px;flex-shrink:0;align-items:flex-start;padding-top:2px}
+/* ── END SCAN MODES ──────────────────────────────────────── */
+
+</style>
+</head>
+<body>
+
+<!-- ADD SOURCE MODAL -->
+<div class="modal-backdrop hidden" id="add-source-modal" onclick="handleModalBackdropClick(event)">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">Add a source</span>
+      <span class="modal-close" onclick="closeAddSource()">&#10005;</span>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label class="modal-label">RSS or Atom feed URL</label>
+        <input class="modal-input" id="add-src-url" type="url" placeholder="https://example.com/feed.xml" oninput="previewSource(this.value)">
+        <div class="modal-hint">Paste the URL of any RSS or Atom feed. Most publications have one.</div>
+      </div>
+      <div class="modal-field" id="add-src-preview-wrap" style="display:none">
+        <label class="modal-label">Preview</label>
+        <div class="modal-preview">
+          <div class="modal-preview-title" id="add-src-preview-name"></div>
+          <div id="add-src-preview-url" style="font-size:11px;color:#bbb"></div>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Domain <span style="color:#bbb;font-weight:400">(optional)</span></label>
+        <div class="modal-tag-row" id="domain-tag-row">
+          <button class="modal-domain-tag selected" id="dtag-none" onclick="selectDomain('none',this)">No domain</button>
+          <button class="modal-domain-tag" id="dtag-tech" onclick="selectDomain('tech',this)">Technology &amp; AI</button>
+          <button class="modal-domain-tag" id="dtag-econ" onclick="selectDomain('econ',this)">Economy</button>
+          <button class="modal-domain-tag" id="dtag-env" onclick="selectDomain('env',this)">Environment</button>
+          <button class="modal-domain-tag" id="dtag-soc" onclick="selectDomain('soc',this)">Society</button>
+          <button class="modal-domain-tag" id="dtag-health" onclick="selectDomain('health',this)">Health &amp; Life Sciences</button>
+          <button class="modal-domain-tag" id="dtag-pol" onclick="selectDomain('pol',this)">Policy &amp; Governance</button>
+        </div>
+        <div class="modal-hint" style="margin-top:6px">Tagging a domain scopes this source to matching projects. Untagged sources appear in all projects.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-cancel" onclick="closeAddSource()">Cancel</button>
+      <button class="modal-submit" onclick="submitAddSource()">Add source</button>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
+
+
+<!-- SCANNING PREFS BACKDROP + DRAWER -->
+<div id="scan-prefs-backdrop" onclick="closeScanPrefs()" style="display:none;position:fixed;inset:0;z-index:150;background:rgba(0,0,0,0.2)"></div>
+<div id="scan-prefs-drawer" style="display:none;position:fixed;top:0;right:0;bottom:0;width:340px;background:#fff;z-index:151;box-shadow:-4px 0 24px rgba(0,0,0,0.12);flex-direction:column;overflow:hidden">
+  <div style="padding:14px 16px;border-bottom:0.5px solid rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <div style="font-size:14px;font-weight:500;color:#111">Scanning preferences</div>
+    <span onclick="closeScanPrefs()" style="font-size:16px;color:#bbb;cursor:pointer;line-height:1;padding:2px 4px">&#10005;</span>
+  </div>
+  <div style="overflow-y:auto;flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:14px">
+    <div>
+      <div class="scan-pref-lbl" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        Sources
+        <span onclick="openAddSource('project')" style="font-size:10.5px;color:#1a56e8;cursor:pointer;font-weight:400">+ Add source</span>
+      </div>
+      <div id="drawer-sources-list"></div>
+    </div>
+    <div style="border-top:0.5px solid rgba(0,0,0,0.1);padding-top:14px">
+      <div style="font-size:11px;color:#888;line-height:1.5;margin-bottom:12px">The scanner uses these fields to evaluate signal relevance for this project.</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <div class="scan-pref-lbl">Key question</div>
+          <div class="scan-pref-val" style="font-size:12px;color:#666;line-height:1.5;font-style:italic">What are the key forces driving and inhibiting widespread EV adoption in the USA?</div>
+        </div>
+        <div>
+          <div class="scan-pref-lbl">Focus</div>
+          <div class="scan-pref-val">Consumer electric vehicles</div>
+        </div>
+        <div>
+          <div class="scan-pref-lbl">Geography</div>
+          <div class="scan-pref-val">USA</div>
+        </div>
+        <div>
+          <div class="scan-pref-lbl">In scope</div>
+          <div class="scan-pref-val" style="font-size:12px;color:#666">Battery tech, charging infrastructure, policy incentives, consumer adoption</div>
+        </div>
+        <div>
+          <div class="scan-pref-lbl">Out of scope</div>
+          <div class="scan-pref-val" style="color:#bbb;font-style:italic">Not set</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="padding:12px 16px;border-top:0.5px solid rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <div>
+      <div style="font-size:12.5px;font-weight:500;color:#111">Signal scanning</div>
+      <div style="font-size:10.5px;color:#888;margin-top:1px">Active for this project</div>
+    </div>
+    <div class="scan-tgl-track"><div class="scan-tgl-thumb"></div></div>
+  </div>
+</div>
+
+<!-- ADD SOURCE MODAL -->
+
+
+<div id="drag-ghost"></div>
+<div id="toast"></div>
+
+<div class="shell">
+  <nav class="sidebar">
+    <div class="logo">
+      <div class="logo-icon"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5"/></svg></div>
+      <span class="logo-text">Future Signals</span>
+    </div>
+    <div class="nav-section">
+      <!-- Workspace level -->
+      <div class="nav-item" id="nav-dashboard" onclick="goToView('dashboard')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" id="nav-inbox" onclick="goToView('inbox')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10l3-7h6l3 7v2a1 1 0 01-1 1H3a1 1 0 01-1-1v-2z"/><path d="M5 10h6"/></svg>
+        Inbox<span class="nav-badge">422</span>
+      </div>
+    </div>
+
+    <!-- Project stages — flat, always expanded, project name as label -->
+    <div style="padding:8px 6px 4px">
+      <div style="height:0.5px;background:rgba(0,0,0,0.08);margin-bottom:8px"></div>
+
+      <!-- Active project label -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 8px;margin-bottom:3px">
+        <span style="font-size:9.5px;color:#bbb;text-transform:uppercase;letter-spacing:0.07em">EV Adoption</span>
+      </div>
+
+      <!-- Project stages: single-click, always visible -->
+      <div class="nav-item active" id="nav-overview" onclick="goToView('overview')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+        Overview
+      </div>
+      <div class="nav-item" id="nav-scan" onclick="goToView('scan')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h10"/></svg>
+        Scan<span class="nav-badge">15</span>
+      </div>
+      <div class="nav-item" id="nav-cluster" onclick="goToView('cluster')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="5" r="2.5"/><circle cx="11" cy="5" r="2.5"/><circle cx="8" cy="11" r="2.5"/></svg>
+        Cluster<span class="nav-badge" id="sb-cluster">0</span>
+      </div>
+      <div class="nav-item" id="nav-sysmap">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="6" y="1" width="4" height="3" rx="0.5"/><rect x="1" y="12" width="4" height="3" rx="0.5"/><rect x="11" y="12" width="4" height="3" rx="0.5"/><path d="M8 4v3M8 7L3 12M8 7l5 5"/></svg>
+        System Map
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12l3-4 3 2 3-5 3 3"/></svg>
+        System Analysis
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v12M4 6l4-4 4 4M4 10l4 4 4-4"/></svg>
+        Future Models
+      </div>
+    </div>
+
+    <div style="flex:1"></div>
+    <div class="sidebar-switcher">
+      <div class="ss-label">Navigate</div>
+      <button class="ss-btn" onclick="goToView('overview')" id="nav-btn-overview">
+        <svg class="ss-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="5.5"/><path d="M7 4.5v2.5l1.5 1.5"/></svg>
+        Overview
+      </button>
+
+      <div class="ss-divider"></div>
+      <div class="ss-label">Cluster layout</div>
+      <button class="ss-btn active" id="sbtn-a" onclick="activeVariant='a';goToView('cluster')">
+        <svg class="ss-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="1" width="12" height="7" rx="1"/><rect x="1" y="10" width="12" height="3" rx="1"/></svg>
+        Canvas + drawer
+      </button>
+      <button class="ss-btn" id="sbtn-b" onclick="activeVariant='b';goToView('cluster')">
+        <svg class="ss-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="1" width="5" height="12" rx="1"/><rect x="8" y="1" width="5" height="12" rx="1"/></svg>
+        Inputs left
+      </button>
+      <div class="ss-divider"></div>
+      <div class="ss-sub-label">Project state</div>
+      <button class="ss-state-btn active" id="ps-empty" onclick="setProjectState('empty',this)">Empty — 0 clusters</button>
+      <button class="ss-state-btn" id="ps-mature" onclick="setProjectState('mature',this)">Mature — 25 clusters</button>
+      <div class="ss-divider"></div>
+      <div class="ss-sub-label">Cluster view</div>
+      <button class="ss-state-btn active" id="cv-card" onclick="setClusterView('card',this)">&#9638; Cards</button>
+      <button class="ss-state-btn" id="cv-list" onclick="setClusterView('list',this)">&#9776; List</button>
+    </div>
+    <div style="border-top:0.5px solid rgba(0,0,0,0.08);padding:10px 10px;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:5px 8px;border-radius:5px" onclick="goToView('account')" title="Account settings">
+        <div style="width:24px;height:24px;border-radius:50%;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0">S</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;color:#666;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">sam@aldermanandw...</div>
+          <div style="font-size:10px;color:#bbb">Advanced</div>
+        </div>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#ccc" stroke-width="1.3"><circle cx="6" cy="6" r="2"/><path d="M6 1v1M6 10v1M1 6h1M10 6h1M2.5 2.5l.7.7M8.8 8.8l.7.7M8.8 2.5l-.7.7M3.2 8.8l-.7.7"/></svg>
+      </div>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="variants">
+
+
+
+      <!-- SCAN VIEW -->
+      <div class="variant" id="view-scan">
+        <div style="padding:11px 16px 0;flex-shrink:0;display:flex;align-items:flex-start">
+          <div style="flex:1">
+            <div style="font-size:10px;color:#bbb;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">EV Adoption</div>
+            <div style="font-size:18px;font-weight:500;color:#111">Scan</div>
+          </div>
+          <div style="display:flex;gap:7px;align-items:center;padding-top:2px">
+            <button class="btn" onclick="openScanPrefs()">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6.5" cy="6.5" r="2"/><path d="M6.5 1v1.5M6.5 10v1.5M1 6.5h1.5M10 6.5h1.5M2.8 2.8l1.1 1.1M9.1 9.1l1.1 1.1M9.1 2.8L8 3.9M3.9 9.1L2.8 10.2"/></svg>
+              Scanning preferences
+            </button>
+            <button class="btn">Add from Inbox</button>
+            <button class="btn btn-p">+ Add an input</button>
+          </div>
+        </div>
+
+        <!-- Mode tabs: Inputs vs AI Suggested -->
+        <div style="display:flex;align-items:center;padding:0 16px;margin-top:10px;border-bottom:0.5px solid rgba(0,0,0,0.1);flex-shrink:0">
+          <div id="smode-inputs" onclick="setScanMode('inputs')" style="font-size:12.5px;font-weight:500;color:#111;padding:7px 0;margin-right:20px;border-bottom:2px solid #111;cursor:pointer">Inputs <span style="font-size:11px;color:#888;font-weight:400">15</span></div>
+          <div id="smode-suggested" onclick="setScanMode('suggested')" style="font-size:12.5px;color:#bbb;padding:7px 0;margin-right:20px;border-bottom:2px solid transparent;cursor:pointer">AI Suggested <span id="ai-sug-badge" style="font-size:11px;font-weight:500;color:#185FA5">14</span></div>
+        </div>
+
+        <!-- INPUTS MODE -->
+        <div id="scan-inputs-mode" style="display:flex;flex:1;overflow:hidden">
+          <div class="scan-main">
+            <div class="scan-toolbar">
+              <div class="scan-tab-grp">
+                <div class="scan-tab active" id="stab-all" onclick="setScanTab('all',this)">All <span id="stab-all-n">15</span></div>
+                <div class="scan-tab" id="stab-unassigned" onclick="setScanTab('unassigned',this)">Unassigned <span id="stab-unassigned-n">9</span></div>
+                <div class="scan-tab" id="stab-clustered" onclick="setScanTab('clustered',this)">In cluster <span id="stab-clustered-n">6</span></div>
+                <div class="scan-tab" id="stab-csv" onclick="setScanTab('csv',this)">Import via CSV</div>
+              </div>
+              <div class="filt" style="margin-left:4px">Type &#9662;</div>
+              <div class="filt">Horizon &#9662;</div>
+              <div class="filt">STEEPLED &#9662;</div>
+              <input type="text" placeholder="Search inputs..." oninput="filterInputsSearch(this.value)" style="margin-left:auto;padding:3px 9px;border:0.5px solid rgba(0,0,0,0.14);border-radius:4px;font-size:11.5px;background:#fff;outline:none;width:130px;color:#111;font-family:inherit">
+            </div>
+            <div class="scan-col-hdr">
+              <div style="width:20px;flex-shrink:0"></div>
+              <div class="scan-ch" style="flex:1">Title</div>
+              <div class="scan-ch" style="width:48px">Type</div>
+              <div class="scan-ch" style="width:84px">STEEPLED</div>
+              <div class="scan-ch" style="width:80px">Horizon</div>
+              <div class="scan-ch" style="width:120px">Cluster</div>
+              <div style="width:20px"></div>
+            </div>
+            <div class="scan-input-list" id="scan-input-list"></div>
+          </div>
+        </div>
+
+        <!-- AI SUGGESTED MODE -->
+        <div id="scan-suggested-mode" style="display:none;flex:1;overflow:hidden;flex-direction:column">
+          <div style="padding:8px 16px;border-bottom:0.5px solid rgba(0,0,0,0.08);display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <div class="filt">Type &#9662;</div>
+            <div class="filt">Horizon &#9662;</div>
+            <div class="filt">STEEPLED &#9662;</div>
+            <input type="text" placeholder="Search suggestions..." style="margin-left:auto;padding:3px 9px;border:0.5px solid rgba(0,0,0,0.14);border-radius:4px;font-size:11.5px;background:#fff;outline:none;width:140px;color:#111;font-family:inherit">
+          </div>
+          <div style="overflow-y:auto;flex:1;padding:14px 16px" id="ai-suggested-list"></div>
+        </div>
+      </div>
+      <!-- END SCAN VIEW -->
+
+
+
+      
+
+      <!-- OVERVIEW VIEW -->
+      <div class="variant active" id="view-overview">
+        <div style="padding:11px 16px 0;flex-shrink:0;display:flex;align-items:flex-start" id="overview-header">
+          <div style="flex:1">
+            <div style="font-size:10px;color:#bbb;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">EV Adoption</div>
+            <div style="font-size:18px;font-weight:500;color:#111">Overview</div>
+          </div>
+          <div style="display:flex;gap:7px;align-items:center;padding-top:2px">
+            <button class="btn" id="edit-btn" onclick="toggleEdit()">Edit</button>
+          </div>
+        </div>
+      <div class="overview-body" id="overview-body">
+
+        <!-- Key question + metadata -->
+        <div class="card" id="card-meta">
+          <div style="display:flex;gap:24px;align-items:flex-start">
+            <div style="flex:3;min-width:0">
+              <div class="card-title" style="display:flex;align-items:center">
+                Key question
+                <span class="edit-hint">Click any field to edit</span>
+              </div>
+              <div class="key-q-value" id="kq" spellcheck="false">What are the key forces driving and inhibiting the widespread adoption of EVs in the USA?</div>
+            </div>
+            <div style="flex:2;min-width:0;display:flex;flex-direction:column;gap:10px;border-left:0.5px solid rgba(0,0,0,0.08);padding-left:20px;padding-top:2px">
+              <div class="field-group">
+                <div class="field-label">Domain</div>
+                <div class="field-value" id="f-domain" spellcheck="false">Technology &amp; AI</div>
+              </div>
+              <div class="field-group">
+                <div class="field-label">Geography</div>
+                <div class="field-value" id="f-geo" spellcheck="false">USA</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Horizons -->
+        <div class="card">
+          <div class="card-title">Time horizons</div>
+          <div class="hz-bar">
+            <div class="hz hz1"><div class="hz-lbl">H1 &middot; Near</div><div class="hz-rng">2026&ndash;2029</div></div>
+            <div class="hz hz2"><div class="hz-lbl">H2 &middot; Transition</div><div class="hz-rng">2029&ndash;2035</div></div>
+            <div class="hz hz3"><div class="hz-lbl">H3 &middot; Emerging</div><div class="hz-rng">2035&ndash;2041</div></div>
+          </div>
+        </div>
+
+        <!-- Signal scanning -->
+        <!-- Behavioral note: this card is the ONE place a delta claim is honest. Clusters, the system
+             map, System Analysis, and Future Models never change without the practitioner acting on them,
+             so only the scanner has something new to report between visits. Empty state (0 new signals)
+             should read "No new signals since your last visit" rather than disappearing, so the card still
+             confirms scanning is active. -->
+        <div class="scanner-card">
+          <div class="scanner-text">
+            <div class="scanner-title" id="scanner-title-text">14 new signals since your last visit</div>
+            <div style="font-size:12px;color:#888;line-height:1.45;margin-top:2px">
+              3 days ago &middot; waiting for review in Scan &rarr; AI Suggested.
+            </div>
+            <div style="margin-top:7px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span onclick="goToView('scan');setTimeout(function(){setScanMode('suggested');},50)" style="font-size:11.5px;color:#1a56e8;cursor:pointer;font-weight:500">Review suggestions &#8594;</span>
+              <span id="scanner-status-text" style="font-size:11.5px;color:#3B6D11">&#9679; Scanning active &middot; 9 sources</span>
+              <span onclick="goToView('scan');setTimeout(function(){openScanPrefs();},80)" style="font-size:11.5px;color:#1a56e8;cursor:pointer">Manage sources &#8594;</span>
+            </div>
+          </div>
+          <div class="tgl-track" id="scanner-tgl" onclick="toggleScanner()">
+            <div class="tgl-thumb"></div>
+          </div>
+        </div>
+
+        <!-- Progress phase cards -->
+        <div>
+          <div class="card-title" style="margin-bottom:8px">Workflow</div>
+          <div class="phase-grid">
+            <div class="phase-card state-recent" onclick="goToView('cluster')">
+              <div class="phase-header">
+                <span class="phase-name">Scan</span>
+                <span class="phase-status status-recent">Active this week</span>
+              </div>
+              <div class="phase-detail">
+                <div class="phase-stat">
+                  <span class="phase-stat-label">Total inputs</span>
+                  <span class="phase-stat-value">72</span>
+                </div>
+                <div class="phase-stat">
+                  <span class="phase-stat-label">Assigned</span>
+                  <span class="phase-stat-value">41</span>
+                </div>
+                <div class="phase-stat">
+                  <span class="phase-stat-label">Unassigned</span>
+                  <span class="phase-stat-value">31</span>
+                </div>
+                <div class="phase-stat" style="margin-top:2px;padding-top:6px;border-top:0.5px solid rgba(0,0,0,0.08)">
+                  <span class="phase-stat-label" style="color:#185FA5;cursor:pointer" onclick="goToView('scan');setTimeout(function(){setScanMode('suggested');},50)">AI suggestions</span>
+                  <span class="phase-stat-value" style="color:#185FA5;cursor:pointer" onclick="goToView('scan');setTimeout(function(){setScanMode('suggested');},50)">14</span>
+                </div>
+              </div>
+            </div>
+            <div class="phase-card state-recent" onclick="goToView('cluster')">
+              <div class="phase-header">
+                <span class="phase-name">Cluster</span>
+                <span class="phase-status status-recent">Active this week</span>
+              </div>
+              <div class="phase-detail">
+                <div class="phase-stat">
+                  <span class="phase-stat-label">Total clusters</span>
+                  <span class="phase-stat-value">18</span>
+                </div>
+                <div style="display:flex;gap:5px;margin-top:4px">
+                  <div style="flex:1;background:rgba(0,0,0,0.05);border-radius:4px;padding:4px 0;text-align:center">
+                    <div style="font-size:12px;font-weight:500;color:#111">11</div>
+                    <div style="font-size:9px;color:#888;margin-top:1px">Trend</div>
+                  </div>
+                  <div style="flex:1;background:rgba(0,0,0,0.05);border-radius:4px;padding:4px 0;text-align:center">
+                    <div style="font-size:12px;font-weight:500;color:#111">4</div>
+                    <div style="font-size:9px;color:#888;margin-top:1px">Driver</div>
+                  </div>
+                  <div style="flex:1;background:rgba(0,0,0,0.05);border-radius:4px;padding:4px 0;text-align:center">
+                    <div style="font-size:12px;font-weight:500;color:#111">3</div>
+                    <div style="font-size:9px;color:#888;margin-top:1px">Tension</div>
+                  </div>
+                </div>
+                <div style="margin-top:8px">
+                  <svg width="100%" height="36" viewBox="0 0 170 36" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+                    <!-- Zone backgrounds -->
+                    <rect x="0" y="4" width="80" height="20" rx="3" fill="#EAF3DE" opacity="0.7"/>
+                    <rect x="84" y="4" width="50" height="20" rx="3" fill="#E6F1FB" opacity="0.7"/>
+                    <rect x="138" y="4" width="32" height="20" rx="3" fill="#FAEEDA" opacity="0.7"/>
+                    <!-- Zone labels -->
+                    <text x="40" y="32" text-anchor="middle" font-size="8" fill="#3B6D11" font-family="system-ui">H1</text>
+                    <text x="109" y="32" text-anchor="middle" font-size="8" fill="#185FA5" font-family="system-ui">H2</text>
+                    <text x="154" y="32" text-anchor="middle" font-size="8" fill="#854F0B" font-family="system-ui">H3</text>
+                    <!-- H1 dots (12): scattered across x=4–76, y=8–20 -->
+                    <circle cx="8" cy="10" r="3" fill="#3B6D11" opacity="0.7"/>
+                    <circle cx="16" cy="16" r="3" fill="#3B6D11" opacity="0.7"/>
+                    <circle cx="22" cy="9" r="3" fill="#3B6D11" opacity="0.7"/>
+                    <circle cx="30" cy="18" r="3" fill="#3B6D11" opacity="0.7"/>
+                    <circle cx="36" cy="12" r="3" fill="#3B6D11" opacity="0.7"/>
+                    <circle cx="43" cy="20" r="3" fill="#3B6D11" opacity="0.7"/>
+                    <circle cx="50" cy="8" r="3" fill="#3B6D11" opacity="0.7"/>
+                    <circle cx="56" cy="17" r="3" fill="#3B6D11" opacity="0.7"/>
+                    <circle cx="62" cy="11" r="3" fill="#3B6D11" opacity="0.7"/>
+                    <circle cx="68" cy="19" r="3" fill="#3B6D11" opacity="0.7"/>
+                    <circle cx="73" cy="9" r="3" fill="#3B6D11" opacity="0.7"/>
+                    <circle cx="78" cy="15" r="3" fill="#3B6D11" opacity="0.7"/>
+                    <!-- H2 dots (4): x=88–130 -->
+                    <circle cx="90" cy="16" r="3" fill="#185FA5" opacity="0.7"/>
+                    <circle cx="100" cy="19" r="3" fill="#185FA5" opacity="0.7"/>
+                    <circle cx="112" cy="9" r="3" fill="#185FA5" opacity="0.7"/>
+                    <circle cx="124" cy="17" r="3" fill="#185FA5" opacity="0.7"/>
+                    <!-- H3 dots (2): x=142–162 -->
+                    <circle cx="144" cy="11" r="3" fill="#854F0B" opacity="0.7"/>
+                    <circle cx="158" cy="17" r="3" fill="#854F0B" opacity="0.7"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div class="phase-card state-untouched" onclick="goToView('cluster')">
+              <div class="phase-header">
+                <span class="phase-name">System Map</span>
+                <span class="phase-status status-earlier">Earlier</span>
+              </div>
+              <div class="phase-detail">
+                <div class="phase-stat">
+                  <span class="phase-stat-label">Nodes</span>
+                  <span class="phase-stat-value">18</span>
+                </div>
+                <div class="phase-stat">
+                  <span class="phase-stat-label">Connections</span>
+                  <span class="phase-stat-value">24</span>
+                </div>
+                <div class="map-thumb">
+                  <svg viewBox="0 0 120 64" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+                    <line x1="20" y1="10" x2="55" y2="34" stroke="#ccc" stroke-width="1.5"/>
+                    <line x1="55" y1="26" x2="90" y2="16" stroke="#ccc" stroke-width="1.5"/>
+                    <line x1="55" y1="26" x2="80" y2="50" stroke="#ccc" stroke-width="1.5"/>
+                    <line x1="20" y1="10" x2="35" y2="50" stroke="#ccc" stroke-width="1.5"/>
+                    <line x1="90" y1="12" x2="105" y2="44" stroke="#ccc" stroke-width="1.5"/>
+                    <line x1="80" y1="40" x2="105" y2="35" stroke="#ccc" stroke-width="1.5"/>
+                    <line x1="35" y1="40" x2="80" y2="50" stroke="#ccc" stroke-width="1.5"/>
+                    <line x1="20" y1="10" x2="10" y2="38" stroke="#ccc" stroke-width="1.5"/>
+                    <circle cx="20" cy="10" r="5" fill="#EAF3DE" stroke="#3B6D11" stroke-width="1.5"/>
+                    <circle cx="55" cy="34" r="6" fill="#EAF3DE" stroke="#3B6D11" stroke-width="1.5"/>
+                    <circle cx="90" cy="12" r="5" fill="#E6F1FB" stroke="#185FA5" stroke-width="1.5"/>
+                    <circle cx="80" cy="50" r="5" fill="#FCEBEB" stroke="#791F1F" stroke-width="1.5"/>
+                    <circle cx="35" cy="50" r="4.5" fill="#EAF3DE" stroke="#3B6D11" stroke-width="1.5"/>
+                    <circle cx="105" cy="44" r="4.5" fill="#E6F1FB" stroke="#185FA5" stroke-width="1.5"/>
+                    <circle cx="10" cy="38" r="4" fill="#FCEBEB" stroke="#791F1F" stroke-width="1.5"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div class="phase-card state-active is-resume" onclick="goToView('cluster')">
+              <div class="phase-header">
+                <span class="phase-name">System Analysis</span>
+                <div style="display:flex;align-items:center;gap:5px">
+                  <span class="resume-pill">Continue here</span>
+                  <span class="phase-status status-active">Active today</span>
+                </div>
+              </div>
+              <div class="phase-detail">
+                <div style="font-size:10.5px;color:#bbb;margin-bottom:5px">Canvas sections</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr;gap:3px;flex:1">
+                  <div title="Key Dynamics" style="grid-row:1/3;background:rgba(0,0,0,0.5);border-radius:3px"></div>
+                  <div title="Description" style="background:rgba(0,0,0,0.08);border-radius:3px"></div>
+                  <div title="Implications" style="background:rgba(0,0,0,0.5);border-radius:3px"></div>
+                  <div title="Critical Uncertainties" style="background:rgba(0,0,0,0.22);border-radius:3px"></div>
+                  <div title="Confidence" style="background:rgba(0,0,0,0.08);border-radius:3px"></div>
+                </div>
+              </div>
+            </div>
+            <div class="phase-card state-untouched" onclick="goToView('cluster')">
+              <div class="phase-header">
+                <span class="phase-name">Future Models</span>
+                <span class="phase-status status-untouched">Not started</span>
+              </div>
+              <div class="phase-detail">
+                <div class="fm-row">
+                  <div class="fm-item">
+                    <div class="fm-item-val" style="color:#bbb">0</div>
+                    <div class="fm-item-label">Scenarios</div>
+                  </div>
+                  <div class="fm-item">
+                    <div class="fm-item-val" style="color:#bbb">0</div>
+                    <div class="fm-item-label">Preferred</div>
+                  </div>
+                  <div class="fm-item">
+                    <div class="fm-item-val" style="color:#bbb">0</div>
+                    <div class="fm-item-label">Strategic</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Context (collapsible) -->
+        <div class="card" id="card-method" style="padding:0">
+          <div class="method-hdr" onclick="toggleMethod()">
+            <span class="card-title" style="margin:0">Context</span>
+            <span id="method-chev" style="font-size:10px;color:#bbb">&#9660;</span>
+          </div>
+          <div id="method-body" class="method-body">
+            <div class="field-group">
+              <div class="field-label">Focus</div>
+              <div class="field-value" id="f-mfocus" spellcheck="false">Consumer EV adoption barriers</div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Assumptions</div>
+              <div class="field-value unset" id="f-assume" spellcheck="false">Not set</div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">In scope</div>
+              <div class="field-value" id="f-inscope" spellcheck="false">US market, passenger vehicles</div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Out of scope</div>
+              <div class="field-value unset" id="f-outscope" spellcheck="false">Not set</div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Audience</div>
+              <div class="field-value unset" id="f-audience" spellcheck="false">Not set</div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Stakeholders</div>
+              <div class="field-value unset" id="f-stakeholders" spellcheck="false">Not set</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="font-size:11px;color:#bbb;padding-bottom:4px">Last updated Apr 3</div>
+      </div>
+      </div>
+      <!-- END OVERVIEW VIEW -->
+
+      <!-- VARIANT A -->
+      <div class="variant" id="var-a">
+        <div style="padding:11px 16px 0;flex-shrink:0;display:flex;align-items:flex-start">
+          <div style="flex:1">
+            <div style="font-size:10px;color:#bbb;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">EV Adoption</div>
+            <div style="font-size:18px;font-weight:500">Cluster</div>
+          </div>
+          <div style="display:flex;gap:7px;align-items:center;padding-top:2px">
+            <button class="btn">Suggested <span style="background:#E6F1FB;color:#185FA5;padding:1px 5px;border-radius:3px;font-size:9.5px;margin-left:3px">4</span></button>
+            <button class="btn btn-p" onclick="showNewClusterModal()">+ New cluster</button>
+          </div>
+        </div>
+        <div class="tbar" style="margin-top:8px">
+          <input type="text" placeholder="Search clusters..." oninput="filterClusters(this.value,'a')" style="padding:3px 9px;border:0.5px solid rgba(0,0,0,0.14);border-radius:4px;font-size:11.5px;background:#fff;outline:none;width:160px;color:#111;font-family:inherit">
+          <div class="filt">Type &#9662;</div><div class="filt">Horizon &#9662;</div><div class="filt">Likelihood &#9662;</div>
+          <div style="margin-left:auto;display:flex;gap:4px">
+            <button class="icon-btn active" id="a-btn-card" onclick="setClusterViewDirect('card')">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="0.5" y="0.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="7.5" y="0.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="0.5" y="7.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="7.5" y="7.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>
+            </button>
+            <button class="icon-btn" id="a-btn-list" onclick="setClusterViewDirect('list')">
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><line x1="1" y1="2.5" x2="12" y2="2.5" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="6.5" x2="12" y2="6.5" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="10.5" x2="12" y2="10.5" stroke="currentColor" stroke-width="1.2"/></svg>
+            </button>
+          </div>
+        </div>
+        <div id="a-cluster-area" style="flex:1;overflow-y:auto;padding:12px 14px"><div id="a-cluster-content"></div></div>
+        <div class="resize-h" id="a-resize"><div class="rdots"><div class="rdot"></div><div class="rdot"></div><div class="rdot"></div><div class="rdot"></div><div class="rdot"></div></div></div>
+        <div id="a-input-panel" style="flex-shrink:0;height:230px;display:flex;flex-direction:column;overflow:hidden;background:#fff;border-top:0.5px solid rgba(0,0,0,0.08)">
+          <div style="padding:5px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:0.5px solid rgba(0,0,0,0.07);flex-shrink:0;background:#fafaf8">
+            <span style="font-size:10px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.06em">Inputs</span>
+            <span style="font-size:10px;color:#bbb" id="a-input-meta"></span>
+          </div>
+          <div style="padding:7px 12px;border-bottom:0.5px solid rgba(0,0,0,0.07);flex-shrink:0">
+            <div class="dz" id="a-main-dz" ondragover="dzOver(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,this,null)">
+              <span style="font-size:14px;opacity:0.5">&#8853;</span> Drop inputs here to create a new cluster
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-bottom:0.5px solid rgba(0,0,0,0.07);flex-shrink:0">
+            <div class="tab-grp">
+              <div class="tab active" id="a-tab-all" onclick="setInputTab('a','all',this)">All</div>
+              <div class="tab" id="a-tab-unassigned" onclick="setInputTab('a','unassigned',this)">Unassigned</div>
+              <div class="tab" id="a-tab-incluster" onclick="setInputTab('a','incluster',this)">In cluster</div>
+            </div>
+            <input type="text" placeholder="Search inputs..." oninput="filterInputs(this.value,'a')" style="flex:1;padding:3px 8px;border:0.5px solid rgba(0,0,0,0.13);border-radius:4px;font-size:11px;background:#fafaf8;outline:none;color:#111;font-family:inherit">
+          </div>
+          <div class="col-hdr-strip">
+            <div style="width:16px"></div>
+            <div style="flex:1;font-size:9.5px;color:#bbb;font-weight:500;text-transform:uppercase;letter-spacing:0.05em">Title</div>
+            <div style="width:96px;font-size:9.5px;color:#bbb;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;text-align:right">Type · Horizon</div>
+            <div style="width:16px"></div>
+          </div>
+          <div style="overflow-y:auto;flex:1" id="a-input-list"></div>
+        </div>
+      </div>
+
+      <!-- VARIANT B -->
+      <div class="variant" id="var-b">
+        <div style="padding:11px 16px 0;flex-shrink:0;display:flex;align-items:flex-start">
+          <div style="flex:1">
+            <div style="font-size:10px;color:#bbb;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">EV Adoption</div>
+            <div style="font-size:18px;font-weight:500">Cluster</div>
+          </div>
+          <div style="display:flex;gap:7px;align-items:center;padding-top:2px">
+            <button class="btn">Suggested <span style="background:#E6F1FB;color:#185FA5;padding:1px 5px;border-radius:3px;font-size:9.5px;margin-left:3px">4</span></button>
+            <button class="btn btn-p" onclick="showNewClusterModal()">+ New cluster</button>
+          </div>
+        </div>
+        <div style="display:flex;flex:1;overflow:hidden;margin-top:8px">
+          <div id="b-input-panel" style="width:300px;flex-shrink:0;background:#fff;border-right:0.5px solid rgba(0,0,0,0.1);display:flex;flex-direction:column;overflow:hidden">
+            <div style="padding:5px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:0.5px solid rgba(0,0,0,0.07);flex-shrink:0;background:#fafaf8">
+              <span style="font-size:10px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.06em">Inputs</span>
+              <span style="font-size:10px;color:#bbb" id="b-input-meta"></span>
+            </div>
+            <div style="padding:7px 10px;border-bottom:0.5px solid rgba(0,0,0,0.07);flex-shrink:0">
+              <div class="dz" id="b-main-dz" ondragover="dzOver(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,this,null)">
+                <span style="font-size:14px;opacity:0.5">&#8853;</span> Drop here to create a cluster
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;padding:5px 8px;border-bottom:0.5px solid rgba(0,0,0,0.07);flex-shrink:0">
+              <div class="tab-grp">
+                <div class="tab active" id="b-tab-all" onclick="setInputTab('b','all',this)">All</div>
+                <div class="tab" id="b-tab-unassigned" onclick="setInputTab('b','unassigned',this)">Unassigned</div>
+                <div class="tab" id="b-tab-incluster" onclick="setInputTab('b','incluster',this)">In cluster</div>
+              </div>
+            </div>
+            <div style="padding:4px 8px;border-bottom:0.5px solid rgba(0,0,0,0.07);flex-shrink:0">
+              <input type="text" placeholder="Search inputs..." oninput="filterInputs(this.value,'b')" style="width:100%;padding:3px 8px;border:0.5px solid rgba(0,0,0,0.13);border-radius:4px;font-size:11px;background:#fafaf8;outline:none;color:#111;font-family:inherit">
+            </div>
+            <div class="col-hdr-strip">
+              <div style="width:16px"></div>
+              <div style="flex:1;font-size:9.5px;color:#bbb;font-weight:500;text-transform:uppercase;letter-spacing:0.05em">Title</div>
+              <div style="width:68px;font-size:9.5px;color:#bbb;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;text-align:right">Type · H</div>
+            </div>
+            <div style="overflow-y:auto;flex:1" id="b-input-list"></div>
+          </div>
+          <div class="resize-v" id="b-resize"><div class="rdots-v"><div class="rdot"></div><div class="rdot"></div><div class="rdot"></div><div class="rdot"></div><div class="rdot"></div></div></div>
+          <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+            <div class="tbar">
+              <input type="text" placeholder="Search clusters..." oninput="filterClusters(this.value,'b')" style="padding:3px 9px;border:0.5px solid rgba(0,0,0,0.14);border-radius:4px;font-size:11.5px;background:#fff;outline:none;width:150px;color:#111;font-family:inherit">
+              <div class="filt">Type &#9662;</div><div class="filt">Horizon &#9662;</div><div class="filt">Likelihood &#9662;</div>
+              <div style="margin-left:auto;display:flex;gap:4px">
+                <button class="icon-btn active" id="b-btn-card" onclick="setClusterViewDirect('card')">
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="0.5" y="0.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="7.5" y="0.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="0.5" y="7.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="7.5" y="7.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>
+                </button>
+                <button class="icon-btn" id="b-btn-list" onclick="setClusterViewDirect('list')">
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><line x1="1" y1="2.5" x2="12" y2="2.5" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="6.5" x2="12" y2="6.5" stroke="currentColor" stroke-width="1.2"/><line x1="1" y1="10.5" x2="12" y2="10.5" stroke="currentColor" stroke-width="1.2"/></svg>
+                </button>
+              </div>
+            </div>
+            <div style="flex:1;overflow-y:auto;padding:12px 14px"><div id="b-cluster-content"></div></div>
+          </div>
+        </div>
+      </div>
+
+
+<!-- INBOX VIEW -->
+<div class="variant" id="view-inbox">
+  <div style="padding:11px 16px 0;flex-shrink:0;display:flex;align-items:flex-start">
+    <div style="flex:1">
+      <div style="font-size:10px;color:#bbb;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Workspace</div>
+      <div style="font-size:18px;font-weight:500;color:#111">Inbox</div>
+    </div>
+    <div style="display:flex;gap:7px;align-items:center;padding-top:2px">
+      <button class="btn btn-p">+ Add an input</button>
+    </div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:20px">
+
+    <!-- My Inputs section -->
+    <div>
+      <div style="font-size:13px;font-weight:500;color:#111;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        My inputs
+        <span style="font-size:11px;color:#bbb;font-weight:400">Manually captured, unassigned to a project</span>
+      </div>
+      <div style="background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:8px;overflow:hidden">
+        <div style="display:flex;align-items:center;padding:5px 14px;background:#fafaf8;border-bottom:0.5px solid rgba(0,0,0,0.08);gap:8px">
+          <div style="font-size:9.5px;color:#bbb;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;flex:1">Title</div>
+          <div style="font-size:9.5px;color:#bbb;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;width:60px">Type</div>
+          <div style="font-size:9.5px;color:#bbb;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;width:90px">STEEPLED</div>
+          <div style="font-size:9.5px;color:#bbb;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;width:100px">Assign to project</div>
+        </div>
+        <div style="padding:10px 14px;font-size:12px;color:#bbb;text-align:center">All your inputs have been assigned to a project.</div>
+      </div>
+    </div>
+
+    <!-- AI Suggested section -->
+    <div>
+      <div style="font-size:13px;font-weight:500;color:#111;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+        AI Suggested
+        <span style="font-size:11.5px;background:#E6F1FB;color:#185FA5;padding:1px 8px;border-radius:10px;font-weight:500">422</span>
+      </div>
+      <div style="font-size:11.5px;color:#888;margin-bottom:10px">Candidates surfaced by the scanner across all your projects. Review and add to a project, or dismiss.</div>
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px">
+        <input type="text" placeholder="Search suggestions..." style="padding:4px 9px;border:0.5px solid rgba(0,0,0,0.14);border-radius:5px;font-size:12px;background:#fff;outline:none;width:200px;color:#111;font-family:inherit">
+        <div class="filt">Project &#9662;</div>
+        <div class="filt">Type &#9662;</div>
+        <div class="filt">STEEPLED &#9662;</div>
+      </div>
+      <div id="inbox-suggested-list"></div>
+    </div>
+  </div>
+</div>
+
+
+      <!-- ACCOUNT SETTINGS VIEW -->
+      <div class="variant" id="view-account">
+        <div style="padding:11px 16px 0;flex-shrink:0;display:flex;align-items:flex-start">
+          <div style="flex:1">
+            <div style="font-size:10px;color:#bbb;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Workspace</div>
+            <div style="font-size:18px;font-weight:500;color:#111">Account settings</div>
+          </div>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px;max-width:560px">
+
+          <!-- Profile -->
+          <div style="background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:8px;padding:16px">
+            <div style="font-size:12px;font-weight:500;color:#111;margin-bottom:12px">Profile</div>
+            <div style="margin-bottom:10px">
+              <div style="font-size:10px;color:#bbb;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Display name</div>
+              <div style="font-size:13px;color:#111;padding:6px 0;border-bottom:0.5px solid rgba(0,0,0,0.08)">Sam</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#bbb;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Email</div>
+              <div style="font-size:13px;color:#111;padding:6px 0;border-bottom:0.5px solid rgba(0,0,0,0.08)">sam@aldermanandward.com</div>
+            </div>
+          </div>
+
+          <!-- Signal Scanning -->
+          <div style="background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:8px;padding:16px">
+            <div style="font-size:12px;font-weight:500;color:#111;margin-bottom:12px">Signal scanning</div>
+
+            <!-- Global toggle -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:0.5px solid rgba(0,0,0,0.08);margin-bottom:12px">
+              <div>
+                <div style="font-size:13px;color:#111;font-weight:500">Enable signal scanning</div>
+                <div style="font-size:11.5px;color:#888;margin-top:2px">When off, the AI scanner will pause for all projects in your workspace.</div>
+              </div>
+              <div class="scan-tgl-track"><div class="scan-tgl-thumb"></div></div>
+            </div>
+
+            <!-- Per-project -->
+            <div style="font-size:11px;color:#bbb;margin-bottom:8px">5 of 5 projects scanning</div>
+            <div style="display:flex;flex-direction:column;gap:0">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.06)">
+                <div>
+                  <div style="font-size:12.5px;color:#111">Solo Aging in America</div>
+                  <div style="font-size:11px;color:#bbb">Health &amp; Life Sciences</div>
+                </div>
+                <div class="scan-tgl-track"><div class="scan-tgl-thumb"></div></div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.06)">
+                <div>
+                  <div style="font-size:12.5px;color:#111">Future of data centers</div>
+                  <div style="font-size:11px;color:#bbb">Technology &amp; AI</div>
+                </div>
+                <div class="scan-tgl-track"><div class="scan-tgl-thumb"></div></div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.06)">
+                <div>
+                  <div style="font-size:12.5px;color:#111">GLPs</div>
+                  <div style="font-size:11px;color:#bbb">Health &amp; Life Sciences</div>
+                </div>
+                <div class="scan-tgl-track"><div class="scan-tgl-thumb"></div></div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.06)">
+                <div>
+                  <div style="font-size:12.5px;color:#111">Future of autonomous warfare</div>
+                  <div style="font-size:11px;color:#bbb">Defence &amp; Security</div>
+                </div>
+                <div class="scan-tgl-track"><div class="scan-tgl-thumb"></div></div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.06)">
+                <div>
+                  <div style="font-size:12.5px;color:#111">EV Adoption</div>
+                  <div style="font-size:11px;color:#bbb">Technology &amp; AI</div>
+                </div>
+                <div class="scan-tgl-track"><div class="scan-tgl-thumb"></div></div>
+              </div>
+            </div>
+
+            <!-- Weekly digest -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;margin-top:4px">
+              <div>
+                <div style="font-size:13px;color:#111;font-weight:500">Weekly signal digest</div>
+                <div style="font-size:11.5px;color:#888;margin-top:2px">Receive a weekly email of signals from the scanner relevant to your active projects.</div>
+              </div>
+              <div class="scan-tgl-track"><div class="scan-tgl-thumb"></div></div>
+            </div>
+          </div>
+
+          <!-- Sources -->
+          <div style="background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:8px;padding:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="font-size:12px;font-weight:500;color:#111">Sources</div>
+              <button class="btn" style="font-size:11.5px" onclick="openAddSource('dashboard')">+ Add source</button>
+            </div>
+            <!-- Filter tabs + search -->
+            <div style="display:flex;align-items:center;gap:0;margin-bottom:10px;border-bottom:0.5px solid rgba(0,0,0,0.08);padding-bottom:0">
+              <div id="atab-all" onclick="setAccountTab('all',this)" style="font-size:12px;color:#111;font-weight:500;padding:0 0 8px;margin-right:16px;border-bottom:2px solid #111;cursor:pointer">All sources</div>
+              <div id="atab-curated" onclick="setAccountTab('curated',this)" style="font-size:12px;color:#bbb;padding:0 0 8px;margin-right:16px;border-bottom:2px solid transparent;cursor:pointer">Curated</div>
+              <div id="atab-user" onclick="setAccountTab('user',this)" style="font-size:12px;color:#bbb;padding:0 0 8px;border-bottom:2px solid transparent;cursor:pointer">My sources</div>
+              <input type="text" placeholder="Search..." oninput="filterAccountSources(this.value)" style="margin-left:auto;padding:3px 8px;border:0.5px solid rgba(0,0,0,0.14);border-radius:4px;font-size:11.5px;background:#fafaf8;outline:none;width:120px;color:#111;font-family:inherit;margin-bottom:6px">
+            </div>
+            <div id="account-sources-list"></div>
+          </div>
+
+          <!-- Security -->
+          <div style="background:#fff;border:0.5px solid rgba(0,0,0,0.1);border-radius:8px;padding:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="font-size:12px;font-weight:500;color:#111">Security</div>
+              <button class="btn" style="font-size:11.5px">Change password</button>
+            </div>
+          </div>
+
+          <div style="padding-bottom:8px">
+            <button style="padding:6px 14px;border-radius:6px;border:0.5px solid #FCEBEB;background:#fff;color:#791F1F;font-size:12px;cursor:pointer;font-family:inherit">Sign out</button>
+          </div>
+        </div>
+      </div>
+      <!-- END ACCOUNT SETTINGS VIEW -->
+
+        </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────
+var projectState = 'empty';
+var clusterView = 'card';
+var activeVariant = 'a';
+var inputTabA = 'all', inputTabB = 'all';
+var dragInputId = null;
+
+var inputs = [
+  {id:'i1',title:'Solar capacity additions break records for third consecutive year',meta:'Signal · H1',clusterId:null},
+  {id:'i2',title:'CRISPR gene editing enters clinical trials for common diseases',meta:'Signal · H2',clusterId:null},
+  {id:'i3',title:'Central bank digital currencies launch in 12 countries',meta:'Source · H1',clusterId:null},
+  {id:'i4',title:'Autonomous freight corridors approved on US interstate highways',meta:'Signal · H1',clusterId:null},
+  {id:'i5',title:'Remote work permanently restructures commercial real estate',meta:'Signal · H2',clusterId:null},
+  {id:'i6',title:'Rare earth supply chain diversification accelerates',meta:'Signal · H1',clusterId:null},
+  {id:'i7',title:'Fusion energy startup achieves net energy gain milestone',meta:'Signal · H3',clusterId:null},
+  {id:'i8',title:'AI-generated scientific papers flood peer review systems',meta:'Signal · H1',clusterId:null},
+  {id:'i9',title:'Urban heat island effect drives migration from Sun Belt cities',meta:'Signal · H2',clusterId:null},
+  {id:'i10',title:'Lithium recycling industry reaches cost parity with virgin mining',meta:'Signal · H2',clusterId:null},
+  {id:'i11',title:'Universal basic income pilots expand to 30 municipalities',meta:'Source · H2',clusterId:null},
+  {id:'i12',title:'Deepfake detection arms race intensifies ahead of election cycle',meta:'Signal · H1',clusterId:null},
+  {id:'i13',title:'Aging population drives surge in elder care robotics investment',meta:'Signal · H2',clusterId:null},
+  {id:'i14',title:'Methane emissions from permafrost exceed IPCC worst-case projections',meta:'Signal · H1',clusterId:null},
+  {id:'i15',title:'Direct air carbon capture costs fall below $200 per tonne',meta:'Signal · H2',clusterId:null},
+];
+
+var clusters = [];
+
+var matureClusters = [
+  {id:'c1',type:'Trend',horizon:'H1',name:'Clean energy transition accelerates beyond policy targets',desc:'Falling costs of renewables and storage are enabling faster transitions than governments projected, creating new market leaders and stranded fossil assets.',count:8,likelihood:'plausible'},
+  {id:'c2',type:'Driver',horizon:'H1',name:'AI productivity gains reshape knowledge work economics',desc:'Widespread AI tool adoption is compressing labor requirements in white-collar sectors, forcing rapid reskilling and restructuring of professional service firms.',count:6,likelihood:'plausible'},
+  {id:'c3',type:'Tension',horizon:'H2',name:'Climate migration strains urban infrastructure and governance',desc:'As climate-driven displacement accelerates, receiving cities face housing, services, and political pressures that existing governance frameworks cannot handle.',count:5,likelihood:'uncertain'},
+  {id:'c4',type:'Trend',horizon:'H1',name:'Biological and synthetic food systems converge',desc:'Precision fermentation, cultivated meat, and AI-designed proteins are reaching cost thresholds that threaten conventional agriculture business models.',count:4,likelihood:'plausible'},
+  {id:'c5',type:'Driver',horizon:'H2',name:'Quantum and post-quantum technologies reshape cybersecurity',desc:'Quantum computing advances are forcing a global cryptographic transition while creating new computational capabilities in sensing and simulation.',count:3,likelihood:'uncertain'},
+  {id:'c6',type:'Tension',horizon:'H1',name:'Antimicrobial resistance approaches systemic healthcare crisis',desc:'Convergence of resistant strains, declining antibiotic pipelines, and global travel patterns creates conditions for drug-resistant pandemic emergence.',count:5,likelihood:'plausible'},
+  {id:'c7',type:'Trend',horizon:'H2',name:'Longevity science challenges social contract assumptions',desc:'Treatments targeting aging biology are moving from research to clinical application, raising questions about retirement systems, inequality, and intergenerational equity.',count:4,likelihood:'uncertain'},
+  {id:'c8',type:'Driver',horizon:'H1',name:'Critical minerals supply chains become geopolitical battleground',desc:'The clean energy transition depends on materials controlled by a small number of nations, creating strategic dependencies and accelerating resource nationalism.',count:6,likelihood:'plausible'},
+  {id:'c9',type:'Tension',horizon:'H1',name:'Digital information ecosystem fractures into parallel realities',desc:'AI-generated content, platform fragmentation, and synthetic media legislation are eroding shared epistemic ground across political and national boundaries.',count:4,likelihood:'plausible'},
+  {id:'c10',type:'Trend',horizon:'H2',name:'Space economy moves from exploration to infrastructure',desc:'Commercial satellite networks, in-space manufacturing, and lunar resource activity are transitioning space from a public science domain to contested economic terrain.',count:3,likelihood:'uncertain'},
+  {id:'c11',type:'Driver',horizon:'H1',name:'Biodiversity loss disrupts ecosystem services valuations',desc:'Accelerating species and habitat loss is forcing markets to price previously unmonitored dependencies on natural systems, creating new risk categories.',count:5,likelihood:'plausible'},
+  {id:'c12',type:'Tension',horizon:'H3',name:'Demographic decline reshapes political economy of growth',desc:'Falling fertility rates across developed and emerging economies are forcing a rethinking of GDP-oriented growth models, pension systems, and immigration policy.',count:4,likelihood:'uncertain'},
+  {id:'c13',type:'Trend',horizon:'H1',name:'Bioeconomy platforms disrupt material and chemical industries',desc:'Synthetic biology is enabling biological production of fuels, materials, and pharmaceuticals at costs that threaten incumbents in multiple industries simultaneously.',count:3,likelihood:'plausible'},
+  {id:'c14',type:'Driver',horizon:'H2',name:'Water scarcity drives agricultural and geopolitical realignment',desc:'Groundwater depletion and precipitation pattern shifts are changing which regions can sustain food production, with cascading effects on trade and stability.',count:5,likelihood:'plausible'},
+  {id:'c15',type:'Tension',horizon:'H1',name:'AI governance frameworks lag capability development',desc:'The pace of AI capability advancement is outrunning institutional capacity to assess risks, set standards, or enforce accountability across national jurisdictions.',count:6,likelihood:'uncertain'},
+  {id:'c16',type:'Trend',horizon:'H2',name:'Distributed energy reshapes utility business models',desc:'Rooftop solar, battery storage, and microgrids are enabling energy self-sufficiency for communities and businesses, challenging centralized utility economics.',count:4,likelihood:'plausible'},
+  {id:'c17',type:'Driver',horizon:'H1',name:'Aging infrastructure creates cascading failure risk',desc:'Decades of deferred maintenance in water, transport, and energy systems are creating concentrated vulnerability in cities and regions with limited fiscal capacity.',count:3,likelihood:'plausible'},
+  {id:'c18',type:'Tension',horizon:'H2',name:'Care economy labor shortage reaches structural crisis',desc:'Demographic aging is creating surging demand for care workers while supply constraints and poor compensation create chronic gaps that technology cannot fully bridge.',count:4,likelihood:'uncertain'},
+  {id:'c19',type:'Trend',horizon:'H1',name:'Health monitoring becomes continuous and ambient',desc:'Wearable and implantable sensors are enabling real-time physiological monitoring that shifts healthcare from episodic treatment to continuous prevention.',count:5,likelihood:'plausible'},
+  {id:'c20',type:'Driver',horizon:'H3',name:'Deep ocean ecosystems face unprecedented extraction pressure',desc:'Seabed mining proposals are advancing faster than ecological understanding of deep ocean systems, creating potential for irreversible damage to poorly understood biomes.',count:2,likelihood:'unlikely'},
+  {id:'c21',type:'Tension',horizon:'H1',name:'Gig economy expansion outpaces labor protection frameworks',desc:'The growth of platform-mediated work is creating large workforces outside traditional employment protections at the same moment social safety nets face demographic stress.',count:3,likelihood:'uncertain'},
+  {id:'c22',type:'Trend',horizon:'H2',name:'Circular economy transitions from niche to regulatory mandate',desc:'Extended producer responsibility, right-to-repair legislation, and waste reduction mandates are forcing product design and business model changes across manufacturing sectors.',count:4,likelihood:'plausible'},
+  {id:'c23',type:'Driver',horizon:'H1',name:'Climate litigation reshapes corporate and sovereign risk',desc:'Courts are increasingly holding corporations and governments liable for climate inaction, creating new legal risk categories that insurance and finance are beginning to price.',count:5,likelihood:'plausible'},
+  {id:'c24',type:'Tension',horizon:'H3',name:'Social isolation becomes chronic public health condition',desc:'Structural changes in work, housing, and digital interaction patterns are creating persistent loneliness at population scale, with long-term consequences for mental and physical health.',count:3,likelihood:'uncertain'},
+  {id:'c25',type:'Trend',horizon:'H2',name:'Nuclear renaissance reshapes low-carbon energy mix',desc:'Advanced and modular reactor designs are attracting serious capital and regulatory attention as grids struggle to balance intermittent renewables with baseload requirements.',count:4,likelihood:'plausible'},
+];
+
+function getVisibleInputs(tab) {
+  return inputs.filter(function(i) {
+    if (tab === 'unassigned') return !i.clusterId;
+    if (tab === 'incluster') return !!i.clusterId;
+    return true;
+  });
+}
+
+// ── RENDER ────────────────────────────────────────────────────
+function render() {
+  var cls = projectState === 'mature' ? matureClusters : clusters;
+  updateMeta();
+  renderClusters('a-cluster-content', cls);
+  renderClusters('b-cluster-content', cls);
+  renderInputList('a-input-list', inputTabA);
+  renderInputList('b-input-list', inputTabB);
+  updateBadges();
+}
+
+function updateMeta() {
+  var total = inputs.length;
+  var assigned = inputs.filter(function(i){return !!i.clusterId;}).length;
+  var unassigned = total - assigned;
+  var am = document.getElementById('a-input-meta'); if(am) am.textContent = total + ' total · ' + unassigned + ' unassigned';
+  var bm = document.getElementById('b-input-meta'); if(bm) bm.textContent = total + ' · ' + unassigned + ' unassigned';
+}
+
+function updateBadges() {
+  var cls = projectState === 'mature' ? matureClusters : clusters;
+  var ss = document.getElementById('sb-scan'); if(ss) ss.textContent = inputs.length;
+  var sc = document.getElementById('sb-cluster'); if(sc) sc.textContent = cls.length;
+}
+
+function renderClusters(elId, cls) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  if (cls.length === 0) {
+    el.style.cssText = 'display:flex;flex-direction:column;min-height:200px';
+    el.innerHTML = '<div class="empty-hero"><div style="font-size:26px;opacity:0.2">&#9651;</div><div class="empty-title">No clusters yet</div><div class="empty-desc">Drag inputs from the list into the drop zone to create your first cluster, or start from AI suggestions.</div><button class="btn btn-p" style="margin-top:6px;font-size:11px">View AI suggestions</button></div>';
+    return;
+  }
+  el.style.cssText = '';
+  if (clusterView === 'card') {
+    el.innerHTML = '<div class="canvas-grid">' + cls.map(function(c){ return clusterCardHTML(c, elId); }).join('') + '</div>';
+  } else {
+    el.innerHTML = '<div class="clist-wrapper">'
+      + '<div style="display:flex;align-items:center;padding:5px 12px;background:#fafaf8;border-bottom:0.5px solid rgba(0,0,0,0.08)">'
+      + '<div style="width:60px;font-size:9.5px;color:#bbb;font-weight:500;text-transform:uppercase;letter-spacing:0.05em">Type</div>'
+      + '<div style="flex:1;font-size:9.5px;color:#bbb;font-weight:500;text-transform:uppercase;letter-spacing:0.05em">Name</div>'
+      + '<div style="width:210px;font-size:9.5px;color:#bbb;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;text-align:right">H · Likelihood · Inputs</div>'
+      + '</div>'
+      + cls.map(function(c){ return clusterRowHTML(c, elId); }).join('')
+      + '</div>';
+  }
+}
+
+function clusterCardHTML(c, elId) {
+  var tc = 'cb-' + c.type.toLowerCase();
+  var lc = 'cp-' + c.likelihood;
+  var lbl = c.likelihood.charAt(0).toUpperCase() + c.likelihood.slice(1);
+  var count = inputs.filter(function(i){return i.clusterId===c.id;}).length;
+  var countLabel = count > 0 ? count + (count===1?' input':' inputs') : (c.count > 0 ? c.count + ' inputs' : '0 inputs');
+  return '<div class="ccard" id="cc-'+c.id+'-'+elId+'" ondragover="cardOver(event,this)" ondragleave="cardLeave(this)" ondrop="dzDrop(event,this,\''+c.id+'\')">'
+    + '<div class="ccard-hdr"><span class="cbadge '+tc+'">'+c.type+'</span><span class="ch-b">'+c.horizon+'</span></div>'
+    + '<div class="cname">'+c.name+'</div>'
+    + '<div class="cdesc">'+c.desc+'</div>'
+    + '<div class="cfoot"><span class="ccount">'+countLabel+'</span><span class="cpill '+lc+'">'+lbl+'</span></div>'
+    + '</div>';
+}
+
+function clusterRowHTML(c, elId) {
+  var tc = 'cb-' + c.type.toLowerCase();
+  var lc = 'cp-' + c.likelihood;
+  var lbl = c.likelihood.charAt(0).toUpperCase() + c.likelihood.slice(1);
+  var count = inputs.filter(function(i){return i.clusterId===c.id;}).length;
+  var countLabel = count > 0 ? count + (count===1?' input':' inputs') : (c.count > 0 ? c.count + ' inputs' : '—');
+  return '<div class="crow" id="cr-'+c.id+'-'+elId+'" ondragover="cardOver(event,this)" ondragleave="cardLeave(this)" ondrop="dzDrop(event,this,\''+c.id+'\')">'
+    + '<span class="cbadge '+tc+'" style="flex-shrink:0">'+c.type+'</span>'
+    + '<span class="crow-name">'+c.name+'</span>'
+    + '<div class="crow-meta"><span style="font-size:10px;color:#bbb">'+c.horizon+'</span><span class="cpill '+lc+'">'+lbl+'</span><span style="font-size:10.5px;color:#bbb">'+countLabel+'</span></div>'
+    + '</div>';
+}
+
+function renderInputList(listId, tab) {
+  var vis = getVisibleInputs(tab);
+  var listEl = document.getElementById(listId);
+  if (!listEl) return;
+  listEl.innerHTML = vis.map(function(inp) {
+    var assigned = inp.clusterId ? ' style="opacity:0.5"' : '';
+    return '<div class="irow" id="ir-'+inp.id+'-'+listId+'" draggable="true"'
+      + ' ondragstart="iDragStart(event,\''+inp.id+'\')"'
+      + ' ondragend="iDragEnd(event)"'
+      + assigned + '>'
+      + '<span class="drag-h">⠿</span>'
+      + '<div class="ititle">'+inp.title+'</div>'
+      + '<div class="imeta">'+inp.meta+'</div>'
+      + '<div class="imore">···</div>'
+      + '</div>';
+  }).join('');
+}
+
+// ── DRAG & DROP ───────────────────────────────────────────────
+function iDragStart(e, id) {
+  dragInputId = id;
+  var inp = inputs.find(function(i){return i.id===id;});
+  e.dataTransfer.effectAllowed = 'move';
+  var ghost = document.getElementById('drag-ghost');
+  ghost.textContent = inp.title;
+  ghost.style.display = 'block';
+  document.addEventListener('dragover', moveGhost);
+  setTimeout(function(){
+    var row = document.getElementById(e.target.id);
+    if (row) row.classList.add('dragging');
+  }, 0);
+}
+
+function moveGhost(e) {
+  var ghost = document.getElementById('drag-ghost');
+  ghost.style.left = (e.clientX + 14) + 'px';
+  ghost.style.top = (e.clientY - 16) + 'px';
+}
+
+function iDragEnd(e) {
+  dragInputId = null;
+  document.getElementById('drag-ghost').style.display = 'none';
+  document.removeEventListener('dragover', moveGhost);
+  document.querySelectorAll('.irow').forEach(function(el){el.classList.remove('dragging');});
+  document.querySelectorAll('.drop-target').forEach(function(el){el.classList.remove('drop-target');});
+  document.querySelectorAll('.drag-over').forEach(function(el){el.classList.remove('drag-over');});
+}
+
+function dzOver(e, el) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  el.classList.add('drag-over');
+}
+function dzLeave(el) { el.classList.remove('drag-over'); }
+
+function cardOver(e, el) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  el.classList.add('drop-target');
+}
+function cardLeave(el) { el.classList.remove('drop-target'); }
+
+function dzDrop(e, el, clusterId) {
+  e.preventDefault();
+  el.classList.remove('drag-over','drop-target');
+  if (!dragInputId) return;
+  var inp = inputs.find(function(i){return i.id===dragInputId;});
+  if (!inp) return;
+
+  if (clusterId === null) {
+    // Drop on main DZ — create new cluster
+    var name = prompt('Name this cluster:', inp.title.substring(0,50));
+    if (!name) return;
+    var newC = {
+      id: 'c_' + Date.now(),
+      type: 'Trend',
+      horizon: inp.meta.split('· ')[1] || 'H1',
+      name: name,
+      desc: 'Newly created cluster.',
+      count: 0,
+      likelihood: 'uncertain'
+    };
+    clusters.push(newC);
+    inp.clusterId = newC.id;
+    if (projectState === 'empty') projectState = 'empty'; // keep state but clusters now exist
+    showToast('Cluster "' + name + '" created with 1 input');
+  } else {
+    // Drop on existing cluster
+    inp.clusterId = clusterId;
+    var cls = projectState === 'mature' ? matureClusters : clusters;
+    var c = cls.find(function(x){return x.id===clusterId;});
+    showToast('Input added to "' + (c ? c.name.substring(0,40) : 'cluster') + '"');
+  }
+  render();
+}
+
+// ── UI CONTROLS ───────────────────────────────────────────────
+
+
+function toggleProject() {
+  var stages = document.getElementById('project-stages');
+  var chevron = document.getElementById('project-chevron');
+  if (!stages) return;
+  var open = stages.style.display !== 'none';
+  stages.style.display = open ? 'none' : '';
+  chevron.innerHTML = open
+    ? '<path d="M5 4l2.5 2.5L10 4" stroke="#888" stroke-width="1.3" stroke-linecap="round" transform="rotate(-90 6.5 6.5)"/>'
+    : '<path d="M4 5l2.5 2.5L9 5" stroke="#888" stroke-width="1.3" stroke-linecap="round"/>';
+}
+
+function goToView(view) {
+  document.querySelectorAll('.variant').forEach(function(el){el.classList.remove('active');});
+  document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active');});
+  document.querySelectorAll('.ss-btn').forEach(function(el){el.classList.remove('active');});
+
+  if (view === 'overview') {
+    document.getElementById('view-overview').classList.add('active');
+    var n = document.getElementById('nav-overview'); if(n) n.classList.add('active');
+    var b = document.getElementById('nav-btn-overview'); if(b) b.classList.add('active');
+
+  } else if (view === 'scan') {
+    document.getElementById('view-scan').classList.add('active');
+    var n = document.getElementById('nav-scan'); if(n) n.classList.add('active');
+    initScanView();
+
+  } else if (view === 'cluster' || view === 'cluster-a') {
+    var v = activeVariant === 'b' ? 'var-b' : 'var-a';
+    document.getElementById(v).classList.add('active');
+    var n = document.getElementById('nav-cluster'); if(n) n.classList.add('active');
+    var b = document.getElementById('sbtn-' + (activeVariant === 'b' ? 'b' : 'a')); if(b) b.classList.add('active');
+
+  } else if (view === 'cluster-b') {
+    document.getElementById('var-b').classList.add('active');
+    var n = document.getElementById('nav-cluster'); if(n) n.classList.add('active');
+    document.getElementById('sbtn-b').classList.add('active');
+    activeVariant = 'b';
+
+  } else if (view === 'inbox') {
+    document.getElementById('view-inbox').classList.add('active');
+    var n = document.getElementById('nav-inbox'); if(n) n.classList.add('active');
+    renderInboxSuggested();
+
+  } else if (view === 'account') {
+    document.getElementById('view-account').classList.add('active');
+    renderAccountSources();
+
+  } else if (view === 'dashboard') {
+    var n = document.getElementById('nav-dashboard'); if(n) n.classList.add('active');
+  }
+}
+
+function setVariant(v, btn) {
+  activeVariant = v;
+  document.querySelectorAll('.variant').forEach(function(el){el.classList.remove('active');});
+  document.querySelectorAll('.ss-btn').forEach(function(el){el.classList.remove('active');});
+  document.getElementById('var-'+v).classList.add('active');
+  btn.classList.add('active');
+}
+
+function setProjectState(s, btn) {
+  projectState = s;
+  document.querySelectorAll('.ss-state-btn[id^="ps-"]').forEach(function(el){el.classList.remove('active');});
+  btn.classList.add('active');
+  // Reset assignments when switching states
+  inputs.forEach(function(i){i.clusterId=null;});
+  render();
+}
+
+function setClusterView(v, btn) {
+  clusterView = v;
+  document.querySelectorAll('.ss-state-btn[id^="cv-"]').forEach(function(el){el.classList.remove('active');});
+  btn.classList.add('active');
+  setClusterViewDirect(v);
+}
+
+function setClusterViewDirect(v) {
+  clusterView = v;
+  ['a','b'].forEach(function(vt) {
+    document.getElementById(vt+'-btn-card').classList.toggle('active', v==='card');
+    document.getElementById(vt+'-btn-list').classList.toggle('active', v==='list');
+  });
+  document.getElementById('cv-card').classList.toggle('active', v==='card');
+  document.getElementById('cv-list').classList.toggle('active', v==='list');
+  var cls = projectState === 'mature' ? matureClusters : clusters;
+  renderClusters('a-cluster-content', cls);
+  renderClusters('b-cluster-content', cls);
+}
+
+function setInputTab(variant, tab, btn) {
+  if (variant === 'a') inputTabA = tab;
+  else inputTabB = tab;
+  var prefix = variant + '-tab-';
+  ['all','unassigned','incluster'].forEach(function(t) {
+    document.getElementById(prefix+t).classList.toggle('active', t===tab);
+  });
+  renderInputList(variant+'-input-list', tab);
+}
+
+function filterClusters(q, variant) {
+  var cls = (projectState === 'mature' ? matureClusters : clusters).filter(function(c){
+    return c.name.toLowerCase().includes(q.toLowerCase());
+  });
+  renderClusters(variant+'-cluster-content', cls);
+}
+
+function filterInputs(q, variant) {
+  var tab = variant === 'a' ? inputTabA : inputTabB;
+  var vis = getVisibleInputs(tab).filter(function(i){
+    return i.title.toLowerCase().includes(q.toLowerCase());
+  });
+  var listId = variant + '-input-list';
+  listEl.innerHTML = vis.map(function(inp) {
+    var assigned = inp.clusterId ? ' style="opacity:0.5"' : '';
+    return '<div class="irow" draggable="true"'
+      + ' ondragstart="iDragStart(event,\''+inp.id+'\')"'
+      + ' ondragend="iDragEnd(event)"'
+      + assigned + '>'
+      + '<span class="drag-h">⠿</span>'
+      + '<div class="ititle">'+inp.title+'</div>'
+      + '<div class="imeta">'+inp.meta+'</div>'
+      + '<div class="imore">···</div>'
+      + '</div>';
+  }).join('');
+}
+
+function showNewClusterModal() {
+  var name = prompt('New cluster name:');
+  if (!name) return;
+  var newC = {id:'c_'+Date.now(),type:'Trend',horizon:'H1',name:name,desc:'',count:0,likelihood:'uncertain'};
+  clusters.push(newC);
+  if (projectState === 'mature') matureClusters.push(newC);
+  showToast('Cluster "' + name + '" created');
+  render();
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function(){ t.style.opacity='0'; }, 2200);
+}
+
+// ── RESIZE ────────────────────────────────────────────────────
+(function(){
+  var h=document.getElementById('a-resize'), p=document.getElementById('a-input-panel');
+  var drag=false, sY, sH;
+  h.addEventListener('mousedown',function(e){drag=true;sY=e.clientY;sH=p.offsetHeight;document.body.style.cursor='ns-resize';document.body.style.userSelect='none';e.preventDefault();});
+  document.addEventListener('mousemove',function(e){if(!drag)return;p.style.height=Math.min(560,Math.max(100,sH+(sY-e.clientY)))+'px';});
+  document.addEventListener('mouseup',function(){drag=false;document.body.style.cursor='';document.body.style.userSelect='';});
+})();
+(function(){
+  var h=document.getElementById('b-resize'), p=document.getElementById('b-input-panel');
+  var drag=false, sX, sW;
+  h.addEventListener('mousedown',function(e){drag=true;sX=e.clientX;sW=p.offsetWidth;document.body.style.cursor='ew-resize';document.body.style.userSelect='none';e.preventDefault();});
+  document.addEventListener('mousemove',function(e){if(!drag)return;p.style.width=Math.min(540,Math.max(180,sW+(e.clientX-sX)))+'px';});
+  document.addEventListener('mouseup',function(){drag=false;document.body.style.cursor='';document.body.style.userSelect='';});
+})();
+
+render();
+
+
+
+// ── SOURCES JS ────────────────────────────────────────────────
+
+var allSources = [
+  {id:'s1',name:'MIT Technology Review',url:'technologyreview.com/feed',domain:'tech',type:'curated',cred:'institutional',on:true},
+  {id:'s2',name:'arXiv cs.AI',url:'arxiv.org/rss/cs.AI',domain:'tech',type:'curated',cred:'institutional',on:true},
+  {id:'s3',name:'arXiv cs.CY',url:'arxiv.org/rss/cs.CY',domain:'tech',type:'curated',cred:'institutional',on:true},
+  {id:'s4',name:'Wired',url:'wired.com/feed/rss',domain:'tech',type:'curated',cred:'specialist',on:true},
+  {id:'s5',name:'The Verge',url:'theverge.com/rss/index.xml',domain:'tech',type:'curated',cred:'specialist',on:false},
+  {id:'s6',name:'Ars Technica',url:'arstechnica.com/feed',domain:'tech',type:'curated',cred:'specialist',on:true},
+  {id:'s7',name:'IMF Blog',url:'imf.org/en/Blogs/rss',domain:'econ',type:'curated',cred:'institutional',on:true},
+  {id:'s8',name:'OECD Insights',url:'oecdinsights.org/feed',domain:'econ',type:'curated',cred:'institutional',on:true},
+  {id:'s9',name:'FT Economics',url:'ft.com/economics?format=rss',domain:'econ',type:'curated',cred:'specialist',on:true},
+  {id:'s10',name:'arXiv econ.GN',url:'arxiv.org/rss/econ.GN',domain:'econ',type:'curated',cred:'institutional',on:true},
+  {id:'s11',name:'Carbon Brief',url:'carbonbrief.org/feed',domain:'env',type:'curated',cred:'specialist',on:true},
+  {id:'s12',name:'Nature Climate Change',url:'nature.com/nclimate.rss',domain:'env',type:'curated',cred:'institutional',on:true},
+  {id:'s13',name:'Inside Climate News',url:'insideclimatenews.org/feed',domain:'env',type:'curated',cred:'specialist',on:false},
+  {id:'s14',name:'PubMed Latest',url:'ncbi.nlm.nih.gov/rss/pubmed',domain:'health',type:'curated',cred:'institutional',on:true},
+  {id:'s15',name:'STAT News',url:'statnews.com/feed',domain:'health',type:'curated',cred:'specialist',on:true},
+  {id:'u1',name:'CleanTechnica',url:'cleantechnica.com/feed',domain:'tech',type:'user',cred:'unvetted',on:true},
+  {id:'u2',name:'EV Adoption Weekly',url:'evadoptionweekly.substack.com/feed',domain:'tech',type:'user',cred:'unvetted',on:true},
+  {id:'u3',name:'Energy Policy Blog',url:'energypolicyblog.com/rss',domain:null,type:'user',cred:'unvetted',on:false},
+];
+
+var projectDomain = 'tech';
+var credLabels = {institutional:'Institutional',specialist:'Specialist',general:'General',unvetted:'Unvetted'};
+var credClasses = {institutional:'src-cred-inst',specialist:'src-cred-spec',general:'src-cred-gen',unvetted:'src-cred-unvet'};
+var domainLabels = {tech:'Technology & AI',econ:'Economy',env:'Environment',health:'Health & Life Sci',soc:'Society',pol:'Policy'};
+
+function getProjectSources() {
+  return allSources.filter(function(s) {
+    return s.domain === projectDomain || s.type === 'user';
+  });
+}
+
+function srcToggleHTML(s) {
+  return '<div class="src-toggle ' + (s.on ? 'on' : 'off') + '" data-id="' + s.id + '" data-action="toggle"><div class="src-toggle-thumb"></div></div>';
+}
+
+function renderProjectSources() {
+  var el = document.getElementById('project-sources-list');
+  if (!el) return;
+  var srcs = getProjectSources();
+  var curated = srcs.filter(function(s){return s.type === 'curated';});
+  var user = srcs.filter(function(s){return s.type === 'user';});
+  var h = '';
+  h += '<div class="src-section-lbl">Curated <span style="color:#bbb;font-weight:400;text-transform:none;letter-spacing:0">' + curated.length + '</span></div>';
+  curated.forEach(function(s) {
+    h += '<div class="src-row">'
+      + srcToggleHTML(s)
+      + '<span class="src-name' + (s.on ? '' : ' off') + '">' + s.name + '</span>'
+      + '<span class="src-cred ' + credClasses[s.cred] + '">' + credLabels[s.cred] + '</span>'
+      + '</div>';
+  });
+  h += '<div class="src-section-lbl" style="margin-top:6px">My sources <span style="color:#bbb;font-weight:400;text-transform:none;letter-spacing:0">' + user.length + '</span></div>';
+  if (user.length === 0) {
+    h += '<div style="font-size:11.5px;color:#bbb;padding:6px 0">No custom sources added yet.</div>';
+  } else {
+    user.forEach(function(s) {
+      h += '<div class="src-row">'
+        + srcToggleHTML(s)
+        + '<span class="src-name' + (s.on ? '' : ' off') + '">' + s.name + '</span>'
+        + '<span class="src-delete" data-id="' + s.id + '" data-action="delete">&#10005;</span>'
+        + '</div>';
+    });
+  }
+  el.innerHTML = h;
+}
+
+function renderDashSources() {
+  var el = document.getElementById('dash-sources-body');
+  if (!el) return;
+  var srcs = allSources.filter(function(s) {
+    if (dashTab === 'curated') return s.type === 'curated';
+    if (dashTab === 'user') return s.type === 'user';
+    return true;
+  }).filter(function(s) {
+    if (!dashSearchQ) return true;
+    return s.name.toLowerCase().indexOf(dashSearchQ.toLowerCase()) > -1 || (s.url || '').toLowerCase().indexOf(dashSearchQ.toLowerCase()) > -1;
+  });
+  var grouped = {};
+  var domainOrder = ['tech','econ','env','health','soc','pol',null];
+  srcs.forEach(function(s) {
+    var d = s.domain || '_none';
+    if (!grouped[d]) grouped[d] = [];
+    grouped[d].push(s);
+  });
+  var h = '';
+  domainOrder.forEach(function(d) {
+    var key = d || '_none';
+    var grp = grouped[key];
+    if (!grp || grp.length === 0) return;
+    var dLabel = d ? (domainLabels[d] || d) : 'No domain (all projects)';
+    var onCount = grp.filter(function(s){return s.on;}).length;
+    h += '<div class="dash-domain-section">';
+    h += '<div class="dash-domain-hdr"><span class="dash-domain-name">' + dLabel + '</span><span class="dash-domain-count">' + onCount + ' of ' + grp.length + ' active</span></div>';
+    grp.forEach(function(s) {
+      var userTag = s.type === 'user' ? '<span class="src-user-tag">My source</span>' : '';
+      var delBtn = s.type === 'user' ? '<span class="src-delete" data-id="' + s.id + '" data-action="dash-delete" title="Remove">&#10005;</span>' : '';
+      h += '<div class="dash-src-card' + (s.on ? '' : ' off') + '">'
+        + '<div class="dash-src-info"><div class="dash-src-name">' + s.name + '</div><div class="dash-src-url">' + s.url + '</div></div>'
+        + '<span class="src-cred ' + credClasses[s.cred] + '">' + credLabels[s.cred] + '</span>'
+        + userTag + delBtn
+        + '<div class="dash-src-toggle ' + (s.on ? 'on' : 'off') + '" data-id="' + s.id + '" data-action="dash-toggle"><div class="dash-src-toggle-thumb"></div></div>'
+        + '</div>';
+    });
+    h += '</div>';
+  });
+  if (!h) h = '<div style="color:#bbb;font-size:13px;text-align:center;padding:32px">No sources found.</div>';
+  el.innerHTML = h;
+}
+
+// Event delegation — handles all source interactions without inline onclick
+document.addEventListener('click', function(e) {
+  var el = e.target.closest('[data-action]');
+  if (!el) return;
+  var action = el.getAttribute('data-action');
+  var id = el.getAttribute('data-id');
+  var src = allSources.find(function(s){return s.id === id;});
+  if (action === 'toggle' && src) {
+    src.on = !src.on;
+    renderProjectSources();
+    renderDashSources();
+  } else if (action === 'delete' && src) {
+    allSources = allSources.filter(function(s){return s.id !== id;});
+    renderProjectSources();
+    renderDashSources();
+    showToast('Source removed');
+  } else if (action === 'dash-toggle' && src) {
+    src.on = !src.on;
+    renderDashSources();
+    renderProjectSources();
+  } else if (action === 'dash-delete' && src) {
+    allSources = allSources.filter(function(s){return s.id !== id;});
+    renderDashSources();
+    renderProjectSources();
+    showToast('Source removed');
+  }
+});
+
+var dashTab = 'all';
+var dashSearchQ = '';
+
+function setDashTab(tab, btn) {
+  dashTab = tab;
+  document.querySelectorAll('[id^="dtab-"]').forEach(function(el){
+    el.style.color='#bbb'; el.style.borderBottomColor='transparent'; el.style.fontWeight='400';
+  });
+  btn.style.color='#111'; btn.style.borderBottomColor='#111'; btn.style.fontWeight='500';
+  renderDashSources();
+}
+
+function filterDashSources(q) {
+  dashSearchQ = q;
+  renderDashSources();
+}
+
+var addSourceContext = 'project';
+var selectedDomain = 'none';
+var feedPreviews = {
+  'technologyreview.com': 'MIT Technology Review',
+  'arxiv.org': 'arXiv Feed',
+  'wired.com': 'Wired',
+  'nature.com': 'Nature',
+  'ft.com': 'Financial Times',
+  'cleantechnica.com': 'CleanTechnica',
+  'substack.com': 'Substack Newsletter',
+  'reuters.com': 'Reuters',
+  'bbc.co.uk': 'BBC News',
+  'theguardian.com': 'The Guardian',
+};
+
+function openAddSource(context) {
+  addSourceContext = context;
+  selectedDomain = 'none';
+  document.getElementById('add-src-url').value = '';
+  document.getElementById('add-src-preview-wrap').style.display = 'none';
+  if (context === 'project') {
+    selectDomain('tech', document.getElementById('dtag-tech'));
+  } else {
+    selectDomain('none', document.getElementById('dtag-none'));
+  }
+  document.getElementById('add-source-modal').classList.remove('hidden');
+}
+
+function closeAddSource() {
+  document.getElementById('add-source-modal').classList.add('hidden');
+}
+
+function handleModalBackdropClick(e) {
+  if (e.target === document.getElementById('add-source-modal')) closeAddSource();
+}
+
+function selectDomain(d, btn) {
+  selectedDomain = d;
+  document.querySelectorAll('.modal-domain-tag').forEach(function(el){el.classList.remove('selected');});
+  if (btn) btn.classList.add('selected');
+}
+
+function previewSource(url) {
+  var wrap = document.getElementById('add-src-preview-wrap');
+  if (!url || url.length < 8) { wrap.style.display='none'; return; }
+  var domain = url.replace(/https?:\/\//,'').split('/')[0];
+  var baseDomain = Object.keys(feedPreviews).find(function(k){ return domain.indexOf(k) > -1; });
+  var name = baseDomain ? feedPreviews[baseDomain] : domain;
+  document.getElementById('add-src-preview-name').textContent = name;
+  document.getElementById('add-src-preview-url').textContent = url;
+  document.getElementById('add-src-preview-wrap').style.display = 'block';
+}
+
+function submitAddSource() {
+  var url = document.getElementById('add-src-url').value.trim();
+  if (!url) { document.getElementById('add-src-url').focus(); return; }
+  var domain = url.replace(/https?:\/\//,'').split('/')[0];
+  var baseDomain = Object.keys(feedPreviews).find(function(k){ return domain.indexOf(k) > -1; });
+  var name = baseDomain ? feedPreviews[baseDomain] : domain;
+  var newSrc = {
+    id: 'u' + Date.now(),
+    name: name,
+    url: domain,
+    domain: selectedDomain === 'none' ? null : selectedDomain,
+    type: 'user',
+    cred: 'unvetted',
+    on: true
+  };
+  allSources.push(newSrc);
+  closeAddSource();
+  renderProjectSources();
+  renderDashSources();
+  showToast('"' + name + '" added as a source');
+}
+
+
+var accountTab = 'all';
+var accountSearchQ = '';
+
+function setAccountTab(tab, btn) {
+  accountTab = tab;
+  document.querySelectorAll('[id^="atab-"]').forEach(function(el) {
+    el.style.color = '#bbb';
+    el.style.borderBottomColor = 'transparent';
+    el.style.fontWeight = '400';
+  });
+  btn.style.color = '#111';
+  btn.style.borderBottomColor = '#111';
+  btn.style.fontWeight = '500';
+  renderAccountSources();
+}
+
+function filterAccountSources(q) {
+  accountSearchQ = q;
+  renderAccountSources();
+}
+
+function renderAccountSources() {
+  var el = document.getElementById('account-sources-list');
+  if (!el) return;
+  var srcs = allSources.filter(function(s) {
+    if (accountTab === 'curated') return s.type === 'curated';
+    if (accountTab === 'user') return s.type === 'user';
+    return true;
+  }).filter(function(s) {
+    if (!accountSearchQ) return true;
+    return s.name.toLowerCase().indexOf(accountSearchQ.toLowerCase()) > -1
+      || (s.url||'').toLowerCase().indexOf(accountSearchQ.toLowerCase()) > -1;
+  });
+  var grouped = {};
+  var domainOrder = ['tech','econ','env','health','soc','pol',null];
+  srcs.forEach(function(s) {
+    var d = s.domain || '_none';
+    if (!grouped[d]) grouped[d] = [];
+    grouped[d].push(s);
+  });
+  var h = '';
+  domainOrder.forEach(function(d) {
+    var key = d || '_none';
+    var grp = grouped[key];
+    if (!grp || grp.length === 0) return;
+    var dLabel = d ? (domainLabels[d] || d) : 'No domain';
+    var onCount = grp.filter(function(s){return s.on;}).length;
+    h += '<div style="margin-bottom:12px">';
+    h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid rgba(0,0,0,0.08);margin-bottom:4px">';
+    h += '<span style="font-size:11px;font-weight:500;color:#888">' + dLabel + '</span>';
+    h += '<span style="font-size:11px;color:#bbb">' + onCount + ' of ' + grp.length + ' active</span>';
+    h += '</div>';
+    grp.forEach(function(s) {
+      var userTag = s.type === 'user' ? '<span style="font-size:9.5px;padding:1px 5px;border-radius:3px;background:rgba(0,0,0,0.05);color:#888;margin-left:4px">My source</span>' : '';
+      var delBtn = s.type === 'user' ? '<span class="src-delete" data-id="' + s.id + '" data-action="dash-delete" style="margin-left:4px">&#10005;</span>' : '';
+      h += '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid rgba(0,0,0,0.05)">';
+      h += '<div style="flex:1;min-width:0"><span style="font-size:12.5px;color:#111">' + s.name + '</span>' + userTag + '<div style="font-size:11px;color:#bbb;margin-top:1px">' + s.url + '</div></div>';
+      h += '<span class="src-cred ' + credClasses[s.cred] + '">' + credLabels[s.cred] + '</span>';
+      h += delBtn;
+      h += '<div class="dash-src-toggle ' + (s.on?'on':'off') + '" data-id="' + s.id + '" data-action="dash-toggle"><div class="dash-src-toggle-thumb"></div></div>';
+      h += '</div>';
+    });
+    h += '</div>';
+  });
+  el.innerHTML = h;
+}
+
+// ── END SOURCES JS ────────────────────────────────────────────
+
+
+// ── SCAN MODES & AI SUGGESTED JS ─────────────────────────────
+
+var currentScanMode = 'inputs';
+
+var aiCandidates = {
+  emerging: [
+    {id:'c1',title:'Rare Earth Bottleneck Threatens US EV Supply Chain Independence',url:'#',summary:'New analysis reveals that 85% of rare earth processing capacity sits in China, creating structural vulnerability in EV battery supply chains that domestic manufacturing cannot address within a 5-year horizon.',source:'MIT Technology Review',cred:'Institutional',steepled:['Eco','Pol'],horizon:'H2',date:'Jul 1'},
+    {id:'c2',title:'Vehicle-to-Grid Technology Reaches Commercial Viability in Germany',url:'#',summary:'Pilot programs across Bavaria show bidirectional charging enabling EVs to supply 15% of household peak demand, fundamentally reframing EVs as distributed energy assets rather than consumption endpoints.',source:'Carbon Brief',cred:'Specialist',steepled:['Tech','Env'],horizon:'H2',date:'Jun 30'},
+    {id:'c3',title:'Insurance Actuaries Struggle to Model EV Fire Risk',url:'#',summary:'Lithium battery thermal runaway events present novel risk profiles that existing actuarial models cannot accurately price, creating potential market failure in EV insurance and slowing fleet adoption.',source:'FT Economics',cred:'Specialist',steepled:['Eco','Leg'],horizon:'H1',date:'Jun 29'},
+    {id:'c4',title:'Rural Communities Developing Off-Grid EV Charging Cooperatives',url:'#',summary:'Energy cooperatives in Montana and Wyoming are installing solar-battery charging hubs that bypass grid constraints entirely, creating a parallel adoption pathway that sidesteps infrastructure bottlenecks.',source:'Inside Climate News',cred:'Specialist',steepled:['Soc','Env'],horizon:'H1',date:'Jun 28'},
+  ],
+  reinforcing: [
+    {id:'c5',title:'GM Accelerates Ultium Platform Rollout After Cost Breakthroughs',url:'#',summary:'General Motors has cut Ultium cell costs by 40% through manufacturing process improvements, bringing the platform to price parity with ICE equivalents two years ahead of schedule.',source:'Wired',cred:'Specialist',steepled:['Tech','Eco'],horizon:'H1',clusterMatch:'Legacy automakers accelerating EV platform transitions',date:'Jul 1'},
+    {id:'c6',title:'Chinese EV Exports Hit Record High Despite Tariff Headwinds',url:'#',summary:'BYD and SAIC exported 380,000 EVs in Q2 2026 despite EU tariffs, with Southeast Asian markets absorbing 60% of volume and establishing China as the dominant global EV exporter.',source:'arXiv econ.GN',cred:'Institutional',steepled:['Eco','Pol'],horizon:'H1',clusterMatch:'China leading global shift toward electric mobility',date:'Jun 30'},
+    {id:'c7',title:'Federal Charging Infrastructure Act Advances Through Senate Committee',url:'#',summary:'The bipartisan bill allocates $8.2 billion for rural and underserved charging corridors, with funding contingent on states meeting interoperability standards by 2027.',source:'MIT Technology Review',cred:'Institutional',steepled:['Pol','Tech'],horizon:'H1',clusterMatch:'Local governments investing in EV infrastructure expansion',date:'Jun 29'},
+    {id:'c8',title:'Consumer EV Satisfaction Scores Reach All-Time High in J.D. Power Study',url:'#',summary:'2026 EV owners report 23% higher satisfaction than ICE vehicle owners for the first time, driven by software improvements and expanded charging network reliability.',source:'Wired',cred:'Specialist',steepled:['Soc','Tech'],horizon:'H1',clusterMatch:'Consumer enthusiasm driving the EV market surge',date:'Jun 28'},
+    {id:'c9',title:'Battery Recycling Capacity Investments Double Year-Over-Year',url:'#',summary:'Announced battery recycling plant capacity reached 2.4 million metric tonnes annually in H1 2026, signaling that the closed-loop materials economy is approaching commercial scale.',source:'arXiv cs.AI',cred:'Institutional',steepled:['Env','Eco'],horizon:'H2',clusterMatch:'Battery cost curves continue downward pressure on vehicle price',date:'Jun 27'},
+  ]
+};
+
+// Inbox-level candidates (cross-project)
+var inboxCandidates = [
+  {title:'China and the West Are Taking Opposite Paths on EV Battery Recycling',project:'EV Adoption',summary:'Diverging regulatory approaches to battery end-of-life are creating incompatible recycling ecosystems that will shape global supply chain architecture through 2035.',source:'MIT Technology Review',steepled:['Eco','Tech','Env'],horizon:'H2',date:'Jun 24'},
+  {title:'AI Memory Startup Engram Raised $98M to Help Companies Spend Less on AI',project:'Future of data centers',summary:'Engram\'s memory compression approach could reduce inference costs by 60%, with significant implications for data center energy consumption and AI infrastructure economics.',source:'Wired',steepled:['Tech','Eco'],horizon:'H1',date:'Jun 24'},
+  {title:'STAT+: Exclusive — Mystery Man Gets Experimental GLP-1',project:'GLPs',summary:'A wealthy patient\'s access to an unapproved GLP-1 variant raises questions about equitable access to longevity interventions and the shadow market for experimental therapeutics.',source:'STAT News',steepled:['Soc','Eth'],horizon:'H1',date:'Jun 23'},
+  {title:'Oracle\'s 21,000 Layoffs Help Drive Its Debt-Fueled AI Investments',project:'Future of data centers',summary:'Oracle is redirecting $12B in labor savings toward AI infrastructure, establishing a pattern where workforce reduction directly funds computational capacity expansion.',source:'arXiv econ.GN',steepled:['Eco','Tech'],horizon:'H1',date:'Jun 23'},
+  {title:'The AI-Powered World Cup Runs on Thousands of Data Workers',project:'Future of data centers',summary:'FIFA\'s AI-enhanced broadcast relies on a hidden workforce of 4,000 data annotators, revealing the human infrastructure underpinning AI sports production.',source:'Wired',steepled:['Tech','Soc'],horizon:'H1',date:'Jun 23'},
+  {title:'Carbon Border Adjustment Mechanism Reshapes Steel Trade Flows',project:'Future of autonomous warfare',summary:'Early CBAM data shows 34% reduction in high-emission steel imports to EU, with manufacturing shifting to Turkey and India as intermediate producers.',source:'FT Economics',steepled:['Eco','Pol','Env'],horizon:'H2',date:'Jun 22'},
+];
+
+function setScanMode(mode) {
+  currentScanMode = mode;
+  var inputsTab = document.getElementById('smode-inputs');
+  var suggestedTab = document.getElementById('smode-suggested');
+  var inputsMode = document.getElementById('scan-inputs-mode');
+  var suggestedMode = document.getElementById('scan-suggested-mode');
+  if (!inputsTab) return;
+  if (mode === 'inputs') {
+    inputsTab.style.borderBottomColor = '#111';
+    inputsTab.style.color = '#111';
+    inputsTab.style.fontWeight = '500';
+    suggestedTab.style.borderBottomColor = 'transparent';
+    suggestedTab.style.color = '#bbb';
+    suggestedTab.style.fontWeight = '400';
+    inputsMode.style.display = 'flex';
+    suggestedMode.style.display = 'none';
+  } else {
+    suggestedTab.style.borderBottomColor = '#111';
+    suggestedTab.style.color = '#111';
+    suggestedTab.style.fontWeight = '500';
+    inputsTab.style.borderBottomColor = 'transparent';
+    inputsTab.style.color = '#888';
+    inputsTab.style.fontWeight = '400';
+    inputsMode.style.display = 'none';
+    suggestedMode.style.display = 'flex';
+    renderAiSuggested();
+  }
+}
+
+function renderAiSuggested() {
+  var el = document.getElementById('ai-suggested-list');
+  if (!el) return;
+  var dismissed = {};
+  var promoted = {};
+  var h = '';
+
+  // Emerging section
+  h += '<div class="section-hdr">';
+  h += '<span class="section-hdr-label">Emerging</span>';
+  h += '<span class="section-hdr-pill pill-emerging">Novel signals</span>';
+  h += '<span class="section-hdr-desc">Distant from your existing clusters — potential new directions</span>';
+  h += '</div>';
+
+  aiCandidates.emerging.forEach(function(cd) {
+    if (dismissed[cd.id] || promoted[cd.id]) return;
+    h += renderCandCard(cd, 'emerging');
+  });
+
+  h += '<div class="section-divider"></div>';
+
+  // Reinforcing section
+  h += '<div class="section-hdr">';
+  h += '<span class="section-hdr-label">Reinforcing</span>';
+  h += '<span class="section-hdr-pill pill-reinforcing">Confirms existing clusters</span>';
+  h += '<span class="section-hdr-desc">Closely related to signals and clusters you\'ve already built</span>';
+  h += '</div>';
+
+  aiCandidates.reinforcing.forEach(function(cd) {
+    if (dismissed[cd.id] || promoted[cd.id]) return;
+    h += renderCandCard(cd, 'reinforcing');
+  });
+
+  el.innerHTML = h;
+}
+
+function renderCandCard(cd, type) {
+  var tags = (cd.steepled || []).map(function(t){
+    return '<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:rgba(0,0,0,0.06);color:#888">' + t + '</span>';
+  }).join(' ');
+  var clusterMatch = cd.clusterMatch
+    ? '<div class="cand-cluster-match">&#8594; Closest to: ' + cd.clusterMatch + '</div>'
+    : '';
+  return '<div class="cand-card ' + type + '" id="cand-' + cd.id + '">'
+    + '<div class="cand-body">'
+    + '<div class="cand-title"><a href="' + cd.url + '">' + cd.title + '</a></div>'
+    + '<div class="cand-summary">' + cd.summary + '</div>'
+    + '<div class="cand-meta">'
+    + '<span class="cand-source">' + cd.source + '</span>'
+    + '<span class="cand-source-cred">' + cd.cred + '</span>'
+    + tags
+    + '<span class="cand-date">' + cd.date + '</span>'
+    + '</div>'
+    + clusterMatch
+    + '</div>'
+    + '<div class="cand-actions">'
+    + '<button class="cand-promote" data-action="promote" data-id="' + cd.id + '">Add as input</button>'
+    + '<button class="cand-dismiss" data-action="dismiss-cand" data-id="' + cd.id + '">Dismiss</button>'
+    + '</div>'
+    + '</div>';
+}
+
+function renderInboxSuggested() {
+  var el = document.getElementById('inbox-suggested-list');
+  if (!el) return;
+  var h = '';
+  inboxCandidates.forEach(function(cd) {
+    var tags = (cd.steepled || []).map(function(t){
+      return '<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:rgba(0,0,0,0.06);color:#888">' + t + '</span>';
+    }).join(' ');
+    h += '<div class="inbox-cand">'
+      + '<div class="inbox-cand-body">'
+      + '<div class="inbox-cand-title">' + cd.title + '</div>'
+      + '<div class="inbox-cand-project">&#8594; ' + cd.project + '</div>'
+      + '<div class="inbox-cand-summary">' + cd.summary + '</div>'
+      + '<div class="inbox-cand-meta">'
+      + '<span style="font-size:11px;color:#888">' + cd.source + '</span>'
+      + tags
+      + '<span style="font-size:10.5px;color:#bbb">' + cd.date + '</span>'
+      + '</div>'
+      + '</div>'
+      + '<div class="inbox-cand-actions">'
+      + '<button class="cand-promote" data-action="inbox-promote" data-title="' + cd.title.replace(/"/g,'&quot;') + '">Add to project</button>'
+      + '<button class="cand-dismiss" data-action="inbox-dismiss" data-title="' + cd.title.replace(/"/g,'&quot;') + '">Dismiss</button>'
+      + '</div>'
+      + '</div>';
+  });
+  el.innerHTML = h;
+}
+
+// Scanning prefs drawer
+function openScanPrefs() {
+  document.getElementById('scan-prefs-backdrop').style.display = 'block';
+  document.getElementById('scan-prefs-drawer').style.display = 'flex';
+  renderDrawerSources();
+}
+
+function closeScanPrefs() {
+  document.getElementById('scan-prefs-backdrop').style.display = 'none';
+  document.getElementById('scan-prefs-drawer').style.display = 'none';
+}
+
+function renderDrawerSources() {
+  var el = document.getElementById('drawer-sources-list');
+  if (!el) return;
+  var srcs = allSources.filter(function(s) {
+    return s.domain === projectDomain || s.type === 'user';
+  });
+  var curated = srcs.filter(function(s){return s.type==='curated';});
+  var user = srcs.filter(function(s){return s.type==='user';});
+  var h = '<div class="src-section-lbl">Curated</div>';
+  curated.forEach(function(s) {
+    h += '<div class="src-row">'
+      + '<div class="src-toggle ' + (s.on?'on':'off') + '" data-id="' + s.id + '" data-action="toggle"><div class="src-toggle-thumb"></div></div>'
+      + '<span class="src-name' + (s.on?'':' off') + '">' + s.name + '</span>'
+      + '<span class="src-cred ' + credClasses[s.cred] + '">' + credLabels[s.cred] + '</span>'
+      + '</div>';
+  });
+  h += '<div class="src-section-lbl" style="margin-top:6px">My sources</div>';
+  user.forEach(function(s) {
+    h += '<div class="src-row">'
+      + '<div class="src-toggle ' + (s.on?'on':'off') + '" data-id="' + s.id + '" data-action="toggle"><div class="src-toggle-thumb"></div></div>'
+      + '<span class="src-name' + (s.on?'':' off') + '">' + s.name + '</span>'
+      + '<span class="src-delete" data-id="' + s.id + '" data-action="delete">&#10005;</span>'
+      + '</div>';
+  });
+  el.innerHTML = h;
+}
+
+// Handle promote/dismiss actions
+document.addEventListener('click', function(e) {
+  var el = e.target.closest('[data-action]');
+  if (!el) return;
+  var action = el.getAttribute('data-action');
+  var id = el.getAttribute('data-id');
+
+  if (action === 'promote') {
+    var card = document.getElementById('cand-' + id);
+    if (card) {
+      card.style.opacity = '0.4';
+      card.style.pointerEvents = 'none';
+      var btn = card.querySelector('.cand-promote');
+      if (btn) { btn.textContent = 'Added ✓'; btn.style.background = '#3B6D11'; }
+      showToast('Input added to Scan');
+    }
+  } else if (action === 'dismiss-cand') {
+    var card = document.getElementById('cand-' + id);
+    if (card) {
+      card.style.transition = 'opacity 0.2s';
+      card.style.opacity = '0';
+      setTimeout(function(){ card.style.display = 'none'; }, 200);
+      showToast('Candidate dismissed');
+    }
+  } else if (action === 'inbox-promote') {
+    var card = el.closest('.inbox-cand');
+    if (card) {
+      var btn = card.querySelector('.cand-promote');
+      if (btn) { btn.textContent = 'Added ✓'; btn.style.background = '#3B6D11'; btn.style.pointerEvents = 'none'; }
+      showToast('Input added to project');
+    }
+  } else if (action === 'inbox-dismiss') {
+    var card = el.closest('.inbox-cand');
+    if (card) {
+      card.style.transition = 'opacity 0.2s';
+      card.style.opacity = '0';
+      setTimeout(function(){ card.style.display = 'none'; }, 200);
+    }
+  }
+});
+
+// ── END SCAN MODES & AI SUGGESTED JS ─────────────────────────
+
+// ── SCAN VIEW JS ──────────────────────────────────────────────
+var scanInputs = [
+  {title:'Solar With Firming Now Beating Gas In Asia',type:'Signal',steepled:['Tech','Eco'],horizon:'H1',cluster:'China leading shift to EV'},
+  {title:'Despite All The Smack Talk, Tesla Copied B…',type:'Signal',steepled:['Eco'],horizon:'H1',cluster:'Consumer enthusiasm surge'},
+  {title:'9,000 Miles Of Proof: Electric Trucks Can T…',type:'Signal',steepled:['Tech','Env'],horizon:'H2',cluster:null},
+  {title:'Here Comes Another New Addition To The …',type:'Signal',steepled:['Eco'],horizon:'H1',cluster:null},
+  {title:'Weak Corporate Car Taxes Risk Intensifyin…',type:'Signal',steepled:['Eco','Pol'],horizon:'H2',cluster:null},
+  {title:'After Struggling With EVs, US Automakers…',type:'Signal',steepled:['Tech','Eco'],horizon:'H1',cluster:'Infrastructure investment'},
+  {title:'Honda Pursues New Blended Silicon-Carb…',type:'Signal',steepled:['Tech'],horizon:'H2',cluster:'Consumer enthusiasm surge'},
+  {title:'Ford Escape Going Electric!',type:'Signal',steepled:['Tech','Eco'],horizon:'H1',cluster:null},
+  {title:'Stellantis to Build EVs for Dongfeng in Fra…',type:'Signal',steepled:['Eco'],horizon:'H2',cluster:null},
+  {title:'NIO & Li Auto Diverge in Chinese EV Price…',type:'Signal',steepled:['Eco','Tech'],horizon:'H2',cluster:null},
+  {title:'GM Energy Pass: One Universal Interface F…',type:'Signal',steepled:['Tech','Eco'],horizon:'H1',cluster:'Infrastructure investment'},
+  {title:'15,000 E-Bike Rebates Provided By Ava Co…',type:'Signal',steepled:['Env','Eco'],horizon:'H1',cluster:null},
+  {title:'Federal EV Tax Credit Faces Rollback Risk','type':'Source',steepled:['Pol'],horizon:'H2',cluster:null},
+  {title:'Battery Supply Chain: The Race to Localise','type':'Signal',steepled:['Eco','Tech'],horizon:'H2',cluster:null},
+  {title:'EV Charging Infrastructure Report Q1 2026','type':'Source',steepled:['Tech'],horizon:'H1',cluster:'Infrastructure investment'},
+];
+
+var activeScanTab = 'all';
+
+function renderScanInputs(tab) {
+  var list = document.getElementById('scan-input-list');
+  if (!list) return;
+  list.innerHTML = '';
+  var filtered = scanInputs.filter(function(r) {
+    if (tab === 'unassigned') return !r.cluster;
+    if (tab === 'clustered') return !!r.cluster;
+    if (tab === 'csv') return false;
+    return true;
+  });
+  if (tab === 'csv') {
+    list.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;gap:8px;color:#bbb">'
+      + '<div style="font-size:24px;opacity:0.3">&#8681;</div>'
+      + '<div style="font-size:13px;font-weight:500;color:#888">Import inputs via CSV</div>'
+      + '<div style="font-size:11.5px;max-width:220px;text-align:center;line-height:1.5">Download the template, fill it in, and upload to bulk-import inputs into this project.</div>'
+      + '<button class="btn btn-p" style="margin-top:4px;font-size:11.5px">Download template</button>'
+      + '</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(function(r) {
+    var tags = r.steepled.map(function(t){return '<span class="scan-itag">'+t+'</span>';}).join('');
+    var clusterCol = r.cluster
+      ? '<span class="scan-ctag">'+r.cluster+'</span>'
+      : '<button class="scan-assign-btn">Assign →</button>';
+    return '<div class="scan-irow">'
+      + '<div style="width:20px;flex-shrink:0"><input type="checkbox" style="cursor:pointer"></div>'
+      + '<div class="scan-ititle">'+r.title+'</div>'
+      + '<div class="scan-itype">'+r.type+'</div>'
+      + '<div class="scan-itags">'+tags+'</div>'
+      + '<div style="width:80px;flex-shrink:0;font-size:11px;color:#888">'+r.horizon+'</div>'
+      + '<div class="scan-icluster">'+clusterCol+'</div>'
+      + '<div class="scan-imore">···</div>'
+      + '</div>';
+  }).join('');
+}
+
+function setScanTab(tab, btn) {
+  activeScanTab = tab;
+  document.querySelectorAll('.scan-tab').forEach(function(el){el.classList.remove('active');});
+  btn.classList.add('active');
+  renderScanInputs(tab);
+}
+
+function initScanView() {
+  var allN = scanInputs.length;
+  var unassignedN = scanInputs.filter(function(r){return !r.cluster;}).length;
+  var clusteredN = scanInputs.filter(function(r){return !!r.cluster;}).length;
+  var tabAllN = document.getElementById('stab-all-n');
+  var tabUnN = document.getElementById('stab-unassigned-n');
+  var tabClN = document.getElementById('stab-clustered-n');
+  if (tabAllN) tabAllN.textContent = allN;
+  if (tabUnN) tabUnN.textContent = unassignedN;
+  if (tabClN) tabClN.textContent = clusteredN;
+  // Reset active tab UI
+  document.querySelectorAll('.scan-tab').forEach(function(el){el.classList.remove('active');});
+  var defaultTab = document.getElementById('stab-all');
+  if (defaultTab) defaultTab.classList.add('active');
+  renderScanInputs('all');
+  activeScanTab = 'all';
+  renderProjectSources();
+  setScanMode('inputs');
+  renderProjectSources();
+}
+// ── END SCAN VIEW JS ──────────────────────────────────────────
+
+// ── OVERVIEW JS ───────────────────────────────────────────────
+var editMode = false;
+var scannerOn = true;
+var editableFields = ['kq','f-domain','f-geo','f-mfocus','f-inscope','f-outscope','f-assume','f-audience','f-stakeholders'];
+
+function toggleEdit() {
+  editMode = !editMode;
+  var btn = document.getElementById('edit-btn');
+  var body = document.getElementById('overview-body');
+  var cardMeta = document.getElementById('card-meta');
+  var cardMethod = document.getElementById('card-method');
+  if (editMode) {
+    btn.textContent = 'Done';
+    btn.classList.add('btn-p');
+    body.classList.add('editing-mode');
+    cardMeta.classList.add('editing');
+    cardMethod.classList.add('editing');
+    editableFields.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.setAttribute('contenteditable','true');
+        if (el.classList.contains('unset')) { el.textContent=''; el.classList.remove('unset'); }
+      }
+    });
+  } else {
+    btn.textContent = 'Edit';
+    btn.classList.remove('btn-p');
+    body.classList.remove('editing-mode');
+    cardMeta.classList.remove('editing');
+    cardMethod.classList.remove('editing');
+    editableFields.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.removeAttribute('contenteditable');
+        if (!el.textContent.trim() || el.textContent.trim()==='Add...') { el.textContent='Not set'; el.classList.add('unset'); }
+      }
+    });
+  }
+}
+
+function toggleScanner() {
+  scannerOn = !scannerOn;
+  var tgl = document.getElementById('scanner-tgl');
+  tgl.classList.toggle('off', !scannerOn);
+}
+
+var methodOpen = true;
+function toggleMethod() {
+  var body = document.getElementById('method-body');
+  var chev = document.getElementById('method-chev');
+  methodOpen = !methodOpen;
+  body.style.display = methodOpen ? '' : 'none';
+  chev.innerHTML = methodOpen ? '&#9660;' : '&#9658;';
+}
+
+function goToPhase(phase) {
+  var navMap = {scan:'cluster', cluster:'cluster', sysmap:'cluster', sysanalysis:'cluster', futures:'cluster'};
+  // Just navigate to cluster for now in prototype
+  goToView('cluster');
+}
+// ── END OVERVIEW JS ───────────────────────────────────────────
+
+</script>
+</body>
+</html>

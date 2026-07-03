@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Future Signals — Workspace Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  :root {
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --gray-50: #F9F9F8;
+    --gray-100: #F2F1EF;
+    --gray-200: #E8E7E4;
+    --gray-300: #D4D3CF;
+    --gray-400: #A8A7A3;
+    --gray-500: #757472;
+    --gray-600: #4A4947;
+    --gray-700: #2C2B2A;
+    --gray-900: #111110;
+    --blue-50: #EEF4FB;
+    --blue-100: #D5E8F7;
+    --blue-400: #378ADD;
+    --blue-600: #185FA5;
+    --blue-800: #0C447C;
+    --green-50: #EAF3DE;
+    --green-100: #C0DD97;
+    --green-700: #3B6D11;
+    --amber-50: #FDF3E3;
+    --amber-100: #FAD898;
+    --amber-700: #7A4A0A;
+    --purple-50: #EEEDFE;
+    --purple-100: #CECBF6;
+    --purple-800: #3C3489;
+    --teal-50: #E1F5EE;
+    --teal-800: #085041;
+    --radius-sm: 5px;
+    --radius: 7px;
+    --radius-md: 10px;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: var(--font);
+    font-size: 14px;
+    color: var(--gray-900);
+    background: var(--gray-50);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 208px;
+    min-width: 208px;
+    background: white;
+    border-right: 1px solid var(--gray-200);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 18px 16px 16px;
+    border-bottom: 1px solid var(--gray-100);
+  }
+
+  .logo-mark {
+    width: 26px;
+    height: 26px;
+    background: #C1382B;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .logo-mark svg {
+    width: 12px;
+    height: 12px;
+    fill: white;
+  }
+
+  .logo-text {
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--gray-900);
+  }
+
+  .nav-section-label {
+    font-family: var(--font);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gray-400);
+    padding: 14px 16px 4px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 16px;
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--gray-500);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .nav-item:hover {
+    background: var(--gray-50);
+    color: var(--gray-700);
+  }
+
+  .nav-item.active {
+    color: var(--blue-600);
+    background: var(--blue-50);
+    font-weight: 500;
+  }
+
+  .nav-item .nav-icon {
+    font-size: 14px;
+    width: 16px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .nav-badge {
+    margin-left: auto;
+    font-family: var(--font);
+    font-size: 11px;
+    background: var(--gray-100);
+    color: var(--gray-500);
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+
+  .nav-badge.accent {
+    background: var(--blue-50);
+    color: var(--blue-600);
+  }
+
+  .nav-spacer {
+    flex: 1;
+  }
+
+  .sidebar-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--gray-100);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .avatar {
+    width: 24px;
+    height: 24px;
+    background: var(--blue-50);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--blue-600);
+    flex-shrink: 0;
+  }
+
+  .footer-text-name {
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray-700);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .footer-text-role {
+    font-family: var(--font);
+    font-size: 11px;
+    color: var(--gray-400);
+  }
+
+  /* ── MAIN AREA ── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  /* ── PROJECT HEADER ── */
+  .project-header {
+    background: white;
+    border-bottom: 1px solid var(--gray-200);
+    padding: 0 24px;
+    flex-shrink: 0;
+  }
+
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 12px 0 0;
+    font-family: var(--font);
+    font-size: 12px;
+    color: var(--gray-400);
+  }
+
+  .breadcrumb a {
+    color: var(--gray-400);
+    text-decoration: none;
+  }
+
+  .breadcrumb a:hover {
+    color: var(--gray-600);
+  }
+
+  .project-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0 12px;
+  }
+
+  .project-title {
+    font-family: var(--font);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--gray-900);
+  }
+
+  .domain-badge {
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 10px;
+    background: var(--blue-50);
+    color: var(--blue-600);
+    border: 1px solid var(--blue-100);
+  }
+
+  .header-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 13px;
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--gray-200);
+    background: white;
+    color: var(--gray-600);
+    white-space: nowrap;
+  }
+
+  .btn:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-300);
+    color: var(--gray-700);
+  }
+
+  .btn-primary {
+    background: var(--blue-600);
+    color: white;
+    border-color: var(--blue-600);
+  }
+
+  .btn-primary:hover {
+    background: var(--blue-800);
+    border-color: var(--blue-800);
+  }
+
+  .btn i {
+    font-size: 12px;
+  }
+
+  .key-question {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: var(--blue-50);
+    border: 1px solid var(--blue-100);
+    border-radius: var(--radius);
+    padding: 9px 14px;
+    margin-bottom: 12px;
+  }
+
+  .kq-label {
+    font-family: var(--font);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--blue-600);
+    white-space: nowrap;
+    padding-top: 1px;
+    flex-shrink: 0;
+  }
+
+  .kq-text {
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--gray-700);
+    line-height: 1.5;
+    font-style: italic;
+  }
+
+  .horizons {
+    display: flex;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--gray-200);
+    margin-bottom: 16px;
+  }
+
+  .horizon-band {
+    flex: 1;
+    padding: 6px 12px;
+    text-align: center;
+  }
+
+  .horizon-band .h-label {
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 1px;
+  }
+
+  .horizon-band .h-range {
+    font-family: var(--font);
+    font-size: 10px;
+    opacity: 0.7;
+  }
+
+  .h1-band {
+    background: var(--green-50);
+    color: var(--green-700);
+    border-right: 1px solid var(--green-100);
+  }
+
+  .h2-band {
+    background: var(--blue-50);
+    color: var(--blue-600);
+    border-right: 1px solid var(--blue-100);
+  }
+
+  .h3-band {
+    background: var(--amber-50);
+    color: var(--amber-700);
+  }
+
+  /* ── WORKSPACE ── */
+  .workspace {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* ── INPUTS PANEL ── */
+  .inputs-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+    border-right: 1px solid var(--gray-200);
+  }
+
+  .tabs-bar {
+    display: flex;
+    align-items: center;
+    background: white;
+    border-bottom: 1px solid var(--gray-200);
+    padding: 0 20px;
+    flex-shrink: 0;
+  }
+
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 14px;
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--gray-400);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+
+  .tab:hover {
+    color: var(--gray-600);
+  }
+
+  .tab.active {
+    color: var(--blue-600);
+    border-bottom-color: var(--blue-600);
+    font-weight: 500;
+  }
+
+  .tab-count {
+    font-family: var(--font);
+    font-size: 11px;
+    color: var(--gray-400);
+  }
+
+  .tab.active .tab-count {
+    color: var(--blue-400);
+  }
+
+  .filters-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 20px;
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-200);
+    flex-shrink: 0;
+  }
+
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 10px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    background: white;
+    min-width: 180px;
+  }
+
+  .search-box i {
+    font-size: 12px;
+    color: var(--gray-400);
+  }
+
+  .search-box input {
+    border: none;
+    outline: none;
+    font-family: var(--font);
+    font-size: 12px;
+    color: var(--gray-700);
+    background: transparent;
+    width: 140px;
+  }
+
+  .search-box input::placeholder {
+    color: var(--gray-400);
+  }
+
+  .filter-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border: 1px solid var(--gray-200);
+    border-radius: 20px;
+    font-family: var(--font);
+    font-size: 12px;
+    color: var(--gray-500);
+    cursor: pointer;
+    background: white;
+    white-space: nowrap;
+  }
+
+  .filter-chip:hover {
+    border-color: var(--gray-300);
+    color: var(--gray-700);
+  }
+
+  .filter-chip i {
+    font-size: 10px;
+  }
+
+  /* ── TABLE ── */
+  .table-wrap {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table thead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  .table thead th {
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-200);
+    padding: 8px 0;
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--gray-400);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .table thead th:first-child {
+    padding-left: 20px;
+    width: 36px;
+  }
+
+  .table thead th.col-title {
+    width: auto;
+  }
+
+  .table thead th.col-type { width: 80px; }
+  .table thead th.col-strength { width: 110px; }
+  .table thead th.col-steepled { width: 120px; }
+  .table thead th.col-cluster { width: 150px; padding-right: 20px; }
+
+  .table thead th .sort-icon {
+    font-size: 9px;
+    color: var(--gray-300);
+    margin-left: 3px;
+  }
+
+  .table tbody tr {
+    background: white;
+    border-bottom: 1px solid var(--gray-100);
+    cursor: pointer;
+  }
+
+  .table tbody tr:hover {
+    background: var(--blue-50);
+  }
+
+  .table tbody tr:hover .assign-btn {
+    opacity: 1;
+  }
+
+  .table tbody td {
+    padding: 10px 0;
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--gray-700);
+    vertical-align: middle;
+  }
+
+  .table tbody td:first-child {
+    padding-left: 20px;
+  }
+
+  .td-check input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    accent-color: var(--blue-600);
+  }
+
+  .td-title {
+    padding-right: 16px;
+    font-size: 13px;
+    color: var(--gray-800, #1A1918);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 0;
+  }
+
+  .td-type {
+    font-size: 12px;
+    color: var(--gray-400);
+  }
+
+  .strength-pill {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+
+  .strength-confirmed {
+    background: var(--green-50);
+    color: var(--green-700);
+  }
+
+  .strength-established {
+    background: var(--blue-50);
+    color: var(--blue-600);
+  }
+
+  .strength-emerging {
+    background: var(--amber-50);
+    color: var(--amber-700);
+  }
+
+  .steepled-list {
+    display: flex;
+    gap: 3px;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .steepled-tag {
+    font-family: var(--font);
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--gray-100);
+    color: var(--gray-500);
+  }
+
+  .assign-btn {
+    opacity: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--blue-100);
+    background: var(--blue-50);
+    color: var(--blue-600);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.12s;
+  }
+
+  .assign-btn i {
+    font-size: 11px;
+  }
+
+  .cluster-assigned-text {
+    font-family: var(--font);
+    font-size: 12px;
+    color: var(--gray-500);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+    padding-right: 20px;
+  }
+
+  /* ── CLUSTERS PANEL ── */
+  .clusters-panel {
+    width: 320px;
+    min-width: 280px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--gray-50);
+  }
+
+  .clusters-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 16px;
+    background: white;
+    border-bottom: 1px solid var(--gray-200);
+    flex-shrink: 0;
+  }
+
+  .clusters-title {
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-700);
+  }
+
+  .clusters-count {
+    font-family: var(--font);
+    font-size: 12px;
+    color: var(--gray-400);
+  }
+
+  .build-cluster-btn {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 11px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--blue-100);
+    background: var(--blue-50);
+    color: var(--blue-600);
+    cursor: pointer;
+  }
+
+  .build-cluster-btn:hover {
+    background: var(--blue-100);
+  }
+
+  .build-cluster-btn i {
+    font-size: 11px;
+  }
+
+  .unassigned-nudge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 14px;
+    font-family: var(--font);
+    font-size: 11px;
+    color: var(--gray-500);
+    background: white;
+    border-bottom: 1px solid var(--gray-100);
+    flex-shrink: 0;
+  }
+
+  .unassigned-nudge i {
+    font-size: 12px;
+    color: var(--blue-400);
+    flex-shrink: 0;
+  }
+
+  .clusters-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .cluster-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    cursor: pointer;
+  }
+
+  .cluster-card:hover {
+    border-color: var(--gray-300);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .cluster-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 7px;
+  }
+
+  .cluster-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .cluster-tag {
+    font-family: var(--font);
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
+
+  .tag-trend { background: var(--purple-50); color: var(--purple-800); }
+  .tag-tension { background: var(--amber-50); color: var(--amber-700); }
+  .tag-driver { background: var(--teal-50); color: var(--teal-800); }
+  .tag-neutral { background: var(--gray-100); color: var(--gray-500); border: 1px solid var(--gray-200); }
+
+  .cluster-input-count {
+    font-family: var(--font);
+    font-size: 11px;
+    color: var(--gray-400);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .cluster-name {
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-800, #1A1918);
+    line-height: 1.4;
+    margin-bottom: 5px;
+  }
+
+  .cluster-desc {
+    font-family: var(--font);
+    font-size: 12px;
+    color: var(--gray-500);
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .empty-cluster-card {
+    border: 1px dashed var(--gray-300);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    text-align: center;
+    font-family: var(--font);
+    font-size: 12px;
+    color: var(--gray-400);
+    line-height: 1.6;
+  }
+
+  .empty-cluster-card i {
+    font-size: 20px;
+    color: var(--gray-300);
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  /* ── PANEL FOOTER ── */
+  .panel-footer {
+    flex-shrink: 0;
+    background: white;
+    border-top: 1px solid var(--gray-200);
+  }
+
+  .sysmap-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--gray-100);
+  }
+
+  .sysmap-icon {
+    width: 44px;
+    height: 34px;
+    background: var(--gray-100);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .sysmap-icon i {
+    font-size: 16px;
+    color: var(--gray-400);
+  }
+
+  .sysmap-label {
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--gray-500);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 2px;
+  }
+
+  .sysmap-status {
+    font-family: var(--font);
+    font-size: 11px;
+    color: var(--gray-400);
+    font-style: italic;
+  }
+
+  .meta-row {
+    display: flex;
+    gap: 0;
+    padding: 10px 14px;
+  }
+
+  .meta-item {
+    flex: 1;
+  }
+
+  .meta-label {
+    font-family: var(--font);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--gray-400);
+    margin-bottom: 2px;
+  }
+
+  .meta-value {
+    font-family: var(--font);
+    font-size: 12px;
+    color: var(--gray-600);
+  }
+
+  .meta-value.unset {
+    color: var(--gray-300);
+    font-style: italic;
+  }
+
+  /* Scrollbar */
+  .table-wrap::-webkit-scrollbar,
+  .clusters-scroll::-webkit-scrollbar {
+    width: 5px;
+  }
+  .table-wrap::-webkit-scrollbar-track,
+  .clusters-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .table-wrap::-webkit-scrollbar-thumb,
+  .clusters-scroll::-webkit-scrollbar-thumb {
+    background: var(--gray-200);
+    border-radius: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5"/></svg>
+      </div>
+      <span class="logo-text">Future Signals</span>
+    </div>
+
+    <div style="padding-top: 8px;">
+      <div class="nav-item">
+        <span class="nav-icon"><i class="fa-regular fa-chart-bar"></i></span>
+        Dashboard
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon"><i class="fa-regular fa-inbox"></i></span>
+        Inbox
+        <span class="nav-badge">18</span>
+      </div>
+    </div>
+
+    <div class="nav-section-label" style="margin-top: 6px;">Current project</div>
+    <div class="nav-item active">
+      <span class="nav-icon"><i class="fa-regular fa-table"></i></span>
+      Inputs
+      <span class="nav-badge accent">84</span>
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon"><i class="fa-regular fa-circle-nodes"></i></span>
+      System Map
+      <span class="nav-badge">1</span>
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon"><i class="fa-regular fa-chart-network"></i></span>
+      System Analysis
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon"><i class="fa-regular fa-sparkles"></i></span>
+      Future Models
+    </div>
+
+    <div class="nav-spacer"></div>
+
+    <div class="nav-item">
+      <span class="nav-icon"><i class="fa-regular fa-arrow-down-to-bracket"></i></span>
+      Export
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="avatar">S</div>
+      <div>
+        <div class="footer-text-name">sam@aldermanandw...</div>
+        <div class="footer-text-role">Beginner</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- PROJECT HEADER -->
+    <div class="project-header">
+      <div class="breadcrumb">
+        <a href="#">Projects</a>
+        <span style="color: var(--gray-300); margin: 0 1px;">›</span>
+        <span>Future of data centers</span>
+      </div>
+
+      <div class="project-title-row">
+        <span class="project-title">Future of data centers</span>
+        <span class="domain-badge">Technology &amp; AI</span>
+        <div class="header-actions">
+          <button class="btn">
+            <i class="fa-regular fa-gear"></i>
+            Project settings
+          </button>
+          <button class="btn">
+            <i class="fa-regular fa-inbox"></i>
+            Add from Inbox
+          </button>
+          <button class="btn btn-primary">
+            <i class="fa-regular fa-plus"></i>
+            Add an input
+          </button>
+        </div>
+      </div>
+
+      <div class="key-question">
+        <span class="kq-label">Key question</span>
+        <span class="kq-text">"What impact will the increasing regulation of data centers have on AI adoption?"</span>
+      </div>
+
+      <div class="horizons">
+        <div class="horizon-band h1-band">
+          <div class="h-label">H1</div>
+          <div class="h-range">2026–2029</div>
+        </div>
+        <div class="horizon-band h2-band">
+          <div class="h-label">H2</div>
+          <div class="h-range">2029–2035</div>
+        </div>
+        <div class="horizon-band h3-band">
+          <div class="h-label">H3</div>
+          <div class="h-range">2035–2041</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WORKSPACE -->
+    <div class="workspace">
+
+      <!-- INPUTS PANEL -->
+      <div class="inputs-panel">
+        <div class="tabs-bar">
+          <div class="tab active">All <span class="tab-count">84</span></div>
+          <div class="tab">Unassigned <span class="tab-count">81</span></div>
+          <div class="tab">In cluster <span class="tab-count">3</span></div>
+        </div>
+
+        <div class="filters-bar">
+          <div class="search-box">
+            <i class="fa-regular fa-magnifying-glass"></i>
+            <input type="text" placeholder="Search inputs…">
+          </div>
+          <div class="filter-chip">Type <i class="fa-solid fa-chevron-down"></i></div>
+          <div class="filter-chip">Horizon <i class="fa-solid fa-chevron-down"></i></div>
+          <div class="filter-chip">STEEPLED <i class="fa-solid fa-chevron-down"></i></div>
+          <div class="filter-chip"><i class="fa-regular fa-plus"></i> Filter</div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th class="td-check"><input type="checkbox"></th>
+                <th class="col-title">Title <span class="sort-icon">⇅</span></th>
+                <th class="col-type">Type</th>
+                <th class="col-strength">Strength</th>
+                <th class="col-steepled">STEEPLED</th>
+                <th class="col-cluster">Cluster</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">Navigating the EU's AI and health regulation</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-confirmed">Confirmed</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Tech</span><span class="steepled-tag">Pol</span><span class="steepled-tag">+1</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">What to Know About AI and Mental Health</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-established">Established</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Soc</span><span class="steepled-tag">Tech</span><span class="steepled-tag">+1</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">Southeast Asia's AI Dilemma</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-established">Established</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Soc</span><span class="steepled-tag">Eco</span><span class="steepled-tag">+1</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">Big Tech Shouldn't Be Writing the Rules for AI</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-confirmed">Confirmed</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Pol</span><span class="steepled-tag">Eth</span><span class="steepled-tag">+1</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">White-collar industries bet on a secret weapon</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-confirmed">Confirmed</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Soc</span><span class="steepled-tag">Tech</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">Gen Z's fading AI hype</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-established">Established</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Soc</span><span class="steepled-tag">Tech</span><span class="steepled-tag">+1</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">xAI sues Colorado over first state AI anti-discrimination law</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-confirmed">Confirmed</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Leg</span><span class="steepled-tag">Pol</span><span class="steepled-tag">+1</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">Advice for economics graduate students</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-established">Established</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Tech</span><span class="steepled-tag">Eco</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">Datadog's Expanding Portfolio Drives ARR</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-established">Established</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Tech</span><span class="steepled-tag">Eco</span><span class="steepled-tag">+1</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">From Compliance to Coherence: A Global Survey</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-established">Established</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Pol</span><span class="steepled-tag">Leg</span><span class="steepled-tag">+1</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">Sam Altman's 'New Deal' for superintelligence</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-established">Established</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Soc</span><span class="steepled-tag">Tech</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">Oracle's 21,000 layoffs help drive its debt-fueled AI investments</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-confirmed">Confirmed</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Eco</span><span class="steepled-tag">Tech</span><span class="steepled-tag">+1</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">The AI-powered World Cup runs on thousands of data workers</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-emerging">Emerging</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Tech</span><span class="steepled-tag">Eco</span><span class="steepled-tag">+1</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">Chinese universities cutting language majors to make way for AI</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-emerging">Emerging</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Eco</span><span class="steepled-tag">Soc</span><span class="steepled-tag">+1</span></div></td>
+                <td><span class="cluster-assigned-text">Ethics and Practicality in AI</span></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">Some Electricians Think Building Data Centers Is for Sellouts</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-established">Established</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Eco</span><span class="steepled-tag">Soc</span><span class="steepled-tag">+1</span></div></td>
+                <td><span class="cluster-assigned-text">Ethics and Practicality in AI</span></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">AI memory startup Engram raised $98M to help companies spend less</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-emerging">Emerging</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Tech</span><span class="steepled-tag">Eco</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">OpenAI and Broadcom announce chip designed for LLM inference at scale</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-confirmed">Confirmed</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Tech</span><span class="steepled-tag">Eco</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td class="td-title">China and the West are taking opposite paths on EV battery recycling</td>
+                <td class="td-type">Signal</td>
+                <td><span class="strength-pill strength-established">Established</span></td>
+                <td><div class="steepled-list"><span class="steepled-tag">Eco</span><span class="steepled-tag">Tech</span><span class="steepled-tag">+1</span></div></td>
+                <td><button class="assign-btn"><i class="fa-regular fa-arrow-right"></i> Assign</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CLUSTERS PANEL -->
+      <div class="clusters-panel">
+        <div class="clusters-header">
+          <span style="font-size:13px; color: var(--gray-400);">◇</span>
+          <span class="clusters-title">Clusters</span>
+          <span class="clusters-count">1 cluster · 3 assigned</span>
+          <button class="build-cluster-btn">
+            <i class="fa-regular fa-plus"></i> Build a cluster
+          </button>
+        </div>
+
+        <div class="unassigned-nudge">
+          <i class="fa-regular fa-circle-info"></i>
+          81 inputs unassigned. Hover a row to assign.
+        </div>
+
+        <div class="clusters-scroll">
+          <div class="cluster-card">
+            <div class="cluster-card-top">
+              <div class="cluster-tags">
+                <span class="cluster-tag tag-driver">Driver</span>
+                <span class="cluster-tag tag-neutral">H1</span>
+                <span class="cluster-tag tag-neutral">Plausible</span>
+              </div>
+              <span class="cluster-input-count">3 inputs</span>
+            </div>
+            <div class="cluster-name">Ethics and Practicality in AI Development</div>
+            <div class="cluster-desc">Growing tensions between the ethical implications and practical realities of AI deployment signal a near-term inflection point in governance and adoption norms.</div>
+          </div>
+
+          <div class="empty-cluster-card">
+            <i class="fa-regular fa-plus-circle"></i>
+            Build a cluster to start grouping inputs into patterns.
+          </div>
+        </div>
+
+        <!-- FOOTER: System Map + Metadata -->
+        <div class="panel-footer">
+          <div class="sysmap-row">
+            <div class="sysmap-icon">
+              <i class="fa-regular fa-diagram-project"></i>
+            </div>
+            <div>
+              <div class="sysmap-label">
+                <span style="color: var(--gray-400);">◇</span>
+                System Map
+              </div>
+              <div class="sysmap-status">Complete clustering to unlock</div>
+            </div>
+          </div>
+          <div class="meta-row">
+            <div class="meta-item">
+              <div class="meta-label">Domain</div>
+              <div class="meta-value">Technology &amp; AI</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Focus</div>
+              <div class="meta-value unset">Not set</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Geography</div>
+              <div class="meta-value unset">Not set</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
