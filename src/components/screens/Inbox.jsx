@@ -35,23 +35,7 @@ const CONFIDENCE_COLORS = {
 const AI_PREVIEW_COUNT = 10;
 
 // Column widths for list/table layout
-const COL = { type: 76, quality: 120, horizon: 52, steepled: 100, date: 55, cta: 220 };
-
-function StrengthCell({ strength, confidence }) {
-  if (!strength && !confidence) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      {strength && (() => {
-        const [col, bg, brd] = STRENGTH_COLORS[strength] || [c.hint, c.surfaceAlt, c.border];
-        return <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{strength.charAt(0).toUpperCase() + strength.slice(1)}</span>;
-      })()}
-      {confidence && (() => {
-        const [col, bg, brd] = CONFIDENCE_COLORS[confidence] || [c.hint, c.surfaceAlt, c.border];
-        return <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{confidence.charAt(0).toUpperCase() + confidence.slice(1)} conf.</span>;
-      })()}
-    </div>
-  );
-}
+const COL = { type: 76, strength: 60, confidence: 60, horizon: 52, steepled: 100, date: 55, cta: 220 };
 
 function formatDate(str) {
   if (!str) return "—";
@@ -165,9 +149,10 @@ function ListHeader({ checked, indeterminate, onToggleAll }) {
         <RowCheckbox checked={checked} indeterminate={indeterminate} visible={true} />
       </div>
       <div style={{ flex: 1, minWidth: 0, ...cell }}>Title</div>
-      <div style={{ width: COL.type,     ...cell }}>Type</div>
-      <div style={{ width: COL.quality,  ...cell }}>Strength</div>
-      <div style={{ width: COL.horizon,  ...cell }}>Horizon</div>
+      <div style={{ width: COL.type,       ...cell }}>Type</div>
+      <div style={{ width: COL.strength,   ...cell }}>Strength</div>
+      <div style={{ width: COL.confidence, ...cell }}>Confidence</div>
+      <div style={{ width: COL.horizon,    ...cell }}>Horizon</div>
       <div style={{ width: COL.steepled, ...cell }}>STEEPLED</div>
       <div style={{ width: COL.date,     ...cell }}>Date</div>
       <div style={{ width: COL.cta, flexShrink: 0 }} />
@@ -220,9 +205,20 @@ function ListRow({ input, isScannerSuggested, suggestedProjects, recommendedProj
           : <span style={{ color: c.hint }}>—</span>}
       </div>
 
-      {/* Strength / Confidence */}
-      <div style={{ width: COL.quality, flexShrink: 0 }}>
-        <StrengthCell strength={input.signal_strength} confidence={input.source_confidence} />
+      {/* Signal Strength */}
+      <div style={{ width: COL.strength, flexShrink: 0 }}>
+        {input.signal_strength ? (() => {
+          const [col, bg, brd] = STRENGTH_COLORS[input.signal_strength] || [c.hint, c.surfaceAlt, c.border];
+          return <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.signal_strength.charAt(0).toUpperCase() + input.signal_strength.slice(1)}</span>;
+        })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+      </div>
+
+      {/* Source Confidence */}
+      <div style={{ width: COL.confidence, flexShrink: 0 }}>
+        {input.source_confidence ? (() => {
+          const [col, bg, brd] = CONFIDENCE_COLORS[input.source_confidence] || [c.hint, c.surfaceAlt, c.border];
+          return <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.source_confidence.charAt(0).toUpperCase() + input.source_confidence.slice(1)}</span>;
+        })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
       </div>
 
       {/* Horizon */}
@@ -297,7 +293,16 @@ function FullCard({ input, isScannerSuggested, suggestedProjects, recommendedPro
               {input.subtype}
             </span>
           )}
-          <span style={{ marginLeft: "auto" }}><StrengthCell strength={input.signal_strength} confidence={input.source_confidence} /></span>
+          <div style={{ marginLeft: "auto", display: "flex", flexDirection: "row", gap: 4, alignItems: "center" }}>
+            {input.signal_strength && (() => {
+              const [col, bg, brd] = STRENGTH_COLORS[input.signal_strength] || [c.hint, c.surfaceAlt, c.border];
+              return <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.signal_strength.charAt(0).toUpperCase() + input.signal_strength.slice(1)}</span>;
+            })()}
+            {input.source_confidence && (() => {
+              const [col, bg, brd] = CONFIDENCE_COLORS[input.source_confidence] || [c.hint, c.surfaceAlt, c.border];
+              return <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.source_confidence.charAt(0).toUpperCase() + input.source_confidence.slice(1)} conf.</span>;
+            })()}
+          </div>
         </div>
 
         <div

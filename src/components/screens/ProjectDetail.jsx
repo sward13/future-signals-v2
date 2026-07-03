@@ -14,7 +14,7 @@ import { ScanningPreferencesDrawer } from "../projects/ScanningPreferencesDrawer
 import { CsvImportModal } from "../inputs/CsvImportModal.jsx";
 
 const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
-const COL = { check: 28, type: 80, quality: 120, steepled: 100, horizon: 55, menu: 28 };
+const COL = { check: 28, type: 80, strength: 60, confidence: 60, steepled: 100, horizon: 55, menu: 28 };
 
 const STRENGTH_COLORS = {
   weak:     [c.amber700, c.amber50, c.amberBorder],
@@ -27,22 +27,6 @@ const CONFIDENCE_COLORS = {
   medium: [c.blue700,  c.blue50,  c.blueBorder],
   high:   [c.green700, c.green50, c.greenBorder],
 };
-
-function StrengthCell({ strength, confidence }) {
-  if (!strength && !confidence) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      {strength && (() => {
-        const [col, bg, brd] = STRENGTH_COLORS[strength] || [c.hint, c.surfaceAlt, c.border];
-        return <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{strength.charAt(0).toUpperCase() + strength.slice(1)}</span>;
-      })()}
-      {confidence && (() => {
-        const [col, bg, brd] = CONFIDENCE_COLORS[confidence] || [c.hint, c.surfaceAlt, c.border];
-        return <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{confidence.charAt(0).toUpperCase() + confidence.slice(1)} conf.</span>;
-      })()}
-    </div>
-  );
-}
 
 const INPUT_TYPE_OPTS = ["signal","issue","projection","plan","obstacle","source"];
 
@@ -560,9 +544,10 @@ export default function ProjectDetail({ appState }) {
                     />
                   </div>
                   <div style={{ flex: 1, minWidth: 0, ...cell }}>Title</div>
-                  <div style={{ width: COL.type,    ...cell }}>Type</div>
-                  <div style={{ width: COL.quality, ...cell }}>Strength</div>
-                  <div style={{ width: COL.steepled,...cell }}>STEEPLED</div>
+                  <div style={{ width: COL.type,       ...cell }}>Type</div>
+                  <div style={{ width: COL.strength,   ...cell }}>Strength</div>
+                  <div style={{ width: COL.confidence, ...cell }}>Confidence</div>
+                  <div style={{ width: COL.steepled,   ...cell }}>STEEPLED</div>
                   <div style={{ width: COL.horizon,    ...cell }}>Horizon</div>
                   <div style={{ width: COL.menu, flexShrink: 0 }} />
                 </div>
@@ -618,9 +603,19 @@ export default function ProjectDetail({ appState }) {
                       <div style={{ width: COL.type, flexShrink: 0 }}>
                         <InputTypeBadge subtype={inp.subtype} />
                       </div>
-                      {/* Signal Strength / Source Confidence */}
-                      <div style={{ width: COL.quality, flexShrink: 0 }}>
-                        <StrengthCell strength={inp.signal_strength} confidence={inp.source_confidence} />
+                      {/* Signal Strength */}
+                      <div style={{ width: COL.strength, flexShrink: 0 }}>
+                        {inp.signal_strength ? (() => {
+                          const [col, bg, brd] = STRENGTH_COLORS[inp.signal_strength] || [c.hint, c.surfaceAlt, c.border];
+                          return <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.signal_strength.charAt(0).toUpperCase() + inp.signal_strength.slice(1)}</span>;
+                        })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+                      </div>
+                      {/* Source Confidence */}
+                      <div style={{ width: COL.confidence, flexShrink: 0 }}>
+                        {inp.source_confidence ? (() => {
+                          const [col, bg, brd] = CONFIDENCE_COLORS[inp.source_confidence] || [c.hint, c.surfaceAlt, c.border];
+                          return <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.source_confidence.charAt(0).toUpperCase() + inp.source_confidence.slice(1)}</span>;
+                        })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
                       </div>
                       {/* STEEPLED */}
                       <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
