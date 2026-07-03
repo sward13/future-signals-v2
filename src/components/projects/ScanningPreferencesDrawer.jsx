@@ -82,10 +82,9 @@ export function ScanningPreferencesDrawer({
   updateProject,
   updateProjectSource,
 }) {
-  if (!project) return null;
-
-  const scanningEnabled = project.scanning_enabled !== false;
-
+  // Hooks must run unconditionally — early return moved to after all useMemo calls
+  // to prevent React error #310 (hook count mismatch between renders).
+  // Neither memo depends on project; they only need projectSources.
   const curated = useMemo(
     () => (projectSources || []).filter((ps) => ps.sources?.source_type === "curated"),
     [projectSources]
@@ -94,6 +93,10 @@ export function ScanningPreferencesDrawer({
     () => (projectSources || []).filter((ps) => ps.sources?.source_type !== "curated"),
     [projectSources]
   );
+
+  if (!project) return null;
+
+  const scanningEnabled = project.scanning_enabled !== false;
 
   const hasSources = (projectSources || []).length > 0;
 

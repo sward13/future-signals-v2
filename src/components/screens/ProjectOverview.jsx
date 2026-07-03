@@ -182,18 +182,17 @@ export default function ProjectOverview({ appState }) {
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [contextExpanded, setContextExpanded] = useState(false);
 
-  if (!project) return null;
-
-  // ── Scoped data ────────────────────────────────────────────────────────────
-  const projectInputs      = inputs.filter(i  => i.project_id  === activeProjectId);
-  const projectClusters    = clusters.filter(cl => cl.project_id === activeProjectId);
-  const analysis           = (analyses || []).find(a => a.project_id === activeProjectId) || null;
-  const projectScenarios   = (scenarios || []).filter(s => s.project_id === activeProjectId);
-  const projectFutures     = (preferredFutures || []).filter(f => f.project_id === activeProjectId);
-  const projectOptions     = (strategicOptions || []).filter(o => o.project_id === activeProjectId);
-  const projectNodes       = (canvasNodes || []).filter(n => n.projectId === activeProjectId);
-  const projectRels        = (relationships || []).filter(r => r.project_id === activeProjectId);
-  const projectTextNodes   = (canvasTextNodes || []).filter(n => n.projectId === activeProjectId);
+  // ── Scoped data (non-hooks — computed before early return so useMemos below
+  //    have stable deps and the hook count is identical on every render) ────────
+  const projectInputs    = inputs.filter(i  => i.project_id === activeProjectId);
+  const projectClusters  = clusters.filter(cl => cl.project_id === activeProjectId);
+  const analysis         = (analyses || []).find(a => a.project_id === activeProjectId) || null;
+  const projectScenarios = (scenarios || []).filter(s => s.project_id === activeProjectId);
+  const projectFutures   = (preferredFutures || []).filter(f => f.project_id === activeProjectId);
+  const projectOptions   = (strategicOptions || []).filter(o => o.project_id === activeProjectId);
+  const projectNodes     = (canvasNodes || []).filter(n => n.projectId === activeProjectId);
+  const projectRels      = (relationships || []).filter(r => r.project_id === activeProjectId);
+  const projectTextNodes = (canvasTextNodes || []).filter(n => n.projectId === activeProjectId);
 
   // ── Scanner ─────────────────────────────────────────────────────────────────
   const newSignalCount = useMemo(() => {
@@ -261,6 +260,9 @@ export default function ProjectOverview({ appState }) {
     if (!entries.length) return null;
     return entries.reduce((best, cur) => (cur[1] > best[1] ? cur : best))[0];
   }, [latestScanTs, latestClusterTs, latestMapTs, latestAnalysisTs, latestFuturesTs]);
+
+  // Early return AFTER all hooks — prevents React error #310 (hook count mismatch)
+  if (!project) return null;
 
   // ── Cluster stats ───────────────────────────────────────────────────────────
   const clusterBySubtype = projectClusters.reduce(
