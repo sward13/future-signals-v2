@@ -431,7 +431,7 @@ export default function ProjectOverview({ appState }) {
             name="Cluster"
             statusKey={phaseStatusKey(latestClusterTs)}
             isResume={resumeStage === "cluster"}
-            onClick={() => setActiveScreen("project")}
+            onClick={() => setActiveScreen("cluster")}
           >
             <Stat label="Clusters" value={projectClusters.length} />
             {projectClusters.length > 0 && (

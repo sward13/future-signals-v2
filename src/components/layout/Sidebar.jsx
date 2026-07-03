@@ -20,7 +20,7 @@ import logoLight from "../../assets/logo_light.svg";
 import { c } from "../../styles/tokens.js";
 import {
   Home, Inbox as InboxIcon, Eye, SquareArrowRight,
-  Network, LayoutDashboard, ChartNoAxesCombined, Download,
+  Layers, Network, LayoutDashboard, ChartNoAxesCombined, Download,
 } from "lucide-react";
 
 function getInitials(user) {
@@ -40,7 +40,8 @@ const NAV_ITEMS = [
 
 const PROJECT_ITEMS = [
   { icon: <Eye size={16} />,              label: "Overview",        screen: "project-overview" },
-  { icon: <SquareArrowRight size={16} />, label: "Inputs",          screen: "project" },
+  { icon: <SquareArrowRight size={16} />, label: "Scan",            screen: "project" },
+  { icon: <Layers size={16} />,           label: "Cluster",         screen: "cluster" },
   { icon: <Network size={16} />,          label: "System Map",      screen: "scenarios" },
   { icon: <LayoutDashboard size={16} />,  label: "System Analysis", screen: "analysis" },
 ];
@@ -70,11 +71,11 @@ export function Sidebar({
   };
 
   const projCounts = {
-    project:       projectInputCount  || null,
-    clustering:    clusterCount       || null,
-    scenarios:     scenarioCount      || null,
-    analysis:      analysisCount      || null,
-    "future-models": futureModelsCount || null,
+    project:         projectInputCount  || null,
+    cluster:         clusterCount       || null,
+    scenarios:       scenarioCount      || null,
+    analysis:        analysisCount      || null,
+    "future-models": futureModelsCount  || null,
   };
 
   const NavButton = ({ icon, label, screen, isActive, count, indented = false }) => (

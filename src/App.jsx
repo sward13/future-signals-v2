@@ -24,6 +24,7 @@ import SystemAnalysisCanvas from "./components/screens/SystemAnalysisCanvas.jsx"
 import AccountSettings from "./components/screens/AccountSettings.jsx";
 import FutureModels from "./components/screens/FutureModels.jsx";
 import ProjectOverview from "./components/screens/ProjectOverview.jsx";
+import ClusterScreen from "./components/screens/ClusterScreen.jsx";
 import ScenarioForm from "./components/scenarios/ScenarioForm.jsx";
 import ScenarioRead from "./components/scenarios/ScenarioRead.jsx";
 import PreferredFutureForm from "./components/preferred-futures/PreferredFutureForm.jsx";
@@ -38,7 +39,8 @@ function ActiveScreen({ appState, onSignOut }) {
     case "projects": return <Dashboard appState={appState} />;  // projects list = dashboard
     case "project-overview": return <ProjectOverview appState={appState} />;
     case "project": return <ProjectDetail appState={appState} />;
-    case "clustering": return <ProjectDetail appState={appState} />; // redirected — merged into Inputs workspace
+    case "cluster": return <ClusterScreen appState={appState} />;
+    case "clustering": return <ClusterScreen appState={appState} />; // legacy redirect
     case "scenarios": return <ScenarioCanvas appState={appState} />;
     case "narrative": return <NarrativeCanvas appState={appState} />;
     case "scenario_canvas": return <ScenarioNarrativeCanvas appState={appState} />;
@@ -324,7 +326,7 @@ export default function App() {
       color: "#111111",
       WebkitFontSmoothing: "antialiased",
     }}>
-      <AppShell appState={appState} onSignOut={handleSignOut} onExport={() => setExportModalOpen(true)} scroll={!["scenarios", "scenario_canvas", "analysis", "project", "project-overview"].includes(appState.activeScreen)}>
+      <AppShell appState={appState} onSignOut={handleSignOut} onExport={() => setExportModalOpen(true)} scroll={!["scenarios", "scenario_canvas", "analysis", "project", "project-overview", "cluster"].includes(appState.activeScreen)}>
         <ActiveScreen appState={appState} onSignOut={handleSignOut} />
       </AppShell>
 
