@@ -1,5 +1,3 @@
-import { c } from "../../styles/tokens.js";
-
 /**
  * Proportional three-band H1/H2/H3 time horizon bar.
  * Requires project.h1_start, h1_end, h2_start, h2_end, h3_start, h3_end.
@@ -16,34 +14,36 @@ export function HorizonBar({ project }) {
   const h2Pct = ((h2End - start) / span) * 100;
 
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ position: "relative", height: 46, borderRadius: 8, overflow: "hidden" }}>
-        <div style={{
-          position: "absolute", left: 0, top: 0,
-          width: `${h1Pct}%`, height: "100%",
-          background: c.green50, borderRight: `2px solid ${c.white}`,
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
-        }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: c.green700, lineHeight: 1 }}>H1</span>
-          <span style={{ fontSize: 10, color: c.green700, lineHeight: 1 }}>{project.h1_start}–{project.h1_end}</span>
+    <div className="mb-3">
+      <div className="relative h-[46px] rounded-container overflow-hidden">
+
+        {/* H1 band — width is runtime-computed, must stay inline */}
+        <div
+          className="absolute left-0 top-0 h-full bg-green-50 border-r-2 border-white flex flex-col items-center justify-center gap-0.5"
+          style={{ width: `${h1Pct}%` }}
+        >
+          <span className="text-[11px] font-semibold text-green-700 leading-none">H1</span>
+          <span className="text-[10px] text-green-700 leading-none">{project.h1_start}–{project.h1_end}</span>
         </div>
-        <div style={{
-          position: "absolute", left: `${h1Pct}%`, top: 0,
-          width: `${h2Pct - h1Pct}%`, height: "100%",
-          background: c.blue50, borderRight: `2px solid ${c.white}`,
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
-        }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: c.blue700, lineHeight: 1 }}>H2</span>
-          <span style={{ fontSize: 10, color: c.blue700, lineHeight: 1 }}>{project.h2_start}–{project.h2_end}</span>
+
+        {/* H2 band — left and width are runtime-computed */}
+        <div
+          className="absolute top-0 h-full bg-blue-50 border-r-2 border-white flex flex-col items-center justify-center gap-0.5"
+          style={{ left: `${h1Pct}%`, width: `${h2Pct - h1Pct}%` }}
+        >
+          <span className="text-[11px] font-semibold text-blue-700 leading-none">H2</span>
+          <span className="text-[10px] text-blue-700 leading-none">{project.h2_start}–{project.h2_end}</span>
         </div>
-        <div style={{
-          position: "absolute", left: `${h2Pct}%`, top: 0, right: 0, height: "100%",
-          background: c.amber50,
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
-        }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: c.amber700, lineHeight: 1 }}>H3</span>
-          <span style={{ fontSize: 10, color: c.amber700, lineHeight: 1 }}>{project.h3_start}–{project.h3_end}</span>
+
+        {/* H3 band — left is runtime-computed; right-0 fills the remainder */}
+        <div
+          className="absolute top-0 right-0 h-full bg-amber-50 flex flex-col items-center justify-center gap-0.5"
+          style={{ left: `${h2Pct}%` }}
+        >
+          <span className="text-[11px] font-semibold text-amber-700 leading-none">H3</span>
+          <span className="text-[10px] text-amber-700 leading-none">{project.h3_start}–{project.h3_end}</span>
         </div>
+
       </div>
     </div>
   );
