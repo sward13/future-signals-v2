@@ -213,13 +213,8 @@ export function ClustersPanel({
       {/* ── Panel header ─────────────────────────────────────── */}
       <div className="bg-white border-b border-border shrink-0">
 
-        {/* Row 1: label */}
-        <div className="flex items-center pt-2.75 pb-2 px-3.5">
-          <span className="text-ui font-semibold text-ink">Clusters</span>
-        </div>
-
-        {/* Row 2: mode toggle */}
-        <div className="flex items-center pb-2.5 px-3.5">
+        {/* Mode toggle */}
+        <div className="flex items-center pt-4 pb-2.5 px-3.5">
           <div className="flex border border-border rounded-md overflow-hidden">
             {[
               { key: "manual",    label: "Manual" },
