@@ -35,6 +35,10 @@ export function ClusterCard({ cluster, selected = false, onClick, isDropTarget =
         position: "relative",
         boxShadow: hovered && !isSelected && !selected && !isDropTarget ? "0 2px 8px rgba(0,0,0,0.07)" : "none",
         transition: "border-color 0.12s, box-shadow 0.12s, background 0.12s",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        boxSizing: "border-box",
       }}
     >
       {/* Header row: checkbox + type badge left, horizon right */}
@@ -66,21 +70,20 @@ export function ClusterCard({ cluster, selected = false, onClick, isDropTarget =
         {cluster.name}
       </div>
 
-      {/* Description — 2-line clamp */}
-      {cluster.description && (
-        <div style={{
-          fontSize: 11, color: c.muted, lineHeight: 1.55,
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-        }}>
-          {cluster.description}
-        </div>
-      )}
+      {/* Description — always rendered to reserve 2-line height */}
+      <div style={{
+        fontSize: 11, color: c.muted, lineHeight: 1.55,
+        minHeight: 34,
+        display: "-webkit-box",
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: "vertical",
+        overflow: "hidden",
+      }}>
+        {cluster.description}
+      </div>
 
-      {/* Footer row: input count left, likelihood right */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+      {/* Footer row: input count left, likelihood right — pinned to bottom */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "auto", paddingTop: 8 }}>
         {isDropTarget ? (
           <span style={{
             fontSize: 10, fontWeight: 600,
