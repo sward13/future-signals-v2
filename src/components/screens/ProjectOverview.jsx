@@ -25,10 +25,10 @@ function phaseStatusKey(ts) {
 }
 
 const PHASE_STATUS = {
-  "not-started":  { topClass: "border-t-border",   label: null,               labelClass: null },
-  "active-today": { topClass: "border-t-brand",     label: "Active today",     labelClass: "text-brand" },
-  "active-week":  { topClass: "border-t-green-600", label: "Active this week", labelClass: "text-green-700" },
-  "earlier":      { topClass: "border-t-border",    label: null,               labelClass: null },
+  "not-started":  { borderClass: null,                                 label: null,               labelClass: null },
+  "active-today": { borderClass: "border-l-[3px] border-l-brand",     label: "Active today",     labelClass: "text-brand" },
+  "active-week":  { borderClass: "border-l-[3px] border-l-green-600", label: "Active this week", labelClass: "text-green-700" },
+  "earlier":      { borderClass: null,                                 label: null,               labelClass: null },
 };
 
 function relativeTime(ts) {
@@ -42,42 +42,42 @@ function relativeTime(ts) {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function PhaseCard({ name, statusKey, isResume, onClick, children }) {
-  const { topClass, label, labelClass } = PHASE_STATUS[statusKey];
+  const { borderClass, label, labelClass } = PHASE_STATUS[statusKey];
   return (
     <div
       onClick={onClick}
       className={clsx(
-        "bg-white border border-border border-t-[3px] rounded-container overflow-hidden",
+        "bg-white border border-border rounded-container overflow-hidden",
         "flex flex-col transition-shadow duration-150",
         onClick ? "cursor-pointer hover:shadow-hover" : "cursor-default",
-        topClass
+        borderClass
       )}
     >
-      <div className="pt-2.25 px-2.75 pb-1.75 border-b border-border flex items-center justify-between shrink-0">
-        <span className="text-[11px] font-medium text-ink">{name}</span>
-        <div className="flex flex-wrap items-center gap-1.25 justify-end">
+      <div className="py-3 px-4 border-b border-border flex items-center justify-between shrink-0">
+        <span className="text-[14px] font-semibold text-ink">{name}</span>
+        <div className="flex flex-wrap items-center gap-1.5 justify-end">
           {label && (
             <span className={clsx("text-[9px] shrink-0", labelClass)}>{label}</span>
           )}
           {isResume && (
-            <span className="text-[9px] font-medium py-0.5 px-1.5 rounded-pill bg-brand text-white shrink-0">
+            <span className="text-[10px] font-medium py-0.5 px-2 rounded-pill bg-brand-bg text-brand border border-brand-border shrink-0">
               Continue here
             </span>
           )}
         </div>
       </div>
-      <div className="pt-2.25 px-2.75 pb-2.75 flex-1">
+      <div className="pt-3 px-4 pb-3 flex-1">
         {children}
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, accentClass }) {
+function BigStat({ label, value }) {
   return (
-    <div className="flex items-baseline justify-between py-0.5">
-      <span className="text-[11px] text-muted">{label}</span>
-      <span className={clsx("text-xs font-medium", accentClass || "text-ink")}>{value}</span>
+    <div>
+      <div className="text-xs text-faint">{label}</div>
+      <div className="text-[22px] font-semibold text-ink leading-none my-1">{value}</div>
     </div>
   );
 }
@@ -120,8 +120,6 @@ function HorizonScatter({ clusters }) {
 }
 
 function AnalysisFillGrid({ analysis }) {
-  // Layout: [Key Dynamics (row-span) | Description   | Implications ]
-  //         [Key Dynamics (row-span) | Uncertainties | Confidence   ]
   const getVal = (id) => analysis?.[id];
   const filled = (panel) => analysisHasCont(panel.type, getVal(panel.id));
 
@@ -176,14 +174,10 @@ export default function ProjectOverview({ appState }) {
   const project = projects.find(p => p.id === activeProjectId) || null;
 
   // Capture prior-session last_visited_at before openProject() stamps it.
-  // openProject() is fire-and-forget (no setProjects call), so state still
-  // holds the previous session's value at mount time.
   const [priorVisitedAt] = useState(() => project?.last_visited_at ?? null);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
-  const [contextExpanded, setContextExpanded] = useState(false);
 
-  // ── Scoped data (non-hooks — computed before early return so useMemos below
-  //    have stable deps and the hook count is identical on every render) ────────
+  // ── Scoped data ──────────────────────────────────────────────────────────────
   const projectInputs    = inputs.filter(i  => i.project_id === activeProjectId);
   const projectClusters  = clusters.filter(cl => cl.project_id === activeProjectId);
   const analysis         = (analyses || []).find(a => a.project_id === activeProjectId) || null;
@@ -194,7 +188,7 @@ export default function ProjectOverview({ appState }) {
   const projectRels      = (relationships || []).filter(r => r.project_id === activeProjectId);
   const projectTextNodes = (canvasTextNodes || []).filter(n => n.projectId === activeProjectId);
 
-  // ── Scanner ─────────────────────────────────────────────────────────────────
+  // ── Scanner ──────────────────────────────────────────────────────────────────
   const newSignalCount = useMemo(() => {
     if (!priorVisitedAt) return 0;
     return inputs.filter(i =>
@@ -219,7 +213,7 @@ export default function ProjectOverview({ appState }) {
     [inputs, activeProjectId]
   );
 
-  // ── Phase timestamps ────────────────────────────────────────────────────────
+  // ── Phase timestamps ─────────────────────────────────────────────────────────
   const latestScanTs = useMemo(() => {
     const sorted = projectInputs.map(i => i.created_at).filter(Boolean).sort();
     return sorted[sorted.length - 1] || null;
@@ -264,13 +258,13 @@ export default function ProjectOverview({ appState }) {
   // Early return AFTER all hooks — prevents React error #310 (hook count mismatch)
   if (!project) return null;
 
-  // ── Cluster stats ───────────────────────────────────────────────────────────
+  // ── Cluster stats ────────────────────────────────────────────────────────────
   const clusterBySubtype = projectClusters.reduce(
     (acc, cl) => { acc[cl.subtype] = (acc[cl.subtype] || 0) + 1; return acc; },
     {}
   );
 
-  // ─── Render ────────────────────────────────────────────────────────────────
+  // ─── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="h-full overflow-y-auto bg-bg">
       <div className="max-w-[1120px] mx-auto pt-6 px-7 pb-12">
@@ -289,103 +283,96 @@ export default function ProjectOverview({ appState }) {
           </div>
         </div>
 
-        {/* Key Question card */}
-        <div className="bg-white border border-border rounded-container py-3.5 px-4 mb-3 flex gap-5">
-          <div className="basis-3/5 shrink-0 grow-0 min-w-0">
-            <div className="text-[9px] font-medium tracking-[0.08em] text-brand uppercase mb-1.5">
-              KEY QUESTION
+        {/* Key Question + Context — always visible, no collapse */}
+        <div className="bg-white border border-border rounded-container py-6 px-7 mb-4">
+          <div className="grid grid-cols-[2fr_1fr_1fr] gap-8">
+            <div>
+              <div className="text-xs font-semibold text-brand mb-1.5">Key question</div>
+              <div
+                className="text-[19px] italic leading-[1.5] text-ink"
+                style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+              >
+                {project.question || <span className="not-italic text-faint">No key question set.</span>}
+              </div>
             </div>
-            <div className="text-ui text-ink italic leading-body">
-              {project.question || <span className="text-faint">No key question set.</span>}
+            <div>
+              <div className="text-xs text-faint mb-1">Domain</div>
+              {project.domain
+                ? <div className="text-sm text-ink">{project.domain}</div>
+                : <div className="text-sm text-faint italic">Not set</div>}
+            </div>
+            <div>
+              <div className="text-xs text-faint mb-1">Geography</div>
+              {project.geo
+                ? <div className="text-sm text-ink">{project.geo}</div>
+                : <div className="text-sm text-faint italic">Not set</div>}
             </div>
           </div>
-          <div className="flex-1 border-l border-border pl-5 flex flex-col gap-2.5">
-            {project.domain && (
-              <div>
-                <div className="text-[10px] text-faint mb-0.5">Domain</div>
-                <div className="text-xs text-ink">{project.domain}</div>
-              </div>
-            )}
-            {project.geo && (
-              <div>
-                <div className="text-[10px] text-faint mb-0.5">Geography</div>
-                <div className="text-xs text-ink">{project.geo}</div>
-              </div>
-            )}
+          <div className="grid grid-cols-2 gap-x-8 gap-y-5 border-t border-border mt-5 pt-5">
+            <div>
+              <div className="text-xs text-faint mb-1">Focus</div>
+              {project.focus
+                ? <div className="text-sm text-ink leading-normal">{project.focus}</div>
+                : <div className="text-sm text-faint italic">Not set</div>}
+            </div>
+            <div>
+              <div className="text-xs text-faint mb-1">Audience</div>
+              {project.audience
+                ? <div className="text-sm text-ink leading-normal">{project.audience}</div>
+                : <div className="text-sm text-faint italic">Not set</div>}
+            </div>
+            <div>
+              <div className="text-xs text-faint mb-1">Stakeholders</div>
+              {project.stakeholders
+                ? <div className="text-sm text-ink leading-normal">{project.stakeholders}</div>
+                : <div className="text-sm text-faint italic">Not set</div>}
+            </div>
+            <div>
+              <div className="text-xs text-faint mb-1">Assumptions</div>
+              {project.assumptions
+                ? <div className="text-sm text-ink leading-normal">{project.assumptions}</div>
+                : <div className="text-sm text-faint italic">Not set</div>}
+            </div>
+            <div>
+              <div className="text-xs text-faint mb-1.5">In scope</div>
+              {project.scope_in?.length > 0
+                ? <div className="flex flex-wrap gap-1">
+                    {project.scope_in.map(s => (
+                      <span key={s} className="text-xs py-1 px-2.5 rounded-[6px] bg-green-50 text-green-700">{s}</span>
+                    ))}
+                  </div>
+                : <div className="text-sm text-faint italic">Not set</div>}
+            </div>
+            <div>
+              <div className="text-xs text-faint mb-1.5">Out of scope</div>
+              {project.scope_out?.length > 0
+                ? <div className="flex flex-wrap gap-1">
+                    {project.scope_out.map(s => (
+                      <span key={s} className="text-xs py-1 px-2.5 rounded-[6px] bg-surface-alt text-muted">{s}</span>
+                    ))}
+                  </div>
+                : <div className="text-sm text-faint italic">Not set</div>}
+            </div>
           </div>
         </div>
 
         {/* Time horizons */}
-        {project.h1_start && <HorizonBar project={project} />}
-
-        {/* Context card (collapsible) */}
-        <div className="bg-white border border-border rounded-container mb-3 overflow-hidden">
-          <button
-            onClick={() => setContextExpanded(e => !e)}
-            className="w-full flex items-center justify-between py-2.5 px-4 bg-transparent border-0 cursor-pointer [font-family:inherit] text-left"
-          >
-            <span className="text-xs font-medium text-ink">Project context</span>
-            <span className="text-[10px] text-faint">{contextExpanded ? "▲" : "▼"}</span>
-          </button>
-          {contextExpanded && (
-            <div className="px-4 pb-4 grid grid-cols-2 gap-y-2.5 gap-x-7">
-              <div>
-                <div className="text-[10px] text-faint mb-[3px]">Focus</div>
-                {project.focus
-                  ? <div className="text-xs text-ink leading-normal">{project.focus}</div>
-                  : <div className="text-xs text-hint italic">Not set</div>}
-              </div>
-              <div>
-                <div className="text-[10px] text-faint mb-[3px]">Audience</div>
-                {project.audience
-                  ? <div className="text-xs text-ink leading-normal">{project.audience}</div>
-                  : <div className="text-xs text-hint italic">Not set</div>}
-              </div>
-              <div>
-                <div className="text-[10px] text-faint mb-[3px]">Stakeholders</div>
-                {project.stakeholders
-                  ? <div className="text-xs text-ink leading-normal">{project.stakeholders}</div>
-                  : <div className="text-xs text-hint italic">Not set</div>}
-              </div>
-              <div>
-                <div className="text-[10px] text-faint mb-[3px]">Assumptions</div>
-                {project.assumptions
-                  ? <div className="text-xs text-ink leading-normal">{project.assumptions}</div>
-                  : <div className="text-xs text-hint italic">Not set</div>}
-              </div>
-              <div>
-                <div className="text-[10px] text-faint mb-1.25">In scope</div>
-                {project.scope_in?.length > 0
-                  ? <div className="flex flex-wrap gap-1">
-                      {project.scope_in.map(s => (
-                        <span key={s} className="text-[11px] py-0.5 px-2 rounded-pill bg-green-50 text-green-700 border border-green-border">{s}</span>
-                      ))}
-                    </div>
-                  : <div className="text-xs text-hint italic">Not set</div>}
-              </div>
-              <div>
-                <div className="text-[10px] text-faint mb-1.25">Out of scope</div>
-                {project.scope_out?.length > 0
-                  ? <div className="flex flex-wrap gap-1">
-                      {project.scope_out.map(s => (
-                        <span key={s} className="text-[11px] py-0.5 px-2 rounded-pill bg-surface-alt text-muted border border-border">{s}</span>
-                      ))}
-                    </div>
-                  : <div className="text-xs text-hint italic">Not set</div>}
-              </div>
-            </div>
-          )}
-        </div>
+        {project.h1_start && (
+          <div className="bg-white border border-border rounded-container py-6 px-7 mb-4">
+            <div className="text-xs text-faint mb-3">Time horizons</div>
+            <HorizonBar project={project} />
+          </div>
+        )}
 
         {/* Scanner card */}
-        <div className="bg-white border border-border rounded-container py-3 px-4 mb-6 flex items-center justify-between gap-4">
+        <div className="bg-white border border-border rounded-container py-4 px-7 mb-6 flex items-center justify-between gap-4">
           <div>
-            <div className="text-ui font-medium text-ink mb-[3px]">
+            <div className="text-[14px] font-semibold text-ink mb-[3px]">
               {newSignalCount > 0
                 ? `${newSignalCount} new signal${newSignalCount !== 1 ? "s" : ""} since your last visit`
                 : "No new signals since your last visit"}
             </div>
-            <div className="text-xs text-muted">
+            <div className="text-[13px] text-faint">
               {activeSources.length > 0
                 ? `Scanning active · ${activeSources.length} source${activeSources.length !== 1 ? "s" : ""}`
                 : "No sources active"}
@@ -402,15 +389,16 @@ export default function ProjectOverview({ appState }) {
             )}
             <button
               onClick={() => { setOpenScanningPrefs(true); setActiveScreen("project"); }}
-              className="py-1.5 px-3.5 rounded-container bg-transparent text-muted border border-border-mid text-xs cursor-pointer [font-family:inherit]"
+              className="py-2 px-4 rounded-container bg-transparent text-muted border border-border-mid text-[13px] cursor-pointer [font-family:inherit]"
             >
               Manage sources
             </button>
           </div>
         </div>
 
-        {/* Phase cards */}
-        <div className="grid grid-cols-5 gap-2.5">
+        {/* Workflow cards */}
+        <div className="text-xs text-faint mb-2.5">Workflow</div>
+        <div className="grid grid-cols-5 gap-3.5">
 
           {/* Scan */}
           <PhaseCard
@@ -419,13 +407,15 @@ export default function ProjectOverview({ appState }) {
             isResume={resumeStage === "scan"}
             onClick={() => setActiveScreen("project")}
           >
-            <Stat label="Inputs" value={projectInputs.length} />
+            <BigStat label="Inputs" value={projectInputs.length} />
             {aiSuggestionCount > 0 && (
-              <Stat label="AI suggestions" value={aiSuggestionCount} accentClass="text-brand" />
+              <div className="text-xs text-brand mt-1">
+                {aiSuggestionCount} AI suggestion{aiSuggestionCount !== 1 ? "s" : ""}
+              </div>
             )}
-            {latestScanTs && (
-              <div className="text-[10px] text-faint mt-1.75">{relativeTime(latestScanTs)}</div>
-            )}
+            <div className="text-xs text-faint mt-1">
+              {latestScanTs ? relativeTime(latestScanTs) : "Not started"}
+            </div>
           </PhaseCard>
 
           {/* Cluster */}
@@ -435,9 +425,9 @@ export default function ProjectOverview({ appState }) {
             isResume={resumeStage === "cluster"}
             onClick={() => setActiveScreen("cluster")}
           >
-            <Stat label="Clusters" value={projectClusters.length} />
+            <BigStat label="Clusters" value={projectClusters.length} />
             {projectClusters.length > 0 && (
-              <div className="flex flex-wrap gap-[3px] mt-1.25">
+              <div className="flex flex-wrap gap-[3px] mt-1">
                 {clusterBySubtype.Trend > 0 && (
                   <span className="text-[9px] py-px px-1.5 rounded-pill bg-violet-50 text-violet-700">
                     {clusterBySubtype.Trend} Trend
@@ -456,9 +446,9 @@ export default function ProjectOverview({ appState }) {
               </div>
             )}
             {projectClusters.length > 0 && <HorizonScatter clusters={projectClusters} />}
-            {latestClusterTs && (
-              <div className="text-[10px] text-faint mt-1.25">{relativeTime(latestClusterTs)}</div>
-            )}
+            <div className="text-xs text-faint mt-1">
+              {latestClusterTs ? relativeTime(latestClusterTs) : "Not started"}
+            </div>
           </PhaseCard>
 
           {/* System Map */}
@@ -468,11 +458,11 @@ export default function ProjectOverview({ appState }) {
             isResume={resumeStage === "systemmap"}
             onClick={() => setActiveScreen("scenarios")}
           >
-            <Stat label="Nodes" value={projectNodes.length} />
-            <Stat label="Connections" value={projectRels.length} />
-            {latestMapTs && (
-              <div className="text-[10px] text-faint mt-1.75">{relativeTime(latestMapTs)}</div>
-            )}
+            <BigStat label="Nodes" value={projectNodes.length} />
+            <div className="text-xs text-faint mt-0.5">Connections: {projectRels.length}</div>
+            <div className="text-xs text-faint mt-1">
+              {latestMapTs ? relativeTime(latestMapTs) : "Not started"}
+            </div>
           </PhaseCard>
 
           {/* System Analysis */}
@@ -483,9 +473,9 @@ export default function ProjectOverview({ appState }) {
             onClick={() => setActiveScreen("analysis")}
           >
             <AnalysisFillGrid analysis={analysis} />
-            {latestAnalysisTs && (
-              <div className="text-[10px] text-faint mt-1.75">{relativeTime(latestAnalysisTs)}</div>
-            )}
+            <div className="text-xs text-faint mt-1.5">
+              {latestAnalysisTs ? relativeTime(latestAnalysisTs) : "Not started"}
+            </div>
           </PhaseCard>
 
           {/* Future Models */}
@@ -495,12 +485,12 @@ export default function ProjectOverview({ appState }) {
             isResume={resumeStage === "futures"}
             onClick={() => setActiveScreen("future-models")}
           >
-            <Stat label="Scenarios" value={projectScenarios.length} />
-            <Stat label="Preferred Futures" value={projectFutures.length} />
-            <Stat label="Strat. Options" value={projectOptions.length} />
-            {latestFuturesTs && (
-              <div className="text-[10px] text-faint mt-1.75">{relativeTime(latestFuturesTs)}</div>
-            )}
+            <BigStat label="Scenarios" value={projectScenarios.length} />
+            <div className="text-xs text-faint mt-0.5">Preferred Futures: {projectFutures.length}</div>
+            <div className="text-xs text-faint mt-0.5">Strat. Options: {projectOptions.length}</div>
+            <div className="text-xs text-faint mt-1">
+              {latestFuturesTs ? relativeTime(latestFuturesTs) : "Not started"}
+            </div>
           </PhaseCard>
 
         </div>
