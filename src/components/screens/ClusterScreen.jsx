@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { CirclePlus } from "lucide-react";
 import { c, btnSec, btnSm } from "../../styles/tokens.js";
 import { HorizTag } from "../shared/Tag.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
@@ -333,12 +334,13 @@ export default function ClusterScreen({ appState }) {
               onClick={() => createUntitledCluster()}
               style={{
                 ...btnSm,
+                display: "inline-flex", alignItems: "center", gap: 5,
                 border: `1px solid ${c.brandBorder}`,
                 background: c.brandBg,
                 color: c.brand,
               }}
             >
-              + New cluster
+              <CirclePlus size={13} style={{ flexShrink: 0 }} /> New cluster
             </button>
           </div>
         </div>
