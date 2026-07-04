@@ -364,6 +364,8 @@ title    → "Scan" (22px/500)
 CTAs     → "Add from Inbox" + "Add an input" (right-aligned)
 ```
 
+**Scan screen input tabs:** All · Unassigned · Clustered · AI Suggested (4th tab). The AI Suggested tab shows scanner-promoted candidates scoped to this project (`project_id === null`, `is_seeded`, `metadata.source === "scanner"`, `!metadata.dismissed`, with a `metadata.suggested_projects` entry matching `activeProjectId`). Partitioned into Emerging (novel — `metadata.suggested_projects[].classification === "emerging"`) and Reinforcing (confirms existing clusters). Per-row hover actions: **Accept** (`saveInputToProject(id, activeProjectId)`) and **Dismiss** (`dismissSuggestedInput(input)`). Batch actions in sticky bar: **Accept N** (`saveInputsToProject`) and **Dismiss N**. Accepted inputs drop from AI Suggested and appear in All/Unassigned immediately via optimistic state. Horizon filter is omitted from this tab — scanner candidates don't have `horizon` set at promotion time.
+
 ---
 
 ## Clusters panel — structure and rules
@@ -508,6 +510,7 @@ src/
       EmptyState.jsx
       HorizonBar.jsx        ← proportional H1/H2/H3 time horizon band; used by ProjectOverview
       ClusterAssignMenu.jsx ← portal-based cluster picker; used by all "Assign →" buttons
+      FilterDropdown.jsx    ← reusable filter pill + dropdown; used by ProjectDetail, Inbox, ClusterScreen
   data/
     seeds.js
   styles/
