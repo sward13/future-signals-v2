@@ -469,6 +469,7 @@ export default function ClusterScreen({ appState }) {
                     <div
                       key={inp.id}
                       draggable
+                      onClick={(e) => handleCheckboxClick(inp.id, e)}
                       onDragStart={(e) => {
                         if (e.target.closest('button') || e.target.type === 'checkbox') return;
                         setDragIds(selectedIds.has(inp.id) ? [...selectedIds] : [inp.id]);
