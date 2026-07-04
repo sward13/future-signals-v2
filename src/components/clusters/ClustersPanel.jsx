@@ -187,16 +187,14 @@ export function ClustersPanel({
 
       {/* ── Control bar — search + filters + view toggle, manual mode only ── */}
       {mode === "manual" && (
-        <div className="px-3.5 py-2 border-b border-border bg-white shrink-0 flex flex-col gap-1.5">
+        <div className="px-3.5 py-2 border-b border-border bg-white shrink-0 flex items-center gap-1.5">
           {/* Search */}
           <input
             value={clusterSearch}
             onChange={(e) => setClusterSearch(e.target.value)}
             placeholder="Search clusters…"
-            className="w-full text-[11px] py-1 px-2.5 rounded-container border border-border bg-surface-alt text-ink placeholder:text-faint outline-none"
+            className="flex-1 min-w-0 text-[11px] py-1 px-2.5 rounded-container border border-border bg-surface-alt text-ink placeholder:text-faint outline-none"
           />
-          {/* Filters + view toggle */}
-          <div className="flex items-center gap-1.5">
             <FilterDropdown
               label="Type"
               value={clusterFilterType}
@@ -246,7 +244,6 @@ export function ClustersPanel({
                 </button>
               ))}
             </div>
-          </div>
         </div>
       )}
 
