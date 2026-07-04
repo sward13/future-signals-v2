@@ -11,6 +11,7 @@ import { ClusterCard } from "./ClusterCard.jsx";
 import { ClusterDetailPanel } from "./ClusterDetailPanel.jsx";
 import { ClusterSuggestions } from "./ClusterSuggestions.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
+import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 
 /*
  * Remaining arbitrary values — no clean token equivalent exists yet:
@@ -139,6 +140,11 @@ export function ClustersPanel({
   const [clusterFilterLikelihood,setClusterFilterLikelihood]= useState(null);
   const [openClusterFilter,      setOpenClusterFilter]      = useState(null);
 
+  // Multi-select state for bulk delete
+  const [selectedClusterIds,   setSelectedClusterIds]   = useState(new Set());
+  const [lastCheckedClusterId, setLastCheckedClusterId] = useState(null);
+  const [confirmBulkDelete,    setConfirmBulkDelete]    = useState(false);
+
   const panelRef = useRef(null);
 
   const isUntitled = (cl) => /^Untitled( \d+)?$/.test(cl.name);
@@ -167,6 +173,29 @@ export function ClustersPanel({
   }, [selectedClusterId]);
 
   const selectedCluster = clusters.find((cl) => cl.id === selectedClusterId) || null;
+
+  const handleClusterCheckboxClick = (id, e) => {
+    e.stopPropagation();
+    if (e.shiftKey && lastCheckedClusterId && lastCheckedClusterId !== id) {
+      const idxA = visibleClusters.findIndex((cl) => cl.id === lastCheckedClusterId);
+      const idxB = visibleClusters.findIndex((cl) => cl.id === id);
+      if (idxA !== -1 && idxB !== -1) {
+        const [lo, hi] = idxA < idxB ? [idxA, idxB] : [idxB, idxA];
+        setSelectedClusterIds((prev) => {
+          const next = new Set(prev);
+          visibleClusters.slice(lo, hi + 1).forEach((cl) => next.add(cl.id));
+          return next;
+        });
+      }
+    } else {
+      setSelectedClusterIds((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+      });
+    }
+    setLastCheckedClusterId(id);
+  };
 
   const visibleClusters = clusters
     .filter(filterUntitled ? isUntitled : () => true)
@@ -387,13 +416,55 @@ export function ClustersPanel({
                     onClick={() => setSelectedClusterId(cl.id)}
                     isDropTarget={!!dragIds && dropTargetId === cl.id}
                     dropIsCopy={dropIsCopy}
+                    isSelected={selectedClusterIds.has(cl.id)}
+                    onCheckboxClick={(e) => handleClusterCheckboxClick(cl.id, e)}
+                    anySelected={selectedClusterIds.size > 0}
                   />
                 </div>
               ))}
             </div>
           )}
 
+          {/* Multi-select action bar — visible in both list and card view */}
+          {selectedClusterIds.size > 0 && (
+            <div className="sticky bottom-0 flex items-center gap-2 px-3.5 py-2 bg-white border-t border-border">
+              <span className="text-[11px] text-muted flex-1">
+                {selectedClusterIds.size} selected
+              </span>
+              <button
+                onClick={() => setConfirmBulkDelete(true)}
+                className="text-[11px] text-red-800 bg-transparent border border-red-border rounded-btn px-2.75 py-1 cursor-pointer font-[inherit] shrink-0 hover:bg-red-50"
+              >
+                Delete {selectedClusterIds.size}
+              </button>
+              <button
+                onClick={() => { setSelectedClusterIds(new Set()); setLastCheckedClusterId(null); }}
+                className="text-[11px] text-muted bg-transparent border-none cursor-pointer font-[inherit] shrink-0"
+              >
+                ✕ Clear
+              </button>
+            </div>
+          )}
+
         </div>
+      )}
+
+      {confirmBulkDelete && (
+        <ConfirmDialog
+          title={`Delete ${selectedClusterIds.size} cluster${selectedClusterIds.size !== 1 ? "s" : ""}?`}
+          message="This will permanently delete the selected clusters. Inputs linked to them will not be deleted. This cannot be undone."
+          confirmLabel={`Delete ${selectedClusterIds.size}`}
+          onConfirm={() => {
+            const count = selectedClusterIds.size;
+            [...selectedClusterIds].forEach((id) => deleteCluster(id));
+            setSelectedClusterIds(new Set());
+            setLastCheckedClusterId(null);
+            setSelectedClusterId(null);
+            setConfirmBulkDelete(false);
+            showToast?.(`${count} cluster${count !== 1 ? "s" : ""} deleted`, "success");
+          }}
+          onClose={() => setConfirmBulkDelete(false)}
+        />
       )}
 
       {/* ── Suggested mode — AI suggestion panel ─────────────── */}

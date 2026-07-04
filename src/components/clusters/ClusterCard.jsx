@@ -16,8 +16,10 @@ function LikelihoodTag({ l }) {
   return <Tag label={l} color={col} bg={bg} border={brd} />;
 }
 
-export function ClusterCard({ cluster, selected = false, onClick, isDropTarget = false, dropIsCopy = false }) {
+export function ClusterCard({ cluster, selected = false, onClick, isDropTarget = false, dropIsCopy = false, isSelected = false, onCheckboxClick = null, anySelected = false }) {
   const [hovered, setHovered] = useState(false);
+
+  const showCheckbox = hovered || anySelected || isSelected;
 
   return (
     <div
@@ -25,19 +27,37 @@ export function ClusterCard({ cluster, selected = false, onClick, isDropTarget =
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: isDropTarget ? (dropIsCopy ? "#F0FDF4" : "#EFF6FF") : selected ? "#EFF6FF" : c.white,
-        border: `2px solid ${isDropTarget ? (dropIsCopy ? "#16a34a" : c.brand) : selected ? c.brand : hovered ? c.borderMid : c.border}`,
+        background: isDropTarget ? (dropIsCopy ? "#F0FDF4" : "#EFF6FF") : (isSelected || selected) ? "#EFF6FF" : c.white,
+        border: `2px solid ${isDropTarget ? (dropIsCopy ? "#16a34a" : c.brand) : (isSelected || selected) ? c.brand : hovered ? c.borderMid : c.border}`,
         borderRadius: 9,
         padding: "11px 13px",
         cursor: "pointer",
         position: "relative",
-        boxShadow: hovered && !selected && !isDropTarget ? "0 2px 8px rgba(0,0,0,0.07)" : "none",
+        boxShadow: hovered && !isSelected && !selected && !isDropTarget ? "0 2px 8px rgba(0,0,0,0.07)" : "none",
         transition: "border-color 0.12s, box-shadow 0.12s, background 0.12s",
       }}
     >
-      {/* Header row: type badge left, horizon right */}
+      {/* Header row: checkbox + type badge left, horizon right */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
-        <SubtypeTag sub={cluster.subtype} />
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          {onCheckboxClick && (
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => {}}
+              onClick={onCheckboxClick}
+              style={{
+                cursor: "pointer",
+                accentColor: c.ink,
+                width: 13, height: 13,
+                flexShrink: 0,
+                opacity: showCheckbox ? 1 : 0,
+                transition: "opacity 0.12s",
+              }}
+            />
+          )}
+          <SubtypeTag sub={cluster.subtype} />
+        </div>
         {cluster.horizon && <HorizTag h={cluster.horizon} />}
       </div>
 
