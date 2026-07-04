@@ -30,6 +30,12 @@ const CONFIDENCE_COLORS = {
 };
 
 const INPUT_TYPE_OPTS = ["signal","issue","projection","plan","obstacle","source"];
+const COL_AI = { check: 28, type: 70, classif: 88, steepled: 90, date: 50 };
+
+function formatDate(str) {
+  if (!str) return "—";
+  return new Date(str).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
 // ─── Filter tab ────────────────────────────────────────────────────────────────
 
@@ -75,6 +81,70 @@ function InputTypeBadge({ subtype }) {
     }}>
       {label}
     </span>
+  );
+}
+
+// ─── AI Suggested row ─────────────────────────────────────────────────────────
+
+const CLASSIF_STYLE = {
+  emerging:    { bg: "#FEF3C7", text: "#92400E", label: "Emerging" },
+  reinforcing: { bg: "#DBEAFE", text: "#1E40AF", label: "Reinforcing" },
+};
+
+function AiRow({ inp, selected, onCheck, activeProjectId }) {
+  const [hov, setHov] = useState(false);
+  const projectEntry = (inp.metadata?.suggested_projects || []).find(p => p.id === activeProjectId);
+  const classif = projectEntry?.classification;
+  const cs = CLASSIF_STYLE[classif] || { bg: c.surfaceAlt, text: c.muted, label: classif || "—" };
+  const allProjects = (inp.metadata?.suggested_projects || []).map(p => p.name).filter(Boolean);
+  const steepledAbbr = (inp.steepled || []).slice(0, 3).map(t => STEEPLED_ABB[t] || t);
+  return (
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "7px 14px",
+        borderBottom: `1px solid ${c.border}`,
+        background: selected ? "#EFF6FF" : hov ? c.surfaceAlt : c.white,
+        transition: "background 0.1s",
+        minHeight: 38,
+      }}
+    >
+      <div style={{ width: COL_AI.check, flexShrink: 0 }}>
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onCheck(inp.id)}
+          onClick={e => e.stopPropagation()}
+          style={{ cursor: "pointer", accentColor: c.ink }}
+        />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {inp.name || inp.metadata?.title || "Untitled signal"}
+        </div>
+        {allProjects.length > 1 && (
+          <div style={{ fontSize: 10, color: c.hint, marginTop: 1 }}>
+            Suggested for {allProjects.join(", ")}
+          </div>
+        )}
+      </div>
+      <div style={{ width: COL_AI.type, flexShrink: 0 }}>
+        <InputTypeBadge subtype={inp.subtype} />
+      </div>
+      <div style={{ width: COL_AI.classif, flexShrink: 0 }}>
+        <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: cs.bg, color: cs.text, whiteSpace: "nowrap" }}>
+          {cs.label}
+        </span>
+      </div>
+      <div style={{ width: COL_AI.steepled, flexShrink: 0, fontSize: 10, color: c.muted }}>
+        {steepledAbbr.length > 0 ? steepledAbbr.join(", ") : "—"}
+      </div>
+      <div style={{ width: COL_AI.date, flexShrink: 0, fontSize: 10, color: c.hint }}>
+        {formatDate(inp.created_at)}
+      </div>
+    </div>
   );
 }
 
@@ -150,6 +220,13 @@ export default function ProjectDetail({ appState }) {
   // Row context menu + cluster picker for "Duplicate to cluster"
   const [rowMenu,    setRowMenu]    = useState(null); // null | { inputId, rect }
   const [dupePicker, setDupePicker] = useState(null); // null | { inputId, rect }
+  // AI Suggested tab state
+  const [aiSearchQuery,        setAiSearchQuery]        = useState("");
+  const [aiFilterType,         setAiFilterType]         = useState(null);
+  const [aiFilterSteepled,     setAiFilterSteepled]     = useState(null);
+  const [aiOpenFilterDropdown, setAiOpenFilterDropdown] = useState(null);
+  const [aiSelectedIds,        setAiSelectedIds]        = useState(new Set());
+  const [aiLastCheckedId,      setAiLastCheckedId]      = useState(null);
 
   const project = projects.find((p) => p.id === activeProjectId) ?? null;
   const { status: scanStatus, foundCount, dismiss: dismissScan } = useScannerStatus(project, inputs);
@@ -188,8 +265,9 @@ export default function ProjectDetail({ appState }) {
   const inCluster  = projectInputs.filter((i) =>  getInputCluster(i.id));
 
   const tabInputs =
-    inputTab === "unassigned" ? unassigned :
-    inputTab === "incluster"  ? inCluster :
+    inputTab === "unassigned"  ? unassigned :
+    inputTab === "incluster"   ? inCluster :
+    inputTab === "aisuggested" ? [] :
     [...unassigned, ...inCluster]; // All: unassigned first
 
   // Apply search + filter chips on top of the tab slice
@@ -244,6 +322,61 @@ export default function ProjectDetail({ appState }) {
     }
     setLastCheckedId(id);
   };
+
+  // ── AI Suggested derived values ──────────────────────────────────────────────
+  const aiSuggestedInputs = inputs
+    .filter((i) =>
+      i.project_id === null &&
+      i.is_seeded &&
+      i.metadata?.source === "scanner" &&
+      !i.metadata?.dismissed &&
+      (i.metadata?.suggested_projects || []).some((p) => p.id === activeProjectId)
+    )
+    .sort((a, b) => {
+      const sA = (a.metadata?.suggested_projects || []).find(p => p.id === activeProjectId)?.score ?? 0;
+      const sB = (b.metadata?.suggested_projects || []).find(p => p.id === activeProjectId)?.score ?? 0;
+      return sB - sA;
+    });
+
+  const filteredAiInputs = aiSuggestedInputs
+    .filter((i) => !aiSearchQuery    || (i.name || "").toLowerCase().includes(aiSearchQuery.toLowerCase()))
+    .filter((i) => !aiFilterType     || i.subtype === aiFilterType)
+    .filter((i) => !aiFilterSteepled || (i.steepled || []).includes(aiFilterSteepled));
+
+  const getAiClass = (i) =>
+    (i.metadata?.suggested_projects || []).find(p => p.id === activeProjectId)?.classification;
+
+  const emergingInputs    = filteredAiInputs.filter(i => getAiClass(i) === "emerging");
+  const reinforcingInputs = filteredAiInputs.filter(i => getAiClass(i) === "reinforcing");
+
+  const anyAiFilterActive = !!(aiSearchQuery || aiFilterType || aiFilterSteepled);
+  const allAiSelected = filteredAiInputs.length > 0 && filteredAiInputs.every(i => aiSelectedIds.has(i.id));
+  const someAiSelected = aiSelectedIds.size > 0;
+
+  const toggleSelectAllAi = () => {
+    if (allAiSelected) {
+      setAiSelectedIds(prev => { const n = new Set(prev); filteredAiInputs.forEach(i => n.delete(i.id)); return n; });
+    } else {
+      setAiSelectedIds(prev => { const n = new Set(prev); filteredAiInputs.forEach(i => n.add(i.id)); return n; });
+    }
+    setAiLastCheckedId(null);
+  };
+
+  const handleAiCheckboxClick = (id, e) => {
+    if (e.shiftKey && aiLastCheckedId && aiLastCheckedId !== id) {
+      const idxA = filteredAiInputs.findIndex(i => i.id === aiLastCheckedId);
+      const idxB = filteredAiInputs.findIndex(i => i.id === id);
+      if (idxA !== -1 && idxB !== -1) {
+        const [lo, hi] = idxA < idxB ? [idxA, idxB] : [idxB, idxA];
+        setAiSelectedIds(prev => { const n = new Set(prev); filteredAiInputs.slice(lo, hi + 1).forEach(i => n.add(i.id)); return n; });
+      }
+    } else {
+      setAiSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    }
+    setAiLastCheckedId(id);
+  };
+
+  const clearAiFilters = () => { setAiSearchQuery(""); setAiFilterType(null); setAiFilterSteepled(null); };
 
   const handleBulkDelete = () => {
     confirmDeleteIds.forEach((id) => deleteInput(id));
@@ -389,9 +522,10 @@ export default function ProjectDetail({ appState }) {
           {/* Row 1: tabs left, import link right */}
           <div style={{ display: "flex", alignItems: "flex-end", marginBottom: 10, gap: 12, borderBottom: `1px solid ${c.border}` }}>
             <div style={{ display: "flex", alignItems: "center" }}>
-              <FilterTab label="All"         count={projectInputs.length} active={inputTab === "all"}        onClick={() => { setInputTab("all");        setSelectedIds(new Set()); setLastCheckedId(null); }} />
-              <FilterTab label="Unassigned"  count={unassigned.length}    active={inputTab === "unassigned"} onClick={() => { setInputTab("unassigned"); setSelectedIds(new Set()); setLastCheckedId(null); }} />
-              <FilterTab label="Clustered"   count={inCluster.length}     active={inputTab === "incluster"}  onClick={() => { setInputTab("incluster");  setSelectedIds(new Set()); setLastCheckedId(null); }} />
+              <FilterTab label="All"          count={projectInputs.length}       active={inputTab === "all"}         onClick={() => { setInputTab("all");         setSelectedIds(new Set()); setLastCheckedId(null); setAiSelectedIds(new Set()); setAiLastCheckedId(null); }} />
+              <FilterTab label="Unassigned"   count={unassigned.length}           active={inputTab === "unassigned"}  onClick={() => { setInputTab("unassigned");  setSelectedIds(new Set()); setLastCheckedId(null); setAiSelectedIds(new Set()); setAiLastCheckedId(null); }} />
+              <FilterTab label="Clustered"    count={inCluster.length}            active={inputTab === "incluster"}   onClick={() => { setInputTab("incluster");   setSelectedIds(new Set()); setLastCheckedId(null); setAiSelectedIds(new Set()); setAiLastCheckedId(null); }} />
+              <FilterTab label="AI Suggested" count={aiSuggestedInputs.length}    active={inputTab === "aisuggested"} onClick={() => { setInputTab("aisuggested"); setSelectedIds(new Set()); setLastCheckedId(null); }} />
             </div>
             <button
               onClick={() => setCsvImportOpen(true)}
@@ -401,7 +535,158 @@ export default function ProjectDetail({ appState }) {
             </button>
           </div>
 
-          {projectInputs.length === 0 ? (
+          {inputTab === "aisuggested" ? (
+            /* ── AI Suggested tab ──────────────────────────────── */
+            aiSuggestedInputs.length === 0 ? (
+              <div style={{
+                background: c.white, border: `1px dashed ${c.border}`,
+                borderRadius: 12, padding: "36px 24px", textAlign: "center",
+              }}>
+                <div style={{ fontSize: 26, opacity: 0.12, marginBottom: 10 }}>✦</div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: c.muted, marginBottom: 5 }}>No signals suggested yet</div>
+                <div style={{ fontSize: 12, color: c.hint, lineHeight: 1.6 }}>
+                  The scanner surfaces signals matching your project's key question. Check back after the next scan.
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Search + filters — Type + STEEPLED only; Horizon omitted (not set on scanner candidates) */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <input
+                    value={aiSearchQuery}
+                    onChange={(e) => setAiSearchQuery(e.target.value)}
+                    placeholder="Search signals…"
+                    style={{
+                      ...inp, width: 220, padding: "5px 10px", fontSize: 12,
+                      border: `1px solid ${c.border}`, borderRadius: 6,
+                    }}
+                  />
+                  <FilterDropdown
+                    label="Type"
+                    value={aiFilterType}
+                    options={INPUT_TYPE_OPTS.map(v => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }))}
+                    onChange={setAiFilterType}
+                    onClear={() => setAiFilterType(null)}
+                    isOpen={aiOpenFilterDropdown === "type"}
+                    onToggle={() => setAiOpenFilterDropdown(aiOpenFilterDropdown === "type" ? null : "type")}
+                  />
+                  <FilterDropdown
+                    label="STEEPLED"
+                    value={aiFilterSteepled}
+                    options={STEEPLED.map(v => ({ value: v, label: v }))}
+                    onChange={setAiFilterSteepled}
+                    onClear={() => setAiFilterSteepled(null)}
+                    isOpen={aiOpenFilterDropdown === "steepled"}
+                    onToggle={() => setAiOpenFilterDropdown(aiOpenFilterDropdown === "steepled" ? null : "steepled")}
+                  />
+                  {anyAiFilterActive && (
+                    <button
+                      onClick={clearAiFilters}
+                      style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+
+                {filteredAiInputs.length === 0 ? (
+                  <div style={{ padding: "20px 14px", fontSize: 12, color: c.hint, textAlign: "center" }}>
+                    No signals match the current filters.{" "}
+                    <button onClick={clearAiFilters} style={{ fontSize: 12, color: c.ink, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>
+                      Clear filters
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden" }}>
+                    {/* Table header */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", height: 30, borderBottom: "0.5px solid rgba(0,0,0,0.09)" }}>
+                      <div style={{ width: COL_AI.check, flexShrink: 0, display: "flex", alignItems: "center" }}>
+                        <input
+                          type="checkbox"
+                          checked={allAiSelected}
+                          onChange={toggleSelectAllAi}
+                          ref={el => { if (el) el.indeterminate = someAiSelected && !allAiSelected; }}
+                          style={{ cursor: "pointer", accentColor: c.ink }}
+                          onClick={e => e.stopPropagation()}
+                        />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0, ...cell }}>Signal</div>
+                      <div style={{ width: COL_AI.type,   ...cell }}>Type</div>
+                      <div style={{ width: COL_AI.classif,...cell }}>Signal type</div>
+                      <div style={{ width: COL_AI.steepled,...cell }}>STEEPLED</div>
+                      <div style={{ width: COL_AI.date,   ...cell }}>Date</div>
+                    </div>
+
+                    {/* Emerging section */}
+                    {emergingInputs.length > 0 && (() => {
+                      const SectionHdr = ({ first }) => (
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 7,
+                          padding: "6px 14px 5px",
+                          background: c.surfaceAlt,
+                          borderTop: first ? "none" : `1px solid ${c.border}`,
+                          borderBottom: `1px solid ${c.border}`,
+                        }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: c.ink }}>Emerging</span>
+                          <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 10, background: c.amber50, color: c.amber700, fontWeight: 500 }}>Novel signals</span>
+                          <span style={{ fontSize: 10, color: c.hint, marginLeft: 2 }}>{emergingInputs.length}</span>
+                        </div>
+                      );
+                      return (
+                        <>
+                          <SectionHdr first={true} />
+                          {emergingInputs.map(i => <AiRow key={i.id} inp={i} selected={aiSelectedIds.has(i.id)} onCheck={handleAiCheckboxClick} activeProjectId={activeProjectId} />)}
+                        </>
+                      );
+                    })()}
+
+                    {/* Reinforcing section */}
+                    {reinforcingInputs.length > 0 && (
+                      <>
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 7,
+                          padding: "6px 14px 5px",
+                          background: c.surfaceAlt,
+                          borderTop: `1px solid ${c.border}`,
+                          borderBottom: `1px solid ${c.border}`,
+                        }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: c.ink }}>Reinforcing</span>
+                          <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 10, background: c.blue50, color: c.blue700, fontWeight: 500 }}>Confirms existing clusters</span>
+                          <span style={{ fontSize: 10, color: c.hint, marginLeft: 2 }}>{reinforcingInputs.length}</span>
+                        </div>
+                        {reinforcingInputs.map(i => <AiRow key={i.id} inp={i} selected={aiSelectedIds.has(i.id)} onCheck={handleAiCheckboxClick} activeProjectId={activeProjectId} />)}
+                      </>
+                    )}
+
+                    {/* Fallback: candidates with unknown classification (edge case) */}
+                    {emergingInputs.length === 0 && reinforcingInputs.length === 0 && (
+                      filteredAiInputs.map(i => <AiRow key={i.id} inp={i} selected={aiSelectedIds.has(i.id)} onCheck={handleAiCheckboxClick} activeProjectId={activeProjectId} />)
+                    )}
+                  </div>
+                )}
+
+                {/* AI selection action bar — actions wired in next step */}
+                {someAiSelected && (
+                  <div style={{
+                    position: "sticky", bottom: 0,
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "9px 14px",
+                    background: "rgb(249, 249, 247)",
+                    borderTop: `1px solid ${c.border}`,
+                    animation: "slideUp 0.16s ease",
+                  }}>
+                    <span style={{ fontSize: 12, color: c.muted, flex: 1 }}>{aiSelectedIds.size} selected</span>
+                    <button
+                      onClick={() => { setAiSelectedIds(new Set()); setAiLastCheckedId(null); }}
+                      style={{ fontSize: 11, color: "rgb(102,102,102)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                    >
+                      ✕ Clear
+                    </button>
+                  </div>
+                )}
+              </>
+            )
+          ) : projectInputs.length === 0 ? (
             <div style={{
               background: c.white, border: `1px dashed ${c.border}`,
               borderRadius: 12, padding: "36px 24px", textAlign: "center",
