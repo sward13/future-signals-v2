@@ -193,7 +193,7 @@ export function ClustersPanel({
             value={clusterSearch}
             onChange={(e) => setClusterSearch(e.target.value)}
             placeholder="Search clusters…"
-            className="flex-1 min-w-0 text-[11px] py-1 px-2.5 rounded-container border border-border bg-surface-alt text-ink placeholder:text-faint outline-none"
+            className="w-[200px] shrink-0 text-[11px] py-1 px-2.5 rounded-container border border-border bg-surface-alt text-ink placeholder:text-faint outline-none"
           />
             <FilterDropdown
               label="Type"
