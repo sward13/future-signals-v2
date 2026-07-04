@@ -318,40 +318,8 @@ export default function ProjectOverview({ appState }) {
         {/* Time horizons */}
         {project.h1_start && <HorizonBar project={project} />}
 
-        {/* Scanner card */}
-        <div className="bg-white border border-border rounded-container py-3 px-4 mb-3 flex items-center justify-between gap-4">
-          <div>
-            <div className="text-ui font-medium text-ink mb-[3px]">
-              {newSignalCount > 0
-                ? `${newSignalCount} new signal${newSignalCount !== 1 ? "s" : ""} since your last visit`
-                : "No new signals since your last visit"}
-            </div>
-            <div className="text-xs text-muted">
-              {activeSources.length > 0
-                ? `Scanning active · ${activeSources.length} source${activeSources.length !== 1 ? "s" : ""}`
-                : "No sources active"}
-            </div>
-          </div>
-          <div className="flex gap-2 shrink-0">
-            {aiSuggestionCount > 0 && (
-              <button
-                onClick={() => { setInboxProjectFilter(activeProjectId); setActiveScreen("inbox"); }}
-                className="text-xs py-1.5 px-3.5 rounded-btn bg-brand-bg text-brand border border-brand-border cursor-pointer [font-family:inherit]"
-              >
-                Review {aiSuggestionCount} →
-              </button>
-            )}
-            <button
-              onClick={() => { setOpenScanningPrefs(true); setActiveScreen("project"); }}
-              className="py-1.5 px-3.5 rounded-container bg-transparent text-muted border border-border-mid text-xs cursor-pointer [font-family:inherit]"
-            >
-              Manage sources
-            </button>
-          </div>
-        </div>
-
         {/* Context card (collapsible) */}
-        <div className="bg-white border border-border rounded-container mb-6 overflow-hidden">
+        <div className="bg-white border border-border rounded-container mb-3 overflow-hidden">
           <button
             onClick={() => setContextExpanded(e => !e)}
             className="w-full flex items-center justify-between py-2.5 px-4 bg-transparent border-0 cursor-pointer [font-family:inherit] text-left"
@@ -407,6 +375,38 @@ export default function ProjectOverview({ appState }) {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Scanner card */}
+        <div className="bg-white border border-border rounded-container py-3 px-4 mb-6 flex items-center justify-between gap-4">
+          <div>
+            <div className="text-ui font-medium text-ink mb-[3px]">
+              {newSignalCount > 0
+                ? `${newSignalCount} new signal${newSignalCount !== 1 ? "s" : ""} since your last visit`
+                : "No new signals since your last visit"}
+            </div>
+            <div className="text-xs text-muted">
+              {activeSources.length > 0
+                ? `Scanning active · ${activeSources.length} source${activeSources.length !== 1 ? "s" : ""}`
+                : "No sources active"}
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            {aiSuggestionCount > 0 && (
+              <button
+                onClick={() => { setInboxProjectFilter(activeProjectId); setActiveScreen("inbox"); }}
+                className="text-xs py-1.5 px-3.5 rounded-btn bg-brand-bg text-brand border border-brand-border cursor-pointer [font-family:inherit]"
+              >
+                Review {aiSuggestionCount} →
+              </button>
+            )}
+            <button
+              onClick={() => { setOpenScanningPrefs(true); setActiveScreen("project"); }}
+              className="py-1.5 px-3.5 rounded-container bg-transparent text-muted border border-border-mid text-xs cursor-pointer [font-family:inherit]"
+            >
+              Manage sources
+            </button>
+          </div>
         </div>
 
         {/* Phase cards */}
