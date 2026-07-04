@@ -20,7 +20,7 @@ import logoLight from "../../assets/logo_light.svg";
 import { c } from "../../styles/tokens.js";
 import {
   Home, Inbox as InboxIcon, PanelsTopLeft, SquareArrowRight,
-  Layers, Network, LayoutDashboard, ChartNoAxesCombined, Download,
+  Boxes, Network, LayoutDashboard, ChartNoAxesCombined, Download,
 } from "lucide-react";
 
 function getInitials(user) {
@@ -41,7 +41,7 @@ const NAV_ITEMS = [
 const PROJECT_ITEMS = [
   { icon: <PanelsTopLeft size={16} />,     label: "Overview",        screen: "project-overview" },
   { icon: <SquareArrowRight size={16} />, label: "Scan",            screen: "project" },
-  { icon: <Layers size={16} />,           label: "Cluster",         screen: "cluster" },
+  { icon: <Boxes size={16} />,             label: "Cluster",         screen: "cluster" },
   { icon: <Network size={16} />,          label: "System Map",      screen: "scenarios" },
   { icon: <LayoutDashboard size={16} />,  label: "System Analysis", screen: "analysis" },
 ];
