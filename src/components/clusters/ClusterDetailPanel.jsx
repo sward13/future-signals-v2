@@ -3,10 +3,11 @@
  * Uses position:absolute / translateX so the inputs panel stays fully visible.
  * @param {{ open: boolean, cluster: object|null, inputs: object[], onClose: () => void, onRemoveInput: (inputId, clusterId) => void, onDelete: (id) => void }} props
  */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { c, btnSec } from "../../styles/tokens.js";
 import { SubtypeTag, HorizTag, Tag } from "../shared/Tag.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
+import { ClusterDrawer } from "./ClusterDrawer.jsx";
 
 function LikelihoodTag({ l }) {
   const map = {
@@ -19,38 +20,15 @@ function LikelihoodTag({ l }) {
 }
 
 export function ClusterDetailPanel({ open, cluster, inputs, onClose, onRemoveInput, onDelete, updateCluster }) {
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [isEditing,    setIsEditing]    = useState(false);
-  const [editName,     setEditName]     = useState("");
-  const inputRef = useRef(null);
+  const [confirmDelete,  setConfirmDelete]  = useState(false);
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
 
   useEffect(() => {
     setConfirmDelete(false);
-    setIsEditing(false);
-    setEditName(cluster?.name ?? "");
+    setEditDrawerOpen(false);
   }, [cluster?.id]);
 
-  // Focus and select the name input when edit mode activates
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isEditing]);
-
   const linkedInputs = cluster ? inputs.filter((i) => cluster.input_ids?.includes(i.id)) : [];
-
-  const commitEdit = () => {
-    const trimmed = editName.trim();
-    if (trimmed && cluster) updateCluster(cluster.id, { name: trimmed });
-    else setEditName(cluster?.name ?? "");
-    setIsEditing(false);
-  };
-
-  const cancelEdit = () => {
-    setEditName(cluster?.name ?? "");
-    setIsEditing(false);
-  };
 
   return (
     <>
@@ -87,14 +65,14 @@ export function ClusterDetailPanel({ open, cluster, inputs, onClose, onRemoveInp
             ← Clusters
           </button>
           <button
-            onClick={isEditing ? commitEdit : () => setIsEditing(true)}
+            onClick={() => setEditDrawerOpen(true)}
             style={{
               background: "none", border: `1px solid ${c.borderMid}`,
               cursor: "pointer", fontFamily: "inherit", fontSize: 11,
-              color: isEditing ? c.brand : c.muted, padding: "4px 10px", borderRadius: 6,
+              color: c.muted, padding: "4px 10px", borderRadius: 6,
             }}
           >
-            {isEditing ? "Done" : "Edit"}
+            Edit
           </button>
         </div>
 
@@ -110,29 +88,10 @@ export function ClusterDetailPanel({ open, cluster, inputs, onClose, onRemoveInp
                 {cluster.likelihood && <LikelihoodTag l={cluster.likelihood} />}
               </div>
 
-              {/* Name — display or inline edit */}
-              {isEditing ? (
-                <input
-                  ref={inputRef}
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  onBlur={commitEdit}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") { e.preventDefault(); commitEdit(); }
-                    if (e.key === "Escape") { e.stopPropagation(); cancelEdit(); }
-                  }}
-                  style={{
-                    width: "100%", fontSize: 15, fontWeight: 600, color: c.ink,
-                    border: `1px solid ${c.brand}`, borderRadius: 6, padding: "4px 8px",
-                    marginBottom: 8, fontFamily: "inherit", outline: "none",
-                    background: c.white, boxSizing: "border-box",
-                  }}
-                />
-              ) : (
-                <div style={{ fontSize: 16, fontWeight: 600, color: c.ink, marginBottom: 8, lineHeight: 1.3 }}>
-                  {cluster.name}
-                </div>
-              )}
+              {/* Name */}
+              <div style={{ fontSize: 16, fontWeight: 600, color: c.ink, marginBottom: 8, lineHeight: 1.3 }}>
+                {cluster.name}
+              </div>
 
               {/* Description */}
               <div style={{ fontSize: 12, color: cluster.description ? c.muted : c.hint, fontStyle: cluster.description ? "normal" : "italic", lineHeight: 1.65, marginBottom: 16 }}>
@@ -203,6 +162,24 @@ export function ClusterDetailPanel({ open, cluster, inputs, onClose, onRemoveInp
           message="This will permanently delete the cluster. Inputs linked to it will not be deleted. This cannot be undone."
           onConfirm={() => { setConfirmDelete(false); onDelete(cluster.id); }}
           onClose={() => setConfirmDelete(false)}
+        />
+      )}
+
+      {cluster && (
+        <ClusterDrawer
+          open={editDrawerOpen}
+          onClose={() => setEditDrawerOpen(false)}
+          mode="edit"
+          initialValues={{
+            name: cluster.name,
+            subtype: cluster.subtype,
+            horizon: cluster.horizon,
+            likelihood: cluster.likelihood,
+            description: cluster.description,
+          }}
+          onSave={(fields) => { updateCluster(cluster.id, fields); setEditDrawerOpen(false); }}
+          projectId={cluster.project_id}
+          projectInputs={[]}
         />
       )}
     </>
