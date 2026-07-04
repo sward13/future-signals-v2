@@ -471,7 +471,7 @@ export default function ClusterScreen({ appState }) {
                       draggable
                       onDragStart={(e) => {
                         if (e.target.closest('button') || e.target.type === 'checkbox') return;
-                        setDragIds([inp.id]);
+                        setDragIds(selectedIds.has(inp.id) ? [...selectedIds] : [inp.id]);
                         setDragIsCopy(false);
                         if (blankImgRef.current) e.dataTransfer.setDragImage(blankImgRef.current, 0, 0);
                         e.dataTransfer.effectAllowed = "copyMove";
