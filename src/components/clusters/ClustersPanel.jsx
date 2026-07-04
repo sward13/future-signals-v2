@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useRef } from "react";
 import clsx from "clsx";
-import { SubtypeTag } from "../shared/Tag.jsx";
+import { SubtypeTag, HorizTag } from "../shared/Tag.jsx";
 import { ClusterCard } from "./ClusterCard.jsx";
 import { ClusterDetailPanel } from "./ClusterDetailPanel.jsx";
 import { ClusterSuggestions } from "./ClusterSuggestions.jsx";
@@ -25,6 +25,23 @@ import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 
 // ─── List-view row ─────────────────────────────────────────────────────────────
 
+function LikelihoodTag({ l }) {
+  const map = {
+    Probable:  "text-green-700 bg-green-50 border-green-border",
+    Plausible: "text-blue-700 bg-blue-50 border-blue-border",
+    Possible:  "text-amber-700 bg-amber-50 border-amber-border",
+  };
+  if (!l) return null;
+  return (
+    <span className={clsx(
+      "text-[10px] px-1.75 py-px rounded-pill border whitespace-nowrap",
+      map[l] || "text-hint border-border",
+    )}>
+      {l}
+    </span>
+  );
+}
+
 function ClusterListRow({ cluster, selected, onClick, isDropTarget, dropIsCopy, onDragOver, onDragLeave, onDrop }) {
   const [hovered, setHovered] = useState(false);
   return (
@@ -36,7 +53,7 @@ function ClusterListRow({ cluster, selected, onClick, isDropTarget, dropIsCopy, 
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       className={clsx(
-        'flex items-center px-3.5 py-2 border-b border-border cursor-pointer transition-colors duration-100 relative',
+        'flex items-center gap-2 px-3.5 py-2 border-b border-border cursor-pointer transition-colors duration-100 relative',
         isDropTarget && dropIsCopy  && 'bg-green-25 outline outline-2 outline-green-600 [outline-offset:-2px]',
         isDropTarget && !dropIsCopy && 'bg-brand-bg outline outline-2 outline-brand [outline-offset:-2px]',
         !isDropTarget && selected   && 'bg-brand-bg',
@@ -45,27 +62,37 @@ function ClusterListRow({ cluster, selected, onClick, isDropTarget, dropIsCopy, 
     >
       {/* Name — flex, truncates */}
       <span className={clsx(
-        'flex-1 text-xs font-medium overflow-hidden text-ellipsis whitespace-nowrap mr-2',
+        'flex-1 min-w-0 text-xs font-medium overflow-hidden text-ellipsis whitespace-nowrap',
         selected ? 'text-brand' : 'text-ink',
       )}>
         {cluster.name}
       </span>
 
       {/* Type badge — 62px fixed container */}
-      <div className="w-[62px] shrink-0 flex justify-end">
+      <div className="w-[62px] shrink-0 flex justify-start">
         <SubtypeTag sub={cluster.subtype} />
+      </div>
+
+      {/* Horizon — 34px fixed container */}
+      <div className="w-[34px] shrink-0">
+        {cluster.horizon && <HorizTag h={cluster.horizon} />}
+      </div>
+
+      {/* Likelihood — 74px fixed container */}
+      <div className="w-[74px] shrink-0">
+        {cluster.likelihood && <LikelihoodTag l={cluster.likelihood} />}
       </div>
 
       {/* Input count or Move/Copy pill */}
       {isDropTarget ? (
         <span className={clsx(
-          'text-[10px] font-semibold ml-2 shrink-0 py-px px-1.75 rounded',
+          'text-[10px] font-semibold shrink-0 py-px px-1.75 rounded',
           dropIsCopy ? 'bg-green-600 text-white' : 'bg-brand text-white',
         )}>
           {dropIsCopy ? "Copy" : "Move"}
         </span>
       ) : (
-        <span className="text-[10px] text-hint ml-2 shrink-0 min-w-6 text-right">
+        <span className="text-[10px] text-hint shrink-0 min-w-6 text-right">
           {cluster.input_ids?.length || 0}
         </span>
       )}
@@ -294,6 +321,14 @@ export function ClustersPanel({
 
           {view === "list" && clusters.length > 0 && (
             <div>
+              {/* Column headers */}
+              <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white border-b border-border">
+                <span className="flex-1 min-w-0 text-[10px] tracking-[0.07em] text-hint">Name</span>
+                <span className="w-[62px] shrink-0 text-[10px] tracking-[0.07em] text-hint">Type</span>
+                <span className="w-[34px] shrink-0 text-[10px] tracking-[0.07em] text-hint">H</span>
+                <span className="w-[74px] shrink-0 text-[10px] tracking-[0.07em] text-hint">Likelihood</span>
+                <span className="min-w-6 shrink-0 text-[10px] tracking-[0.07em] text-hint text-right">#</span>
+              </div>
               {visibleClusters.map((cl) => (
                 <ClusterListRow
                   key={cl.id}
