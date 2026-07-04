@@ -14,6 +14,8 @@ const ANALYSIS_PANELS = [
   { id: "confidence",             type: "confidence", label: "Confidence" },
 ];
 
+const CLUSTER_SUBTYPES = ["Trend", "Driver", "Tension"];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function phaseStatusKey(ts) {
@@ -24,11 +26,11 @@ function phaseStatusKey(ts) {
   return "earlier";
 }
 
-const PHASE_STATUS = {
-  "not-started":  { borderClass: null,                                 label: null,               labelClass: null },
-  "active-today": { borderClass: "border-l-[3px] border-l-brand",     label: "Active today",     labelClass: "text-brand" },
-  "active-week":  { borderClass: "border-l-[3px] border-l-green-600", label: "Active this week", labelClass: "text-green-700" },
-  "earlier":      { borderClass: null,                                 label: null,               labelClass: null },
+const STATUS_PILLS = {
+  "not-started":  { text: "Not started",      cls: "bg-surface-alt text-faint" },
+  "active-today": { text: "Active today",     cls: "bg-green-50 text-green-700" },
+  "active-week":  { text: "Active this week", cls: "bg-green-50 text-green-700" },
+  "earlier":      { text: "Earlier",          cls: "bg-surface-alt text-muted" },
 };
 
 function relativeTime(ts) {
@@ -42,33 +44,28 @@ function relativeTime(ts) {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function PhaseCard({ name, statusKey, isResume, onClick, children }) {
-  const { borderClass, label, labelClass } = PHASE_STATUS[statusKey];
+  const pill = isResume
+    ? { text: "Continue here", cls: "bg-brand-bg text-brand" }
+    : STATUS_PILLS[statusKey];
+
   return (
     <div
       onClick={onClick}
       className={clsx(
-        "bg-white border border-border rounded-container overflow-hidden",
-        "flex flex-col transition-shadow duration-150",
-        onClick ? "cursor-pointer hover:shadow-hover" : "cursor-default",
-        borderClass
+        "bg-white border rounded-container p-4 flex flex-col transition-shadow duration-150",
+        isResume ? "border-brand-border border-l-[3px] border-l-brand" : "border-border",
+        onClick ? "cursor-pointer hover:shadow-hover" : "cursor-default"
       )}
     >
-      <div className="py-3 px-4 border-b border-border flex items-center justify-between shrink-0">
-        <span className="text-[14px] font-semibold text-ink">{name}</span>
-        <div className="flex flex-wrap items-center gap-1.5 justify-end">
-          {label && (
-            <span className={clsx("text-[9px] shrink-0", labelClass)}>{label}</span>
-          )}
-          {isResume && (
-            <span className="text-[10px] font-medium py-0.5 px-2 rounded-pill bg-brand-bg text-brand border border-brand-border shrink-0">
-              Continue here
-            </span>
-          )}
-        </div>
+      <div className="flex items-center justify-between mb-3 gap-2">
+        <span className="text-[14px] font-semibold text-ink shrink-0">{name}</span>
+        {pill && (
+          <span className={clsx("text-[11px] py-0.5 px-2.5 rounded-pill whitespace-nowrap shrink-0", pill.cls)}>
+            {pill.text}
+          </span>
+        )}
       </div>
-      <div className="pt-3 px-4 pb-3 flex-1">
-        {children}
-      </div>
+      {children}
     </div>
   );
 }
@@ -82,67 +79,11 @@ function BigStat({ label, value }) {
   );
 }
 
-function HorizonScatter({ clusters }) {
-  if (!clusters.length) return null;
-  const zones = { H1: [], H2: [], H3: [] };
-  clusters.forEach(cl => { if (zones[cl.horizon]) zones[cl.horizon].push(cl); });
-  const zoneColors = {
-    H1: "var(--color-green-600)",
-    H2: "var(--color-blue-700)",
-    H3: "var(--color-amber-700)",
-  };
-  const zoneBg = {
-    H1: "var(--color-green-50)",
-    H2: "var(--color-blue-50)",
-    H3: "var(--color-amber-50)",
-  };
-  const W = 170, H = 36, zw = W / 3;
-
+function MetricRow({ label, value }) {
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[36px] block mt-1.5">
-      {["H1", "H2", "H3"].map((hz, zi) => {
-        const x0 = zi * zw;
-        return (
-          <g key={hz}>
-            <rect x={x0} y={0} width={zw} height={H} fill={zoneBg[hz]} />
-            <text x={x0 + zw / 2} y={10} textAnchor="middle" fontSize={8} fontWeight={600} fill={zoneColors[hz]}>{hz}</text>
-            {zones[hz].slice(0, 8).map((cl, i) => {
-              const seed = (cl.id.charCodeAt(0) ?? 0) + (cl.id.charCodeAt(2) ?? 0);
-              const cx = x0 + 7 + ((seed * 7 + i * 13) % (zw - 14));
-              const cy = 16 + ((seed * 3 + i * 7) % 14);
-              return <circle key={cl.id} cx={cx} cy={cy} r={3} fill={zoneColors[hz]} opacity={0.7} />;
-            })}
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-function AnalysisFillGrid({ analysis }) {
-  const getVal = (id) => analysis?.[id];
-  const filled = (panel) => analysisHasCont(panel.type, getVal(panel.id));
-
-  const cellClass = (panel, isKd = false) =>
-    clsx(
-      "rounded-chip px-1.5 flex overflow-hidden border",
-      isKd
-        ? "items-start py-1.25 row-span-2"
-        : "items-center py-[3px]",
-      filled(panel)
-        ? "bg-green-25 border-green-border"
-        : "bg-surface-alt border-border"
-    );
-
-  const [kd, desc, uncert, impl, conf] = ANALYSIS_PANELS;
-
-  return (
-    <div className="grid grid-cols-3 grid-rows-2 gap-[3px] mt-1.5">
-      <div className={cellClass(kd, true)} title={kd.label} />
-      <div className={cellClass(desc)} title={desc.label} />
-      <div className={cellClass(impl)} title={impl.label} />
-      <div className={cellClass(uncert)} title={uncert.label} />
-      <div className={cellClass(conf)} title={conf.label} />
+    <div className="flex items-baseline justify-between mb-1.5">
+      <span className="text-xs text-faint">{label}</span>
+      <span className="text-[15px] font-semibold text-ink">{value}</span>
     </div>
   );
 }
@@ -258,11 +199,19 @@ export default function ProjectOverview({ appState }) {
   // Early return AFTER all hooks — prevents React error #310 (hook count mismatch)
   if (!project) return null;
 
-  // ── Cluster stats ────────────────────────────────────────────────────────────
+  // ── Derived stats (non-hook — computed in render body after early return) ────
   const clusterBySubtype = projectClusters.reduce(
     (acc, cl) => { acc[cl.subtype] = (acc[cl.subtype] || 0) + 1; return acc; },
     {}
   );
+
+  const assignedInputIds = new Set(projectClusters.flatMap(cl => cl.input_ids || []));
+  const assignedCount    = projectInputs.filter(i => assignedInputIds.has(i.id)).length;
+  const unassignedCount  = projectInputs.length - assignedCount;
+
+  const filledSections = ANALYSIS_PANELS.filter(
+    p => analysisHasCont(p.type, analysis?.[p.id])
+  ).length;
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -283,7 +232,7 @@ export default function ProjectOverview({ appState }) {
           </div>
         </div>
 
-        {/* Key Question + Context — always visible, no collapse */}
+        {/* Key Question + Context — always visible */}
         <div className="bg-white border border-border rounded-container py-6 px-7 mb-4">
           <div className="grid grid-cols-[2fr_1fr_1fr] gap-8">
             <div>
@@ -407,15 +356,26 @@ export default function ProjectOverview({ appState }) {
             isResume={resumeStage === "scan"}
             onClick={() => setActiveScreen("project")}
           >
-            <BigStat label="Inputs" value={projectInputs.length} />
-            {aiSuggestionCount > 0 && (
-              <div className="text-xs text-brand mt-1">
-                {aiSuggestionCount} AI suggestion{aiSuggestionCount !== 1 ? "s" : ""}
-              </div>
+            {projectInputs.length > 0 ? (
+              <>
+                <MetricRow label="Total inputs"  value={projectInputs.length} />
+                <MetricRow label="Assigned"       value={assignedCount} />
+                <MetricRow label="Unassigned"     value={unassignedCount} />
+                {aiSuggestionCount > 0 && (
+                  <button
+                    onClick={e => { e.stopPropagation(); setInboxProjectFilter(activeProjectId); setActiveScreen("inbox"); }}
+                    className="text-xs text-brand mt-1 cursor-pointer bg-transparent border-0 p-0 [font-family:inherit] text-left"
+                  >
+                    {aiSuggestionCount} AI suggestion{aiSuggestionCount !== 1 ? "s" : ""}
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <BigStat label="Inputs" value={0} />
+                <div className="text-xs text-faint mt-1">Not started</div>
+              </>
             )}
-            <div className="text-xs text-faint mt-1">
-              {latestScanTs ? relativeTime(latestScanTs) : "Not started"}
-            </div>
           </PhaseCard>
 
           {/* Cluster */}
@@ -425,30 +385,22 @@ export default function ProjectOverview({ appState }) {
             isResume={resumeStage === "cluster"}
             onClick={() => setActiveScreen("cluster")}
           >
-            <BigStat label="Clusters" value={projectClusters.length} />
-            {projectClusters.length > 0 && (
-              <div className="flex flex-wrap gap-[3px] mt-1">
-                {clusterBySubtype.Trend > 0 && (
-                  <span className="text-[9px] py-px px-1.5 rounded-pill bg-violet-50 text-violet-700">
-                    {clusterBySubtype.Trend} Trend
-                  </span>
-                )}
-                {clusterBySubtype.Driver > 0 && (
-                  <span className="text-[9px] py-px px-1.5 rounded-pill bg-violet-50 text-violet-700">
-                    {clusterBySubtype.Driver} Driver
-                  </span>
-                )}
-                {clusterBySubtype.Tension > 0 && (
-                  <span className="text-[9px] py-px px-1.5 rounded-pill bg-amber-50 text-amber-700">
-                    {clusterBySubtype.Tension} Tension
-                  </span>
-                )}
+            <BigStat
+              label={projectClusters.length > 0 ? "Total clusters" : "Clusters"}
+              value={projectClusters.length}
+            />
+            {projectClusters.length > 0 ? (
+              <div className="flex gap-1.5 mt-2.5">
+                {CLUSTER_SUBTYPES.filter(t => clusterBySubtype[t] > 0).map(type => (
+                  <div key={type} className="flex-1 text-center bg-surface-alt rounded-[6px] py-1.5 px-1">
+                    <div className="text-[14px] font-semibold text-ink leading-none">{clusterBySubtype[type]}</div>
+                    <div className="text-[10px] text-faint mt-0.5">{type}</div>
+                  </div>
+                ))}
               </div>
+            ) : (
+              <div className="text-xs text-faint mt-1">Not started</div>
             )}
-            {projectClusters.length > 0 && <HorizonScatter clusters={projectClusters} />}
-            <div className="text-xs text-faint mt-1">
-              {latestClusterTs ? relativeTime(latestClusterTs) : "Not started"}
-            </div>
           </PhaseCard>
 
           {/* System Map */}
@@ -458,11 +410,17 @@ export default function ProjectOverview({ appState }) {
             isResume={resumeStage === "systemmap"}
             onClick={() => setActiveScreen("scenarios")}
           >
-            <BigStat label="Nodes" value={projectNodes.length} />
-            <div className="text-xs text-faint mt-0.5">Connections: {projectRels.length}</div>
-            <div className="text-xs text-faint mt-1">
-              {latestMapTs ? relativeTime(latestMapTs) : "Not started"}
-            </div>
+            {projectNodes.length > 0 ? (
+              <>
+                <MetricRow label="Nodes"       value={projectNodes.length} />
+                <MetricRow label="Connections" value={projectRels.length} />
+              </>
+            ) : (
+              <>
+                <BigStat label="Nodes" value={0} />
+                <div className="text-xs text-faint mt-1">Needs clusters first</div>
+              </>
+            )}
           </PhaseCard>
 
           {/* System Analysis */}
@@ -472,10 +430,21 @@ export default function ProjectOverview({ appState }) {
             isResume={resumeStage === "analysis"}
             onClick={() => setActiveScreen("analysis")}
           >
-            <AnalysisFillGrid analysis={analysis} />
-            <div className="text-xs text-faint mt-1.5">
-              {latestAnalysisTs ? relativeTime(latestAnalysisTs) : "Not started"}
+            <div className="text-xs text-faint">Sections complete</div>
+            <div className="text-[22px] font-semibold text-ink leading-none my-1">
+              {filledSections}/5
             </div>
+            <div className="flex gap-1 mt-1.5">
+              {ANALYSIS_PANELS.map((p, i) => (
+                <div
+                  key={p.id}
+                  className={clsx("flex-1 h-1.5 rounded-full", i < filledSections ? "bg-brand" : "bg-surface-alt")}
+                />
+              ))}
+            </div>
+            {!latestAnalysisTs && (
+              <div className="text-xs text-faint mt-2">Needs a system map first</div>
+            )}
           </PhaseCard>
 
           {/* Future Models */}
@@ -486,11 +455,14 @@ export default function ProjectOverview({ appState }) {
             onClick={() => setActiveScreen("future-models")}
           >
             <BigStat label="Scenarios" value={projectScenarios.length} />
-            <div className="text-xs text-faint mt-0.5">Preferred Futures: {projectFutures.length}</div>
-            <div className="text-xs text-faint mt-0.5">Strat. Options: {projectOptions.length}</div>
-            <div className="text-xs text-faint mt-1">
-              {latestFuturesTs ? relativeTime(latestFuturesTs) : "Not started"}
-            </div>
+            {projectScenarios.length > 0 || projectFutures.length > 0 || projectOptions.length > 0 ? (
+              <>
+                <div className="text-xs text-faint mt-0.5">Preferred Futures: {projectFutures.length}</div>
+                <div className="text-xs text-faint mt-0.5">Strat. Options: {projectOptions.length}</div>
+              </>
+            ) : (
+              <div className="text-xs text-faint mt-1">Needs analysis first</div>
+            )}
           </PhaseCard>
 
         </div>
