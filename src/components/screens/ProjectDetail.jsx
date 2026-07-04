@@ -91,7 +91,7 @@ const CLASSIF_STYLE = {
   reinforcing: { bg: "#DBEAFE", text: "#1E40AF", label: "Reinforcing" },
 };
 
-function AiRow({ inp, selected, onCheck, activeProjectId }) {
+function AiRow({ inp, selected, onCheck, activeProjectId, onAccept, onDismiss }) {
   const [hov, setHov] = useState(false);
   const projectEntry = (inp.metadata?.suggested_projects || []).find(p => p.id === activeProjectId);
   const classif = projectEntry?.classification;
@@ -115,7 +115,7 @@ function AiRow({ inp, selected, onCheck, activeProjectId }) {
         <input
           type="checkbox"
           checked={selected}
-          onChange={() => onCheck(inp.id)}
+          onChange={(e) => onCheck(inp.id, e)}
           onClick={e => e.stopPropagation()}
           style={{ cursor: "pointer", accentColor: c.ink }}
         />
@@ -143,6 +143,37 @@ function AiRow({ inp, selected, onCheck, activeProjectId }) {
       </div>
       <div style={{ width: COL_AI.date, flexShrink: 0, fontSize: 10, color: c.hint }}>
         {formatDate(inp.created_at)}
+      </div>
+      {/* Per-row actions — visible on hover */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 4,
+        opacity: hov ? 1 : 0,
+        transition: "opacity 0.12s",
+        flexShrink: 0,
+        width: 120,
+        justifyContent: "flex-end",
+      }}>
+        <button
+          onClick={(e) => { e.stopPropagation(); onAccept(inp); }}
+          style={{
+            padding: "3px 9px", borderRadius: 5, fontSize: 11, fontWeight: 500,
+            cursor: "pointer", fontFamily: "inherit",
+            background: c.brand, color: c.white, border: "none",
+          }}
+        >
+          Accept
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDismiss(inp); }}
+          style={{
+            padding: "3px 9px", borderRadius: 5, fontSize: 11,
+            cursor: "pointer", fontFamily: "inherit",
+            background: "transparent", color: c.muted,
+            border: `1px solid ${c.border}`,
+          }}
+        >
+          Dismiss
+        </button>
       </div>
     </div>
   );
@@ -189,10 +220,11 @@ function ConfirmDeleteModal({ count, onConfirm, onCancel }) {
 export default function ProjectDetail({ appState }) {
   const {
     activeProjectId, projects, inputs, clusters,
-    addInput, saveInputsToProject, showToast, setActiveScreen, setActiveProjectId,
+    addInput, saveInputToProject, saveInputsToProject, showToast, setActiveScreen, setActiveProjectId,
     openInputDetail,
     updateProject, deleteProject,
     duplicateInputToCluster, deleteInput,
+    dismissSuggestedInput,
     workspaceScanningEnabled, setInboxProjectFilter,
     projectSources, updateProjectSource,
     openScanningPrefs, setOpenScanningPrefs,
@@ -377,6 +409,33 @@ export default function ProjectDetail({ appState }) {
   };
 
   const clearAiFilters = () => { setAiSearchQuery(""); setAiFilterType(null); setAiFilterSteepled(null); };
+
+  const handleAiAcceptOne = (inp) => {
+    saveInputToProject(inp.id, activeProjectId);
+    showToast(`Signal added to project`);
+    setAiSelectedIds(prev => { const n = new Set(prev); n.delete(inp.id); return n; });
+  };
+
+  const handleAiDismissOne = (inp) => {
+    dismissSuggestedInput(inp);
+    setAiSelectedIds(prev => { const n = new Set(prev); n.delete(inp.id); return n; });
+  };
+
+  const handleAiBatchAccept = () => {
+    const ids = [...aiSelectedIds];
+    saveInputsToProject(ids, activeProjectId);
+    showToast(`${ids.length} signal${ids.length !== 1 ? "s" : ""} added to project`);
+    setAiSelectedIds(new Set());
+    setAiLastCheckedId(null);
+  };
+
+  const handleAiBatchDismiss = () => {
+    const todismiss = aiSuggestedInputs.filter(i => aiSelectedIds.has(i.id));
+    todismiss.forEach(i => dismissSuggestedInput(i));
+    showToast(`${todismiss.length} signal${todismiss.length !== 1 ? "s" : ""} dismissed`);
+    setAiSelectedIds(new Set());
+    setAiLastCheckedId(null);
+  };
 
   const handleBulkDelete = () => {
     confirmDeleteIds.forEach((id) => deleteInput(id));
@@ -635,7 +694,7 @@ export default function ProjectDetail({ appState }) {
                       return (
                         <>
                           <SectionHdr first={true} />
-                          {emergingInputs.map(i => <AiRow key={i.id} inp={i} selected={aiSelectedIds.has(i.id)} onCheck={handleAiCheckboxClick} activeProjectId={activeProjectId} />)}
+                          {emergingInputs.map(i => <AiRow key={i.id} inp={i} selected={aiSelectedIds.has(i.id)} onCheck={handleAiCheckboxClick} activeProjectId={activeProjectId} onAccept={handleAiAcceptOne} onDismiss={handleAiDismissOne} />)}
                         </>
                       );
                     })()}
@@ -654,18 +713,18 @@ export default function ProjectDetail({ appState }) {
                           <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 10, background: c.blue50, color: c.blue700, fontWeight: 500 }}>Confirms existing clusters</span>
                           <span style={{ fontSize: 10, color: c.hint, marginLeft: 2 }}>{reinforcingInputs.length}</span>
                         </div>
-                        {reinforcingInputs.map(i => <AiRow key={i.id} inp={i} selected={aiSelectedIds.has(i.id)} onCheck={handleAiCheckboxClick} activeProjectId={activeProjectId} />)}
+                        {reinforcingInputs.map(i => <AiRow key={i.id} inp={i} selected={aiSelectedIds.has(i.id)} onCheck={handleAiCheckboxClick} activeProjectId={activeProjectId} onAccept={handleAiAcceptOne} onDismiss={handleAiDismissOne} />)}
                       </>
                     )}
 
                     {/* Fallback: candidates with unknown classification (edge case) */}
                     {emergingInputs.length === 0 && reinforcingInputs.length === 0 && (
-                      filteredAiInputs.map(i => <AiRow key={i.id} inp={i} selected={aiSelectedIds.has(i.id)} onCheck={handleAiCheckboxClick} activeProjectId={activeProjectId} />)
+                      filteredAiInputs.map(i => <AiRow key={i.id} inp={i} selected={aiSelectedIds.has(i.id)} onCheck={handleAiCheckboxClick} activeProjectId={activeProjectId} onAccept={handleAiAcceptOne} onDismiss={handleAiDismissOne} />)
                     )}
                   </div>
                 )}
 
-                {/* AI selection action bar — actions wired in next step */}
+                {/* AI selection action bar */}
                 {someAiSelected && (
                   <div style={{
                     position: "sticky", bottom: 0,
@@ -677,10 +736,31 @@ export default function ProjectDetail({ appState }) {
                   }}>
                     <span style={{ fontSize: 12, color: c.muted, flex: 1 }}>{aiSelectedIds.size} selected</span>
                     <button
-                      onClick={() => { setAiSelectedIds(new Set()); setAiLastCheckedId(null); }}
-                      style={{ fontSize: 11, color: "rgb(102,102,102)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                      onClick={handleAiBatchAccept}
+                      style={{
+                        padding: "5px 12px", borderRadius: 6, fontSize: 11.5, fontWeight: 500,
+                        cursor: "pointer", fontFamily: "inherit",
+                        background: c.brand, color: c.white, border: "none",
+                      }}
                     >
-                      ✕ Clear
+                      Accept {aiSelectedIds.size}
+                    </button>
+                    <button
+                      onClick={handleAiBatchDismiss}
+                      style={{
+                        padding: "5px 12px", borderRadius: 6, fontSize: 11.5,
+                        cursor: "pointer", fontFamily: "inherit",
+                        background: "transparent", color: c.muted,
+                        border: `1px solid ${c.borderMid}`,
+                      }}
+                    >
+                      Dismiss {aiSelectedIds.size}
+                    </button>
+                    <button
+                      onClick={() => { setAiSelectedIds(new Set()); setAiLastCheckedId(null); }}
+                      style={{ fontSize: 11, color: c.hint, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", marginLeft: 4 }}
+                    >
+                      ✕
                     </button>
                   </div>
                 )}
