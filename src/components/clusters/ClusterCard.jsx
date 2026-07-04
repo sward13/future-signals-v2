@@ -1,6 +1,6 @@
 /**
- * ClusterCard — card-view item for a cluster inside the 320px ClustersPanel.
- * Shows type + horizon + likelihood badges, name, 2-line description, input count.
+ * ClusterCard — card-view item for a cluster inside the ClustersPanel.
+ * Layout: header row (type left / horizon right), name, description, footer (count / likelihood).
  */
 import { useState } from "react";
 import { c } from "../../styles/tokens.js";
@@ -30,30 +30,15 @@ export function ClusterCard({ cluster, selected = false, onClick, isDropTarget =
         borderRadius: 9,
         padding: "11px 13px",
         cursor: "pointer",
+        position: "relative",
         boxShadow: hovered && !selected && !isDropTarget ? "0 2px 8px rgba(0,0,0,0.07)" : "none",
         transition: "border-color 0.12s, box-shadow 0.12s, background 0.12s",
-        position: "relative",
       }}
     >
-      {/* Top row: badges + input count / drop pill */}
-      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 7 }}>
+      {/* Header row: type badge left, horizon right */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
         <SubtypeTag sub={cluster.subtype} />
-        <HorizTag h={cluster.horizon} />
-        {cluster.likelihood && <LikelihoodTag l={cluster.likelihood} />}
-        {isDropTarget ? (
-          <span style={{
-            marginLeft: "auto", fontSize: 10, fontWeight: 600, flexShrink: 0,
-            padding: "1px 7px", borderRadius: 4,
-            background: dropIsCopy ? "#16a34a" : c.brand,
-            color: "#fff",
-          }}>
-            {dropIsCopy ? "Copy" : "Move"}
-          </span>
-        ) : (
-          <span style={{ marginLeft: "auto", fontSize: 10, color: c.hint, flexShrink: 0 }}>
-            {cluster.input_ids?.length || 0} inputs
-          </span>
-        )}
+        {cluster.horizon && <HorizTag h={cluster.horizon} />}
       </div>
 
       {/* Name */}
@@ -73,6 +58,25 @@ export function ClusterCard({ cluster, selected = false, onClick, isDropTarget =
           {cluster.description}
         </div>
       )}
+
+      {/* Footer row: input count left, likelihood right */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+        {isDropTarget ? (
+          <span style={{
+            fontSize: 10, fontWeight: 600,
+            padding: "1px 7px", borderRadius: 4,
+            background: dropIsCopy ? "#16a34a" : c.brand,
+            color: "#fff",
+          }}>
+            {dropIsCopy ? "Copy" : "Move"}
+          </span>
+        ) : (
+          <span style={{ fontSize: 11, color: c.hint }}>
+            {cluster.input_ids?.length || 0} inputs
+          </span>
+        )}
+        {cluster.likelihood && !isDropTarget && <LikelihoodTag l={cluster.likelihood} />}
+      </div>
     </div>
   );
 }

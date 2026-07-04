@@ -1,7 +1,8 @@
 /**
- * ClustersPanel — right-hand 320px panel of the Inputs workspace.
- * Hosts Manual/Suggested mode toggle, cluster list (list or card view),
- * new-cluster drop zone, and the cluster detail sliding panel.
+ * ClustersPanel — right-hand panel of the Cluster workspace.
+ * Hosts Manual/Suggested mode toggle, search/filter controls,
+ * cluster list (list or card view), and the cluster detail sliding panel.
+ * Drop zone lives in the InputRail (ClusterScreen.jsx).
  */
 import { useState, useEffect, useRef } from "react";
 import clsx from "clsx";
@@ -9,6 +10,7 @@ import { SubtypeTag } from "../shared/Tag.jsx";
 import { ClusterCard } from "./ClusterCard.jsx";
 import { ClusterDetailPanel } from "./ClusterDetailPanel.jsx";
 import { ClusterSuggestions } from "./ClusterSuggestions.jsx";
+import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 
 /*
  * Remaining arbitrary values — no clean token equivalent exists yet:
@@ -85,25 +87,35 @@ export function ClustersPanel({
   dragIsCopy = false,
   onDrop,
   onDropToNewCluster,
-  // Optional — wired up in a future step.
-  // When absent, accept/create actions in Suggested mode are no-ops.
   assignInputToCluster,
   addCluster,
   updateCluster,
   style,
+  mode: modeProp = undefined,
+  setMode: setModeProp = undefined,
 }) {
-  const [mode, setMode] = useState("manual");    // "manual" | "suggested"
+  // Allow parent to lift mode state; fall back to internal state if props not provided
+  const [_mode, _setMode] = useState("manual");
+  const mode    = modeProp    !== undefined ? modeProp    : _mode;
+  const setMode = setModeProp !== undefined ? setModeProp : _setMode;
+
   const [view, setView] = useState("list");       // "list" | "card"
   const [selectedClusterId, setSelectedClusterId] = useState(null);
   const [dropTargetId, setDropTargetId] = useState(null);
   const [dropIsCopy,   setDropIsCopy]   = useState(false);
-  const [dropOnZone,   setDropOnZone]   = useState(false);
   const [filterUntitled, setFilterUntitled] = useState(false);
+
+  // Cluster search + filter state
+  const [clusterSearch,          setClusterSearch]          = useState("");
+  const [clusterFilterType,      setClusterFilterType]      = useState(null);
+  const [clusterFilterHorizon,   setClusterFilterHorizon]   = useState(null);
+  const [clusterFilterLikelihood,setClusterFilterLikelihood]= useState(null);
+  const [openClusterFilter,      setOpenClusterFilter]      = useState(null);
+
   const panelRef = useRef(null);
 
   const isUntitled = (cl) => /^Untitled( \d+)?$/.test(cl.name);
   const untitledCount = clusters.filter(isUntitled).length;
-  const visibleClusters = filterUntitled ? clusters.filter(isUntitled) : clusters;
 
   // Auto-clear filter when no untitled clusters remain (all renamed or deleted)
   useEffect(() => {
@@ -129,6 +141,13 @@ export function ClustersPanel({
 
   const selectedCluster = clusters.find((cl) => cl.id === selectedClusterId) || null;
 
+  const visibleClusters = clusters
+    .filter(filterUntitled ? isUntitled : () => true)
+    .filter((cl) => !clusterSearch          || cl.name.toLowerCase().includes(clusterSearch.toLowerCase()))
+    .filter((cl) => !clusterFilterType      || cl.subtype   === clusterFilterType)
+    .filter((cl) => !clusterFilterHorizon   || cl.horizon   === clusterFilterHorizon)
+    .filter((cl) => !clusterFilterLikelihood|| cl.likelihood === clusterFilterLikelihood);
+
   return (
     <div
       ref={panelRef}
@@ -138,21 +157,13 @@ export function ClustersPanel({
       {/* ── Panel header ─────────────────────────────────────── */}
       <div className="bg-white border-b border-border shrink-0">
 
-        {/* Row 1: label + new cluster button */}
+        {/* Row 1: label */}
         <div className="flex items-center pt-2.75 pb-2 px-3.5">
           <span className="text-ui font-semibold text-ink">Clusters</span>
-          <button
-            onClick={onNewCluster}
-            className="ml-auto inline-flex items-center gap-1 text-xs font-medium py-1.25 px-2.75 rounded-md border border-brand-border bg-brand-bg text-brand cursor-pointer whitespace-nowrap"
-          >
-            + New cluster
-          </button>
         </div>
 
-        {/* Row 2: mode toggle (left) + view toggle (right, hidden in Suggested) */}
+        {/* Row 2: mode toggle */}
         <div className="flex items-center pb-2.5 px-3.5">
-
-          {/* Mode toggle */}
           <div className="flex border border-border rounded-md overflow-hidden">
             {[
               { key: "manual",    label: "Manual" },
@@ -171,10 +182,53 @@ export function ClustersPanel({
               </button>
             ))}
           </div>
+        </div>
+      </div>
 
-          {/* View toggle — hidden in Suggested mode */}
-          {mode === "manual" && (
-            <div className="ml-auto flex border border-border rounded-md overflow-hidden">
+      {/* ── Control bar — search + filters + view toggle, manual mode only ── */}
+      {mode === "manual" && (
+        <div className="px-3.5 py-2 border-b border-border bg-white shrink-0 flex flex-col gap-1.5">
+          {/* Search */}
+          <input
+            value={clusterSearch}
+            onChange={(e) => setClusterSearch(e.target.value)}
+            placeholder="Search clusters…"
+            className="w-full text-[11px] py-1 px-2.5 rounded-container border border-border bg-surface-alt text-ink placeholder:text-faint outline-none"
+          />
+          {/* Filters + view toggle */}
+          <div className="flex items-center gap-1.5">
+            <FilterDropdown
+              label="Type"
+              value={clusterFilterType}
+              options={["Trend", "Driver", "Tension"].map((v) => ({ value: v, label: v }))}
+              onChange={setClusterFilterType}
+              onClear={() => setClusterFilterType(null)}
+              isOpen={openClusterFilter === "type"}
+              onToggle={() => setOpenClusterFilter(openClusterFilter === "type" ? null : "type")}
+              menuWidth={120}
+            />
+            <FilterDropdown
+              label="Horizon"
+              value={clusterFilterHorizon}
+              options={["H1", "H2", "H3"].map((v) => ({ value: v, label: v }))}
+              onChange={setClusterFilterHorizon}
+              onClear={() => setClusterFilterHorizon(null)}
+              isOpen={openClusterFilter === "horizon"}
+              onToggle={() => setOpenClusterFilter(openClusterFilter === "horizon" ? null : "horizon")}
+              menuWidth={100}
+            />
+            <FilterDropdown
+              label="Likelihood"
+              value={clusterFilterLikelihood}
+              options={["Probable", "Plausible", "Possible"].map((v) => ({ value: v, label: v }))}
+              onChange={setClusterFilterLikelihood}
+              onClear={() => setClusterFilterLikelihood(null)}
+              isOpen={openClusterFilter === "likelihood"}
+              onToggle={() => setOpenClusterFilter(openClusterFilter === "likelihood" ? null : "likelihood")}
+              menuWidth={130}
+            />
+            {/* View toggle — right-aligned */}
+            <div className="ml-auto flex border border-border rounded-md overflow-hidden shrink-0">
               {[
                 { key: "list", icon: "☰" },
                 { key: "card", icon: "⊞" },
@@ -192,26 +246,7 @@ export function ClustersPanel({
                 </button>
               ))}
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Drop zone strip — manual mode only ───────────────── */}
-      {mode === "manual" && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDropOnZone(true); }}
-          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropOnZone(false); }}
-          onDrop={(e) => { e.preventDefault(); setDropOnZone(false); onDropToNewCluster?.(); }}
-          className={clsx(
-            'mx-3 my-2.5 px-3 py-2 rounded-[7px] flex items-center justify-center gap-1.5 shrink-0 transition-colors duration-[120ms]',
-            dropOnZone
-              ? 'border border-dashed border-brand bg-brand-bg'
-              : 'border border-dashed border-border bg-white',
-          )}
-        >
-          <span className={clsx('text-[11px]', dropOnZone ? 'text-brand' : 'text-faint')}>
-            ⊕ Drop inputs here to create a new cluster
-          </span>
+          </div>
         </div>
       )}
 
@@ -254,6 +289,12 @@ export function ClustersPanel({
             </div>
           )}
 
+          {clusters.length > 0 && visibleClusters.length === 0 && (
+            <div className="px-3.5 py-5 text-xs text-hint italic text-center leading-body">
+              No clusters match the current filters.
+            </div>
+          )}
+
           {view === "list" && clusters.length > 0 && (
             <div>
               {visibleClusters.map((cl) => (
@@ -285,7 +326,10 @@ export function ClustersPanel({
           )}
 
           {view === "card" && clusters.length > 0 && (
-            <div className="px-3 py-2.5 flex flex-col gap-2.25">
+            <div
+              className="px-3 py-2.5 grid gap-3"
+              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))" }}
+            >
               {visibleClusters.map((cl) => (
                 <div
                   key={cl.id}

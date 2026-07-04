@@ -155,6 +155,11 @@ export default function ClusterScreen({ appState }) {
   const [batchPickerOpen,      setBatchPickerOpen]      = useState(false);
   const [batchAssignAnchorRect,setBatchAssignAnchorRect]= useState(null);
 
+  // Cluster mode lifted to this level so the header Suggested CTA can switch it
+  const [clusterMode,  setClusterMode]  = useState("manual");
+  // Drop zone state for the InputRail drop target
+  const [dropOnZone,   setDropOnZone]   = useState(false);
+
   const project = projects.find((p) => p.id === activeProjectId) ?? null;
 
   // Track cursor position and Alt key state while a drag is in progress
@@ -303,7 +308,40 @@ export default function ClusterScreen({ appState }) {
         <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
           {project.name}
         </div>
-        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Cluster</div>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Cluster</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+            <button
+              onClick={() => setClusterMode("suggested")}
+              style={{
+                ...btnSec,
+                display: "flex", alignItems: "center", gap: 6,
+                fontSize: 12, padding: "7px 14px",
+              }}
+            >
+              ✦ Suggested
+              {unassigned.length > 0 && (
+                <span style={{
+                  fontSize: 10, padding: "1px 6px", borderRadius: 8,
+                  background: c.brand, color: c.white, fontWeight: 500,
+                }}>
+                  {unassigned.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => createUntitledCluster()}
+              style={{
+                ...btnSm,
+                border: `1px solid ${c.brandBorder}`,
+                background: c.brandBg,
+                color: c.brand,
+              }}
+            >
+              + New cluster
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ── Stacked workspace ────────────────────────────────────── */}
@@ -325,6 +363,8 @@ export default function ClusterScreen({ appState }) {
           assignInputToCluster={assignInputToCluster}
           addCluster={addCluster}
           updateCluster={updateCluster}
+          mode={clusterMode}
+          setMode={setClusterMode}
           style={{ flex: 1, minHeight: 0, width: "100%", minWidth: 0, borderLeft: "none" }}
         />
 
@@ -357,31 +397,73 @@ export default function ClusterScreen({ appState }) {
 
         {/* ── Input rail (bottom, resizable height) ──────────────── */}
         <div style={{
-          height: drawerHeight, flexShrink: 0, overflowY: "auto",
-          padding: "0 32px 8px",
+          height: drawerHeight, flexShrink: 0,
+          display: "flex", flexDirection: "column",
+          overflow: "hidden",
           background: c.bg,
         }}>
-          {/* Tabs row */}
-          <div style={{ display: "flex", alignItems: "flex-end", borderBottom: `1px solid ${c.border}`, marginBottom: 8 }}>
+
+          {/* Fixed: "Inputs" label row */}
+          <div style={{
+            padding: "5px 32px",
+            flexShrink: 0,
+            display: "flex", alignItems: "center",
+            borderBottom: `1px solid ${c.border}`,
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: c.muted }}>Inputs</span>
+          </div>
+
+          {/* Fixed: Drop zone (manual mode only) */}
+          {clusterMode === "manual" && (
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDropOnZone(true); }}
+              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropOnZone(false); }}
+              onDrop={(e) => { e.preventDefault(); setDropOnZone(false); handleDropToNewCluster(); }}
+              style={{
+                margin: "6px 32px",
+                padding: "5px 12px",
+                borderRadius: 7,
+                border: `1px dashed ${dropOnZone ? c.brand : c.border}`,
+                background: dropOnZone ? c.brandBg : c.white,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+                transition: "border-color 0.12s, background 0.12s",
+              }}
+            >
+              <span style={{ fontSize: 11, color: dropOnZone ? c.brand : c.faint }}>
+                ⊕ Drop inputs here to create a new cluster
+              </span>
+            </div>
+          )}
+
+          {/* Fixed: Tabs row */}
+          <div style={{
+            display: "flex", alignItems: "flex-end",
+            padding: "0 32px",
+            borderBottom: `1px solid ${c.border}`,
+            flexShrink: 0,
+          }}>
             <FilterTab label="All"        count={projectInputs.length} active={inputTab === "all"}        onClick={() => { setInputTab("all");        setSelectedIds(new Set()); setLastCheckedId(null); }} />
             <FilterTab label="Unassigned" count={unassigned.length}    active={inputTab === "unassigned"} onClick={() => { setInputTab("unassigned"); setSelectedIds(new Set()); setLastCheckedId(null); }} />
             <FilterTab label="Clustered"  count={inCluster.length}     active={inputTab === "incluster"}  onClick={() => { setInputTab("incluster");  setSelectedIds(new Set()); setLastCheckedId(null); }} />
           </div>
 
           {projectInputs.length === 0 ? (
-            <div style={{
-              background: c.white, border: `1px dashed ${c.border}`,
-              borderRadius: 12, padding: "20px 24px", textAlign: "center",
-            }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: c.muted, marginBottom: 4 }}>No inputs yet</div>
-              <div style={{ fontSize: 12, color: c.hint, lineHeight: 1.5 }}>
-                Add inputs on the Scan screen, then drag them to clusters here.
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 32px 8px" }}>
+              <div style={{
+                background: c.white, border: `1px dashed ${c.border}`,
+                borderRadius: 12, padding: "20px 24px", textAlign: "center",
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: c.muted, marginBottom: 4 }}>No inputs yet</div>
+                <div style={{ fontSize: 12, color: c.hint, lineHeight: 1.5 }}>
+                  Add inputs on the Scan screen, then drag them to clusters here.
+                </div>
               </div>
             </div>
           ) : (
             <>
-              {/* Search + filter row */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              {/* Fixed: Search + filter row */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 32px 6px", flexShrink: 0 }}>
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -429,10 +511,16 @@ export default function ClusterScreen({ appState }) {
                 )}
               </div>
 
-              {/* Table */}
-              <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden" }}>
-                {/* Header row */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", height: 30, borderBottom: "0.5px solid rgba(0,0,0,0.09)" }}>
+              {/* Fixed: Column header strip */}
+              <div style={{ padding: "0 32px", flexShrink: 0 }}>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "0 14px", height: 30,
+                  background: c.white,
+                  border: `1px solid ${c.border}`,
+                  borderBottom: "0.5px solid rgba(0,0,0,0.09)",
+                  borderRadius: "10px 10px 0 0",
+                }}>
                   <div style={{ width: COL.check, flexShrink: 0, display: "flex", alignItems: "center" }}>
                     <input
                       type="checkbox"
@@ -452,173 +540,193 @@ export default function ClusterScreen({ appState }) {
                   <div style={{ width: COL.cluster,    ...cell }}>Cluster</div>
                   <div style={{ width: COL.menu, flexShrink: 0 }} />
                 </div>
-
-                {/* Data rows */}
-                {visibleInputs.length === 0 ? (
-                  <div style={{ padding: "16px 14px", fontSize: 12, color: c.hint, textAlign: "center" }}>
-                    No inputs match the current filters.
-                  </div>
-                ) : visibleInputs.map((inp) => {
-                  const assignedClusters = getInputClusters(inp.id);
-                  const isDragging = dragIds?.includes(inp.id);
-                  const isSelected = selectedIds.has(inp.id);
-                  const steepled = inp.steepled || [];
-                  const vis2 = steepled.slice(0, 2);
-                  const overflow = steepled.length - 2;
-                  return (
-                    <div
-                      key={inp.id}
-                      draggable
-                      onClick={(e) => handleCheckboxClick(inp.id, e)}
-                      onDragStart={(e) => {
-                        if (e.target.closest('button') || e.target.type === 'checkbox') return;
-                        setDragIds(selectedIds.has(inp.id) ? [...selectedIds] : [inp.id]);
-                        setDragIsCopy(false);
-                        if (blankImgRef.current) e.dataTransfer.setDragImage(blankImgRef.current, 0, 0);
-                        e.dataTransfer.effectAllowed = "copyMove";
-                      }}
-                      onDragEnd={() => { setDragIds(null); setDragIsCopy(false); }}
-                      onMouseEnter={(e) => { if (!isDragging && !isSelected) e.currentTarget.style.background = "rgba(0,0,0,0.02)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? c.brandBg : c.white; }}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 10,
-                        padding: "0 14px", height: 38,
-                        borderBottom: `1px solid ${c.border}`,
-                        cursor: "grab",
-                        background: isSelected ? c.brandBg : c.white,
-                        opacity: isDragging ? 0.35 : 1,
-                        transition: "opacity 0.1s, background 0.08s",
-                      }}
-                    >
-                      {/* Checkbox */}
-                      <div style={{ width: COL.check, flexShrink: 0, display: "flex", alignItems: "center" }}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {}}
-                          onClick={(e) => { e.stopPropagation(); handleCheckboxClick(inp.id, e); }}
-                          style={{ cursor: "pointer", accentColor: c.ink }}
-                        />
-                      </div>
-                      {/* Title */}
-                      <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
-                        {inp.name}
-                      </div>
-                      {/* Type */}
-                      <div style={{ width: COL.type, flexShrink: 0 }}>
-                        <InputTypeBadge subtype={inp.subtype} />
-                      </div>
-                      {/* Signal Strength */}
-                      <div style={{ width: COL.strength, flexShrink: 0 }}>
-                        {inp.signal_strength ? (() => {
-                          const [col, bg, brd] = STRENGTH_COLORS[inp.signal_strength] || [c.hint, c.surfaceAlt, c.border];
-                          return <span style={{ fontSize: 10, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.signal_strength.charAt(0).toUpperCase() + inp.signal_strength.slice(1)}</span>;
-                        })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
-                      </div>
-                      {/* Source Confidence */}
-                      <div style={{ width: COL.confidence, flexShrink: 0 }}>
-                        {inp.source_confidence ? (() => {
-                          const [col, bg, brd] = CONFIDENCE_COLORS[inp.source_confidence] || [c.hint, c.surfaceAlt, c.border];
-                          return <span style={{ fontSize: 9, padding: "1px 4px", borderRadius: 4, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.source_confidence.charAt(0).toUpperCase() + inp.source_confidence.slice(1)}</span>;
-                        })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
-                      </div>
-                      {/* STEEPLED */}
-                      <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
-                        {vis2.map((t) => (
-                          <span key={t} style={{ fontSize: 9, padding: "1px 4px", borderRadius: 4, background: c.surfaceAlt, color: c.muted }}>
-                            {STEEPLED_ABB[t] || t}
-                          </span>
-                        ))}
-                        {overflow > 0 && <span style={{ fontSize: 9, color: c.hint }}>+{overflow}</span>}
-                      </div>
-                      {/* Horizon */}
-                      <div style={{ width: COL.horizon, flexShrink: 0 }}>
-                        {inp.horizon ? <HorizTag h={inp.horizon} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
-                      </div>
-                      {/* Cluster assignment / Assign button */}
-                      <div style={{ width: COL.cluster, flexShrink: 0, display: "flex", alignItems: "center", position: "relative" }}>
-                        {assignedClusters.length === 0 ? (
-                          <>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (assignPickerFor !== inp.id) setAssignPickerAnchorRect(e.currentTarget.getBoundingClientRect());
-                                setAssignPickerFor(assignPickerFor === inp.id ? null : inp.id);
-                              }}
-                              style={{ ...btnSm, fontSize: 10, padding: "3px 8px", whiteSpace: "nowrap" }}
-                            >
-                              Assign →
-                            </button>
-                            {assignPickerFor === inp.id && (
-                              <ClusterAssignMenu
-                                clusters={projectClusters}
-                                onAssign={(cl) => handleAssignToCluster(inp.id, cl)}
-                                onNewCluster={() => { setAssignPickerFor(null); createUntitledCluster([inp.id]); }}
-                                onClose={() => setAssignPickerFor(null)}
-                                anchorRect={assignPickerAnchorRect}
-                              />
-                            )}
-                          </>
-                        ) : assignedClusters.length === 1 ? (
-                          <span style={{ fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {assignedClusters[0].name}
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: 10.5, padding: "2px 6px", borderRadius: 4, background: c.bg, color: c.muted, whiteSpace: "nowrap" }}>
-                            {assignedClusters.length} clusters
-                          </span>
-                        )}
-                      </div>
-                      {/* Drag grip indicator */}
-                      <div style={{ width: COL.menu, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <span style={{ fontSize: 12, color: c.faint, lineHeight: 1 }}>⠿</span>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
 
-              {/* Multi-select action bar */}
-              {someSelected && (
-                <div style={{
-                  position: "sticky", bottom: 0,
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "7px 14px",
-                  background: c.bg,
-                  borderTop: `1px solid ${c.border}`,
-                }}>
-                  <span style={{ fontSize: 12, color: c.muted, flex: 1 }}>
-                    {selectedIds.size} selected
-                  </span>
-                  <div style={{ position: "relative" }}>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!batchPickerOpen) setBatchAssignAnchorRect(e.currentTarget.getBoundingClientRect());
-                        setBatchPickerOpen(!batchPickerOpen);
-                      }}
-                      style={{ ...btnSm, fontSize: 11, padding: "4px 12px", whiteSpace: "nowrap" }}
-                    >
-                      Assign {selectedIds.size} →
-                    </button>
-                    {batchPickerOpen && (
-                      <ClusterAssignMenu
-                        clusters={projectClusters}
-                        onAssign={handleBatchAssign}
-                        onNewCluster={() => { setBatchPickerOpen(false); createUntitledCluster([...selectedIds]); setSelectedIds(new Set()); setLastCheckedId(null); }}
-                        onClose={() => setBatchPickerOpen(false)}
-                        anchorRect={batchAssignAnchorRect}
-                      />
-                    )}
+              {/* Scrollable: row list */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "0 32px 8px" }}>
+
+                {visibleInputs.length === 0 ? (
+                  <div style={{
+                    background: c.white,
+                    border: `1px solid ${c.border}`,
+                    borderTop: "none",
+                    borderRadius: "0 0 10px 10px",
+                    padding: "16px 14px", fontSize: 12, color: c.hint, textAlign: "center",
+                  }}>
+                    No inputs match the current filters.
                   </div>
-                  <button
-                    onClick={() => { setSelectedIds(new Set()); setLastCheckedId(null); }}
-                    style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
-                  >
-                    ✕ Clear
-                  </button>
-                </div>
-              )}
+                ) : (
+                  <div style={{
+                    background: c.white,
+                    border: `1px solid ${c.border}`,
+                    borderTop: "none",
+                    borderRadius: "0 0 10px 10px",
+                    overflow: "hidden",
+                  }}>
+                    {visibleInputs.map((inp) => {
+                      const assignedClusters = getInputClusters(inp.id);
+                      const isDragging = dragIds?.includes(inp.id);
+                      const isSelected = selectedIds.has(inp.id);
+                      const steepled = inp.steepled || [];
+                      const vis2 = steepled.slice(0, 2);
+                      const overflow = steepled.length - 2;
+                      return (
+                        <div
+                          key={inp.id}
+                          draggable
+                          onClick={(e) => handleCheckboxClick(inp.id, e)}
+                          onDragStart={(e) => {
+                            if (e.target.closest('button') || e.target.type === 'checkbox') return;
+                            setDragIds(selectedIds.has(inp.id) ? [...selectedIds] : [inp.id]);
+                            setDragIsCopy(false);
+                            if (blankImgRef.current) e.dataTransfer.setDragImage(blankImgRef.current, 0, 0);
+                            e.dataTransfer.effectAllowed = "copyMove";
+                          }}
+                          onDragEnd={() => { setDragIds(null); setDragIsCopy(false); }}
+                          onMouseEnter={(e) => { if (!isDragging && !isSelected) e.currentTarget.style.background = "rgba(0,0,0,0.02)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? c.brandBg : c.white; }}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 10,
+                            padding: "0 14px", height: 38,
+                            borderBottom: `1px solid ${c.border}`,
+                            cursor: "grab",
+                            background: isSelected ? c.brandBg : c.white,
+                            opacity: isDragging ? 0.35 : 1,
+                            transition: "opacity 0.1s, background 0.08s",
+                          }}
+                        >
+                          {/* Checkbox */}
+                          <div style={{ width: COL.check, flexShrink: 0, display: "flex", alignItems: "center" }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}}
+                              onClick={(e) => { e.stopPropagation(); handleCheckboxClick(inp.id, e); }}
+                              style={{ cursor: "pointer", accentColor: c.ink }}
+                            />
+                          </div>
+                          {/* Title */}
+                          <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+                            {inp.name}
+                          </div>
+                          {/* Type */}
+                          <div style={{ width: COL.type, flexShrink: 0 }}>
+                            <InputTypeBadge subtype={inp.subtype} />
+                          </div>
+                          {/* Signal Strength */}
+                          <div style={{ width: COL.strength, flexShrink: 0 }}>
+                            {inp.signal_strength ? (() => {
+                              const [col, bg, brd] = STRENGTH_COLORS[inp.signal_strength] || [c.hint, c.surfaceAlt, c.border];
+                              return <span style={{ fontSize: 10, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.signal_strength.charAt(0).toUpperCase() + inp.signal_strength.slice(1)}</span>;
+                            })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+                          </div>
+                          {/* Source Confidence */}
+                          <div style={{ width: COL.confidence, flexShrink: 0 }}>
+                            {inp.source_confidence ? (() => {
+                              const [col, bg, brd] = CONFIDENCE_COLORS[inp.source_confidence] || [c.hint, c.surfaceAlt, c.border];
+                              return <span style={{ fontSize: 9, padding: "1px 4px", borderRadius: 4, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.source_confidence.charAt(0).toUpperCase() + inp.source_confidence.slice(1)}</span>;
+                            })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+                          </div>
+                          {/* STEEPLED */}
+                          <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
+                            {vis2.map((t) => (
+                              <span key={t} style={{ fontSize: 9, padding: "1px 4px", borderRadius: 4, background: c.surfaceAlt, color: c.muted }}>
+                                {STEEPLED_ABB[t] || t}
+                              </span>
+                            ))}
+                            {overflow > 0 && <span style={{ fontSize: 9, color: c.hint }}>+{overflow}</span>}
+                          </div>
+                          {/* Horizon */}
+                          <div style={{ width: COL.horizon, flexShrink: 0 }}>
+                            {inp.horizon ? <HorizTag h={inp.horizon} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+                          </div>
+                          {/* Cluster assignment / Assign button */}
+                          <div style={{ width: COL.cluster, flexShrink: 0, display: "flex", alignItems: "center", position: "relative" }}>
+                            {assignedClusters.length === 0 ? (
+                              <>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (assignPickerFor !== inp.id) setAssignPickerAnchorRect(e.currentTarget.getBoundingClientRect());
+                                    setAssignPickerFor(assignPickerFor === inp.id ? null : inp.id);
+                                  }}
+                                  style={{ ...btnSm, fontSize: 10, padding: "3px 8px", whiteSpace: "nowrap" }}
+                                >
+                                  Assign →
+                                </button>
+                                {assignPickerFor === inp.id && (
+                                  <ClusterAssignMenu
+                                    clusters={projectClusters}
+                                    onAssign={(cl) => handleAssignToCluster(inp.id, cl)}
+                                    onNewCluster={() => { setAssignPickerFor(null); createUntitledCluster([inp.id]); }}
+                                    onClose={() => setAssignPickerFor(null)}
+                                    anchorRect={assignPickerAnchorRect}
+                                  />
+                                )}
+                              </>
+                            ) : assignedClusters.length === 1 ? (
+                              <span style={{ fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {assignedClusters[0].name}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: 10.5, padding: "2px 6px", borderRadius: 4, background: c.bg, color: c.muted, whiteSpace: "nowrap" }}>
+                                {assignedClusters.length} clusters
+                              </span>
+                            )}
+                          </div>
+                          {/* Drag grip indicator */}
+                          <div style={{ width: COL.menu, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <span style={{ fontSize: 12, color: c.faint, lineHeight: 1 }}>⠿</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Multi-select action bar */}
+                {someSelected && (
+                  <div style={{
+                    position: "sticky", bottom: 0,
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "7px 14px",
+                    background: c.bg,
+                    borderTop: `1px solid ${c.border}`,
+                  }}>
+                    <span style={{ fontSize: 12, color: c.muted, flex: 1 }}>
+                      {selectedIds.size} selected
+                    </span>
+                    <div style={{ position: "relative" }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!batchPickerOpen) setBatchAssignAnchorRect(e.currentTarget.getBoundingClientRect());
+                          setBatchPickerOpen(!batchPickerOpen);
+                        }}
+                        style={{ ...btnSm, fontSize: 11, padding: "4px 12px", whiteSpace: "nowrap" }}
+                      >
+                        Assign {selectedIds.size} →
+                      </button>
+                      {batchPickerOpen && (
+                        <ClusterAssignMenu
+                          clusters={projectClusters}
+                          onAssign={handleBatchAssign}
+                          onNewCluster={() => { setBatchPickerOpen(false); createUntitledCluster([...selectedIds]); setSelectedIds(new Set()); setLastCheckedId(null); }}
+                          onClose={() => setBatchPickerOpen(false)}
+                          anchorRect={batchAssignAnchorRect}
+                        />
+                      )}
+                    </div>
+                    <button
+                      onClick={() => { setSelectedIds(new Set()); setLastCheckedId(null); }}
+                      style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                    >
+                      ✕ Clear
+                    </button>
+                  </div>
+                )}
+
+              </div>
             </>
           )}
         </div>
