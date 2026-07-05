@@ -303,10 +303,25 @@ export function ClusterSuggestions({
   const [assignFading,setAssignFading]= useState(new Set());
   const [newSugs,     setNewSugs]     = useState([]);
   const [newFading,   setNewFading]   = useState(new Set());
-  const [dismissed,   setDismissed]   = useState([]);
+  const [dismissed,    setDismissed]    = useState([]);
+  const [lastRunEmpty, setLastRunEmpty] = useState(false);
+
+  // Derives unassigned input count using the same logic as ClusterScreen:
+  // inputs in clusters may not have project_id set (assignment doesn't update it),
+  // so we join via cluster membership first.
+  const clusterInputIds = useMemo(
+    () => new Set(projectClusters.flatMap((cl) => cl.input_ids || [])),
+    [projectClusters],
+  );
+  const unassignedCount = useMemo(
+    () => inputs.filter(
+      (i) => (i.project_id === projectId || clusterInputIds.has(i.id)) && !clusterInputIds.has(i.id),
+    ).length,
+    [inputs, projectId, clusterInputIds],
+  );
 
   const loadSuggestions = useCallback(async () => {
-    if (!projectId) return;
+    if (!projectId) return [];
     try {
       const { data, error } = await supabase
         .from("cluster_suggestions")
@@ -319,8 +334,10 @@ export function ClusterSuggestions({
       setAssignSugs(all.filter((s) => s.type === "assignment"));
       setNewSugs(all.filter((s) => s.type !== "assignment"));
       if (all.length > 0) setHasRun(true);
+      return all;
     } catch {
       // silent — surface errors only on active runs
+      return [];
     }
   }, [projectId]);
 
@@ -338,8 +355,9 @@ export function ClusterSuggestions({
       });
       if (error) throw new Error(error.message);
       setDismissed([]);
-      await loadSuggestions();
+      const loaded = await loadSuggestions();
       setHasRun(true);
+      setLastRunEmpty(loaded.length === 0);
     } catch (err) {
       setError(err.message || "Failed to generate suggestions.");
     } finally {
@@ -429,7 +447,6 @@ export function ClusterSuggestions({
   );
 
   const hasAnything = assignGroups.length > 0 || visibleNewSugs.length > 0;
-  const allResolved = hasRun && !running && !hasAnything;
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -518,15 +535,39 @@ export function ClusterSuggestions({
             <span style={{ fontSize: 12, color: c.muted }}>Finding suggestions…</span>
           </div>
 
+        ) : hasAnything ? null : unassignedCount === 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 12px", textAlign: "center", gap: 6 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: c.muted }}>All inputs are assigned</div>
+            <div style={{ fontSize: 11, color: c.hint, lineHeight: 1.6 }}>
+              Suggestions will reappear when you add new ones.
+            </div>
+          </div>
+
+        ) : unassignedCount < 2 ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 12px", textAlign: "center", gap: 6 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: c.muted }}>Not enough unassigned inputs</div>
+            <div style={{ fontSize: 11, color: c.hint, lineHeight: 1.6 }}>
+              Add at least 2 unassigned inputs to generate suggestions.
+            </div>
+          </div>
+
         ) : !hasRun ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 12px", textAlign: "center", gap: 6 }}>
             <div style={{ fontSize: 13, fontWeight: 500, color: c.muted }}>No suggestions yet</div>
             <div style={{ fontSize: 11, color: c.hint, lineHeight: 1.6 }}>
-              Click "✦ Suggest clustering" to get AI recommendations for grouping your inputs.
+              Click "✦ Suggest clustering" to check for patterns.
             </div>
           </div>
 
-        ) : allResolved ? (
+        ) : lastRunEmpty ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 12px", textAlign: "center", gap: 6 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: c.muted }}>No suggestions found</div>
+            <div style={{ fontSize: 11, color: c.hint, lineHeight: 1.6 }}>
+              Try a looser sensitivity setting, or add more inputs on this topic.
+            </div>
+          </div>
+
+        ) : (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 12px", textAlign: "center", gap: 6 }}>
             <div style={{ fontSize: 13, fontWeight: 500, color: c.muted }}>All suggestions resolved</div>
             <div style={{ fontSize: 11, color: c.hint, lineHeight: 1.6 }}>
@@ -534,7 +575,9 @@ export function ClusterSuggestions({
             </div>
           </div>
 
-        ) : (
+        )}
+
+        {hasAnything && (
           <>
             {assignGroups.length > 0 && (
               <div style={{ marginBottom: 14 }}>
