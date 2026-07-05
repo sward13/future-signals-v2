@@ -10,6 +10,7 @@
  *   showToast       — (msg) => void
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { WandSparkles } from "lucide-react";
 import { supabase } from "../../lib/supabase.js";
 import { c, btnSm, btnG, inp, ta } from "../../styles/tokens.js";
 import { SubtypeTag } from "../shared/Tag.jsx";
@@ -510,7 +511,7 @@ export function ClusterSuggestions({
               }} />
               Suggesting…
             </>
-          ) : "✦ Suggest clustering"}
+          ) : <><WandSparkles size={11} strokeWidth={1.75} /> Suggest clustering</>}
         </button>
       </div>
 
