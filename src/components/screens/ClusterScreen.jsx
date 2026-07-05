@@ -313,16 +313,6 @@ export default function ClusterScreen({ appState }) {
           <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Cluster</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
             <button
-              onClick={() => setClusterMode("suggested")}
-              style={{
-                ...btnSec,
-                display: "flex", alignItems: "center", gap: 6,
-                fontSize: 12, padding: "7px 14px",
-              }}
-            >
-              ✦ Suggested
-            </button>
-            <button
               onClick={() => createUntitledCluster()}
               style={{
                 ...btnSm,
