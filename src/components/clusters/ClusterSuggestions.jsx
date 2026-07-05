@@ -327,14 +327,16 @@ export function ClusterSuggestions({
         .from("cluster_suggestions")
         .select("*")
         .eq("project_id", projectId)
-        .eq("status", "pending")
         .order("generated_at", { ascending: false });
       if (error) throw error;
       const all = data || [];
-      setAssignSugs(all.filter((s) => s.type === "assignment"));
-      setNewSugs(all.filter((s) => s.type !== "assignment"));
+      // hasRun reflects whether the edge function has ever been called for this
+      // project, not whether pending rows exist. Accepted/dismissed rows count.
       if (all.length > 0) setHasRun(true);
-      return all;
+      const pending = all.filter((s) => s.status === "pending");
+      setAssignSugs(pending.filter((s) => s.type === "assignment"));
+      setNewSugs(pending.filter((s) => s.type !== "assignment"));
+      return pending;
     } catch {
       // silent — surface errors only on active runs
       return [];
