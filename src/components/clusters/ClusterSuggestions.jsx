@@ -489,7 +489,7 @@ export function ClusterSuggestions({
           onClick={handleRun}
           disabled={running || !projectId}
           style={{
-            marginLeft: "auto", flexShrink: 0,
+            flexShrink: 0,
             display: "flex", alignItems: "center", gap: 5,
             padding: "4px 9px", borderRadius: 6,
             border: `1px solid ${c.borderMid}`,
