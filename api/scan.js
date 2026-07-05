@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import Parser from 'rss-parser';
+import { cronSecretOk } from './lib/cron-auth.js';
 
 export const config = {
   maxDuration: 60,
@@ -183,7 +184,7 @@ async function processSource(source, results) {
 
 export default async function handler(req, res) {
   // Verify cron secret to prevent unauthorised triggers
-  if (req.headers['x-cron-secret'] !== process.env.CRON_SECRET) {
+  if (!cronSecretOk(req.headers['x-cron-secret'])) {
     return res.status(401).json({ error: 'Unauthorised' });
   }
 

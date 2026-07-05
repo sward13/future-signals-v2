@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { cronSecretOk } from './lib/cron-auth.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -11,7 +12,7 @@ export default async function handler(req, res) {
   }
 
   // Accept either the cron secret (server-to-server) or a valid user session (client)
-  const cronOk = req.headers['x-cron-secret'] === process.env.CRON_SECRET;
+  const cronOk = cronSecretOk(req.headers['x-cron-secret']);
   if (!cronOk) {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {

@@ -1,10 +1,9 @@
+import { cronSecretOk, bearerToken } from './lib/cron-auth.js';
+
 export const config = { maxDuration: 30 };
 
 export default async function handler(req, res) {
-  const cronOk =
-    req.headers['x-cron-secret'] === process.env.CRON_SECRET ||
-    req.headers['authorization'] === `Bearer ${process.env.CRON_SECRET}`;
-  if (!cronOk) {
+  if (!cronSecretOk(req.headers['x-cron-secret'], bearerToken(req))) {
     return res.status(401).json({ error: 'Unauthorised' });
   }
 
