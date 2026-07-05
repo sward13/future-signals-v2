@@ -327,7 +327,7 @@ async function sendDigest(rows: HealthRow[], now: Date): Promise<void> {
   const html = `<pre style="font-family:sans-serif;font-size:14px;line-height:1.6">${lines.join("\n")}</pre>`;
 
   const res = await fetch(
-    "https://tbxjudpxzovbasuomekq.supabase.co/functions/v1/send-email",
+    `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-email`,
     {
       method: "POST",
       headers: {
