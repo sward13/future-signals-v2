@@ -349,7 +349,7 @@ export function ClustersPanel({
               <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white border-b border-border">
                 <span className="flex-1 min-w-0 text-[10px] tracking-[0.07em] text-hint">Name</span>
                 <span className="w-[62px] shrink-0 text-[10px] tracking-[0.07em] text-hint">Type</span>
-                <span className="w-[34px] shrink-0 text-[10px] tracking-[0.07em] text-hint">H</span>
+                <span className="w-[34px] shrink-0 text-[10px] tracking-[0.07em] text-hint">Horizon</span>
                 <span className="w-[74px] shrink-0 text-[10px] tracking-[0.07em] text-hint">Likelihood</span>
                 <span className="min-w-6 shrink-0 text-[10px] tracking-[0.07em] text-hint text-right">#</span>
               </div>
