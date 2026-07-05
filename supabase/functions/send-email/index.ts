@@ -5,9 +5,34 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Deployed with --no-verify-jwt, so this shared-secret check is the only gate.
+function relaySecretOk(req: Request): boolean {
+  const secret = Deno.env.get("EMAIL_RELAY_SECRET");
+  const provided = req.headers.get("x-relay-secret");
+  if (!secret || !provided) return false;
+  return timingSafeEqual(provided, secret);
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const aBytes = enc.encode(a);
+  const bBytes = enc.encode(b);
+  if (aBytes.length !== bBytes.length) return false;
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i++) diff |= aBytes[i] ^ bBytes[i];
+  return diff === 0;
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (!relaySecretOk(req)) {
+    return new Response(JSON.stringify({ error: "Unauthorised" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   if (req.method !== "POST") {
