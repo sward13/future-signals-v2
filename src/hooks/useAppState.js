@@ -19,6 +19,20 @@ function newId() {
   return crypto.randomUUID();
 }
 
+// Mirror of the scanner's source-URL validation (api/scan.js). Advisory only:
+// the insert below is a direct Supabase client call, so a hostile client can
+// bypass this check — api/scan.js re-validates every source URL before
+// fetching it, which is the enforcement point.
+const PRIVATE_IP = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|::1$|fc00:|fe80:)/;
+
+function validateSourceUrl(raw) {
+  let u;
+  try { u = new URL(raw); } catch { return "Invalid URL"; }
+  if (u.protocol !== "https:") return "Only HTTPS URLs are supported";
+  if (PRIVATE_IP.test(u.hostname)) return "Disallowed host";
+  return null;
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useAppState(workspaceId = null, session = null, preferences = {}) {
@@ -489,6 +503,9 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   }, []);
 
   const addSource = useCallback(async (fields) => {
+    const urlError = validateSourceUrl(fields.url);
+    if (urlError) throw new Error(urlError);
+
     const id = newId();
     const row = {
       id,

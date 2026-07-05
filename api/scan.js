@@ -21,6 +21,21 @@ const parser = new Parser({
 const MAX_CANDIDATES_PER_SOURCE = 20;
 const SOURCE_CONCURRENCY = 10;     // parallel RSS fetches at a time
 
+// ── Source URL validation (same rules as api/scrape.js) ──────────────────────
+// Sources are user-creatable via a direct client insert, so every URL must be
+// re-validated here before the server fetches it — otherwise a malicious
+// source row can point the nightly cron at internal hosts or cloud metadata.
+// Blocks loopback, private ranges, and IMDS
+const PRIVATE_IP = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|::1$|fc00:|fe80:)/;
+
+function validateUrl(raw) {
+  let u;
+  try { u = new URL(raw); } catch { return 'Invalid URL'; }
+  if (u.protocol !== 'https:') return 'Only HTTPS URLs are supported';
+  if (PRIVATE_IP.test(u.hostname)) return 'Disallowed host';
+  return null;
+}
+
 // ── Change 3: URL-pattern rejection (synchronous, no API call) ────────────────
 // Catches the most obvious commercial content before spending tokens on relevance.
 const COMMERCIAL_PATH_PATTERNS = [
@@ -72,6 +87,14 @@ async function checkRelevance(title, summaryRaw, sourceName) {
 
 async function processSource(source, results) {
   try {
+    const urlError = validateUrl(source.url);
+    if (urlError) {
+      // Skip this source but keep the run going for the rest
+      console.error(`[scan] skipped source ${source.name}: ${urlError} (${source.url})`);
+      results.errors.push(`Source ${source.name}: skipped — ${urlError}`);
+      return;
+    }
+
     const feed = await parser.parseURL(source.url);
     results.sources_processed++;
 
