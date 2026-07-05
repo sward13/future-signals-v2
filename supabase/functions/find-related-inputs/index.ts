@@ -21,6 +21,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ─── Caller-ownership guard ───────────────────────────────────────────────────
+// Invoked with the caller's session JWT (supabase.functions.invoke). Resolves
+// the caller's workspace so the handler can verify the target resource belongs
+// to it before running any service-role query. Returns null when the JWT is
+// missing or invalid.
+async function getCallerWorkspaceId(
+  req: Request,
+  supabase: ReturnType<typeof createClient>,
+): Promise<string | null> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const { data: { user }, error } = await supabase.auth.getUser(authHeader.slice(7));
+  if (error || !user) return null;
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("id")
+    .eq("user_id", user.id)
+    .single();
+  return (workspace?.id as string | undefined) ?? null;
+}
+
 type EmbeddedInput = {
   id: string;
   name: string;
@@ -50,6 +71,9 @@ serve(async (req: Request) => {
   );
 
   try {
+    const callerWorkspaceId = await getCallerWorkspaceId(req, supabase);
+    if (!callerWorkspaceId) return respond({ error: "Unauthorised" }, 401);
+
     const { cluster_id, project_id } = await req.json() as {
       cluster_id: string;
       project_id: string;
@@ -58,15 +82,16 @@ serve(async (req: Request) => {
     if (!cluster_id) return respond({ error: "cluster_id required" }, 400);
     if (!project_id) return respond({ error: "project_id required" }, 400);
 
-    // ── 1. Verify cluster belongs to the project ───────────────────────────────
+    // ── 1. Verify cluster belongs to the project and the caller's workspace ────
     const { data: cluster, error: clusterError } = await supabase
       .from("clusters")
-      .select("id, name, description")
+      .select("id, name, description, workspace_id")
       .eq("id", cluster_id)
       .eq("project_id", project_id)
       .single();
 
     if (clusterError || !cluster) return respond({ error: "Cluster not found" }, 404);
+    if (cluster.workspace_id !== callerWorkspaceId) return respond({ error: "Forbidden" }, 403);
 
     // ── 2. Fetch cluster member input IDs via cluster_inputs ───────────────────
     const { data: memberRows, error: memberError } = await supabase
