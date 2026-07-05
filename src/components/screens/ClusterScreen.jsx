@@ -321,14 +321,6 @@ export default function ClusterScreen({ appState }) {
               }}
             >
               ✦ Suggested
-              {unassigned.length > 0 && (
-                <span style={{
-                  fontSize: 10, padding: "1px 6px", borderRadius: 8,
-                  background: c.brand, color: c.white, fontWeight: 500,
-                }}>
-                  {unassigned.length}
-                </span>
-              )}
             </button>
             <button
               onClick={() => createUntitledCluster()}
