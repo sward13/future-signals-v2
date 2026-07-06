@@ -142,13 +142,23 @@ function buildCSV(inputs, project) {
       : s;
   };
 
+  // Externally-sourced free text (scanner RSS titles, user-entered fields) can
+  // start with =, +, -, or @, which Excel/Sheets execute as a formula. Prefix
+  // those with a leading apostrophe so they're treated as text, then escape as
+  // usual. Enum/date columns can't begin with these characters and use esc().
+  const escText = (val) => {
+    if (val == null || val === "") return "";
+    const s = String(val);
+    return esc(/^[=+\-@]/.test(s) ? `'${s}` : s);
+  };
+
   const headers = ["Name", "Subtype", "Description", "Source URL", "STEEPLED", "Horizon", "Signal Strength", "Source Confidence", "Date Added"];
 
   const rows = projectInputs.map((inp) => [
-    esc(inp.name),
+    escText(inp.name),
     esc(inp.subtype),
-    esc(inp.description),
-    esc(inp.source_url),
+    escText(inp.description),
+    escText(inp.source_url),
     esc(Array.isArray(inp.steepled) ? inp.steepled.join(", ") : ""),
     esc(inp.horizon),
     esc(inp.signal_strength),
