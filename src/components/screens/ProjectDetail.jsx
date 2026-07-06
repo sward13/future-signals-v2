@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { CirclePlus } from "lucide-react";
+import { CirclePlus, Settings2, FolderInput } from "lucide-react";
 import { useScannerStatus } from "../../hooks/useScannerStatus.js";
 import { c, inp, btnP, btnSec } from "../../styles/tokens.js";
 import { STEEPLED } from "../../data/seeds.js";
@@ -564,11 +564,11 @@ export default function ProjectDetail({ appState }) {
             <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Scan</div>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            <button onClick={() => setScanPrefOpen(true)} style={{ ...btnSec, fontSize: 12, padding: "8px 16px" }}>
-              Scanning preferences
+            <button onClick={() => setScanPrefOpen(true)} style={{ ...btnSec, fontSize: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 6 }}>
+              <Settings2 size={14} />Scanning preferences
             </button>
-            <button onClick={() => setInboxModalOpen(true)} style={{ ...btnSec, fontSize: 12, padding: "8px 16px" }}>
-              Add from Inbox
+            <button onClick={() => setInboxModalOpen(true)} style={{ ...btnSec, fontSize: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 6 }}>
+              <FolderInput size={14} />Add from Inbox
             </button>
             <button onClick={() => setDrawerOpen(true)} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}><CirclePlus size={14} />Add an input</button>
           </div>
@@ -778,7 +778,7 @@ export default function ProjectDetail({ appState }) {
               </div>
               <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
                 <button onClick={() => setDrawerOpen(true)} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}><CirclePlus size={14} />Add an input</button>
-                <button onClick={() => setInboxModalOpen(true)} style={{ ...btnSec, fontSize: 13 }}>Add from Inbox</button>
+                <button onClick={() => setInboxModalOpen(true)} style={{ ...btnSec, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><FolderInput size={14} />Add from Inbox</button>
               </div>
             </div>
           ) : (
