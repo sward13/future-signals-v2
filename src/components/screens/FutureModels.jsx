@@ -5,7 +5,7 @@
  */
 import { useState } from "react";
 import { CirclePlus } from "lucide-react";
-import { c, btnSm, btnSec } from "../../styles/tokens.js";
+import { c, btnSm, btnSec, fontHeading } from "../../styles/tokens.js";
 import { HorizTag } from "../shared/Tag.jsx";
 
 // ─── Feasibility badge ────────────────────────────────────────────────────────
@@ -364,7 +364,7 @@ export default function FutureModels({ appState }) {
         }}>
           {project.name}
         </div>
-        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
+        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 6, fontFamily: fontHeading }}>
           Future Models
         </div>
         <div style={{ fontSize: 13, color: c.muted, maxWidth: 520, lineHeight: 1.6 }}>

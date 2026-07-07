@@ -12,7 +12,7 @@ export function ConfirmModal({ message, onConfirm, onCancel }) {
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
         background: c.white, borderRadius: 12, padding: "24px 28px",
         boxShadow: "0 16px 48px rgba(0,0,0,0.18)", zIndex: 401, minWidth: 320,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
+        fontFamily: "inherit",
       }}>
         <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
           {message}

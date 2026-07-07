@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { CirclePlus } from "lucide-react";
-import { c, btnSec, btnSm } from "../../styles/tokens.js";
+import { c, btnSec, btnSm, fontHeading } from "../../styles/tokens.js";
 import { HorizTag } from "../shared/Tag.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
@@ -177,7 +177,7 @@ export default function ClusterScreen({ appState }) {
   if (!project) {
     return (
       <div style={{ padding: "28px 32px", background: c.bg, minHeight: "100%" }}>
-        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 8 }}>No project selected</div>
+        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 8, fontFamily: fontHeading }}>No project selected</div>
         <button onClick={() => setActiveScreen("dashboard")} style={{ ...btnSec, marginTop: 8 }}>
           ← Back to Dashboard
         </button>
@@ -310,7 +310,7 @@ export default function ClusterScreen({ appState }) {
           {project.name}
         </div>
         <div style={{ display: "flex", alignItems: "center" }}>
-          <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Cluster</div>
+          <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>Cluster</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
             <button
               onClick={() => createUntitledCluster()}

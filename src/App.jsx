@@ -321,7 +321,7 @@ export default function App() {
       height: "100vh",
       display: "flex",
       flexDirection: "column",
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
+      fontFamily: "inherit",
       fontSize: 14,
       color: "#111111",
       WebkitFontSmoothing: "antialiased",

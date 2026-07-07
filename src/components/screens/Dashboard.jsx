@@ -2,7 +2,7 @@
  * Dashboard screen — workspace overview with stats, projects list, and recent inputs.
  */
 import { useState } from "react";
-import { c, btnP, btnSec, btnG } from "../../styles/tokens.js";
+import { c, btnP, btnSec, btnG, fontHeading } from "../../styles/tokens.js";
 import { LayoutGrid, List, CirclePlus } from "lucide-react";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { ViewToggle } from "../ViewToggle.jsx";
@@ -214,7 +214,7 @@ export default function Dashboard({ appState }) {
             <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
               Workspace
             </div>
-            <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Dashboard</div>
+            <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>Dashboard</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button onClick={() => setInputDrawerOpen(true)} style={btnSec}>Add an input</button>

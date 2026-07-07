@@ -5,7 +5,7 @@
  * @param {{ appState: object }} props
  */
 import { useState, useEffect, useMemo } from "react";
-import { c, btnSec } from "../../styles/tokens.js";
+import { c, btnSec, fontHeading } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 
@@ -296,7 +296,7 @@ export default function SystemAnalysisCanvas({ appState }) {
       }}>
         <div>
           <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 2 }}>{project.name}</div>
-          <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>System Analysis</div>
+          <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>System Analysis</div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

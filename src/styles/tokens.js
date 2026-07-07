@@ -43,6 +43,11 @@ export const c = {
   tealBorder: "#5EEAD4",
 };
 
+// Font-family tokens — not in c{} (color-only). Mirrors --font-heading /
+// --font-body in the @theme block in index.css; keep both in sync.
+export const fontHeading = "'Roboto', -apple-system, sans-serif";
+export const fontBody = "'Open Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
+
 export const inp = {
   width: "100%",
   padding: "9px 11px",

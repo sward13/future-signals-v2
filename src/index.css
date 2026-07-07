@@ -105,10 +105,15 @@
   --shadow-hover: 0 1px 6px rgba(0,0,0,0.07); /* card hover lift */
 
   /* ── Typography ──────────────────────────────────────────────────────── */
-  /* Not in tokens.js — c{} is color-only; primitive objects (inp, ta, btnP)
-   * hold composite styles. These scalars have no natural home there. */
+  /* Numeric scalars below are not in tokens.js — c{} is color-only; primitive
+   * objects (inp, ta, btnP) hold composite styles and have no natural home
+   * for these. Font-family tokens ARE mirrored in tokens.js (fontHeading /
+   * fontBody, exported alongside c{}) since inline JS styles need them too;
+   * keep both in sync. */
   --text-ui:      0.8125rem; /* 13px — primary UI text: inp, btnP, btnSec (115 occurrences) */
   --leading-body: 1.55;      /* body/prose line-height: ta, descriptions, canvas labels (20+ occurrences) */
+  --font-heading: 'Roboto', -apple-system, sans-serif; /* page titles (22px/500), section headings (16px/500) */
+  --font-body:    'Open Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif; /* base default */
 }
 
 *, *::before, *::after {
@@ -123,6 +128,7 @@ html, body, #root {
 
 body {
   color-scheme: light;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

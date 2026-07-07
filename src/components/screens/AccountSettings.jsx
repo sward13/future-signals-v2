@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "../../lib/supabase.js";
-import { c, inp, btnSm, btnSec, btnG, fl, fh } from "../../styles/tokens.js";
+import { c, inp, btnSm, btnSec, btnG, fl, fh, fontHeading } from "../../styles/tokens.js";
 import { ConfirmModal } from "../shared/ConfirmModal.jsx";
 import { AddSourceModal } from "../shared/AddSourceModal.jsx";
 
@@ -507,7 +507,7 @@ export default function AccountSettings({ appState, onSignOut }) {
         <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
           Workspace
         </div>
-        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Account Settings</div>
+        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>Account Settings</div>
       </div>
 
       <div style={{ maxWidth: 520 }}>

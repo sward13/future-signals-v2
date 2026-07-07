@@ -110,7 +110,7 @@ export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null })
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
         background: c.white, borderRadius: 12, padding: "24px 28px",
         boxShadow: "0 16px 48px rgba(0,0,0,0.18)", zIndex: 501, width: 440,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
+        fontFamily: "inherit",
       }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>

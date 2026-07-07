@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { CirclePlus, Settings2, FolderInput } from "lucide-react";
 import { useScannerStatus } from "../../hooks/useScannerStatus.js";
-import { c, inp, btnP, btnSec } from "../../styles/tokens.js";
+import { c, inp, btnP, btnSec, fontHeading } from "../../styles/tokens.js";
 import { STEEPLED } from "../../data/seeds.js";
 import { HorizTag, SubtypeTag } from "../shared/Tag.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
@@ -189,7 +189,7 @@ function ConfirmDeleteModal({ count, onConfirm, onCancel }) {
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
         background: c.white, borderRadius: 12, padding: "24px 28px",
         boxShadow: "0 16px 48px rgba(0,0,0,0.18)", zIndex: 401, minWidth: 320,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
+        fontFamily: "inherit",
       }}>
         <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
           Delete {count} input{count !== 1 ? "s" : ""}?
@@ -274,7 +274,7 @@ export default function ProjectDetail({ appState }) {
   if (!project) {
     return (
       <div style={{ padding: "28px 32px", background: c.bg, minHeight: "100%" }}>
-        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 8 }}>No project selected</div>
+        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 8, fontFamily: fontHeading }}>No project selected</div>
         <button onClick={() => setActiveScreen("dashboard")} style={{ ...btnSec, marginTop: 8 }}>
           ← Back to Dashboard
         </button>
@@ -561,7 +561,7 @@ export default function ProjectDetail({ appState }) {
             <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
               {project.name}
             </div>
-            <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Scan</div>
+            <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>Scan</div>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
             <button onClick={() => setScanPrefOpen(true)} style={{ ...btnSec, fontSize: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 6 }}>

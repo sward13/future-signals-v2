@@ -3,7 +3,7 @@
  * Two-column layout: main content + metadata sidebar.
  */
 import { useState } from "react";
-import { c, btnSec, btnG } from "../../styles/tokens.js";
+import { c, btnSec, btnG, fontHeading } from "../../styles/tokens.js";
 import { HorizTag } from "../shared/Tag.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 
@@ -168,6 +168,7 @@ export default function StrategicOptionRead({ appState }) {
             <div style={{
               fontSize: 22, fontWeight: 500, color: c.ink,
               lineHeight: 1.25, marginBottom: 12, letterSpacing: "-0.01em",
+              fontFamily: fontHeading,
             }}>
               {opt.name}
             </div>

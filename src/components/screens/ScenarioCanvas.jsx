@@ -16,7 +16,7 @@ import {
 import { toPng } from "html-to-image";
 import "@xyflow/react/dist/style.css";
 import { CirclePlus, LayoutDashboard, Logs, ChevronDown, ChevronRight, Maximize2, Minimize2, Hand, MousePointer2, Network, Type, SlidersHorizontal } from "lucide-react";
-import { c, ta, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
+import { c, ta, btnP, btnSm, btnSec, btnG, fl, fontHeading } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { ClusterDetailDrawer } from "../clusters/ClusterDetailDrawer.jsx";
@@ -1999,7 +1999,7 @@ export default function ScenarioCanvas({ appState }) {
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>System Map</div>
+            <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>System Map</div>
             <div style={{ fontSize: 11, color: c.muted, marginTop: 1 }}>
               {projectNodes.length} cluster{projectNodes.length !== 1 ? "s" : ""} on canvas
               &nbsp;·&nbsp;

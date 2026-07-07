@@ -223,7 +223,7 @@ export default function ProjectOverview({ appState }) {
         <div className="mb-5">
           <div className="text-[11px] text-faint mb-1">{project.name}</div>
           <div className="flex items-center justify-between">
-            <h1 className="text-[22px] font-medium text-ink m-0">Overview</h1>
+            <h1 className="text-[22px] font-medium text-ink m-0 font-heading">Overview</h1>
             <button
               onClick={() => setEditDrawerOpen(true)}
               className="flex items-center gap-1.5 py-1.5 px-3.5 rounded-container bg-transparent text-muted border border-border-strong text-xs cursor-pointer [font-family:inherit]"

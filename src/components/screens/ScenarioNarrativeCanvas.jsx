@@ -6,7 +6,7 @@
  * @param {{ appState: object }} props
  */
 import { useState, useMemo, useRef } from "react";
-import { c, btnSec } from "../../styles/tokens.js";
+import { c, btnSec, fontHeading } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 
 // ─── Color maps ────────────────────────────────────────────────────────────────
@@ -497,7 +497,7 @@ export default function ScenarioNarrativeCanvas({ appState }) {
   if (projectScenarios.length === 0) {
     return (
       <div style={{ padding: "36px 32px", background: c.bg, minHeight: "100%" }}>
-        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 8 }}>Scenarios</div>
+        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 8, fontFamily: fontHeading }}>Scenarios</div>
         <div style={{ maxWidth: 420 }}>
           <div style={{ fontSize: 13, color: c.muted, lineHeight: 1.7, marginBottom: 20 }}>
             No scenarios yet for <strong>{project.name}</strong>. Build your System Map first, then create a scenario to start writing narrative.

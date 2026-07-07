@@ -8,7 +8,7 @@
  */
 import { useState, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { c, inp, btnP, btnSm, btnSec, btnG } from "../../styles/tokens.js";
+import { c, inp, btnP, btnSm, btnSec, btnG, fontHeading } from "../../styles/tokens.js";
 import { CirclePlus, Sparkles } from "lucide-react";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
@@ -452,7 +452,7 @@ function ConfirmDeleteModal({ count, onConfirm, onCancel }) {
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
         background: c.white, borderRadius: 12, padding: "24px 28px",
         boxShadow: "0 16px 48px rgba(0,0,0,0.18)", zIndex: 401, minWidth: 320,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
+        fontFamily: "inherit",
       }}>
         <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
           Delete {count} input{count !== 1 ? "s" : ""}?
@@ -774,7 +774,7 @@ export default function Inbox({ appState }) {
               Workspace
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Inbox</div>
+              <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>Inbox</div>
               {allInboxInputs.length > 0 && (
                 <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500 }}>
                   {allInboxInputs.length}

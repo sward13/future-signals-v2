@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/open-sans": "^5.2.7",
+    "@fontsource/roboto": "^5.2.10",
     "@supabase/supabase-js": "^2.101.1",
     "@tailwindcss/vite": "^4.3.2",
     "@xyflow/react": "^12.10.1",

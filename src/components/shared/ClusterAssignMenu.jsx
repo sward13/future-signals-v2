@@ -27,7 +27,7 @@ export function ClusterAssignMenu({ clusters, onAssign, onNewCluster, onClose, a
     minWidth: 240,
     zIndex: 9999,
     overflow: "hidden",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
+    fontFamily: "inherit",
   };
 
   return createPortal(
