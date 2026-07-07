@@ -293,7 +293,7 @@ Scale:
 - Body / table rows: 13px / weight 400
 - Labels / nav: 12–12.5px / weight 400
 - Metadata / badges: 10–11px
-- Column headers: 10px / weight 500 / uppercase / letter-spacing 0.07em
+- Column headers: 11px / weight 500 / uppercase / letter-spacing 0.02em
 - Micro-labels: 9px / weight 500 / uppercase / letter-spacing 0.08em (e.g. KEY QUESTION)
 
 ---
@@ -359,7 +359,7 @@ phase cards       → 5-column grid: Scan · Cluster · System Map · System Ana
 **Scan screen header (trimmed):**
 The Scan screen (`ProjectDetail.jsx`) no longer shows the key question, metadata strip, or HorizonBar. Those now live on Overview. The Scan header contains only:
 ```
-eyebrow  → project.name (10px, c.hint, letter-spacing 0.08em)
+eyebrow  → project.name (11px, c.hint, letter-spacing 0.02em)
 title    → "Scan" (22px/500)
 CTAs     → "Add from Inbox" + "Add an input" (right-aligned)
 ```
