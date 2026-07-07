@@ -337,7 +337,7 @@ export default function App() {
         workspaceScanningEnabled={appState.workspaceScanningEnabled}
       />
 
-      <Toast toast={appState.toast} />
+      <Toast toast={appState.toast} liftForBulkBar={appState.bulkBarActive} />
 
       {exportModalOpen && (
         <ExportModal appState={appState} onClose={() => setExportModalOpen(false)} />

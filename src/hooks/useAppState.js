@@ -95,6 +95,9 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [inboxProjectFilter, setInboxProjectFilter] = useState(undefined);
   // Cross-screen signal: Overview "Manage sources" sets this true; ProjectDetail reads and clears it
   const [openScanningPrefs, setOpenScanningPrefs] = useState(false);
+  // Cross-screen signal: ClusterScreen's InputRail sets this true while its sticky
+  // multi-select bar is visible, so the global Toast can lift above it and avoid overlap.
+  const [bulkBarActive, setBulkBarActive] = useState(false);
 
   const toastTimer = useRef(null);
   const refreshInputsRef  = useRef(null);
@@ -1723,6 +1726,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     activeScreen,
     drawer,
     toast,
+    bulkBarActive,
+    setBulkBarActive,
     projectModalOpen,
     setActiveScreen,
     setActiveProjectId,

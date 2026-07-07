@@ -95,6 +95,7 @@ export default function ClusterScreen({ appState }) {
     addCluster, updateCluster,
     assignInputToCluster, removeInputFromCluster,
     duplicateInputToCluster, deleteCluster,
+    setBulkBarActive,
   } = appState;
 
   // Drag-and-drop state
@@ -155,6 +156,12 @@ export default function ClusterScreen({ appState }) {
   const [lastCheckedId,        setLastCheckedId]        = useState(null);
   const [batchPickerOpen,      setBatchPickerOpen]      = useState(false);
   const [batchAssignAnchorRect,setBatchAssignAnchorRect]= useState(null);
+
+  // Signal the global Toast to lift above the multi-select bar below while it's showing
+  useEffect(() => {
+    setBulkBarActive(selectedIds.size > 0);
+    return () => setBulkBarActive(false);
+  }, [selectedIds, setBulkBarActive]);
 
   // Cluster mode lifted to this level so the header Suggested CTA can switch it
   const [clusterMode,  setClusterMode]  = useState("manual");

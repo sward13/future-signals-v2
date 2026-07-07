@@ -59,7 +59,7 @@ function PhaseCard({ name, statusKey, isResume, onClick, children }) {
       )}
     >
       <div className="flex items-center justify-between mb-3 gap-2">
-        <span className="text-[14px] font-semibold text-ink shrink-0">{name}</span>
+        <span className="text-[14px] font-semibold text-ink min-w-0 truncate">{name}</span>
         {pill && (
           <span className={clsx("text-[11px] py-0.5 px-2.5 rounded-pill whitespace-nowrap shrink-0", pill.cls)}>
             {pill.text}

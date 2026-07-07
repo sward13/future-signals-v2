@@ -74,8 +74,8 @@ function ClusterListRow({ cluster, selected, onClick, isDropTarget, dropIsCopy, 
         <SubtypeTag sub={cluster.subtype} />
       </div>
 
-      {/* Horizon — 34px fixed container */}
-      <div className="w-[34px] shrink-0">
+      {/* Horizon — 52px fixed container (must match the "Horizon" header label's width, not just the badge) */}
+      <div className="w-[52px] shrink-0">
         {cluster.horizon && <HorizTag h={cluster.horizon} />}
       </div>
 
@@ -349,7 +349,7 @@ export function ClustersPanel({
               <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white border-b border-border">
                 <span className="flex-1 min-w-0 text-[10px] tracking-[0.07em] text-hint">Name</span>
                 <span className="w-[62px] shrink-0 text-[10px] tracking-[0.07em] text-hint">Type</span>
-                <span className="w-[34px] shrink-0 text-[10px] tracking-[0.07em] text-hint">Horizon</span>
+                <span className="w-[52px] shrink-0 text-[10px] tracking-[0.07em] text-hint">Horizon</span>
                 <span className="w-[74px] shrink-0 text-[10px] tracking-[0.07em] text-hint">Likelihood</span>
                 <span className="min-w-6 shrink-0 text-[10px] tracking-[0.07em] text-hint text-right">#</span>
               </div>
