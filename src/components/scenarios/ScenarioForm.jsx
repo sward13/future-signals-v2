@@ -36,7 +36,7 @@ function ChipMultiSelect({ label, hint, clusters, selected, onChange }) {
       <div style={fl}>{label}</div>
       {hint && <div style={fh}>{hint}</div>}
       <div style={{
-        border: `1px solid ${c.borderMid}`, borderRadius: 8,
+        border: `1px solid ${c.borderStrong}`, borderRadius: 8,
         background: c.white, overflow: "hidden",
       }}>
         {/* Selected chips */}
@@ -130,7 +130,7 @@ function KeyDiffsList({ diffs, onChange }) {
             <input
               style={{
                 flex: 1, padding: "8px 10px",
-                border: `1px solid ${c.borderMid}`, borderRadius: 7,
+                border: `1px solid ${c.borderStrong}`, borderRadius: 7,
                 background: c.white, color: c.ink, fontSize: 13,
                 fontFamily: "inherit", outline: "none",
               }}

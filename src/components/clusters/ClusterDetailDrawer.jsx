@@ -250,7 +250,7 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
                   return (
                     <button key={l} onClick={() => set("likelihood", l)} style={{
                       padding: "5px 14px", borderRadius: 20,
-                      border: `1px solid ${on ? c.borderMid : c.border}`,
+                      border: `1px solid ${on ? c.borderStrong : c.border}`,
                       background: on ? c.ink : c.white, color: on ? c.white : c.muted,
                       fontSize: 11, cursor: "pointer", fontFamily: "inherit",
                     }}>

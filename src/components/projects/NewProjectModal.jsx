@@ -235,7 +235,7 @@ export function YearInput({ label, value, onChange, min, max }) {
         style={{
           width: 62,
           padding: "5px 7px",
-          border: `1px solid ${c.borderMid}`,
+          border: `1px solid ${c.borderStrong}`,
           borderRadius: 6,
           fontSize: 12,
           textAlign: "center",
@@ -267,7 +267,7 @@ export const ChipInput = memo(function ChipInput({ values, onChange, placeholder
 
   return (
     <div style={{
-      border: `1px solid ${c.borderMid}`, borderRadius: 8, background: c.white,
+      border: `1px solid ${c.borderStrong}`, borderRadius: 8, background: c.white,
       padding: "5px 8px", minHeight: 38, cursor: "text",
     }}
       onClick={(e) => e.currentTarget.querySelector("input")?.focus()}

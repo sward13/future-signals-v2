@@ -246,7 +246,7 @@ function NewClusterCard({ sug, inputs, isFading, onAccept, onDismiss }) {
               <button
                 onClick={handleCancel}
                 style={{
-                  background: "none", border: `1px solid ${c.borderMid}`,
+                  background: "none", border: `1px solid ${c.borderStrong}`,
                   cursor: "pointer", fontFamily: "inherit",
                   fontSize: 11, color: c.muted, padding: "4px 10px", borderRadius: 6,
                 }}
@@ -266,7 +266,7 @@ function NewClusterCard({ sug, inputs, isFading, onAccept, onDismiss }) {
               <button
                 onClick={() => setEditMode(true)}
                 style={{
-                  background: "none", border: `1px solid ${c.borderMid}`,
+                  background: "none", border: `1px solid ${c.borderStrong}`,
                   cursor: "pointer", fontFamily: "inherit",
                   fontSize: 11, color: c.muted, padding: "4px 10px", borderRadius: 6,
                 }}
@@ -464,7 +464,7 @@ export function ClusterSuggestions({
         background: c.white,
       }}>
         {/* Sensitivity toggle — compact padding so "Exploratory" fits at 320px */}
-        <div style={{ display: "inline-flex", flexShrink: 0, border: `1px solid ${c.borderMid}`, borderRadius: 6, overflow: "hidden" }}>
+        <div style={{ display: "inline-flex", flexShrink: 0, border: `1px solid ${c.borderStrong}`, borderRadius: 6, overflow: "hidden" }}>
           {[["tight", "Tight"], ["balanced", "Balanced"], ["exploratory", "Exploratory"]].map(([key, label], idx) => (
             <button
               key={key}
@@ -472,7 +472,7 @@ export function ClusterSuggestions({
               style={{
                 padding: "3px 5px", fontSize: 10, fontFamily: "inherit",
                 cursor: "pointer", border: "none",
-                borderLeft: idx > 0 ? `1px solid ${c.borderMid}` : "none",
+                borderLeft: idx > 0 ? `1px solid ${c.borderStrong}` : "none",
                 background: tightness === key ? c.ink : "transparent",
                 color: tightness === key ? c.white : c.muted,
                 fontWeight: tightness === key ? 500 : 400,
@@ -493,7 +493,7 @@ export function ClusterSuggestions({
             flexShrink: 0,
             display: "flex", alignItems: "center", gap: 5,
             padding: "4px 9px", borderRadius: 6,
-            border: `1px solid ${c.borderMid}`,
+            border: `1px solid ${c.borderStrong}`,
             background: "transparent",
             color: running || !projectId ? c.muted : c.ink,
             opacity: !projectId ? 0.5 : 1,

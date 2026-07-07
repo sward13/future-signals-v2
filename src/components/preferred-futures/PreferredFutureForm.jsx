@@ -39,7 +39,7 @@ function ScenarioMultiSelect({ scenarios, selected, onChange }) {
       <div style={fl}>Informed by scenarios</div>
       <div style={fh}>Which scenarios does this preferred future draw from?</div>
       <div style={{
-        border: `1px solid ${c.borderMid}`, borderRadius: 8,
+        border: `1px solid ${c.borderStrong}`, borderRadius: 8,
         background: c.white, overflow: "hidden",
       }}>
         <div style={{

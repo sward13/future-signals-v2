@@ -751,7 +751,7 @@ export default function ProjectDetail({ appState }) {
                         padding: "5px 12px", borderRadius: 6, fontSize: 11.5,
                         cursor: "pointer", fontFamily: "inherit",
                         background: "transparent", color: c.muted,
-                        border: `1px solid ${c.borderMid}`,
+                        border: `1px solid ${c.borderStrong}`,
                       }}
                     >
                       Dismiss {aiSelectedIds.size}

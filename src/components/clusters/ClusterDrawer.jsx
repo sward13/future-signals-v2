@@ -172,7 +172,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
                     onClick={() => set("likelihood", l)}
                     style={{
                       padding: "6px 16px", borderRadius: 20,
-                      border: `1px solid ${on ? c.borderMid : c.border}`,
+                      border: `1px solid ${on ? c.borderStrong : c.border}`,
                       background: on ? c.ink : c.white,
                       color: on ? c.white : c.muted,
                       fontSize: 12, fontWeight: on ? 500 : 400,
@@ -256,7 +256,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
                       {/* Checkbox */}
                       <div style={{
                         width: 15, height: 15, borderRadius: 3, flexShrink: 0,
-                        border: `1.5px solid ${checked ? c.ink : c.borderMid}`,
+                        border: `1.5px solid ${checked ? c.ink : c.borderStrong}`,
                         background: checked ? c.ink : c.white,
                         display: "flex", alignItems: "center", justifyContent: "center",
                       }}>

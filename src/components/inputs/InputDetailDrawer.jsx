@@ -166,7 +166,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
                 projects={projects}
                 recommendedProjectId={input.metadata?.suggested_projects?.[0]?.id}
                 onAdd={(projectId) => onSaveToProject(input.id, projectId)}
-                buttonStyle={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: `1px solid ${c.borderMid}`, cursor: "pointer", fontFamily: "inherit" }}
+                buttonStyle={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: `1px solid ${c.borderStrong}`, cursor: "pointer", fontFamily: "inherit" }}
               />
             )}
             {onDismissSuggested && (
@@ -448,7 +448,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
                       setDupeAnchorRect(rect ?? null);
                       setDupePickerOpen((o) => !o);
                     }}
-                    style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, border: `1px solid ${c.borderMid}`, background: "transparent", color: c.muted, cursor: "pointer", fontFamily: "inherit" }}
+                    style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, border: `1px solid ${c.borderStrong}`, background: "transparent", color: c.muted, cursor: "pointer", fontFamily: "inherit" }}
                   >
                     Duplicate to cluster
                   </button>

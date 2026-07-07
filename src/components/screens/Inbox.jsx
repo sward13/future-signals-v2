@@ -49,7 +49,7 @@ function RowCheckbox({ checked, indeterminate, visible }) {
   return (
     <div style={{
       width: 15, height: 15, borderRadius: 3, flexShrink: 0,
-      border: `1.5px solid ${checked || indeterminate ? c.ink : visible ? c.borderMid : "rgba(0,0,0,0.12)"}`,
+      border: `1.5px solid ${checked || indeterminate ? c.ink : visible ? c.borderStrong : "rgba(0,0,0,0.12)"}`,
       background: checked || indeterminate ? c.ink : "transparent",
       display: "flex", alignItems: "center", justifyContent: "center",
       transition: "border-color 0.15s, background 0.15s",

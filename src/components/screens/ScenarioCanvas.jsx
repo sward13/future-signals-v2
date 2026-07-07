@@ -517,7 +517,7 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
                 onClick={() => setRelType("Other")}
                 style={{
                   padding: "9px 12px", borderRadius: 8, textAlign: "left",
-                  border: `1.5px solid ${relType === "Other" ? c.borderMid : c.border}`,
+                  border: `1.5px solid ${relType === "Other" ? c.borderStrong : c.border}`,
                   background: relType === "Other" ? "rgba(0,0,0,0.015)" : c.white,
                   cursor: "pointer", fontFamily: "inherit",
                 }}
@@ -539,7 +539,7 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
                 placeholder="Describe the relationship…"
                 style={{
                   marginTop: 8, width: "100%", padding: "8px 10px",
-                  border: `1px solid ${c.borderMid}`, borderRadius: 6,
+                  border: `1px solid ${c.borderStrong}`, borderRadius: 6,
                   fontSize: 12, fontFamily: "inherit", color: c.ink,
                   background: c.white, outline: "none", boxSizing: "border-box",
                 }}
@@ -574,7 +574,7 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
                     onClick={() => setConfidence(lv)}
                     style={{
                       padding: "6px 20px", borderRadius: 20,
-                      border: `1px solid ${on ? c.borderMid : c.border}`,
+                      border: `1px solid ${on ? c.borderStrong : c.border}`,
                       background: on ? c.ink : c.white,
                       color: on ? c.white : c.muted,
                       fontSize: 12, fontWeight: on ? 500 : 400,
@@ -650,7 +650,7 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
             onClick={() => unaddedClusters.forEach((cl) => onAdd(cl))}
             style={{
               width: "100%", padding: "5px 8px", borderRadius: 6,
-              background: "transparent", border: `1px solid ${c.borderMid}`,
+              background: "transparent", border: `1px solid ${c.borderStrong}`,
               color: c.muted, fontSize: 11, cursor: "pointer",
               fontFamily: "inherit", textAlign: "center",
             }}
@@ -725,7 +725,7 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
                   onClick={() => !added && onAdd(cl)}
                   style={{
                     fontSize: 10, padding: "3px 8px", borderRadius: 5, flexShrink: 0, marginTop: 1,
-                    border: `1px solid ${added ? c.border : c.borderMid}`,
+                    border: `1px solid ${added ? c.border : c.borderStrong}`,
                     background: added ? c.surfaceAlt : c.white,
                     color: added ? c.hint : c.muted,
                     cursor: added ? "default" : "pointer",
@@ -965,7 +965,7 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
     background: c.surfaceAlt, borderBottom: `1px solid ${c.border}`,
   };
   const selStyle = {
-    width: "100%", padding: "5px 7px", border: `1px solid ${c.borderMid}`,
+    width: "100%", padding: "5px 7px", border: `1px solid ${c.borderStrong}`,
     borderRadius: 6, background: c.white, color: c.ink, fontSize: 11,
     fontFamily: "inherit", outline: "none", cursor: "pointer",
   };

@@ -42,7 +42,7 @@ export function ProjectPicker({ heading, description, projects, inputs, clusters
                   cursor: "pointer", fontFamily: "inherit",
                   transition: "border-color 0.1s",
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = c.borderMid}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = c.borderStrong}
                 onMouseLeave={(e) => e.currentTarget.style.borderColor = c.border}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -80,7 +80,7 @@ export function ProjectPicker({ heading, description, projects, inputs, clusters
           style={{
             marginTop: 14, width: "100%",
             padding: "10px 0", borderRadius: 9,
-            border: `1px dashed ${c.borderMid}`,
+            border: `1px dashed ${c.borderStrong}`,
             background: "transparent",
             color: c.muted, fontSize: 12,
             cursor: "pointer", fontFamily: "inherit",

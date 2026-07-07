@@ -226,7 +226,7 @@ export default function ProjectOverview({ appState }) {
             <h1 className="text-[22px] font-medium text-ink m-0">Overview</h1>
             <button
               onClick={() => setEditDrawerOpen(true)}
-              className="flex items-center gap-1.5 py-1.5 px-3.5 rounded-container bg-transparent text-muted border border-border-mid text-xs cursor-pointer [font-family:inherit]"
+              className="flex items-center gap-1.5 py-1.5 px-3.5 rounded-container bg-transparent text-muted border border-border-strong text-xs cursor-pointer [font-family:inherit]"
             >
               <SquarePen size={13} className="shrink-0" /> Project settings
             </button>
@@ -339,7 +339,7 @@ export default function ProjectOverview({ appState }) {
             )}
             <button
               onClick={() => { setOpenScanningPrefs(true); setActiveScreen("project"); }}
-              className="py-2 px-4 rounded-container bg-transparent text-muted border border-border-mid text-[13px] cursor-pointer [font-family:inherit]"
+              className="py-2 px-4 rounded-container bg-transparent text-muted border border-border-strong text-[13px] cursor-pointer [font-family:inherit]"
             >
               Manage sources
             </button>

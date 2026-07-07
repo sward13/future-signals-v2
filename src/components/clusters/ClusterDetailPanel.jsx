@@ -67,7 +67,7 @@ export function ClusterDetailPanel({ open, cluster, inputs, onClose, onRemoveInp
           <button
             onClick={() => setEditDrawerOpen(true)}
             style={{
-              background: "none", border: `1px solid ${c.borderMid}`,
+              background: "none", border: `1px solid ${c.borderStrong}`,
               cursor: "pointer", fontFamily: "inherit", fontSize: 11,
               color: c.muted, padding: "4px 10px", borderRadius: 6,
             }}

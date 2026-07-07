@@ -46,7 +46,7 @@ function StepDots() {
                 ? c.brand
                 : isDone
                   ? "rgba(59,130,246,0.4)"
-                  : "rgba(0,0,0,0.15)",
+                  : "#9C9B96",
               transition: "all 0.2s",
             }}
           />

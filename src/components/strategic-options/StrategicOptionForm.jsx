@@ -36,7 +36,7 @@ function ScenarioMultiSelect({ scenarios, selected, onChange }) {
       <div style={fl}>Responds to scenarios</div>
       <div style={fh}>Which scenarios is this option designed to address?</div>
       <div style={{
-        border: `1px solid ${c.borderMid}`, borderRadius: 8,
+        border: `1px solid ${c.borderStrong}`, borderRadius: 8,
         background: c.white, overflow: "hidden",
       }}>
         <div style={{

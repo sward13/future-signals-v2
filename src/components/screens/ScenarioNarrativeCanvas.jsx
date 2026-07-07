@@ -171,7 +171,7 @@ function ArchetypeSwitcherChip({ selected, onChange }) {
         style={{
           display: "inline-flex", alignItems: "center", gap: 6,
           padding: "3px 10px 3px 8px", borderRadius: 20,
-          border: `1px solid ${arch ? arch.border : c.borderMid}`,
+          border: `1px solid ${arch ? arch.border : c.borderStrong}`,
           background: arch ? arch.bg : c.surfaceAlt,
           color: arch ? arch.color : c.muted,
           fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",

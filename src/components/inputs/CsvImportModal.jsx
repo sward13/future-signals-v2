@@ -326,7 +326,7 @@ export function CsvImportModal({ open, onClose, projectId, addInput, showToast }
                   style={{
                     display: "flex", alignItems: "center", gap: 7,
                     padding: "9px 14px", borderRadius: 7,
-                    border: `1px solid ${c.borderMid}`,
+                    border: `1px solid ${c.borderStrong}`,
                     background: c.surfaceAlt, color: c.ink,
                     fontSize: 12, fontWeight: 500,
                     cursor: "pointer", fontFamily: "inherit",
@@ -348,7 +348,7 @@ export function CsvImportModal({ open, onClose, projectId, addInput, showToast }
                 <label style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
                   padding: "24px 20px",
-                  border: `2px dashed ${fileError ? c.redBorder : c.borderMid}`,
+                  border: `2px dashed ${fileError ? c.redBorder : c.borderStrong}`,
                   borderRadius: 8,
                   background: fileError ? c.red50 : c.surfaceAlt,
                   cursor: "pointer",

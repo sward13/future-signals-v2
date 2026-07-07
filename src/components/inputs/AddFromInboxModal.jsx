@@ -284,7 +284,7 @@ function Checkbox({ checked }) {
   return (
     <div style={{
       width: 16, height: 16, borderRadius: 4, flexShrink: 0,
-      border: `1.5px solid ${checked ? c.ink : c.borderMid}`,
+      border: `1.5px solid ${checked ? c.ink : c.borderStrong}`,
       background: checked ? c.ink : c.white,
       display: "flex", alignItems: "center", justifyContent: "center",
     }}>
