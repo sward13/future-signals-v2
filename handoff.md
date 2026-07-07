@@ -1,6 +1,6 @@
 # Future Signals v2 — Handoff
 
-_Last updated: 2026-07-03_
+_Last updated: 2026-07-07_
 
 ---
 
@@ -33,6 +33,20 @@ All core screens are built and functional:
 | Future Models (Scenarios + Strategic Options) | Done |
 
 Note: Scan and Cluster are now separate sidebar items and separate screens. `Clustering.jsx` is dead code (no longer imported). The `"clustering"` case in App.jsx is a legacy redirect to `ClusterScreen` to handle any stored localStorage state.
+
+**2026-07-07 session — Badge/chip audit + form-field label consistency fix (on `workspace-refactor` branch):**
+- **Badge/chip audit (read-only):** Full audit of every badge/chip in the app (Signal Strength, Source Confidence, STEEPLED, Horizon, Likelihood, Cluster Subtype, Archetype) against the one real shared primitive, `Tag.jsx` (`Tag`/`StrengthDot`/`HorizTag`/`ArchTag`/`SubtypeTag`/`ConfidenceBadge` — font-size 10px, padding `2px 7px`, radius 10px, 1px border). Found the root cause of most drift: `StrengthDot`/`ConfidenceBadge` expect Title-Case keys (`Weak`/`Moderate`/`High`) but the real DB fields are lowercase, so nearly every screen reimplements its own inline badge instead of using the shared component. Surfaced a live color-scale conflict for Signal Strength (shared component vs. four ad hoc inline copies), a cyan-vs-blue mismatch for Cluster Subtype "Driver" between `Tag.jsx` and `ScenarioCanvas.jsx`, at least 4 distinct STEEPLED tag treatments, and several places where Horizon/Likelihood/Confidence render as plain text instead of a badge (System Map relationships table, Inbox table view). No code changed in this pass — findings and a consolidation plan written to `fable-badge-consolidation-prompt.md` (untracked) for a future fix pass.
+- **Form-field label size/letter-spacing fix:** Separate audit found the small caption-style label above form fields (e.g. "Source", "STEEPLED", "Signal strength" in `InputDetailDrawer.jsx`) was reimplemented inline ~30 times across drawers, detail/read views, and the project-name "eyebrow" breadcrumb family, with inconsistent values (font-size 9–11px, letter-spacing 0.04em–0.09em) rather than a shared token. Updated every confirmed instance to `font-size: 11px, letter-spacing: 0.02em`; color, font-weight, text-transform, and margins were left untouched. Commit `f4dff2c`.
+- **`CLAUDE.md` typography spec updated to match:** "Column headers" and the Scan-screen "eyebrow" spec now read 11px / letter-spacing 0.02em, so they don't get flagged as drift in a future design review. Commits `d2d7e1d`, `cb1d412`.
+
+**2026-07-05 session — Cluster screen polish: full-field edit, list/card improvements, multi-select (on `workspace-refactor` branch):**
+- **`ClusterDrawer` edit mode:** Added `initialValues` and `mode = "create" | "edit"` props. A single `useEffect([open])` seeds `fields` from `initialValues ?? EMPTY` and resets `nameError` + `selectedInputIds` on each open. In edit mode: `onSave` receives only `{ name, subtype, horizon, likelihood, description }`; footer button reads "Save changes"; eyebrow reads "Edit cluster"; linked-inputs section is hidden (wrapped in `mode === "create" && (...)`).
+- **`ClusterDetailPanel` full-field edit:** Removed the old inline name-edit (text input + commit/cancel). The "Edit" header button now sets `editDrawerOpen = true`, which renders `<ClusterDrawer mode="edit" initialValues={...} onSave={(fields) => { updateCluster(cluster.id, fields); setEditDrawerOpen(false); }} />` overlaid on the detail panel. `updateCluster` prop threaded through from `ClusterScreen` → `ClustersPanel` → `ClusterDetailPanel`.
+- **Search input fix:** ClustersPanel search input changed from `flex-1 min-w-0` to `w-[200px] shrink-0` to match the 200px fixed width used by the Inputs rail.
+- **List view column headers + new columns:** Added a header row (Name | Type | H | Likelihood | #) above the cluster list. `ClusterListRow` gains a 34px Horizon column (`HorizTag`) and a 74px Likelihood column (local `LikelihoodTag` — Tailwind-only, no `tokens.js`). Column order: name flex-1 · type 62px · horizon 34px · likelihood 74px · count `min-w-6`.
+- **Card view multi-select:** `selectedClusterIds` (Set) + `lastCheckedClusterId` + `confirmBulkDelete` state in ClustersPanel. `ClusterCard` gains `isSelected`, `onCheckboxClick`, `anySelected` props; checkbox opacity-transitions in on hover or when any card is selected. Shift-click range-selects the slice between last-checked and current in `visibleClusters` order. Sticky action bar at bottom of scroll area shows "{N} selected · Delete N · ✕ Clear"; `ConfirmDialog` guards bulk delete (iterates `deleteCluster(id)` per id).
+- **Uniform card heights:** `ClusterCard` outer div uses `display:flex; flexDirection:column; height:100%; boxSizing:border-box`. Description always renders with `minHeight: 34` (≈ 2 × 11px × 1.55 line-height). Footer uses `marginTop: "auto", paddingTop: 8` to pin to card bottom regardless of description length. Grid cells stretch to row height via CSS Grid default `align-items:stretch`.
+- **ClustersPanel heading removed:** Removed the "Clusters" label row from the panel header. Mode toggle row now has `pt-4` (16px) top padding to compensate. `border-b` divider on the panel header container is kept (still meaningful as the control bar shows/hides with mode).
 
 **2026-07-03 session (cont'd) — ClusterScreen layout + AI Suggested tab (on `workspace-refactor` branch):**
 - **ClusterScreen vertical stack:** Layout changed from side-by-side columns to a vertical stack — ClustersPanel full-width on top (`flex: 1, minHeight: 0`), InputRail pinned to bottom (`flexShrink: 0`). ClustersPanel receives `style` prop so ClusterScreen can override its fixed `w-80` and `border-l` Tailwind classes via inline-style specificity.
