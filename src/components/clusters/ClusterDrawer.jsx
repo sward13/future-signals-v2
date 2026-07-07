@@ -81,7 +81,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
           display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexShrink: 0,
         }}>
           <div>
-            <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 2 }}>
+            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 2 }}>
               {mode === "edit" ? "Edit cluster" : "New cluster"}
             </div>
             <div style={{ fontSize: 17, fontWeight: 500, color: c.ink }}>

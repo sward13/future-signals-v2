@@ -157,9 +157,9 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
           {/* Tag */}
           <div
             style={{
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: 500,
-              letterSpacing: "0.07em",
+              letterSpacing: "0.02em",
               color: c.brand,
               marginBottom: 8,
             }}

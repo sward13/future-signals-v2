@@ -152,7 +152,7 @@ export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null })
               border: `0.5px solid ${c.border}`,
               borderRadius: 6,
             }}>
-              <div style={{ fontSize: 10, fontWeight: 500, color: c.faint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>
+              <div style={{ fontSize: 11, fontWeight: 500, color: c.faint, textTransform: "uppercase", letterSpacing: "0.02em", marginBottom: 5 }}>
                 Recent items
               </div>
               {preview.items.map((title, i) => (

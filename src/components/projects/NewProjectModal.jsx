@@ -485,7 +485,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
           borderBottom: `1px solid ${c.border}`,
           flexShrink: 0,
         }}>
-          <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
+          <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 3 }}>
             New project
           </div>
           <div style={{ fontSize: 20, fontWeight: 500, color: c.ink }}>What are you investigating?</div>
@@ -570,13 +570,13 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
 
           {/* ── Methodology fields ────────────────────────────────────── */}
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, letterSpacing: "0.07em", color: c.hint, marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 16 }}>
               Methodology <div style={{ flex: 1, height: 1, background: c.border }} />
             </div>
 
             {/* Project Scope group */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint, marginBottom: 10 }}>
+              <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 10 }}>
                 Project scope
               </div>
               <div style={{ marginBottom: 10 }}>

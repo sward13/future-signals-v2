@@ -97,14 +97,14 @@ export default function StrategicOptionRead({ appState }) {
   };
 
   const sideLabel = {
-    fontSize: 10, fontWeight: 500, color: c.hint,
-    letterSpacing: "0.07em",
+    fontSize: 11, fontWeight: 500, color: c.hint,
+    letterSpacing: "0.02em",
     marginBottom: 8,
   };
 
   const sectionHeading = {
-    fontSize: 10, fontWeight: 500, color: c.hint,
-    letterSpacing: "0.07em",
+    fontSize: 11, fontWeight: 500, color: c.hint,
+    letterSpacing: "0.02em",
     marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid ${c.border}`,
   };
 
@@ -155,8 +155,8 @@ export default function StrategicOptionRead({ appState }) {
             {/* Eyebrow */}
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
-              fontSize: 10, fontWeight: 500, color: c.hint,
-              letterSpacing: "0.08em",
+              fontSize: 11, fontWeight: 500, color: c.hint,
+              letterSpacing: "0.02em",
               marginBottom: 10,
             }}>
               Strategic Option

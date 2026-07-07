@@ -306,14 +306,14 @@ export default function ClusterScreen({ appState }) {
       : `${dragIds.length} inputs`
     : "";
 
-  const cell = { fontSize: 10, letterSpacing: "0.07em", color: c.hint, flexShrink: 0 };
+  const cell = { fontSize: 11, letterSpacing: "0.02em", color: c.hint, flexShrink: 0 };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: c.bg }}>
 
       {/* ── Header ───────────────────────────────────────────────── */}
       <div style={{ padding: "24px 32px 16px", flexShrink: 0, borderBottom: `1px solid ${c.borderMid}` }}>
-        <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 3 }}>
           {project.name}
         </div>
         <div style={{ display: "flex", alignItems: "center" }}>

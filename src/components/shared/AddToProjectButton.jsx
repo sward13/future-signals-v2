@@ -4,8 +4,8 @@ import { c } from "../../styles/tokens.js";
 import { ChevronDown } from "lucide-react";
 
 const sectionHeader = {
-  padding: "8px 14px 4px", fontSize: 10,
-  letterSpacing: "0.07em", color: c.hint, fontWeight: 500,
+  padding: "8px 14px 4px", fontSize: 11,
+  letterSpacing: "0.02em", color: c.hint, fontWeight: 500,
 };
 
 const item = {

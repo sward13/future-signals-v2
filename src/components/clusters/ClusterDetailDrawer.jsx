@@ -264,7 +264,7 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
 
           {/* Description */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Description</div>
+            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>Description</div>
             {editing ? (
               <textarea style={ta} rows={3} value={fields.description} onChange={(e) => set("description", e.target.value)} placeholder="What does this cluster represent?" />
             ) : cluster.description ? (
@@ -280,7 +280,7 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
           {/* Linked inputs */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <div style={{ fontSize: 11, letterSpacing: "0.07em", color: c.hint }}>
+              <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint }}>
                 Linked inputs ({linkedInputs.length})
               </div>
               {editing && (
@@ -338,7 +338,7 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
             {/* Section header */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ fontSize: 11, letterSpacing: "0.07em", color: c.hint }}>
+                <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint }}>
                   🔍 Related inputs
                 </div>
                 {relatedResults !== null && totalRelatedVisible > 0 && (
@@ -426,7 +426,7 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
                           width: 7, height: 7, borderRadius: "50%",
                           background: dot, display: "inline-block", flexShrink: 0,
                         }} />
-                        <span style={{ fontSize: 10, letterSpacing: "0.07em", color: c.ink, fontWeight: 500 }}>
+                        <span style={{ fontSize: 11, letterSpacing: "0.02em", color: c.ink, fontWeight: 500 }}>
                           {label}
                         </span>
                         <span style={{ fontSize: 10, color: c.hint, fontStyle: "italic", marginLeft: "auto" }}>

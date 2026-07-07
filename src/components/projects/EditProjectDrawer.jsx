@@ -113,7 +113,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 2 }}>
+              <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 2 }}>
                 Project
               </div>
               <div style={{ fontSize: 17, fontWeight: 500, color: c.ink }}>Edit project</div>
@@ -200,13 +200,13 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
           </div>
 
           {/* Methodology divider */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, letterSpacing: "0.07em", color: c.hint, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 16 }}>
             Methodology <div style={{ flex: 1, height: 1, background: c.border }} />
           </div>
 
           {/* Project Scope group */}
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint, marginBottom: 10 }}>
+            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 10 }}>
               Project scope
             </div>
             <div style={{ marginBottom: 10 }} data-field="unit">

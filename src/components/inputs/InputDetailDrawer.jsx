@@ -237,7 +237,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
 
           {/* Source URL */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Source</div>
+            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>Source</div>
             {editing ? (
               <input style={inp} type="url" value={fields.source_url} onChange={(e) => set("source_url", e.target.value)} placeholder="https://…" />
             ) : input.source_url ? (
@@ -254,7 +254,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
 
           {/* STEEPLED */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>STEEPLED</div>
+            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>STEEPLED</div>
             {editing ? (
               <SteepleSelector selected={fields.steepled} onToggle={toggleSteeple} />
             ) : (
@@ -272,7 +272,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
 
           {/* Cluster membership */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Cluster</div>
+            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>Cluster</div>
             {projectClusters && onAssignToCluster ? (
               assignedClusters.length === 0 || reassigning ? (
                 <select
@@ -329,7 +329,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
 
           {/* Signal strength */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Signal strength</div>
+            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>Signal strength</div>
             {editing ? (
               <ThreeCardSelector
                 label=""
@@ -355,7 +355,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
 
           {/* Source confidence */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Source confidence</div>
+            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>Source confidence</div>
             {editing ? (
               <ThreeCardSelector
                 label=""
@@ -381,7 +381,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
 
           {/* Horizon */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Horizon</div>
+            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>Horizon</div>
             {editing ? (
               <HorizonSelector selected={fields.horizon} onSelect={(v) => set("horizon", v)} />
             ) : (
@@ -399,7 +399,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
 
           {/* Project assignment */}
           <div style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint, marginBottom: 6 }}>Project</div>
+            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>Project</div>
             {editing ? (
               <select
                 style={{ ...inp, appearance: "none" }}
@@ -467,7 +467,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
                         zIndex: 401,
                         overflow: "hidden",
                       }}>
-                        <div style={{ padding: "8px 14px 4px", fontSize: 10, letterSpacing: "0.07em", color: c.muted, fontWeight: 500 }}>
+                        <div style={{ padding: "8px 14px 4px", fontSize: 11, letterSpacing: "0.02em", color: c.muted, fontWeight: 500 }}>
                           Copy to cluster
                         </div>
                         <div style={{ maxHeight: 220, overflowY: "auto" }}>

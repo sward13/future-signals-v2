@@ -138,7 +138,7 @@ function SectionHeader({ title, count, icon }) {
 // ─── List table header ────────────────────────────────────────────────────────
 
 function ListHeader({ checked, indeterminate, onToggleAll }) {
-  const cell = { fontSize: 10, letterSpacing: "0.07em", color: c.hint, flexShrink: 0 };
+  const cell = { fontSize: 11, letterSpacing: "0.02em", color: c.hint, flexShrink: 0 };
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 10,
@@ -770,7 +770,7 @@ export default function Inbox({ appState }) {
         {/* ── Header ───────────────────────────────────────────── */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 18, gap: 12 }}>
           <div>
-            <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
+            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 3 }}>
               Workspace
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

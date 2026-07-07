@@ -211,7 +211,7 @@ export default function Dashboard({ appState }) {
         {/* Header */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
           <div>
-            <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
+            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 3 }}>
               Workspace
             </div>
             <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>Dashboard</div>
@@ -287,7 +287,7 @@ export default function Dashboard({ appState }) {
           <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 10, overflow: "hidden", marginBottom: 28 }}>
             {/* Header row */}
             {(() => {
-              const cell = { fontSize: 10, letterSpacing: "0.07em", color: c.hint, flexShrink: 0 };
+              const cell = { fontSize: 11, letterSpacing: "0.02em", color: c.hint, flexShrink: 0 };
               return (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", height: 30, borderBottom: "0.5px solid rgba(0,0,0,0.09)" }}>
                   <div style={{ flex: 1, minWidth: 0, ...cell }}>Name</div>

@@ -584,7 +584,7 @@ export function ClusterSuggestions({
           <>
             {assignGroups.length > 0 && (
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, color: c.hint, letterSpacing: "0.07em", marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: c.hint, letterSpacing: "0.02em", marginBottom: 8 }}>
                   Add to existing clusters
                 </div>
                 {assignGroups.map((group) => (
@@ -602,7 +602,7 @@ export function ClusterSuggestions({
 
             {visibleNewSugs.length > 0 && (
               <div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: c.hint, letterSpacing: "0.07em", marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: c.hint, letterSpacing: "0.02em", marginBottom: 8 }}>
                   New cluster suggestions
                 </div>
                 {visibleNewSugs.map((sug) => (

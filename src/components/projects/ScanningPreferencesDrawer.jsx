@@ -8,7 +8,7 @@ const lbl = {
   fontWeight: 600,
   color: c.faint,
   textTransform: "uppercase",
-  letterSpacing: "0.06em",
+  letterSpacing: "0.02em",
   marginBottom: 4,
 };
 

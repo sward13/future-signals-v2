@@ -171,7 +171,7 @@ function FieldSectionHeader() {
       marginBottom: 16,
       marginTop: 4,
     }}>
-      <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, whiteSpace: "nowrap" }}>
+      <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, whiteSpace: "nowrap" }}>
         Type fields
       </div>
       <div style={{ flex: 1, height: 1, background: c.border }} />

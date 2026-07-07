@@ -162,7 +162,7 @@ export function Sidebar({
           <>
             <div style={{ height: 1, background: c.border, margin: "6px 0" }} />
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 14px 4px" }}>
-              <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint, fontWeight: 500 }}>Projects</div>
+              <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, fontWeight: 500 }}>Projects</div>
               <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 10, background: "rgba(0,0,0,0.07)", color: c.muted, fontWeight: 500 }}>
                 {projects.length}
               </span>

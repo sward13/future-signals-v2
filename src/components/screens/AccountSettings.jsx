@@ -504,7 +504,7 @@ export default function AccountSettings({ appState, onSignOut }) {
 
       {/* Page header */}
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 3 }}>
           Workspace
         </div>
         <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>Account Settings</div>

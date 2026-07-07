@@ -482,7 +482,7 @@ export default function ProjectDetail({ appState }) {
     if (result) showToast(`Copied to "${destCluster.name}"`);
   };
 
-  const cell = { fontSize: 10, letterSpacing: "0.07em", color: c.hint, flexShrink: 0 };
+  const cell = { fontSize: 11, letterSpacing: "0.02em", color: c.hint, flexShrink: 0 };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: c.bg }}>
@@ -558,7 +558,7 @@ export default function ProjectDetail({ appState }) {
           marginBottom: 12, gap: 16,
         }}>
           <div>
-            <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
+            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 3 }}>
               {project.name}
             </div>
             <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>Scan</div>
@@ -1130,7 +1130,7 @@ export default function ProjectDetail({ appState }) {
             }}>
               <div style={{
                 padding: "8px 14px 4px",
-                fontSize: 10, letterSpacing: "0.07em",
+                fontSize: 11, letterSpacing: "0.02em",
                 color: c.muted, fontWeight: 500,
               }}>
                 Copy to cluster

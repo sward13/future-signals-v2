@@ -334,8 +334,8 @@ export function ScannerInboxStep({
           {/* Tag */}
           <div
             style={{
-              fontSize: 10, fontWeight: 500,
-              letterSpacing: "0.07em",
+              fontSize: 11, fontWeight: 500,
+              letterSpacing: "0.02em",
               color: c.brand, marginBottom: 8,
             }}
           >

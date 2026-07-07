@@ -347,11 +347,11 @@ export function ClustersPanel({
             <div>
               {/* Column headers */}
               <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white border-b border-border">
-                <span className="flex-1 min-w-0 text-[10px] tracking-[0.07em] text-hint">Name</span>
-                <span className="w-[62px] shrink-0 text-[10px] tracking-[0.07em] text-hint">Type</span>
-                <span className="w-[52px] shrink-0 text-[10px] tracking-[0.07em] text-hint">Horizon</span>
-                <span className="w-[74px] shrink-0 text-[10px] tracking-[0.07em] text-hint">Likelihood</span>
-                <span className="min-w-6 shrink-0 text-[10px] tracking-[0.07em] text-hint text-right">#</span>
+                <span className="flex-1 min-w-0 text-[11px] tracking-[0.02em] text-hint">Name</span>
+                <span className="w-[62px] shrink-0 text-[11px] tracking-[0.02em] text-hint">Type</span>
+                <span className="w-[52px] shrink-0 text-[11px] tracking-[0.02em] text-hint">Horizon</span>
+                <span className="w-[74px] shrink-0 text-[11px] tracking-[0.02em] text-hint">Likelihood</span>
+                <span className="min-w-6 shrink-0 text-[11px] tracking-[0.02em] text-hint text-right">#</span>
               </div>
               {visibleClusters.map((cl) => (
                 <ClusterListRow

@@ -359,7 +359,7 @@ export default function FutureModels({ appState }) {
       {/* ── Page header ─────────────────────────────────────────────── */}
       <div style={{ marginBottom: 20 }}>
         <div style={{
-          fontSize: 10, letterSpacing: "0.08em",
+          fontSize: 11, letterSpacing: "0.02em",
           color: c.hint, marginBottom: 4,
         }}>
           {project.name}

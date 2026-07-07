@@ -470,7 +470,7 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
       }}>
         {/* Header */}
         <div style={{ padding: "18px 22px 14px", borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
-          <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint, marginBottom: 4 }}>
+          <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 4 }}>
             Define relationship
           </div>
           <div style={{ fontSize: 15, fontWeight: 500, color: c.ink }}>
@@ -800,7 +800,7 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
-          <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint }}>Inspector</div>
+          <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint }}>Inspector</div>
           <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "3px 6px", fontSize: 13, color: c.hint }}>›</button>
         </div>
         <div style={{
@@ -823,7 +823,7 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
-          <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint }}>Cluster</div>
+          <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint }}>Cluster</div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <button onClick={() => onEditCluster(cluster)} style={{ ...btnSec, fontSize: 11, padding: "4px 12px" }}>Edit</button>
             <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "0 5px", color: c.hint, fontSize: 13 }}>›</button>
@@ -859,7 +859,7 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
-          <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint }}>Relationship</div>
+          <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint }}>Relationship</div>
           <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
             <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "0 5px", color: c.hint, fontSize: 13 }}>›</button>
             <button onClick={onClose} style={{ ...btnG, padding: "0 4px", color: c.hint, fontSize: 15 }}>×</button>
@@ -919,7 +919,7 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
-          <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint }}>System</div>
+          <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint }}>System</div>
           <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
             <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "0 5px", color: c.hint, fontSize: 13 }}>›</button>
             <button onClick={onClose} style={{ ...btnG, padding: "0 4px", color: c.hint, fontSize: 15 }}>×</button>
@@ -960,8 +960,8 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
   const [clustersCollapsed, setClustersCollapsed] = useState(relationships.length > 0);
 
   const thStyle = {
-    padding: "8px 14px", fontSize: 10, fontWeight: 600,
-    letterSpacing: "0.06em", color: c.hint,
+    padding: "8px 14px", fontSize: 11, fontWeight: 600,
+    letterSpacing: "0.02em", color: c.hint,
     background: c.surfaceAlt, borderBottom: `1px solid ${c.border}`,
   };
   const selStyle = {

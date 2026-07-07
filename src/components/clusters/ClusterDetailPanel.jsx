@@ -101,7 +101,7 @@ export function ClusterDetailPanel({ open, cluster, inputs, onClose, onRemoveInp
               <div style={{ height: 1, background: c.border, marginBottom: 12 }} />
 
               {/* Linked inputs */}
-              <div style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint, marginBottom: 8 }}>
+              <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 8 }}>
                 Linked inputs ({linkedInputs.length})
               </div>
 
