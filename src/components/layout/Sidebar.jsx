@@ -88,7 +88,7 @@ export function Sidebar({
         padding: indented ? "6px 14px 6px 30px" : "7px 14px",
         width: "100%",
         fontSize: indented ? 11 : 12,
-        color: isActive ? "#3B82F6" : c.muted,
+        color: isActive ? c.blue700 : c.muted,
         fontWeight: isActive ? 500 : 400,
         background: isActive ? "#EFF6FF" : "transparent",
         border: "none",
@@ -114,7 +114,7 @@ export function Sidebar({
           padding: "1px 6px",
           borderRadius: 10,
           background: isActive ? "#DBEAFE" : "rgba(0,0,0,0.07)",
-          color: isActive ? "#3B82F6" : c.muted,
+          color: isActive ? c.blue700 : c.muted,
           fontWeight: 500,
           flexShrink: 0,
         }}>

@@ -373,7 +373,7 @@ export function ScannerInboxStep({
               style={{
                 fontSize: 9, fontWeight: 500,
                 letterSpacing: "0.08em",
-                color: "#3B82F6", marginBottom: 3,
+                color: c.blue700, marginBottom: 3,
               }}
             >
               Matched to — {projectName}

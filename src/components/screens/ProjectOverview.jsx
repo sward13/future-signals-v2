@@ -237,7 +237,7 @@ export default function ProjectOverview({ appState }) {
         <div className="bg-white border border-border rounded-container py-6 px-7 mb-4">
           <div className="grid grid-cols-[2fr_1fr_1fr] gap-8">
             <div>
-              <div className="text-xs font-semibold text-brand mb-1.5">Key question</div>
+              <div className="text-xs font-semibold text-blue-700 mb-1.5">Key question</div>
               <div
                 className="text-[19px] italic leading-[1.5] text-ink"
                 style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}

@@ -20,7 +20,7 @@
   /* Text */
   --color-ink:         #111111;
   --color-muted:       #666666;
-  --color-faint:       #717171;
+  --color-faint:       #5F5F5F;
   --color-hint:        #6B6860;
 
   /* Borders */
@@ -28,7 +28,7 @@
   --color-border-mid:  rgba(0,0,0,0.18);
 
   /* Brand */
-  --color-brand:        #3B82F6;
+  --color-brand:        #2563EB;
   --color-brand-bg:     #EFF6FF;
   --color-brand-border: #BFDBFE;
 

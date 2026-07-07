@@ -61,7 +61,7 @@ function FilterTab({ label, count, active, onClick }) {
       <span style={{
         fontSize: 10, padding: "0 4px", borderRadius: 6,
         background: active ? "#EFF6FF" : "rgba(0,0,0,0.06)",
-        color: active ? "#3B82F6" : c.muted,
+        color: active ? c.blue700 : c.muted,
       }}>
         {count}
       </span>

@@ -58,7 +58,7 @@ export function ClusterDetailPanel({ open, cluster, inputs, onClose, onRemoveInp
             onClick={onClose}
             style={{
               background: "none", border: "none", cursor: "pointer",
-              fontFamily: "inherit", fontSize: 12, color: c.brand,
+              fontFamily: "inherit", fontSize: 12, color: c.blue700,
               padding: 0, display: "flex", alignItems: "center", gap: 4,
             }}
           >
