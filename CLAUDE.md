@@ -372,15 +372,18 @@ CTAs     → "Add from Inbox" + "Add an input" (right-aligned)
 
 The 320px right-hand panel in the Cluster workspace (`ClusterScreen.jsx`). Project metadata lives on Overview; System Map status is visible via the nav item.
 
-**Panel header (two rows):**
-- Row 1: "Clusters" label (13px semibold) + "+ New cluster" button right-aligned (`c.brandBg` bg, `c.brand` text, `c.brandBorder` border). Visible in both modes.
-- Row 2: Manual/Suggested mode toggle (left) + list/card view toggle (right, hidden in Suggested mode).
+**Panel header:**
+- Single row: Manual/Suggested mode toggle (left) + list/card view toggle (right, hidden in Suggested mode). `pt-4` (16px) top padding from panel top edge to toggle row. The "Clusters" heading has been removed — the panel header contains only the mode/view controls.
+- "+ New cluster" button lives in the ClusterScreen page header (above the panel), not inside ClustersPanel.
 
 **Manual mode** (default):
 - Drop zone strip below header — dashed border, `c.faint` text "⊕ Drop inputs here to create a new cluster". Highlights `c.brand` / `c.brandBg` on drag-over. Drop opens ClusterDrawer with inputs pre-selected.
-- Scrollable cluster list — list view (compact rows: type badge · name · count) or card view (type + horizon + likelihood + name + description excerpt).
+- Scrollable cluster list — two view modes:
+  - **List view:** column header row (Name | Type | H | Likelihood | #); compact rows with `HorizTag` in a 34px column and `LikelihoodTag` in a 74px column. `LikelihoodTag` is a local Tailwind-only component in `ClustersPanel.jsx` — no `tokens.js` import.
+  - **Card view:** type badge + horizon badge (header row), name, description (always rendered with `minHeight: 34` to hold 2-line space even when empty), footer pinned via `marginTop: "auto"` (input count left, likelihood right). Cards fill grid cell height via `display:flex; flexDirection:column; height:100%` + CSS Grid default `align-items:stretch`.
+- **Multi-select (card view):** per-card checkboxes fade in on hover or when any card is selected (`anySelected` prop). Shift-click range-selects via `visibleClusters` render order. `selectedClusterIds` Set is shared across list and card view bulk-delete. Sticky action bar at bottom of scroll area shows "{N} selected · Delete N · ✕ Clear" when selection is non-empty; ConfirmDialog before bulk delete.
 - Drag-and-drop targets: move (default) or copy (⌥ Option held). Drop target shows "Move"/"Copy" pill in `c.brand` / green.
-- Cluster detail panel slides in from right on click (translateX, 220ms). Shows badges, name, description, linked inputs with ✕ remove per row, Delete button in footer. Closes on back-click, Escape, or clicking the inputs panel.
+- Cluster detail panel slides in from right on click (translateX, 220ms). Shows badges, name, description, linked inputs with ✕ remove per row, Edit button (opens `ClusterDrawer` in `mode="edit"` — full-field editing of name, subtype, horizon, likelihood, description; linked-inputs section hidden in edit mode), Delete button in footer. Closes on back-click, Escape, or clicking the inputs panel.
 
 **Suggested mode:**
 - Toolbar: sensitivity toggle (Tight / Balanced / Exploratory) + "✦ Suggest clustering" button.
