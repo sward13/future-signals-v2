@@ -4,7 +4,7 @@
  * @param {{ project: object, onClose: () => void, onSave: (fields: object) => void, scrollTo?: string }} props
  */
 import { useState, useRef, useEffect, useCallback } from "react";
-import { c, inp, ta, sel, btnP, btnSec, btnG, fl, fh } from "../../styles/tokens.js";
+import { c, inp, ta, sel, btnP, btnSec, btnG, fl, fh, legend } from "../../styles/tokens.js";
 import { DOMAINS } from "../../data/seeds.js";
 import { HorizonSlider, YearInput, ChipInput } from "./NewProjectModal.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
@@ -127,7 +127,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
 
           {/* Name */}
           <div style={{ marginBottom: 16 }} data-field="name">
-            <div style={fl}>Project name <span style={{ color: c.red800, marginLeft: 2 }}>*</span></div>
+            <div style={fl}>Project name <span style={{ marginLeft: 2 }}>*</span></div>
             <input
               style={{ ...inp, borderColor: nameError ? c.redBorder : undefined }}
               value={name}
@@ -137,6 +137,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
             {nameError && (
               <div style={{ fontSize: 11, color: c.red800, marginTop: 4 }}>Project name is required.</div>
             )}
+            <div style={legend}>* required</div>
           </div>
 
           {/* Domain */}

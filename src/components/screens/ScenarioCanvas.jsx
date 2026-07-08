@@ -551,7 +551,6 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
           <div style={{ marginBottom: 14 }}>
             <div style={{ ...fl, gap: 5 }}>
               Evidence
-              <span style={{ fontSize: 10, fontWeight: 400, color: c.hint }}>optional</span>
             </div>
             <textarea
               style={{ ...ta, minHeight: 68 }}

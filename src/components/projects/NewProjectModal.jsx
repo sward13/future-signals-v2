@@ -5,7 +5,7 @@
  * @param {{ open: boolean, onClose: () => void, onSave: (fields: object) => void }} props
  */
 import { useState, useRef, useEffect, useCallback, memo } from "react";
-import { c, inp, ta, sel, btnP, btnG, fl, fh, badg } from "../../styles/tokens.js";
+import { c, inp, ta, sel, btnP, btnG, fl, fh, legend } from "../../styles/tokens.js";
 import { DOMAINS } from "../../data/seeds.js";
 
 // ─── Horizon slider ────────────────────────────────────────────────────────────
@@ -499,7 +499,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
 
           {/* ── Name ──────────────────────────────────────────── */}
           <div style={{ marginBottom: 16 }}>
-            <div style={fl}>Project name <span style={badg}>required</span></div>
+            <div style={fl}>Project name <span style={{ marginLeft: 2 }}>*</span></div>
             <input
               style={{ ...inp, borderColor: nameError ? c.redBorder : undefined }}
               type="text"
@@ -509,6 +509,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
               autoFocus
             />
             {nameError && <div style={{ fontSize: 11, color: c.red800, marginTop: 4 }}>Project name is required.</div>}
+            <div style={legend}>* required</div>
           </div>
 
           {/* ── Domain ────────────────────────────────────────── */}
@@ -529,7 +530,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
 
           {/* ── Key question ──────────────────────────────────── */}
           <div style={{ marginBottom: 24 }}>
-            <div style={fl}>Key question <span style={{ ...badg, marginLeft: 2 }}>optional</span></div>
+            <div style={fl}>Key question</div>
             <div style={fh}>The central question this project seeks to explore.</div>
             <textarea
               style={ta}

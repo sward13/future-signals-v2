@@ -34,7 +34,7 @@ Future Signals v2 is a strategic foresight SPA built with React + Vite. It guide
 
 Key rules extracted here for fast access — but the full document has the reasoning behind each one:
 
-1. **Zero required fields.** No entity creation form should block on an empty field. Every field must have a sensible default or be skippable.
+1. **Every field is optional except the name of the object being created.** Naming (Input title, Cluster name, Project name) is the one piece of structure the product asks for; everything else can be filled in later or left blank. No entity creation form should block on any other field being empty.
 2. **Quick Start is the default.** Enhanced fields live behind a `+ Add more detail` toggle. Never open by default on first project creation.
 3. **New fields are Enhanced unless proven otherwise.** When adding a field to any form, place it in Enhanced tier. Promotion to Quick Start requires explicit justification: "Does a practitioner need this field *before* they can get value from this entity?"
 4. **AI outputs require a practitioner action before entering the record.** Pre-populate and suggest — never silently apply. The practitioner confirms, edits, or promotes.

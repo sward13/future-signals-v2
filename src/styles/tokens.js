@@ -136,3 +136,11 @@ export const badg = {
   background: "#f9f9f7",
   color: c.faint,
 };
+
+// Form-level "* required" caption — paired with a bare asterisk next to the
+// one required field (Title/Name) on entity creation/edit forms.
+export const legend = {
+  fontSize: 11,
+  color: c.hint,
+  marginTop: 4,
+};

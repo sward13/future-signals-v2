@@ -4,7 +4,7 @@
  * @param {{ onClose: () => void, onSave: (fields: object) => void }} props
  */
 import { useState } from "react";
-import { c, btnP, btnSec, btnG, inp, ta, fl } from "../../styles/tokens.js";
+import { c, btnP, btnSec, btnG, inp, ta, fl, legend } from "../../styles/tokens.js";
 
 export const ARCHETYPES = [
   { key: "Continuation",   desc: "Trends extend; the future broadly resembles the present." },
@@ -53,13 +53,14 @@ export function ScenarioDrawer({ onClose, onSave }) {
 
           {/* Name */}
           <div style={{ marginBottom: 18 }}>
-            <label style={fl}>Name <span style={{ color: c.red800 }}>*</span></label>
+            <label style={fl}>Name <span style={{ marginLeft: 2 }}>*</span></label>
             <input
               style={inp} autoFocus
               placeholder="e.g. The Governance Chasm"
               value={name} onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
             />
+            <div style={legend}>* required</div>
           </div>
 
           {/* Archetype */}
@@ -106,10 +107,7 @@ export function ScenarioDrawer({ onClose, onSave }) {
 
           {/* Narrative seed */}
           <div>
-            <label style={fl}>
-              Narrative seed{" "}
-              <span style={{ fontSize: 10, color: c.hint, fontWeight: 400, fontStyle: "italic" }}>(optional)</span>
-            </label>
+            <label style={fl}>Narrative seed</label>
             <textarea
               style={{ ...ta, minHeight: 80 }}
               placeholder="A brief opening framing for this scenario…"

@@ -4,7 +4,7 @@
  * mode='edit' → edits appState.activeScenarioId
  */
 import { useState } from "react";
-import { c, ta, sel, btnP, btnG, fl, fh } from "../../styles/tokens.js";
+import { c, ta, sel, btnP, btnG, fl, fh, legend } from "../../styles/tokens.js";
 
 // ─── Zone divider ────────────────────────────────────────────────────────────
 
@@ -282,18 +282,21 @@ export default function ScenarioForm({ appState, mode }) {
         </div>
 
         {/* Name */}
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Name this scenario"
-          autoFocus
-          style={{
-            width: "100%", fontSize: 24, fontWeight: 500, color: c.ink,
-            border: "none", background: "transparent", outline: "none",
-            fontFamily: "inherit", padding: "0 0 16px", borderBottom: `1px solid ${c.border}`,
-            marginBottom: 24, boxSizing: "border-box",
-          }}
-        />
+        <div style={{ marginBottom: 24 }}>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Name this scenario"
+            autoFocus
+            style={{
+              width: "100%", fontSize: 24, fontWeight: 500, color: c.ink,
+              border: "none", background: "transparent", outline: "none",
+              fontFamily: "inherit", padding: "0 0 16px", borderBottom: `1px solid ${c.border}`,
+              boxSizing: "border-box",
+            }}
+          />
+          <div style={legend}>* required</div>
+        </div>
 
         {/* Zone 1: Frame */}
         <ZoneDivider label="Frame" />
@@ -312,7 +315,7 @@ export default function ScenarioForm({ appState, mode }) {
             </select>
           </div>
           <div>
-            <div style={fl}>Archetype <span style={{ color: c.hint, fontWeight: 400 }}>(optional)</span></div>
+            <div style={fl}>Archetype</div>
             <select
               value={archetype}
               onChange={(e) => setArchetype(e.target.value)}
@@ -363,9 +366,7 @@ export default function ScenarioForm({ appState, mode }) {
 
         {/* Narrative */}
         <div style={{ marginBottom: 20 }}>
-          <div style={fl}>
-            Narrative <span style={{ color: c.hint, fontWeight: 400, fontSize: 11 }}>(optional)</span>
-          </div>
+          <div style={fl}>Narrative</div>
           <div style={fh}>How does this world come to be? Write as much or as little as is useful.</div>
           <textarea
             value={narrative}

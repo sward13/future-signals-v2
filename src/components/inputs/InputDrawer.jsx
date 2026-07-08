@@ -5,7 +5,7 @@
  * @param {{ open: boolean, onClose: () => void, onSave: (fields: object) => void, projects: object[] }} props
  */
 import { useState, useRef } from "react";
-import { c, inp, ta, sel, btnP, btnG, fl, fh, badg } from "../../styles/tokens.js";
+import { c, inp, ta, sel, btnP, btnG, fl, fh, legend } from "../../styles/tokens.js";
 import { supabase } from "../../lib/supabase.js";
 import { Drawer } from "../layout/Drawer.jsx";
 import { INPUT_TYPES, ThreeCardSelector, SteepleSelector, HorizonSelector, TypeSwitcherChip } from "./InputFormFields.jsx";
@@ -327,7 +327,7 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
         {/* ── Common fields ────────────────────────────────────────────── */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ ...fl, justifyContent: "space-between" }}>
-            <span>Title <span style={badg}>required</span></span>
+            <span>Title <span style={{ marginLeft: 2 }}>*</span></span>
             {scraping && <span style={{ fontSize: 10, color: c.hint, fontWeight: 400 }}>Fetching…</span>}
           </div>
           <input
@@ -341,6 +341,7 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
           {titleError && (
             <div style={{ fontSize: 11, color: c.red800, marginTop: 4 }}>Title is required.</div>
           )}
+          <div style={legend}>* required</div>
         </div>
 
         <div style={{ marginBottom: 16 }}>

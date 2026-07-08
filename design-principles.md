@@ -90,7 +90,7 @@ This is not a simplified mode. A Quick Start project with a sharp key question a
 | Preferred Future | Title, Vision statement |
 | Strategic Option | Title, Description |
 
-**Implementation rule:** Zero required fields on any entity. A practitioner can create any entity with only Quick Start fields and the product must treat it as valid — not flag it as incomplete, not block downstream actions. The word "incomplete" should not appear in the product.
+**Implementation rule:** Every field is optional except the name of the object being created (Input title, Cluster name, Project name). Naming is the one piece of structure the product asks for; everything else can be filled in later or left blank. A practitioner can create any entity with only Quick Start fields and the product must treat it as valid — not flag it as incomplete, not block downstream actions. The word "incomplete" should not appear in the product.
 
 ### The Enhanced expand pattern
 
@@ -206,7 +206,7 @@ Use these terms consistently across the product, code, and documentation.
 
 When making any implementation decision, check against these rules:
 
-1. **Zero required fields.** No entity creation form should block on an empty field. Every field has a sensible default or can be left blank.
+1. **Every field is optional except the name of the object being created.** Naming is the one piece of structure the product asks for (Input title, Cluster name, Project name); everything else can be filled in later or left blank. No entity creation form should block on any other field being empty.
 
 2. **Quick Start is the default.** Enhanced fields are always behind a toggle. Never open by default on first project creation.
 

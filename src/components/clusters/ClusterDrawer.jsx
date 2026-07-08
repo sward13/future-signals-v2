@@ -1,10 +1,10 @@
 /**
  * ClusterDrawer — slide-over drawer for creating a new cluster.
- * Fields: name (required), subtype (3-card selector), horizon (pill), likelihood (pill), description, linked inputs.
+ * Fields: name (only required field), subtype (3-card selector), horizon (pill), likelihood (pill), description, linked inputs.
  * @param {{ open: boolean, onClose: () => void, onSave: (fields: object) => void, projectId: string, projectInputs: object[] }} props
  */
 import { useState, useEffect } from "react";
-import { c, inp, ta, btnP, btnSec, btnG, fl, fh, badg } from "../../styles/tokens.js";
+import { c, inp, ta, btnP, btnSec, btnG, fl, fh, legend } from "../../styles/tokens.js";
 import { StrengthDot, HorizTag, SubtypeTag } from "../shared/Tag.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 
@@ -96,7 +96,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
 
           {/* Name */}
           <div style={{ marginBottom: 18 }}>
-            <div style={fl}>Cluster name <span style={badg}>required</span></div>
+            <div style={fl}>Cluster name <span style={{ marginLeft: 2 }}>*</span></div>
             <input
               style={{ ...inp, borderColor: nameError ? c.redBorder : undefined }}
               type="text"
@@ -106,6 +106,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
               autoFocus
             />
             {nameError && <div style={{ fontSize: 11, color: c.red800, marginTop: 4 }}>Cluster name is required.</div>}
+            <div style={legend}>* required</div>
           </div>
 
           {/* Subtype — 3-card selector */}
@@ -188,7 +189,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
 
           {/* Description */}
           <div style={{ marginBottom: 18 }}>
-            <div style={fl}>Description <span style={{ ...badg, marginLeft: 2 }}>optional</span></div>
+            <div style={fl}>Description</div>
             <div style={fh}>What does this cluster represent? What drives it?</div>
             <textarea
               style={ta}
@@ -202,7 +203,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
           {/* Link inputs — create mode only */}
           {mode === "create" && (
           <div style={{ marginBottom: 8 }}>
-            <div style={fl}>Link inputs <span style={{ ...badg, marginLeft: 2 }}>optional</span></div>
+            <div style={fl}>Link inputs</div>
             <div style={fh}>Select the inputs that belong to this cluster.</div>
 
             {projectInputs.length === 0 ? (
