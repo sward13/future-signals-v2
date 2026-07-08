@@ -89,7 +89,6 @@ export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null })
     const urlErr = validateUrl(url);
     if (urlErr) errs.url = urlErr;
     if (!name.trim()) errs.name = "Name is required.";
-    if (!domain) errs.domain = "Select a domain.";
     return errs;
   }
 
@@ -194,12 +193,11 @@ export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null })
               style={{
                 ...inp,
                 appearance: "none",
-                borderColor: errors.domain ? c.redBorder : undefined,
                 paddingRight: 28,
                 color: domain ? c.ink : c.faint,
               }}
               value={domain}
-              onChange={e => { setDomain(e.target.value); setErrors(p => ({ ...p, domain: undefined })); }}
+              onChange={e => setDomain(e.target.value)}
             >
               <option value="" disabled>Select a domain…</option>
               {DOMAINS.filter(d => d !== "Custom / Other").map(d => (
@@ -211,13 +209,9 @@ export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null })
               pointerEvents: "none", color: c.faint, fontSize: 10,
             }}>▾</span>
           </div>
-          {errors.domain ? (
-            <div style={{ fontSize: 11, color: c.red800, marginTop: 3 }}>{errors.domain}</div>
-          ) : (
-            <div style={{ fontSize: 11, color: c.hint, marginTop: 3 }}>
-              Scopes this source to matching projects. Required.
-            </div>
-          )}
+          <div style={{ fontSize: 11, color: c.hint, marginTop: 3 }}>
+            Scopes this source to matching projects.
+          </div>
         </div>
 
         {/* Footer */}

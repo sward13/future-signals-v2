@@ -111,6 +111,7 @@ export default function ProjectOverview({ appState }) {
     updateProject,
     deleteProject,
     workspaceScanningEnabled,
+    showToast,
   } = appState;
 
   const project = projects.find(p => p.id === activeProjectId) || null;
@@ -476,6 +477,7 @@ export default function ProjectOverview({ appState }) {
           onSave={(fields) => updateProject(project.id, fields)}
           onDelete={() => deleteProject(project.id)}
           workspaceScanningEnabled={workspaceScanningEnabled}
+          showToast={showToast}
         />
       )}
     </div>

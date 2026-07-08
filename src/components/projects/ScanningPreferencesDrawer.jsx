@@ -14,13 +14,14 @@ const lbl = {
 
 const val = { fontSize: 12, color: c.muted, lineHeight: 1.5 };
 
-function Toggle({ on, disabled, onClick }) {
+function Toggle({ on, disabled, onClick, title }) {
   return (
     <button
       role="switch"
       aria-checked={on}
       disabled={disabled}
       onClick={onClick}
+      title={title}
       style={{
         flexShrink: 0,
         width: 34, height: 19, borderRadius: 10,
@@ -104,6 +105,7 @@ export function ScanningPreferencesDrawer({
   if (!project) return null;
 
   const scanningEnabled = project.scanning_enabled !== false;
+  const hasDomain = !!project.domain?.trim();
 
   const hasSources = (projectSources || []).length > 0;
 
@@ -125,11 +127,17 @@ export function ScanningPreferencesDrawer({
   }
 
   function handleScanningToggle() {
+    if (!scanningEnabled && !hasDomain) {
+      showToast("A domain is required to enable signal scanning. Add one in Project Settings.", "error");
+      return;
+    }
     updateProject(project.id, { scanning_enabled: !scanningEnabled });
   }
 
   const footerStatus = !workspaceScanningEnabled
     ? "Disabled workspace-wide"
+    : !hasDomain
+    ? "Set a domain to enable scanning"
     : scanningEnabled
     ? "Active for this project"
     : "Paused for this project";
@@ -242,8 +250,9 @@ export function ScanningPreferencesDrawer({
         </div>
         <Toggle
           on={scanningEnabled}
-          disabled={!workspaceScanningEnabled}
+          disabled={!workspaceScanningEnabled || !hasDomain}
           onClick={handleScanningToggle}
+          title={!workspaceScanningEnabled ? undefined : !hasDomain ? "Set a domain for this project to enable signal scanning" : undefined}
         />
       </div>
       <AddSourceModal

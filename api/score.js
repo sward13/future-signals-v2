@@ -59,7 +59,7 @@ export default async function handler(req, res) {
     // Fetch active projects — now includes focus, scope_in, scope_out for richer scoring.
     const { data: projects, error: projectsError } = await supabase
       .from('projects')
-      .select('id, workspace_id, name, question, focus, scope_in, scope_out, key_question_embedding, scanning_enabled')
+      .select('id, workspace_id, name, domain, question, focus, scope_in, scope_out, key_question_embedding, scanning_enabled')
       .not('question', 'is', null)
       .neq('question', '');
 
@@ -80,7 +80,7 @@ export default async function handler(req, res) {
     );
 
     const activeProjects = projects.filter(p =>
-      !disabledWorkspaces.has(p.workspace_id) && p.scanning_enabled !== false
+      !disabledWorkspaces.has(p.workspace_id) && p.scanning_enabled !== false && p.domain
     );
 
     if (!activeProjects.length) return res.status(200).json({ success: true, results });

@@ -26,11 +26,12 @@ function parseHorizonState(project) {
   };
 }
 
-export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo, workspaceScanningEnabled = true }) {
+export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo, workspaceScanningEnabled = true, showToast }) {
   const initial = parseHorizonState(project);
 
   const [name, setName] = useState(project.name || "");
   const [domain, setDomain] = useState(project.domain || "");
+  const hasDomain = !!domain.trim();
   const [question, setQuestion] = useState(project.question || "");
   const [focus, setFocus] = useState(project.focus || "");
   const [scopeIn, setScopeIn] = useState(project.scope_in || []);
@@ -89,7 +90,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
       h2_end: h2End,
       h3_start: h2End,
       h3_end: String(endYear),
-      scanning_enabled: workspaceScanningEnabled && scanningEnabled,
+      scanning_enabled: workspaceScanningEnabled && scanningEnabled && hasDomain,
     });
   };
 
@@ -265,24 +266,33 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
                   Scan for signals on this project
                 </div>
                 <div style={{ fontSize: 11, color: c.muted, lineHeight: 1.5 }}>
-                  {workspaceScanningEnabled
-                    ? "The AI scanner will surface relevant signals from curated sources into your Inbox."
-                    : "Enable scanning in Account Settings to activate."}
+                  {!workspaceScanningEnabled
+                    ? "Enable scanning in Account Settings to activate."
+                    : !hasDomain
+                    ? "Set a domain for this project to enable signal scanning."
+                    : "The AI scanner will surface relevant signals from curated sources into your Inbox."}
                 </div>
               </div>
               <button
                 role="switch"
                 aria-checked={workspaceScanningEnabled && scanningEnabled}
-                disabled={!workspaceScanningEnabled}
-                onClick={() => setScanningEnabled((s) => !s)}
+                disabled={!workspaceScanningEnabled || !hasDomain}
+                title={!workspaceScanningEnabled ? undefined : !hasDomain ? "Set a domain for this project to enable signal scanning" : undefined}
+                onClick={() => {
+                  if (!scanningEnabled && !hasDomain) {
+                    showToast?.("A domain is required to enable signal scanning. Add one in Project Settings.", "error");
+                    return;
+                  }
+                  setScanningEnabled((s) => !s);
+                }}
                 style={{
                   flexShrink: 0,
                   width: 40, height: 22, borderRadius: 11,
                   background: workspaceScanningEnabled && scanningEnabled ? c.ink : c.hint,
                   border: "none",
-                  cursor: workspaceScanningEnabled ? "pointer" : "default",
+                  cursor: workspaceScanningEnabled && hasDomain ? "pointer" : "default",
                   padding: 0, position: "relative", transition: "background 0.2s",
-                  opacity: workspaceScanningEnabled ? 1 : 0.5,
+                  opacity: workspaceScanningEnabled && hasDomain ? 1 : 0.5,
                 }}
               >
                 <span style={{

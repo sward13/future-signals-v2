@@ -355,14 +355,14 @@ function _ModeSelector_removed({ value, onChange }) {
 const CURRENT_YEAR = new Date().getFullYear();
 const DEFAULT_END_YEAR = CURRENT_YEAR + 15;
 
-export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnabled = true }) {
+export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnabled = true, showToast }) {
   // ── Form fields ──────────────────────────────────────────────────────
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
   const [question, setQuestion] = useState("");
   const [nameError, setNameError] = useState(false);
-  const [domainError, setDomainError] = useState(false);
   const [scanningEnabled, setScanningEnabled] = useState(true);
+  const hasDomain = !!domain.trim();
 
   // ── Horizon slider state ─────────────────────────────────────────────
   const [startYear, setStartYear] = useState(CURRENT_YEAR);
@@ -381,7 +381,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
 
   const resetForm = () => {
     setName(""); setDomain(""); setQuestion("");
-    setNameError(false); setDomainError(false);
+    setNameError(false);
     setStartYear(CURRENT_YEAR); setEndYear(DEFAULT_END_YEAR);
     setH1Pct(0.22); setH2Pct(0.58);
     setFocus(""); setScopeIn([]); setScopeOut([]); setGeo(""); setAssumptions(""); setStakeholders(""); setAudience("");
@@ -416,7 +416,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
       assumptions,
       stakeholders,
       audience,
-      scanning_enabled: workspaceScanningEnabled && scanningEnabled,
+      scanning_enabled: workspaceScanningEnabled && scanningEnabled && hasDomain,
     });
     resetForm();
   };
@@ -632,24 +632,33 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
                   Scan for signals on this project
                 </div>
                 <div style={{ fontSize: 11, color: c.muted, lineHeight: 1.5 }}>
-                  {workspaceScanningEnabled
-                    ? "The AI scanner will surface relevant signals from curated sources into your Inbox."
-                    : "Enable scanning in Account Settings to activate."}
+                  {!workspaceScanningEnabled
+                    ? "Enable scanning in Account Settings to activate."
+                    : !hasDomain
+                    ? "Set a domain for this project to enable signal scanning."
+                    : "The AI scanner will surface relevant signals from curated sources into your Inbox."}
                 </div>
               </div>
               <button
                 role="switch"
                 aria-checked={workspaceScanningEnabled && scanningEnabled}
-                disabled={!workspaceScanningEnabled}
-                onClick={() => setScanningEnabled((s) => !s)}
+                disabled={!workspaceScanningEnabled || !hasDomain}
+                title={!workspaceScanningEnabled ? undefined : !hasDomain ? "Set a domain for this project to enable signal scanning" : undefined}
+                onClick={() => {
+                  if (!scanningEnabled && !hasDomain) {
+                    showToast?.("A domain is required to enable signal scanning. Add one in Project Settings.", "error");
+                    return;
+                  }
+                  setScanningEnabled((s) => !s);
+                }}
                 style={{
                   flexShrink: 0,
                   width: 40, height: 22, borderRadius: 11,
                   background: workspaceScanningEnabled && scanningEnabled ? c.ink : c.hint,
                   border: "none",
-                  cursor: workspaceScanningEnabled ? "pointer" : "default",
+                  cursor: workspaceScanningEnabled && hasDomain ? "pointer" : "default",
                   padding: 0, position: "relative", transition: "background 0.2s",
-                  opacity: workspaceScanningEnabled ? 1 : 0.5,
+                  opacity: workspaceScanningEnabled && hasDomain ? 1 : 0.5,
                 }}
               >
                 <span style={{

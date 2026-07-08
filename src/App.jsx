@@ -335,6 +335,7 @@ export default function App() {
         onClose={appState.closeProjectModal}
         onSave={handleCreateProject}
         workspaceScanningEnabled={appState.workspaceScanningEnabled}
+        showToast={appState.showToast}
       />
 
       <Toast toast={appState.toast} liftForBulkBar={appState.bulkBarActive} />

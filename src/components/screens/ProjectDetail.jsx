@@ -1018,6 +1018,7 @@ export default function ProjectDetail({ appState }) {
           onDelete={handleDeleteProject}
           scrollTo={editScrollTo}
           workspaceScanningEnabled={workspaceScanningEnabled}
+          showToast={showToast}
         />
       )}
 
