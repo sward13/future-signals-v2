@@ -23,7 +23,7 @@ const INPUT_TYPE_OPTS = ["Signal", "Issue", "Projection", "Plan", "Obstacle"];
 const STRENGTH_COLORS = {
   weak:     [c.amber700, c.amber50, c.amberBorder],
   moderate: [c.blue700,  c.blue50,  c.blueBorder],
-  high:     [c.green700, c.green50, c.greenBorder],
+  strong:   [c.green700, c.green50, c.greenBorder],
 };
 
 const CONFIDENCE_COLORS = {
