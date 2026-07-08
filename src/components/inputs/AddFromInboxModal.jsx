@@ -7,7 +7,7 @@ import { useState, useMemo } from "react";
 import { c, inp, btnP, btnSec, btnG } from "../../styles/tokens.js";
 import { StrengthDot, HorizTag, SubtypeTag } from "../shared/Tag.jsx";
 
-const STRENGTHS = ["High", "Moderate", "Weak"];
+const STRENGTHS = ["Strong", "Moderate", "Weak"];
 const HORIZONS  = ["H1", "H2", "H3"];
 
 const SUBTYPE_ICONS = {

@@ -34,7 +34,7 @@ function SelectField({ label, value, onChange, options, placeholder }) {
 const SIGNAL_STRENGTH_OPTIONS = [
   { value: "weak",     title: "Weak",     desc: "Single source, edge case, or very early emergence",           dotColor: c.amber700 },
   { value: "moderate", title: "Moderate", desc: "Multiple sources or visible within a specific community",      dotColor: c.blue700 },
-  { value: "high",     title: "High",     desc: "Widespread, data-backed, or reported by mainstream sources",   dotColor: c.green700 },
+  { value: "strong",   title: "Strong",   desc: "Widespread, data-backed, or reported by mainstream sources",   dotColor: c.green700 },
 ];
 
 const SOURCE_CONFIDENCE_OPTIONS = [
