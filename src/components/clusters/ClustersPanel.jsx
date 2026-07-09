@@ -35,7 +35,7 @@ function LikelihoodTag({ l }) {
   if (!l) return null;
   return (
     <span className={clsx(
-      "text-[10px] px-1.75 py-px rounded-pill border whitespace-nowrap",
+      "text-[10px] px-1.75 py-0.5 rounded-pill border whitespace-nowrap",
       map[l] || "text-hint border-border",
     )}>
       {l}

@@ -7,7 +7,11 @@ import { useState, useMemo } from "react";
 import { c, inp, btnP, btnSec, btnG } from "../../styles/tokens.js";
 import { StrengthDot, HorizTag, SubtypeTag } from "../shared/Tag.jsx";
 
-const STRENGTHS = ["Strong", "Moderate", "Weak"];
+const STRENGTHS = [
+  { value: "strong", label: "Strong" },
+  { value: "moderate", label: "Moderate" },
+  { value: "weak", label: "Weak" },
+];
 const HORIZONS  = ["H1", "H2", "H3"];
 
 const SUBTYPE_ICONS = {
@@ -54,7 +58,7 @@ export function AddFromInboxModal({ open, onClose, onConfirm, inboxInputs = [], 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return inboxInputs.filter((inp) => {
-      if (strengthFilter && inp.strength !== strengthFilter) return false;
+      if (strengthFilter && inp.signal_strength !== strengthFilter) return false;
       if (horizonFilter  && inp.horizon  !== horizonFilter)  return false;
       if (q) {
         const matchesName    = inp.name?.toLowerCase().includes(q);
@@ -180,10 +184,10 @@ export function AddFromInboxModal({ open, onClose, onConfirm, inboxInputs = [], 
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {STRENGTHS.map((s) => (
                   <FilterPill
-                    key={s}
-                    label={s}
-                    active={strengthFilter === s}
-                    onClick={() => setStrengthFilter(strengthFilter === s ? null : s)}
+                    key={s.value}
+                    label={s.label}
+                    active={strengthFilter === s.value}
+                    onClick={() => setStrengthFilter(strengthFilter === s.value ? null : s.value)}
                   />
                 ))}
                 <span style={{ width: 1, height: 20, background: c.border, alignSelf: "center" }} />
@@ -321,13 +325,13 @@ function InboxRow({ input, checked, onToggle }) {
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 5 }}>
           {input.steepled?.map((t) => (
             <span key={t} style={{
-              fontSize: 10, padding: "1px 6px", borderRadius: 8,
+              fontSize: 10, padding: "2px 7px", borderRadius: 10,
               background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}`,
             }}>
               {t}
             </span>
           ))}
-          {input.strength && <StrengthDot str={input.strength} />}
+          {input.signal_strength && <StrengthDot str={input.signal_strength} />}
           {input.horizon  && <HorizTag    h={input.horizon} />}
         </div>
       </div>

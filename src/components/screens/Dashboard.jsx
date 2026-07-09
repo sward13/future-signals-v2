@@ -12,15 +12,15 @@ const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Envir
 const COL = { type: 80, quality: 120, horizon: 55, steepled: 120 };
 
 const STRENGTH_COLORS = {
-  weak:     [c.amber700, c.amber50, c.amberBorder],
-  moderate: [c.blue700,  c.blue50,  c.blueBorder],
-  strong:   [c.green700, c.green50, c.greenBorder],
+  weak:     [c.rust700, c.rust50, c.rustBorder],
+  moderate: [c.tan700,  c.tan50,  c.tanBorder],
+  strong:   [c.sage700, c.sage50, c.sageBorder],
 };
 
 const CONFIDENCE_COLORS = {
-  low:    [c.amber700, c.amber50, c.amberBorder],
-  medium: [c.blue700,  c.blue50,  c.blueBorder],
-  high:   [c.green700, c.green50, c.greenBorder],
+  low:    [c.rust700, c.rust50, c.rustBorder],
+  medium: [c.tan700,  c.tan50,  c.tanBorder],
+  high:   [c.sage700, c.sage50, c.sageBorder],
 };
 
 function StrengthCell({ strength, confidence }) {
@@ -29,11 +29,11 @@ function StrengthCell({ strength, confidence }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {strength && (() => {
         const [col, bg, brd] = STRENGTH_COLORS[strength] || [c.hint, c.surfaceAlt, c.border];
-        return <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{strength.charAt(0).toUpperCase() + strength.slice(1)}</span>;
+        return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{strength.charAt(0).toUpperCase() + strength.slice(1)}</span>;
       })()}
       {confidence && (() => {
         const [col, bg, brd] = CONFIDENCE_COLORS[confidence] || [c.hint, c.surfaceAlt, c.border];
-        return <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{confidence.charAt(0).toUpperCase() + confidence.slice(1)} conf.</span>;
+        return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{confidence.charAt(0).toUpperCase() + confidence.slice(1)} conf.</span>;
       })()}
     </div>
   );

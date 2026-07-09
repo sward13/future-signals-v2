@@ -20,6 +20,7 @@ import { c, ta, btnP, btnSm, btnSec, btnG, fl, fontHeading } from "../../styles/
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { ClusterDetailDrawer } from "../clusters/ClusterDetailDrawer.jsx";
+import { Tag, HorizTag, ConfidenceBadge } from "../shared/Tag.jsx";
 
 const NODE_W = 156;
 
@@ -36,9 +37,9 @@ const REL_TYPES = [
 const REL_TYPE_MAP = Object.fromEntries(REL_TYPES.map((rt) => [rt.id, rt]));
 
 const SUBTYPE_STYLE = {
-  Trend: { col: c.violet700, bg: c.violet50, border: c.violetBorder },
-  Driver: { col: c.blue700, bg: c.blue50, border: c.blueBorder },
-  Tension: { col: c.amber700, bg: c.amber50, border: c.amberBorder },
+  Trend: { col: c.dustyViolet700, bg: c.dustyViolet50, border: c.dustyVioletBorder },
+  Driver: { col: c.mutedTeal700, bg: c.mutedTeal50, border: c.mutedTealBorder },
+  Tension: { col: c.dustyRose700, bg: c.dustyRose50, border: c.dustyRoseBorder },
 };
 
 const HORIZON_COLORS = {
@@ -48,10 +49,20 @@ const HORIZON_COLORS = {
 };
 
 const LEFT_BORDER_COLOR = {
-  Trend: c.violetBorder,
-  Driver: c.blueBorder,
-  Tension: c.amberBorder,
+  Trend: c.dustyVioletBorder,
+  Driver: c.mutedTealBorder,
+  Tension: c.dustyRoseBorder,
 };
+
+function LikelihoodTag({ l }) {
+  const map = {
+    Probable:  [c.green700, c.green50,  c.greenBorder],
+    Plausible: [c.blue700,  c.blue50,   c.blueBorder],
+    Possible:  [c.amber700, c.amber50,  c.amberBorder],
+  };
+  const [col, bg, brd] = map[l] || [c.hint, "transparent", c.border];
+  return <Tag label={l} color={col} bg={bg} border={brd} />;
+}
 
 // ─── React Flow node types and edge types ─────────────────────────────────────
 // Must be defined outside any component to keep stable references.
@@ -107,8 +118,8 @@ function ClusterNodeComponent({ id, data }) {
           {/* Type + horizon badges */}
           <div style={{ display: "flex", gap: 4, alignItems: "center", marginBottom: 5 }}>
             <span style={{
-              fontSize: 9, padding: "1px 6px", borderRadius: 4, fontWeight: 500,
-              background: st.bg, color: st.col, border: `0.5px solid ${st.border}`,
+              fontSize: 10, padding: "2px 7px", borderRadius: 10,
+              background: st.bg, color: st.col, border: `1px solid ${st.border}`,
             }}>
               {cluster.subtype}
             </span>
@@ -830,13 +841,13 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: 5, background: st.bg, border: `1px solid ${st.border}`, marginBottom: 10 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: st.col }}>{cluster.subtype}</span>
+          <div style={{ display: "inline-flex", alignItems: "center", padding: "2px 7px", borderRadius: 10, background: st.bg, border: `1px solid ${st.border}`, marginBottom: 10 }}>
+            <span style={{ fontSize: 10, color: st.col }}>{cluster.subtype}</span>
           </div>
           <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.4, marginBottom: 10 }}>{cluster.name}</div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
             <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 10, background: hbg, color: hcol, fontWeight: 600 }}>{cluster.horizon}</span>
-            <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 10, background: c.surfaceAlt, color: c.muted }}>{cluster.likelihood}</span>
+            <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>{cluster.likelihood}</span>
           </div>
           {cluster.description && (
             <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.55, marginBottom: 12 }}>{cluster.description}</div>
@@ -910,8 +921,8 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     const ARCHETYPE_COLORS = {
       Continuation: { col: c.green700, bg: c.green50 },
       Collapse: { col: c.red800, bg: c.red50 },
-      Constraint: { col: c.amber700, bg: c.amber50 },
-      Transformation: { col: c.violet700, bg: c.violet50 },
+      Constraint: { col: c.blue700, bg: c.blue50 },
+      Transformation: { col: c.amber700, bg: c.amber50 },
     };
     const ac = ARCHETYPE_COLORS[scenario.archetype] || { col: c.muted, bg: c.surfaceAlt };
     const [hcol, hbg] = HINSP_COLORS[scenario.horizon] || [c.muted, c.surfaceAlt];
@@ -925,8 +936,8 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: 5, background: ac.bg, marginBottom: 10 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: ac.col }}>{scenario.archetype}</span>
+          <div style={{ display: "inline-flex", alignItems: "center", padding: "2px 7px", borderRadius: 10, background: ac.bg, marginBottom: 10 }}>
+            <span style={{ fontSize: 10, color: ac.col }}>{scenario.archetype}</span>
           </div>
           <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.4, marginBottom: 10 }}>{scenario.name}</div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
@@ -1049,13 +1060,15 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
               return (
                 <div key={rel.id} style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 2.5fr 1fr 90px", borderTop: `1px solid ${c.border}`, alignItems: "center" }}>
                   <div style={{ padding: "10px 14px", fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fromCl?.name}</div>
-                  <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ width: 16, height: 2.5, borderRadius: 2, flexShrink: 0, background: rt.dash ? `repeating-linear-gradient(to right, ${rt.color} 0, ${rt.color} 4px, transparent 4px, transparent 8px)` : rt.color }} />
-                    <span style={{ fontSize: 11, color: rt.color, fontWeight: 500 }}>{rel.type}</span>
+                  <div style={{ padding: "10px 14px" }}>
+                    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.surfaceAlt, color: rt.color, border: `1px solid ${c.border}`, display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
+                      <span style={{ width: 8, height: 2, borderRadius: 2, flexShrink: 0, background: rt.dash ? `repeating-linear-gradient(to right, ${rt.color} 0, ${rt.color} 2px, transparent 2px, transparent 4px)` : rt.color }} />
+                      {rel.type}
+                    </span>
                   </div>
                   <div style={{ padding: "10px 14px", fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{toCl?.name}</div>
                   <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rel.evidence || "—"}</div>
-                  <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{rel.confidence}</div>
+                  <div style={{ padding: "10px 14px" }}><ConfidenceBadge conf={rel.confidence} /></div>
                   <div style={{ padding: "10px 14px", display: "flex", gap: 5 }}>
                     <button onClick={() => onEditRel(rel.id)} style={{ ...btnG, fontSize: 10, padding: "3px 8px", border: `1px solid ${c.border}` }}>Edit</button>
                     <button onClick={() => onDeleteRel(rel.id)} style={{ ...btnG, fontSize: 10, padding: "3px 8px", border: `1px solid ${c.redBorder}`, color: c.red800 }}>Del</button>
@@ -1105,10 +1118,10 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
                       {onCanvas && <span style={{ fontSize: 9, padding: "1px 5px", background: c.surfaceAlt, border: `1px solid ${c.border}`, borderRadius: 4, color: c.hint }}>on canvas</span>}
                     </div>
                     <div style={{ padding: "10px 14px" }}>
-                      <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: st.bg, color: st.col, display: "inline-block" }}>{cl.subtype}</span>
+                      <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: st.bg, color: st.col, border: `1px solid ${st.border}`, display: "inline-block" }}>{cl.subtype}</span>
                     </div>
-                    <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.horizon}</div>
-                    <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.likelihood}</div>
+                    <div style={{ padding: "10px 14px" }}>{cl.horizon && <HorizTag h={cl.horizon} />}</div>
+                    <div style={{ padding: "10px 14px" }}>{cl.likelihood && <LikelihoodTag l={cl.likelihood} />}</div>
                     <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.input_ids?.length || 0}</div>
                   </div>
                 );

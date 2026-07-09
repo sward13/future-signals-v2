@@ -23,15 +23,23 @@ export function Tag({ label, color, bg, border }) {
   );
 }
 
-/** @param {{ str: string }} props — str is 'Weak' | 'Moderate' | 'High' */
+// Shared tier colors for Signal Strength and Source Confidence — both are three-tier
+// scales (weak/moderate/strong, low/medium/high) that map onto the same color slots.
+const TIER_COLORS = {
+  weak: [c.rust700, c.rust50, c.rustBorder],
+  moderate: [c.tan700, c.tan50, c.tanBorder],
+  strong: [c.sage700, c.sage50, c.sageBorder],
+};
+
+function capitalize(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** @param {{ str: string }} props — str is signal_strength: 'weak' | 'moderate' | 'strong' */
 export function StrengthDot({ str }) {
-  const map = {
-    High: [c.green700, c.green50, c.greenBorder],
-    Moderate: [c.amber700, c.amber50, c.amberBorder],
-    Weak: [c.red800, c.red50, c.redBorder],
-  };
-  const [col, bg, brd] = map[str] || [c.hint, "transparent", c.border];
-  return <Tag label={str} color={col} bg={bg} border={brd} />;
+  const key = str?.toLowerCase();
+  const [col, bg, brd] = TIER_COLORS[key] || [c.hint, "transparent", c.border];
+  return <Tag label={str ? capitalize(str) : str} color={col} bg={bg} border={brd} />;
 }
 
 /** @param {{ h: string }} props — h is 'H1' | 'H2' | 'H3' */
@@ -60,22 +68,22 @@ export function ArchTag({ arch }) {
 /** @param {{ sub: string }} props — sub is 'Trend' | 'Driver' | 'Tension' */
 export function SubtypeTag({ sub }) {
   const map = {
-    Trend: [c.violet700, c.violet50, c.violetBorder],
-    Driver: [c.cyan700, c.cyan50, c.cyanBorder],
-    Tension: [c.amber700, c.amber50, c.amberBorder],
+    Trend: [c.dustyViolet700, c.dustyViolet50, c.dustyVioletBorder],
+    Driver: [c.mutedTeal700, c.mutedTeal50, c.mutedTealBorder],
+    Tension: [c.dustyRose700, c.dustyRose50, c.dustyRoseBorder],
   };
   const [col, bg, brd] = map[sub] || [c.hint, "transparent", c.border];
   return <Tag label={sub} color={col} bg={bg} border={brd} />;
 }
 
-/** @param {{ conf: string }} props — conf is 'High' | 'Medium' | 'Low' */
+// source_confidence tiers resolve onto Signal Strength's tier colors — one shared
+// map, so a future color change never has to be made twice.
+const CONFIDENCE_TO_TIER = { low: "weak", medium: "moderate", high: "strong" };
+
+/** @param {{ conf: string }} props — conf is source_confidence: 'low' | 'medium' | 'high' */
 export function ConfidenceBadge({ conf }) {
   if (!conf) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
-  const map = {
-    High:   [c.green700, c.green50,  c.greenBorder],
-    Medium: [c.blue700,  c.blue50,   c.blueBorder],
-    Low:    [c.amber700, c.amber50,  c.amberBorder],
-  };
-  const [col, bg, brd] = map[conf] || [c.hint, "transparent", c.border];
-  return <Tag label={conf} color={col} bg={bg} border={brd} />;
+  const tier = CONFIDENCE_TO_TIER[conf.toLowerCase()];
+  const [col, bg, brd] = TIER_COLORS[tier] || [c.hint, "transparent", c.border];
+  return <Tag label={capitalize(conf)} color={col} bg={bg} border={brd} />;
 }

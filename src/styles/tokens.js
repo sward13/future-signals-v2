@@ -41,6 +41,29 @@ export const c = {
   teal50: "#E6FFFA",
   teal700: "#0F766E",
   tealBorder: "#5EEAD4",
+
+  // Signal Strength / Source Confidence tier scale (locked badge-consolidation colors,
+  // 2026-07-07 audit). Source Confidence reuses this scale: low→rust, medium→tan, high→sage.
+  rust50: "#EFE1DC",
+  rust700: "#A05F4E",
+  rustBorder: "#C8A095",
+  tan50: "#EFE6D3",
+  tan700: "#9C7A3C",
+  tanBorder: "#C6B088",
+  sage50: "#DEE6D6",
+  sage700: "#5C7A52",
+  sageBorder: "#9DB094",
+
+  // Cluster Subtype color scale (locked badge-consolidation colors, 2026-07-07 audit).
+  dustyViolet50: "#E6E1EA",
+  dustyViolet700: "#6B5B7E",
+  dustyVioletBorder: "#A99EB4",
+  mutedTeal50: "#DCE6E4",
+  mutedTeal700: "#4E7A73",
+  mutedTealBorder: "#95B0AC",
+  dustyRose50: "#EAE0E1",
+  dustyRose700: "#8A5560",
+  dustyRoseBorder: "#BA9BA1",
 };
 
 // Font-family tokens — not in c{} (color-only). Mirrors --font-heading /
@@ -135,6 +158,24 @@ export const badg = {
   borderRadius: 4,
   background: "#f9f9f7",
   color: c.faint,
+};
+
+// Count-badge shape family (locked, 2026-07-08 badge-consolidation audit). Two
+// specs, chosen by embedding context rather than "is this a counter":
+// - countBadge: a numeral sitting next to text (sidebar nav counts, section-header
+//   totals) — same shape as the canonical content-badge spec from Phase 3.
+// - tabCount: a numeral inside a clickable filter tab, constrained by the tab's
+//   own chrome — deliberately tighter, not meant to converge with countBadge.
+export const countBadge = {
+  fontSize: 10,
+  padding: "2px 7px",
+  borderRadius: 10,
+};
+
+export const tabCount = {
+  fontSize: 10,
+  padding: "0 4px",
+  borderRadius: 6,
 };
 
 // Form-level "* required" caption — paired with a bare asterisk next to the

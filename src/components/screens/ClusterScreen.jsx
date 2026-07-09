@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { CirclePlus } from "lucide-react";
-import { c, btnSec, btnSm, fontHeading } from "../../styles/tokens.js";
+import { c, btnSec, btnSm, fontHeading, tabCount } from "../../styles/tokens.js";
 import { HorizTag } from "../shared/Tag.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
@@ -29,14 +29,14 @@ const COL = { check: 28, type: 70, strength: 55, confidence: 55, steepled: 80, h
 const INPUT_TYPE_OPTS = ["signal","issue","projection","plan","obstacle","source"];
 
 const STRENGTH_COLORS = {
-  weak:     [c.amber700, c.amber50, c.amberBorder],
-  moderate: [c.blue700,  c.blue50,  c.blueBorder],
-  strong:   [c.green700, c.green50, c.greenBorder],
+  weak:     [c.rust700, c.rust50, c.rustBorder],
+  moderate: [c.tan700,  c.tan50,  c.tanBorder],
+  strong:   [c.sage700, c.sage50, c.sageBorder],
 };
 const CONFIDENCE_COLORS = {
-  low:    [c.amber700, c.amber50, c.amberBorder],
-  medium: [c.blue700,  c.blue50,  c.blueBorder],
-  high:   [c.green700, c.green50, c.greenBorder],
+  low:    [c.rust700, c.rust50, c.rustBorder],
+  medium: [c.tan700,  c.tan50,  c.tanBorder],
+  high:   [c.sage700, c.sage50, c.sageBorder],
 };
 
 // ─── Filter tab ────────────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ function FilterTab({ label, count, active, onClick }) {
     >
       {label}
       <span style={{
-        fontSize: 10, padding: "0 4px", borderRadius: 6,
+        ...tabCount,
         background: active ? c.brandBg : "rgba(0,0,0,0.06)",
         color: active ? c.blue700 : c.muted,
       }}>
@@ -608,20 +608,20 @@ export default function ClusterScreen({ appState }) {
                           <div style={{ width: COL.strength, flexShrink: 0 }}>
                             {inp.signal_strength ? (() => {
                               const [col, bg, brd] = STRENGTH_COLORS[inp.signal_strength] || [c.hint, c.surfaceAlt, c.border];
-                              return <span style={{ fontSize: 10, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.signal_strength.charAt(0).toUpperCase() + inp.signal_strength.slice(1)}</span>;
+                              return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.signal_strength.charAt(0).toUpperCase() + inp.signal_strength.slice(1)}</span>;
                             })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
                           </div>
                           {/* Source Confidence */}
                           <div style={{ width: COL.confidence, flexShrink: 0 }}>
                             {inp.source_confidence ? (() => {
                               const [col, bg, brd] = CONFIDENCE_COLORS[inp.source_confidence] || [c.hint, c.surfaceAlt, c.border];
-                              return <span style={{ fontSize: 9, padding: "1px 4px", borderRadius: 4, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.source_confidence.charAt(0).toUpperCase() + inp.source_confidence.slice(1)}</span>;
+                              return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.source_confidence.charAt(0).toUpperCase() + inp.source_confidence.slice(1)}</span>;
                             })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
                           </div>
                           {/* STEEPLED */}
                           <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
                             {vis2.map((t) => (
-                              <span key={t} style={{ fontSize: 9, padding: "1px 4px", borderRadius: 4, background: c.surfaceAlt, color: c.muted }}>
+                              <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>
                                 {STEEPLED_ABB[t] || t}
                               </span>
                             ))}

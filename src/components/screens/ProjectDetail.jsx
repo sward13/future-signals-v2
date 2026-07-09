@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { CirclePlus, Settings2, FolderInput } from "lucide-react";
 import { useScannerStatus } from "../../hooks/useScannerStatus.js";
-import { c, inp, btnP, btnSec, fontHeading } from "../../styles/tokens.js";
+import { c, inp, btnP, btnSec, fontHeading, tabCount } from "../../styles/tokens.js";
 import { STEEPLED } from "../../data/seeds.js";
 import { HorizTag, SubtypeTag } from "../shared/Tag.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
@@ -18,15 +18,15 @@ const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Envir
 const COL = { check: 28, type: 80, strength: 60, confidence: 60, steepled: 100, horizon: 55, menu: 28 };
 
 const STRENGTH_COLORS = {
-  weak:     [c.amber700, c.amber50, c.amberBorder],
-  moderate: [c.blue700,  c.blue50,  c.blueBorder],
-  strong:   [c.green700, c.green50, c.greenBorder],
+  weak:     [c.rust700, c.rust50, c.rustBorder],
+  moderate: [c.tan700,  c.tan50,  c.tanBorder],
+  strong:   [c.sage700, c.sage50, c.sageBorder],
 };
 
 const CONFIDENCE_COLORS = {
-  low:    [c.amber700, c.amber50, c.amberBorder],
-  medium: [c.blue700,  c.blue50,  c.blueBorder],
-  high:   [c.green700, c.green50, c.greenBorder],
+  low:    [c.rust700, c.rust50, c.rustBorder],
+  medium: [c.tan700,  c.tan50,  c.tanBorder],
+  high:   [c.sage700, c.sage50, c.sageBorder],
 };
 
 const INPUT_TYPE_OPTS = ["signal","issue","projection","plan","obstacle","source"];
@@ -59,7 +59,7 @@ function FilterTab({ label, count, active, onClick }) {
     >
       {label}
       <span style={{
-        fontSize: 10, padding: "0 4px", borderRadius: 6,
+        ...tabCount,
         background: active ? "#EFF6FF" : "rgba(0,0,0,0.06)",
         color: active ? c.blue700 : c.muted,
       }}>
@@ -97,7 +97,9 @@ function AiRow({ inp, selected, onCheck, activeProjectId, onAccept, onDismiss })
   const classif = projectEntry?.classification;
   const cs = CLASSIF_STYLE[classif] || { bg: c.surfaceAlt, text: c.muted, label: classif || "—" };
   const allProjects = (inp.metadata?.suggested_projects || []).map(p => p.name).filter(Boolean);
-  const steepledAbbr = (inp.steepled || []).slice(0, 3).map(t => STEEPLED_ABB[t] || t);
+  const steepled = inp.steepled || [];
+  const steepledVis2 = steepled.slice(0, 2);
+  const steepledOverflow = steepled.length - 2;
   return (
     <div
       onMouseEnter={() => setHov(true)}
@@ -138,8 +140,13 @@ function AiRow({ inp, selected, onCheck, activeProjectId, onAccept, onDismiss })
           {cs.label}
         </span>
       </div>
-      <div style={{ width: COL_AI.steepled, flexShrink: 0, fontSize: 10, color: c.muted }}>
-        {steepledAbbr.length > 0 ? steepledAbbr.join(", ") : "—"}
+      <div style={{ width: COL_AI.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
+        {steepledVis2.map((t) => (
+          <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>
+            {STEEPLED_ABB[t] || t}
+          </span>
+        ))}
+        {steepledOverflow > 0 && <span style={{ fontSize: 9, color: c.hint }}>+{steepledOverflow}</span>}
       </div>
       <div style={{ width: COL_AI.date, flexShrink: 0, fontSize: 10, color: c.hint }}>
         {formatDate(inp.created_at)}
@@ -910,20 +917,20 @@ export default function ProjectDetail({ appState }) {
                       <div style={{ width: COL.strength, flexShrink: 0 }}>
                         {inp.signal_strength ? (() => {
                           const [col, bg, brd] = STRENGTH_COLORS[inp.signal_strength] || [c.hint, c.surfaceAlt, c.border];
-                          return <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.signal_strength.charAt(0).toUpperCase() + inp.signal_strength.slice(1)}</span>;
+                          return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.signal_strength.charAt(0).toUpperCase() + inp.signal_strength.slice(1)}</span>;
                         })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
                       </div>
                       {/* Source Confidence */}
                       <div style={{ width: COL.confidence, flexShrink: 0 }}>
                         {inp.source_confidence ? (() => {
                           const [col, bg, brd] = CONFIDENCE_COLORS[inp.source_confidence] || [c.hint, c.surfaceAlt, c.border];
-                          return <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.source_confidence.charAt(0).toUpperCase() + inp.source_confidence.slice(1)}</span>;
+                          return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.source_confidence.charAt(0).toUpperCase() + inp.source_confidence.slice(1)}</span>;
                         })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
                       </div>
                       {/* STEEPLED */}
                       <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
                         {vis2.map((t) => (
-                          <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: c.surfaceAlt, color: c.muted }}>
+                          <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>
                             {STEEPLED_ABB[t] || t}
                           </span>
                         ))}

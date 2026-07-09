@@ -263,7 +263,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
                   <span style={{ fontSize: 12, color: c.hint, fontStyle: "italic" }}>None tagged.</span>
                 ) : (
                   (input.steepled || []).map((t) => (
-                    <span key={t} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 8, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>{t}</span>
+                    <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>{t}</span>
                   ))
                 )}
               </div>

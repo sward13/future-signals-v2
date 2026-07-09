@@ -12,9 +12,9 @@ import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 // ─── Color maps ────────────────────────────────────────────────────────────────
 
 const SUBTYPE_COLORS = {
-  Trend:   { bg: c.green50,  color: c.green700, border: c.greenBorder },
-  Driver:  { bg: c.blue50,   color: c.blue700,  border: c.blueBorder  },
-  Tension: { bg: c.amber50,  color: c.amber700, border: c.amberBorder },
+  Trend:   { bg: c.dustyViolet50, color: c.dustyViolet700, border: c.dustyVioletBorder },
+  Driver:  { bg: c.mutedTeal50,   color: c.mutedTeal700,   border: c.mutedTealBorder   },
+  Tension: { bg: c.dustyRose50,   color: c.dustyRose700,   border: c.dustyRoseBorder   },
 };
 
 const ARCHETYPE_TYPES = [

@@ -71,6 +71,34 @@
   --color-teal-700:    #0F766E;
   --color-teal-border: #5EEAD4;
 
+  /* Signal Strength / Source Confidence tier scale (locked badge-consolidation
+     colors, 2026-07-07 audit). Source Confidence reuses this scale:
+     low→rust, medium→tan, high→sage. */
+  --color-rust-50:     #EFE1DC;
+  --color-rust-700:    #A05F4E;
+  --color-rust-border: #C8A095;
+
+  --color-tan-50:     #EFE6D3;
+  --color-tan-700:    #9C7A3C;
+  --color-tan-border: #C6B088;
+
+  --color-sage-50:     #DEE6D6;
+  --color-sage-700:    #5C7A52;
+  --color-sage-border: #9DB094;
+
+  /* Cluster Subtype color scale (locked badge-consolidation colors, 2026-07-07 audit). */
+  --color-dusty-violet-50:     #E6E1EA;
+  --color-dusty-violet-700:    #6B5B7E;
+  --color-dusty-violet-border: #A99EB4;
+
+  --color-muted-teal-50:     #DCE6E4;
+  --color-muted-teal-700:    #4E7A73;
+  --color-muted-teal-border: #95B0AC;
+
+  --color-dusty-rose-50:     #EAE0E1;
+  --color-dusty-rose-700:    #8A5560;
+  --color-dusty-rose-border: #BA9BA1;
+
   /* ── Spacing (derived from primitive objects in tokens.js) ──────────── */
   /*
    * On 4px grid — already in Tailwind defaults, no override needed:

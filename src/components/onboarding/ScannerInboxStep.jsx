@@ -139,11 +139,12 @@ function CandidateCard({ candidate, selected, onToggle }) {
             <span
               key={tag}
               style={{
-                fontSize: 9,
-                padding: "1px 5px",
-                borderRadius: 3,
+                fontSize: 10,
+                padding: "2px 7px",
+                borderRadius: 10,
                 background: "#F3F4F6",
                 color: "#6B7280",
+                border: `1px solid ${c.border}`,
               }}
             >
               {tag}

@@ -8,7 +8,7 @@
  */
 import { useState, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { c, inp, btnP, btnSm, btnSec, btnG, fontHeading } from "../../styles/tokens.js";
+import { c, inp, btnP, btnSm, btnSec, btnG, fontHeading, countBadge } from "../../styles/tokens.js";
 import { CirclePlus, Sparkles } from "lucide-react";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
@@ -21,15 +21,15 @@ const STEEPLED_ABB  = { Social:"Soc", Technological:"Tech", Economic:"Eco", Envi
 const INPUT_TYPE_OPTS = ["Signal", "Issue", "Projection", "Plan", "Obstacle"];
 
 const STRENGTH_COLORS = {
-  weak:     [c.amber700, c.amber50, c.amberBorder],
-  moderate: [c.blue700,  c.blue50,  c.blueBorder],
-  strong:   [c.green700, c.green50, c.greenBorder],
+  weak:     [c.rust700, c.rust50, c.rustBorder],
+  moderate: [c.tan700,  c.tan50,  c.tanBorder],
+  strong:   [c.sage700, c.sage50, c.sageBorder],
 };
 
 const CONFIDENCE_COLORS = {
-  low:    [c.amber700, c.amber50, c.amberBorder],
-  medium: [c.blue700,  c.blue50,  c.blueBorder],
-  high:   [c.green700, c.green50, c.greenBorder],
+  low:    [c.rust700, c.rust50, c.rustBorder],
+  medium: [c.tan700,  c.tan50,  c.tanBorder],
+  high:   [c.sage700, c.sage50, c.sageBorder],
 };
 
 const AI_PREVIEW_COUNT = 10;
@@ -125,7 +125,7 @@ function SectionHeader({ title, count, icon }) {
       <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>{title}</div>
       {count > 0 && (
         <span style={{
-          fontSize: 10, padding: "2px 7px", borderRadius: 10,
+          ...countBadge,
           background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500,
         }}>
           {count}
@@ -199,17 +199,17 @@ function ListRow({ input, isScannerSuggested, suggestedProjects, recommendedProj
       </div>
 
       {/* Type */}
-      <div style={{ width: COL.type, flexShrink: 0, fontSize: 11, color: c.muted }}>
+      <div style={{ width: COL.type, flexShrink: 0 }}>
         {input.subtype
-          ? input.subtype.charAt(0).toUpperCase() + input.subtype.slice(1)
-          : <span style={{ color: c.hint }}>—</span>}
+          ? <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: "#f0f0ee", color: c.faint, border: `1px solid ${c.border}` }}>{input.subtype}</span>
+          : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
       </div>
 
       {/* Signal Strength */}
       <div style={{ width: COL.strength, flexShrink: 0 }}>
         {input.signal_strength ? (() => {
           const [col, bg, brd] = STRENGTH_COLORS[input.signal_strength] || [c.hint, c.surfaceAlt, c.border];
-          return <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.signal_strength.charAt(0).toUpperCase() + input.signal_strength.slice(1)}</span>;
+          return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.signal_strength.charAt(0).toUpperCase() + input.signal_strength.slice(1)}</span>;
         })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
       </div>
 
@@ -217,19 +217,19 @@ function ListRow({ input, isScannerSuggested, suggestedProjects, recommendedProj
       <div style={{ width: COL.confidence, flexShrink: 0 }}>
         {input.source_confidence ? (() => {
           const [col, bg, brd] = CONFIDENCE_COLORS[input.source_confidence] || [c.hint, c.surfaceAlt, c.border];
-          return <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.source_confidence.charAt(0).toUpperCase() + input.source_confidence.slice(1)}</span>;
+          return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.source_confidence.charAt(0).toUpperCase() + input.source_confidence.slice(1)}</span>;
         })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
       </div>
 
       {/* Horizon */}
-      <div style={{ width: COL.horizon, flexShrink: 0, fontSize: 11, color: input.horizon ? c.muted : c.hint }}>
-        {input.horizon || "—"}
+      <div style={{ width: COL.horizon, flexShrink: 0 }}>
+        {input.horizon ? <HorizTag h={input.horizon} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
       </div>
 
       {/* STEEPLED */}
       <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
         {vis2.map((t) => (
-          <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: c.surfaceAlt, color: c.muted }}>
+          <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>
             {STEEPLED_ABB[t] || t}
           </span>
         ))}
@@ -289,18 +289,18 @@ function FullCard({ input, isScannerSuggested, suggestedProjects, recommendedPro
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
           {!isScannerSuggested && input.subtype && (
-            <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#f0f0ee", color: c.faint }}>
+            <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: "#f0f0ee", color: c.faint, border: `1px solid ${c.border}` }}>
               {input.subtype}
             </span>
           )}
           <div style={{ marginLeft: "auto", display: "flex", flexDirection: "row", gap: 4, alignItems: "center" }}>
             {input.signal_strength && (() => {
               const [col, bg, brd] = STRENGTH_COLORS[input.signal_strength] || [c.hint, c.surfaceAlt, c.border];
-              return <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.signal_strength.charAt(0).toUpperCase() + input.signal_strength.slice(1)}</span>;
+              return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.signal_strength.charAt(0).toUpperCase() + input.signal_strength.slice(1)}</span>;
             })()}
             {input.source_confidence && (() => {
               const [col, bg, brd] = CONFIDENCE_COLORS[input.source_confidence] || [c.hint, c.surfaceAlt, c.border];
-              return <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.source_confidence.charAt(0).toUpperCase() + input.source_confidence.slice(1)} conf.</span>;
+              return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.source_confidence.charAt(0).toUpperCase() + input.source_confidence.slice(1)} conf.</span>;
             })()}
           </div>
         </div>
@@ -329,7 +329,7 @@ function FullCard({ input, isScannerSuggested, suggestedProjects, recommendedPro
 
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           {(input.steepled || []).map((cat) => (
-            <span key={cat} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#f0f0ee", color: c.muted }}>
+            <span key={cat} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: "#f0f0ee", color: c.muted, border: `1px solid ${c.border}` }}>
               {cat}
             </span>
           ))}
@@ -776,7 +776,7 @@ export default function Inbox({ appState }) {
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>Inbox</div>
               {allInboxInputs.length > 0 && (
-                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500 }}>
+                <span style={{ ...countBadge, background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500 }}>
                   {allInboxInputs.length}
                 </span>
               )}
@@ -792,7 +792,7 @@ export default function Inbox({ appState }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>Unassigned Inputs</div>
           {filteredManual.length > 0 && (
-            <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500 }}>
+            <span style={{ ...countBadge, background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500 }}>
               {filteredManual.length}
             </span>
           )}

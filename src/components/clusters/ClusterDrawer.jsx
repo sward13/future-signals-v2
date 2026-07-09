@@ -277,7 +277,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
                       {/* Tags */}
                       <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
                         {input.subtype && <SubtypeTag sub={input.subtype} />}
-                        {input.strength && <StrengthDot str={input.strength} />}
+                        {input.signal_strength && <StrengthDot str={input.signal_strength} />}
                         {input.horizon && <HorizTag h={input.horizon} />}
                       </div>
                     </div>
