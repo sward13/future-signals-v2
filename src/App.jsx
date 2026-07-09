@@ -212,6 +212,22 @@ export default function App() {
           if (error) console.error("[onboarding] onboarding_completed write failed:", error);
         });
     }
+    // Clone the sample template project into this user's workspace —
+    // fire-and-forget, server-side (RLS blocks a client session from reading
+    // the templates account's data). No synchronous feedback needed; the
+    // clone appears on the dashboard whenever it completes.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      fetch("/api/clone-sample-project", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (!data.success) console.error("[onboarding] clone-sample-project failed:", data.error);
+        })
+        .catch((err) => console.error("[onboarding] clone-sample-project request failed:", err));
+    });
     setOnboardingComplete(true);
     if (projectId) {
       window.history.pushState({}, "", `/projects/${projectId}`);
