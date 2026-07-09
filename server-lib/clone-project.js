@@ -20,19 +20,25 @@
 // RPC.
 //
 // sources and candidates (global, url-unique registries) are never cloned.
-// project_sources / project_candidates are cloned only when
-// options.includeProjectSources is true, and always point at the existing
-// shared source_id / candidate_id — never new rows in those two tables.
+// project_sources is cloned only when options.includeProjectSources is true,
+// and always points at the existing shared source_id — never a new row in
+// that table. project_candidates is never cloned by either path: it's
+// derived scanner data (Layer-3 relevance scores against a specific
+// project's key question at a point in time) that goes stale the moment
+// scanning is re-enabled on the clone, and it's the table that originally
+// motivated the pagination fix below (a project's project_candidates can
+// run into the thousands) — that fix made cloning it work, it didn't make
+// cloning it correct.
 //
 // projects also carries an undocumented AFTER INSERT trigger,
 // trg_auto_populate_project_sources (documented in
 // 20260709140000_document_auto_populate_project_sources.sql), which
 // auto-creates project_sources rows by domain match with opted_in hardcoded
 // true — independent of and invisible to this file's own logic. Both branches
-// of the project_sources/project_candidates step below account for it
-// explicitly (purge-then-clone when includeProjectSources is true; a blanket
-// neutralize when it's false) so scanning ends up off on every clone
-// regardless of what the trigger did.
+// of the project_sources step below account for it explicitly
+// (purge-then-clone when includeProjectSources is true; a blanket neutralize
+// when it's false) so scanning ends up off on every clone regardless of
+// what the trigger did.
 
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
@@ -62,9 +68,11 @@ function remapIdArray(ids, idMap) {
   return ids.map((oldId) => idMap.get(oldId)).filter(Boolean);
 }
 
-// Chunked to stay well under PostgREST's request-size limits — a project's
-// project_candidates can run into the thousands of rows (score.js writes one
-// per candidate x project), which a single insert() call risks failing on.
+// Chunked to stay well under PostgREST's request-size limits. Originally
+// motivated by project_candidates (score.js writes one row per candidate x
+// project, easily thousands) before that table was excluded from cloning
+// entirely (see note above) — kept generically, since inputs/cluster_suggestions
+// etc. can still be large enough to risk a single insert() call failing.
 const INSERT_CHUNK_SIZE = 500;
 
 async function insertMany(table, rows) {
@@ -78,11 +86,12 @@ async function insertMany(table, rows) {
 
 // Paginated read — PostgREST caps a single select() at a default max-rows
 // limit (commonly 1000) regardless of how many rows actually match, and
-// supabase-js does not auto-paginate. A project's project_candidates can run
-// into the thousands (score.js writes one row per candidate x project), so
-// every multi-row read here paginates rather than trusting one request to
-// return everything. buildQuery must return a fresh (unexecuted) query each
-// call, since a supabase-js query builder can only be awaited once.
+// supabase-js does not auto-paginate. Originally motivated by
+// project_candidates (which could run into the thousands) before that table
+// was excluded from cloning entirely (see note above) — kept generically for
+// every remaining multi-row read, since other tables can still exceed the
+// cap. buildQuery must return a fresh (unexecuted) query each call, since a
+// supabase-js query builder can only be awaited once.
 const SELECT_PAGE_SIZE = 1000;
 
 async function selectAll(buildQuery) {
@@ -126,9 +135,11 @@ export async function rollback(newProjectId, clonedInputIds) {
  * @param {string} destWorkspaceId - workspace to create the clone in
  * @param {object} [options]
  * @param {boolean} [options.includeProjectSources=false] - also clone
- *   project_sources and project_candidates, pointing at the existing shared
- *   source_id/candidate_id rows. Use for template creation; leave false for
- *   per-user clones (scanning is off on those regardless).
+ *   project_sources, pointing at the existing shared source_id rows. Use for
+ *   template creation; leave false for per-user clones (scanning is off on
+ *   those regardless). Never clones project_candidates — derived scanner
+ *   data that goes stale the moment scanning is re-enabled, excluded from
+ *   cloning entirely regardless of this option.
  * @param {boolean} [options.isSampleTemplate=false] - sets projects.is_sample_template
  *   on the clone. True only for the one-time John's-project -> templates-account copy.
  * @param {string|null} [options.sourceTemplateId=null] - sets projects.source_template_id
@@ -377,7 +388,12 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
       : [];
     await insertMany('project_negative_pool', newNegativePool);
 
-    // ── 15/16. project_sources + project_candidates (opt-in) ────────────
+    // ── 15. project_sources (opt-in) ────────────────────────────────────
+    //
+    // project_candidates is deliberately never cloned here, by either path —
+    // see the file header note. It's derived scanner data that goes stale
+    // the moment scanning is re-enabled on a clone, not structural project
+    // content.
     //
     // trg_auto_populate_project_sources (undocumented AFTER INSERT trigger on
     // projects — see 20260709140000_document_auto_populate_project_sources.sql)
@@ -386,7 +402,6 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
     // Both branches below have to account for that independently of anything
     // this function does on purpose.
     let newProjectSources = [];
-    let newProjectCandidates = [];
     if (includeProjectSources) {
       // The trigger's guessed rows can collide on the (project_id, source_id)
       // unique constraint with the source project's real project_sources rows
@@ -409,16 +424,6 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
         cloneRow(row, null, { project_id: newProjectId, opted_in: false })
       );
       await insertMany('project_sources', newProjectSources);
-
-      const sourceProjectCandidates = await selectAll(() =>
-        supabase.from('project_candidates').select('*').eq('project_id', sourceProjectId)
-      ).catch((e) => { throw new Error(`[clone-project] read project_candidates failed: ${e.message}`); });
-
-      // candidate_id points at the existing shared row, never a new one.
-      newProjectCandidates = (sourceProjectCandidates ?? []).map((row) =>
-        cloneRow(row, null, { project_id: newProjectId })
-      );
-      await insertMany('project_candidates', newProjectCandidates);
     } else {
       // Nothing else in this path touches project_sources, so a blanket
       // neutralize of whatever the trigger auto-created is safe — there's no
@@ -447,7 +452,7 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
         cluster_suggestions: newClusterSuggestions.length,
         project_negative_pool: newNegativePool.length,
         ...(includeProjectSources
-          ? { project_sources: newProjectSources.length, project_candidates: newProjectCandidates.length }
+          ? { project_sources: newProjectSources.length }
           : {}),
       },
     };
