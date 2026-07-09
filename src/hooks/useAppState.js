@@ -390,7 +390,9 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
         .from("projects")
         .update({ last_visited_at: new Date().toISOString() })
         .eq("id", id)
-        .then();
+        .then(({ error }) => {
+          if (error) console.error("[openProject] last_visited_at write failed:", error);
+        });
     }
   }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
