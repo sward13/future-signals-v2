@@ -62,10 +62,40 @@ function remapIdArray(ids, idMap) {
   return ids.map((oldId) => idMap.get(oldId)).filter(Boolean);
 }
 
+// Chunked to stay well under PostgREST's request-size limits — a project's
+// project_candidates can run into the thousands of rows (score.js writes one
+// per candidate x project), which a single insert() call risks failing on.
+const INSERT_CHUNK_SIZE = 500;
+
 async function insertMany(table, rows) {
   if (rows.length === 0) return;
-  const { error } = await supabase.from(table).insert(rows);
-  if (error) throw new Error(`[clone-project] insert into ${table} failed: ${error.message}`);
+  for (let i = 0; i < rows.length; i += INSERT_CHUNK_SIZE) {
+    const chunk = rows.slice(i, i + INSERT_CHUNK_SIZE);
+    const { error } = await supabase.from(table).insert(chunk);
+    if (error) throw new Error(`[clone-project] insert into ${table} failed (rows ${i}-${i + chunk.length}): ${error.message}`);
+  }
+}
+
+// Paginated read — PostgREST caps a single select() at a default max-rows
+// limit (commonly 1000) regardless of how many rows actually match, and
+// supabase-js does not auto-paginate. A project's project_candidates can run
+// into the thousands (score.js writes one row per candidate x project), so
+// every multi-row read here paginates rather than trusting one request to
+// return everything. buildQuery must return a fresh (unexecuted) query each
+// call, since a supabase-js query builder can only be awaited once.
+const SELECT_PAGE_SIZE = 1000;
+
+async function selectAll(buildQuery) {
+  const rows = [];
+  let offset = 0;
+  for (;;) {
+    const { data, error } = await buildQuery().range(offset, offset + SELECT_PAGE_SIZE - 1);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < SELECT_PAGE_SIZE) break;
+    offset += SELECT_PAGE_SIZE;
+  }
+  return rows;
 }
 
 // Best-effort cleanup if a clone fails partway through — also reusable
@@ -161,11 +191,9 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
 
     // ── 2. inputs ────────────────────────────────────────────────────────
     const inputIdMap = new Map();
-    const { data: sourceInputs, error: inputsError } = await supabase
-      .from('inputs')
-      .select('*')
-      .eq('project_id', sourceProjectId);
-    if (inputsError) throw new Error(`[clone-project] read inputs failed: ${inputsError.message}`);
+    const sourceInputs = await selectAll(() =>
+      supabase.from('inputs').select('*').eq('project_id', sourceProjectId)
+    ).catch((e) => { throw new Error(`[clone-project] read inputs failed: ${e.message}`); });
 
     const newInputs = (sourceInputs ?? []).map((row) =>
       cloneRow(row, inputIdMap, { workspace_id: destWorkspaceId, project_id: newProjectId })
@@ -175,11 +203,9 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
 
     // ── 3. clusters ──────────────────────────────────────────────────────
     const clusterIdMap = new Map();
-    const { data: sourceClusters, error: clustersError } = await supabase
-      .from('clusters')
-      .select('*')
-      .eq('project_id', sourceProjectId);
-    if (clustersError) throw new Error(`[clone-project] read clusters failed: ${clustersError.message}`);
+    const sourceClusters = await selectAll(() =>
+      supabase.from('clusters').select('*').eq('project_id', sourceProjectId)
+    ).catch((e) => { throw new Error(`[clone-project] read clusters failed: ${e.message}`); });
 
     const newClusters = (sourceClusters ?? []).map((row) =>
       cloneRow(row, clusterIdMap, { workspace_id: destWorkspaceId, project_id: newProjectId })
@@ -190,11 +216,9 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
     const sourceClusterIds = (sourceClusters ?? []).map((c) => c.id);
     let newClusterInputs = [];
     if (sourceClusterIds.length > 0) {
-      const { data: sourceClusterInputs, error: ciError } = await supabase
-        .from('cluster_inputs')
-        .select('*')
-        .in('cluster_id', sourceClusterIds);
-      if (ciError) throw new Error(`[clone-project] read cluster_inputs failed: ${ciError.message}`);
+      const sourceClusterInputs = await selectAll(() =>
+        supabase.from('cluster_inputs').select('*').in('cluster_id', sourceClusterIds)
+      ).catch((e) => { throw new Error(`[clone-project] read cluster_inputs failed: ${e.message}`); });
 
       newClusterInputs = (sourceClusterInputs ?? [])
         .filter((row) => clusterIdMap.has(row.cluster_id) && inputIdMap.has(row.input_id))
@@ -210,11 +234,9 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
 
     // ── 5. scenarios ─────────────────────────────────────────────────────
     const scenarioIdMap = new Map();
-    const { data: sourceScenarios, error: scenariosError } = await supabase
-      .from('scenarios')
-      .select('*')
-      .eq('project_id', sourceProjectId);
-    if (scenariosError) throw new Error(`[clone-project] read scenarios failed: ${scenariosError.message}`);
+    const sourceScenarios = await selectAll(() =>
+      supabase.from('scenarios').select('*').eq('project_id', sourceProjectId)
+    ).catch((e) => { throw new Error(`[clone-project] read scenarios failed: ${e.message}`); });
 
     const newScenarios = (sourceScenarios ?? []).map((row) =>
       // cluster_ids intentionally left as-is: legacy column, superseded by
@@ -227,11 +249,9 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
     const sourceScenarioIds = (sourceScenarios ?? []).map((s) => s.id);
     let newScenarioClusters = [];
     if (sourceScenarioIds.length > 0) {
-      const { data: sourceScenarioClusters, error: scError } = await supabase
-        .from('scenario_clusters')
-        .select('*')
-        .in('scenario_id', sourceScenarioIds);
-      if (scError) throw new Error(`[clone-project] read scenario_clusters failed: ${scError.message}`);
+      const sourceScenarioClusters = await selectAll(() =>
+        supabase.from('scenario_clusters').select('*').in('scenario_id', sourceScenarioIds)
+      ).catch((e) => { throw new Error(`[clone-project] read scenario_clusters failed: ${e.message}`); });
 
       newScenarioClusters = (sourceScenarioClusters ?? [])
         .filter((row) => scenarioIdMap.has(row.scenario_id) && clusterIdMap.has(row.cluster_id))
@@ -246,11 +266,9 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
     }
 
     // ── 7. relationships ─────────────────────────────────────────────────
-    const { data: sourceRelationships, error: relError } = await supabase
-      .from('relationships')
-      .select('*')
-      .eq('project_id', sourceProjectId);
-    if (relError) throw new Error(`[clone-project] read relationships failed: ${relError.message}`);
+    const sourceRelationships = await selectAll(() =>
+      supabase.from('relationships').select('*').eq('project_id', sourceProjectId)
+    ).catch((e) => { throw new Error(`[clone-project] read relationships failed: ${e.message}`); });
 
     const newRelationships = (sourceRelationships ?? [])
       .filter((row) => clusterIdMap.has(row.from_cluster_id) && clusterIdMap.has(row.to_cluster_id))
@@ -265,11 +283,9 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
     await insertMany('relationships', newRelationships);
 
     // ── 8. canvas_nodes ──────────────────────────────────────────────────
-    const { data: sourceCanvasNodes, error: cnError } = await supabase
-      .from('canvas_nodes')
-      .select('*')
-      .eq('project_id', sourceProjectId);
-    if (cnError) throw new Error(`[clone-project] read canvas_nodes failed: ${cnError.message}`);
+    const sourceCanvasNodes = await selectAll(() =>
+      supabase.from('canvas_nodes').select('*').eq('project_id', sourceProjectId)
+    ).catch((e) => { throw new Error(`[clone-project] read canvas_nodes failed: ${e.message}`); });
 
     const newCanvasNodes = (sourceCanvasNodes ?? [])
       .filter((row) => clusterIdMap.has(row.cluster_id))
@@ -283,11 +299,9 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
     await insertMany('canvas_nodes', newCanvasNodes);
 
     // ── 9. canvas_text_nodes ─────────────────────────────────────────────
-    const { data: sourceCanvasTextNodes, error: ctnError } = await supabase
-      .from('canvas_text_nodes')
-      .select('*')
-      .eq('project_id', sourceProjectId);
-    if (ctnError) throw new Error(`[clone-project] read canvas_text_nodes failed: ${ctnError.message}`);
+    const sourceCanvasTextNodes = await selectAll(() =>
+      supabase.from('canvas_text_nodes').select('*').eq('project_id', sourceProjectId)
+    ).catch((e) => { throw new Error(`[clone-project] read canvas_text_nodes failed: ${e.message}`); });
 
     const newCanvasTextNodes = (sourceCanvasTextNodes ?? []).map((row) =>
       cloneRow(row, null, { workspace_id: destWorkspaceId, project_id: newProjectId })
@@ -308,11 +322,9 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
     await insertMany('analyses', newAnalyses);
 
     // ── 11. preferred_futures ────────────────────────────────────────────
-    const { data: sourcePreferredFutures, error: pfError } = await supabase
-      .from('preferred_futures')
-      .select('*')
-      .eq('project_id', sourceProjectId);
-    if (pfError) throw new Error(`[clone-project] read preferred_futures failed: ${pfError.message}`);
+    const sourcePreferredFutures = await selectAll(() =>
+      supabase.from('preferred_futures').select('*').eq('project_id', sourceProjectId)
+    ).catch((e) => { throw new Error(`[clone-project] read preferred_futures failed: ${e.message}`); });
 
     const newPreferredFutures = (sourcePreferredFutures ?? []).map((row) =>
       cloneRow(row, null, {
@@ -324,11 +336,9 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
     await insertMany('preferred_futures', newPreferredFutures);
 
     // ── 12. strategic_options ────────────────────────────────────────────
-    const { data: sourceStrategicOptions, error: soError } = await supabase
-      .from('strategic_options')
-      .select('*')
-      .eq('project_id', sourceProjectId);
-    if (soError) throw new Error(`[clone-project] read strategic_options failed: ${soError.message}`);
+    const sourceStrategicOptions = await selectAll(() =>
+      supabase.from('strategic_options').select('*').eq('project_id', sourceProjectId)
+    ).catch((e) => { throw new Error(`[clone-project] read strategic_options failed: ${e.message}`); });
 
     const newStrategicOptions = (sourceStrategicOptions ?? []).map((row) =>
       cloneRow(row, null, {
@@ -340,11 +350,9 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
     await insertMany('strategic_options', newStrategicOptions);
 
     // ── 13. cluster_suggestions ──────────────────────────────────────────
-    const { data: sourceClusterSuggestions, error: csError } = await supabase
-      .from('cluster_suggestions')
-      .select('*')
-      .eq('project_id', sourceProjectId);
-    if (csError) throw new Error(`[clone-project] read cluster_suggestions failed: ${csError.message}`);
+    const sourceClusterSuggestions = await selectAll(() =>
+      supabase.from('cluster_suggestions').select('*').eq('project_id', sourceProjectId)
+    ).catch((e) => { throw new Error(`[clone-project] read cluster_suggestions failed: ${e.message}`); });
 
     const newClusterSuggestions = (sourceClusterSuggestions ?? []).map((row) =>
       cloneRow(row, null, {
@@ -391,11 +399,9 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
         .eq('project_id', newProjectId);
       if (purgeError) throw new Error(`[clone-project] purge trigger-created project_sources failed: ${purgeError.message}`);
 
-      const { data: sourceProjectSources, error: psError } = await supabase
-        .from('project_sources')
-        .select('*')
-        .eq('project_id', sourceProjectId);
-      if (psError) throw new Error(`[clone-project] read project_sources failed: ${psError.message}`);
+      const sourceProjectSources = await selectAll(() =>
+        supabase.from('project_sources').select('*').eq('project_id', sourceProjectId)
+      ).catch((e) => { throw new Error(`[clone-project] read project_sources failed: ${e.message}`); });
 
       // source_id points at the existing shared row, never a new one.
       // opted_in forced false — scanning is off on every clone.
@@ -404,11 +410,9 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
       );
       await insertMany('project_sources', newProjectSources);
 
-      const { data: sourceProjectCandidates, error: pcError } = await supabase
-        .from('project_candidates')
-        .select('*')
-        .eq('project_id', sourceProjectId);
-      if (pcError) throw new Error(`[clone-project] read project_candidates failed: ${pcError.message}`);
+      const sourceProjectCandidates = await selectAll(() =>
+        supabase.from('project_candidates').select('*').eq('project_id', sourceProjectId)
+      ).catch((e) => { throw new Error(`[clone-project] read project_candidates failed: ${e.message}`); });
 
       // candidate_id points at the existing shared row, never a new one.
       newProjectCandidates = (sourceProjectCandidates ?? []).map((row) =>
