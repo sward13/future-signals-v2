@@ -99,6 +99,25 @@
   --color-dusty-rose-700:    #8A5560;
   --color-dusty-rose-border: #BA9BA1;
 
+  /* Scenario Archetype color scale (locked badge-consolidation colors, 2026-07-09).
+     Closes the Archetype consistency gap — the last badge family still on fully
+     saturated colors after Signal Strength / Source Confidence / Subtype went muted. */
+  --color-arch-continuation-50:     #E4E8D2;
+  --color-arch-continuation-700:    #6B7A3F;
+  --color-arch-continuation-border: #A8B189;
+
+  --color-arch-collapse-50:     #EFDFDD;
+  --color-arch-collapse-700:    #9C4F44;
+  --color-arch-collapse-border: #C69791;
+
+  --color-arch-constraint-50:     #E1E6EC;
+  --color-arch-constraint-700:    #52708C;
+  --color-arch-constraint-border: #9AABBC;
+
+  --color-arch-transformation-50:     #E9DFE6;
+  --color-arch-transformation-700:    #86527D;
+  --color-arch-transformation-border: #B899B2;
+
   /* ── Spacing (derived from primitive objects in tokens.js) ──────────── */
   /*
    * On 4px grid — already in Tailwind defaults, no override needed:

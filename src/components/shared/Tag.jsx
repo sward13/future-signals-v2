@@ -56,10 +56,10 @@ export function HorizTag({ h }) {
 /** @param {{ arch: string }} props — arch is 'Continuation' | 'Collapse' | 'Constraint' | 'Transformation' */
 export function ArchTag({ arch }) {
   const map = {
-    Continuation: [c.green700, c.green50, c.greenBorder],
-    Collapse: [c.red800, c.red50, c.redBorder],
-    Constraint: [c.blue700, c.blue50, c.blueBorder],
-    Transformation: [c.amber700, c.amber50, c.amberBorder],
+    Continuation: [c.archContinuation700, c.archContinuation50, c.archContinuationBorder],
+    Collapse: [c.archCollapse700, c.archCollapse50, c.archCollapseBorder],
+    Constraint: [c.archConstraint700, c.archConstraint50, c.archConstraintBorder],
+    Transformation: [c.archTransformation700, c.archTransformation50, c.archTransformationBorder],
   };
   const [col, bg, brd] = map[arch] || [c.hint, "transparent", c.border];
   return <Tag label={arch} color={col} bg={bg} border={brd} />;

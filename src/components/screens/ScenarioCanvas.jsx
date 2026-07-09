@@ -919,10 +919,10 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     const scenario = (scenarios || []).find((s) => s.id === selectedItem.scenarioId);
     if (!scenario) return null;
     const ARCHETYPE_COLORS = {
-      Continuation: { col: c.green700, bg: c.green50 },
-      Collapse: { col: c.red800, bg: c.red50 },
-      Constraint: { col: c.blue700, bg: c.blue50 },
-      Transformation: { col: c.amber700, bg: c.amber50 },
+      Continuation: { col: c.archContinuation700, bg: c.archContinuation50 },
+      Collapse: { col: c.archCollapse700, bg: c.archCollapse50 },
+      Constraint: { col: c.archConstraint700, bg: c.archConstraint50 },
+      Transformation: { col: c.archTransformation700, bg: c.archTransformation50 },
     };
     const ac = ARCHETYPE_COLORS[scenario.archetype] || { col: c.muted, bg: c.surfaceAlt };
     const [hcol, hbg] = HINSP_COLORS[scenario.horizon] || [c.muted, c.surfaceAlt];

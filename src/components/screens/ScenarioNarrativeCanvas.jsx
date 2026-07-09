@@ -24,7 +24,7 @@ const ARCHETYPE_TYPES = [
     icon: "◎",
     category: "Gradual",
     categoryColor: c.green700, categoryBg: c.green50, categoryBorder: c.greenBorder,
-    color: c.green700, bg: c.green50, border: c.greenBorder,
+    color: c.archContinuation700, bg: c.archContinuation50, border: c.archContinuationBorder,
     description: "The present trajectory extends with incremental shifts but no fundamental breaks.",
   },
   {
@@ -33,7 +33,7 @@ const ARCHETYPE_TYPES = [
     icon: "▼",
     category: "Disruptive",
     categoryColor: c.red800, categoryBg: c.red50, categoryBorder: c.redBorder,
-    color: c.red800, bg: c.red50, border: c.redBorder,
+    color: c.archCollapse700, bg: c.archCollapse50, border: c.archCollapseBorder,
     description: "A critical system fails or fractures, triggering cascading breakdown.",
   },
   {
@@ -42,7 +42,7 @@ const ARCHETYPE_TYPES = [
     icon: "◈",
     category: "Structural",
     categoryColor: c.amber700, categoryBg: c.amber50, categoryBorder: c.amberBorder,
-    color: c.amber700, bg: c.amber50, border: c.amberBorder,
+    color: c.archConstraint700, bg: c.archConstraint50, border: c.archConstraintBorder,
     description: "Growing limits — regulatory, resource, or social — reshape what's possible.",
   },
   {
@@ -51,7 +51,7 @@ const ARCHETYPE_TYPES = [
     icon: "◆",
     category: "Disruptive",
     categoryColor: c.violet700, categoryBg: c.violet50, categoryBorder: c.violetBorder,
-    color: c.violet700, bg: c.violet50, border: c.violetBorder,
+    color: c.archTransformation700, bg: c.archTransformation50, border: c.archTransformationBorder,
     description: "A fundamental reorganisation of the system creates a new equilibrium.",
   },
 ];

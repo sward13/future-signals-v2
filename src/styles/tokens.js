@@ -64,6 +64,22 @@ export const c = {
   dustyRose50: "#EAE0E1",
   dustyRose700: "#8A5560",
   dustyRoseBorder: "#BA9BA1",
+
+  // Scenario Archetype color scale (locked badge-consolidation colors, 2026-07-09).
+  // Closes the Archetype consistency gap — the last badge family still on fully
+  // saturated colors after Signal Strength / Source Confidence / Subtype went muted.
+  archContinuation50: "#E4E8D2",
+  archContinuation700: "#6B7A3F",
+  archContinuationBorder: "#A8B189",
+  archCollapse50: "#EFDFDD",
+  archCollapse700: "#9C4F44",
+  archCollapseBorder: "#C69791",
+  archConstraint50: "#E1E6EC",
+  archConstraint700: "#52708C",
+  archConstraintBorder: "#9AABBC",
+  archTransformation50: "#E9DFE6",
+  archTransformation700: "#86527D",
+  archTransformationBorder: "#B899B2",
 };
 
 // Font-family tokens — not in c{} (color-only). Mirrors --font-heading /
