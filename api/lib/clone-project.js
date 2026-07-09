@@ -23,6 +23,16 @@
 // project_sources / project_candidates are cloned only when
 // options.includeProjectSources is true, and always point at the existing
 // shared source_id / candidate_id — never new rows in those two tables.
+//
+// projects also carries an undocumented AFTER INSERT trigger,
+// trg_auto_populate_project_sources (documented in
+// 20260709140000_document_auto_populate_project_sources.sql), which
+// auto-creates project_sources rows by domain match with opted_in hardcoded
+// true — independent of and invisible to this file's own logic. Both branches
+// of the project_sources/project_candidates step below account for it
+// explicitly (purge-then-clone when includeProjectSources is true; a blanket
+// neutralize when it's false) so scanning ends up off on every clone
+// regardless of what the trigger did.
 
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
@@ -58,14 +68,17 @@ async function insertMany(table, rows) {
   if (error) throw new Error(`[clone-project] insert into ${table} failed: ${error.message}`);
 }
 
-// Best-effort cleanup if a clone fails partway through. inputs.project_id is
-// ON DELETE SET NULL (not CASCADE), so cloned inputs must be deleted
-// explicitly — deleting them also cascades their cluster_inputs rows.
-// Deleting the project cascades everything else (clusters, canvas nodes,
-// relationships, scenarios, analyses, preferred_futures, strategic_options,
-// cluster_suggestions, project_negative_pool, project_sources,
-// project_candidates, and — via clusters/scenarios — scenario_clusters).
-async function rollback(newProjectId, clonedInputIds) {
+// Best-effort cleanup if a clone fails partway through — also reusable
+// standalone to delete a completed clone (e.g. a failed test run), since a
+// plain `DELETE FROM projects` would orphan its inputs instead of removing
+// them. inputs.project_id is ON DELETE SET NULL (not CASCADE), so cloned
+// inputs must be deleted explicitly — deleting them also cascades their
+// cluster_inputs rows. Deleting the project cascades everything else
+// (clusters, canvas nodes, relationships, scenarios, analyses,
+// preferred_futures, strategic_options, cluster_suggestions,
+// project_negative_pool, project_sources, project_candidates, and — via
+// clusters/scenarios — scenario_clusters).
+export async function rollback(newProjectId, clonedInputIds) {
   try {
     if (clonedInputIds.length > 0) {
       await supabase.from('inputs').delete().in('id', clonedInputIds);
@@ -357,9 +370,27 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
     await insertMany('project_negative_pool', newNegativePool);
 
     // ── 15/16. project_sources + project_candidates (opt-in) ────────────
+    //
+    // trg_auto_populate_project_sources (undocumented AFTER INSERT trigger on
+    // projects — see 20260709140000_document_auto_populate_project_sources.sql)
+    // already fired on the projects insert above and created its own
+    // project_sources rows, matched by domain, with opted_in hardcoded true.
+    // Both branches below have to account for that independently of anything
+    // this function does on purpose.
     let newProjectSources = [];
     let newProjectCandidates = [];
     if (includeProjectSources) {
+      // The trigger's guessed rows can collide on the (project_id, source_id)
+      // unique constraint with the source project's real project_sources rows
+      // we're about to clone — purge them first. End state should be an exact
+      // structural copy of the source's project_sources, not a merge with
+      // trigger-guessed rows.
+      const { error: purgeError } = await supabase
+        .from('project_sources')
+        .delete()
+        .eq('project_id', newProjectId);
+      if (purgeError) throw new Error(`[clone-project] purge trigger-created project_sources failed: ${purgeError.message}`);
+
       const { data: sourceProjectSources, error: psError } = await supabase
         .from('project_sources')
         .select('*')
@@ -384,6 +415,15 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
         cloneRow(row, null, { project_id: newProjectId })
       );
       await insertMany('project_candidates', newProjectCandidates);
+    } else {
+      // Nothing else in this path touches project_sources, so a blanket
+      // neutralize of whatever the trigger auto-created is safe — there's no
+      // explicit clone to collide with here.
+      const { error: neutralizeError } = await supabase
+        .from('project_sources')
+        .update({ opted_in: false })
+        .eq('project_id', newProjectId);
+      if (neutralizeError) throw new Error(`[clone-project] neutralize trigger-created project_sources failed: ${neutralizeError.message}`);
     }
 
     return {
