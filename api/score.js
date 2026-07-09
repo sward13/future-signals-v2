@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
-import { norm, dot, CREDIBILITY_SCORES } from './lib/scoring.js';
-import { cronSecretOk, bearerToken } from './lib/cron-auth.js';
+import { norm, dot, CREDIBILITY_SCORES } from '../server-lib/scoring.js';
+import { cronSecretOk, bearerToken } from '../server-lib/cron-auth.js';
 
 export const config = {
   maxDuration: 120,

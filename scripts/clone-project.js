@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Standalone CLI runner for cloneProject (api/lib/clone-project.js).
+// Standalone CLI runner for cloneProject (server-lib/clone-project.js).
 // Not wired into onboarding — for testing the template-creation and
 // per-user-clone cases directly against staging/production.
 //
@@ -25,7 +25,7 @@
 //     --source-template-id <template-project-id>
 
 import { parseArgs } from 'node:util';
-import { cloneProject } from '../api/lib/clone-project.js';
+import { cloneProject } from '../server-lib/clone-project.js';
 
 const { values } = parseArgs({
   options: {

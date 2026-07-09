@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
-import { CREDIBILITY_SCORES } from './api/lib/scoring.js';
+import { CREDIBILITY_SCORES } from './server-lib/scoring.js';
 
 const env = Object.fromEntries(
   readFileSync('.env.local', 'utf-8')

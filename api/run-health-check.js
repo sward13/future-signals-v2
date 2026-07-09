@@ -1,4 +1,4 @@
-import { cronSecretOk, bearerToken } from './lib/cron-auth.js';
+import { cronSecretOk, bearerToken } from '../server-lib/cron-auth.js';
 
 export const config = { maxDuration: 30 };
 

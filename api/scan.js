@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import Parser from 'rss-parser';
-import { cronSecretOk } from './lib/cron-auth.js';
+import { cronSecretOk } from '../server-lib/cron-auth.js';
 
 export const config = {
   maxDuration: 60,

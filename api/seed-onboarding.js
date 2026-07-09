@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
-import { scoreCandidate } from './lib/scoring.js';
+import { scoreCandidate } from '../server-lib/scoring.js';
 
 export const config = { maxDuration: 60 };
 

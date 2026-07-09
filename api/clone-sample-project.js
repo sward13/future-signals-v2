@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { cloneProject } from './lib/clone-project.js';
+import { cloneProject } from '../server-lib/clone-project.js';
 
 // Cloning a full project graph (inputs, clusters, scenarios, etc.) can take
 // longer than the default timeout — matches api/seed-onboarding.js.

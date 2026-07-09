@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { cronSecretOk } from './lib/cron-auth.js';
+import { cronSecretOk } from '../server-lib/cron-auth.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
