@@ -92,7 +92,7 @@ function ProjectCard({ project, inputCount, clusterCount, systemMapCount, analys
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {project.name}
+            {project.source_template_id ? `[Sample] ${project.name}` : project.name}
           </div>
           {project.domain && (
             <div style={{ fontSize: 11, color: c.muted, marginTop: 2 }}>
@@ -320,7 +320,7 @@ export default function Dashboard({ appState }) {
                   style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", height: 42, borderBottom: `1px solid ${c.border}`, cursor: "pointer", transition: "background 0.08s" }}
                 >
                   <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
-                    {p.name}
+                    {p.source_template_id ? `[Sample] ${p.name}` : p.name}
                   </div>
                   <div style={{ width: 160, flexShrink: 0, fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {p.domain || <span style={{ color: c.hint }}>—</span>}
