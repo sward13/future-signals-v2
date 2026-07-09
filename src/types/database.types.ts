@@ -745,6 +745,7 @@ export type Database = {
           scanning_enabled: boolean
           scope_in: string[]
           scope_out: string[]
+          source_template_id: string | null
           stakeholders: string | null
           workspace_id: string
         }
@@ -770,6 +771,7 @@ export type Database = {
           scanning_enabled?: boolean
           scope_in?: string[]
           scope_out?: string[]
+          source_template_id?: string | null
           stakeholders?: string | null
           workspace_id: string
         }
@@ -795,10 +797,18 @@ export type Database = {
           scanning_enabled?: boolean
           scope_in?: string[]
           scope_out?: string[]
+          source_template_id?: string | null
           stakeholders?: string | null
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "projects_source_template_id_fkey"
+            columns: ["source_template_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "projects_workspace_id_fkey"
             columns: ["workspace_id"]

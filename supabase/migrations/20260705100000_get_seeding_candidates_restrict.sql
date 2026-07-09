@@ -1,3 +1,9 @@
+-- Renamed from 20260705_* on 2026-07-09: four migrations originally shared the
+-- bare 20260705 date as their version, which collided in
+-- supabase_migrations.schema_migrations' primary key on push (only the first,
+-- ai_usage_log_insert_service_role, kept the bare date). Suffixed with a
+-- synthetic time to disambiguate; no ordering significance vs. the others.
+--
 -- Restricts get_seeding_candidates (added 20260501, last changed 20260504)
 -- to authenticated and service_role callers.
 --

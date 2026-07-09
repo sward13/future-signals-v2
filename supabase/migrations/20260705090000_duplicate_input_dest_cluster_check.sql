@@ -1,3 +1,9 @@
+-- Renamed from 20260705_* on 2026-07-09: four migrations originally shared the
+-- bare 20260705 date as their version, which collided in
+-- supabase_migrations.schema_migrations' primary key on push (only the first,
+-- ai_usage_log_insert_service_role, kept the bare date). Suffixed with a
+-- synthetic time to disambiguate; no ordering significance vs. the others.
+--
 -- Hardens duplicate_input_to_cluster (added 20260623) against attaching a
 -- copied input to a cluster in another workspace.
 --
