@@ -737,6 +737,7 @@ export type Database = {
           h3_end: string | null
           h3_start: string | null
           id: string
+          is_sample_template: boolean
           key_question_embedding: string | null
           last_reviewed_at: string | null
           last_visited_at: string | null
@@ -763,6 +764,7 @@ export type Database = {
           h3_end?: string | null
           h3_start?: string | null
           id?: string
+          is_sample_template?: boolean
           key_question_embedding?: string | null
           last_reviewed_at?: string | null
           last_visited_at?: string | null
@@ -789,6 +791,7 @@ export type Database = {
           h3_end?: string | null
           h3_start?: string | null
           id?: string
+          is_sample_template?: boolean
           key_question_embedding?: string | null
           last_reviewed_at?: string | null
           last_visited_at?: string | null
