@@ -224,7 +224,14 @@ export default function App() {
       })
         .then((r) => r.json())
         .then((data) => {
-          if (!data.success) console.error("[onboarding] clone-sample-project failed:", data.error);
+          if (!data.success) {
+            console.error("[onboarding] clone-sample-project failed:", data.error);
+            return;
+          }
+          // Redirect already fired above without waiting on this — refresh
+          // projects now so the clone shows up whenever the user actually
+          // looks at the dashboard, instead of requiring a manual reload.
+          appState.refreshProjects();
         })
         .catch((err) => console.error("[onboarding] clone-sample-project request failed:", err));
     });

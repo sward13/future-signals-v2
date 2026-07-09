@@ -100,6 +100,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [bulkBarActive, setBulkBarActive] = useState(false);
 
   const toastTimer = useRef(null);
+  const refreshProjectsRef = useRef(null);
   const refreshInputsRef  = useRef(null);
   const refreshClustersRef = useRef(null);
   const systemMapExportRef = useRef(null);
@@ -184,6 +185,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
         showToast("Failed to load projects", "error");
       }
     };
+
+    refreshProjectsRef.current = fetchProjects;
 
     const fetchInputs = async () => {
       try {
@@ -1757,6 +1760,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     updateCluster,
     dismissInput,
     dismissSuggestedInput,
+    refreshProjects: () => refreshProjectsRef.current?.(),
     refreshInputs:   () => refreshInputsRef.current?.(),
     refreshClusters: () => refreshClustersRef.current?.(),
     saveInputToProject,
