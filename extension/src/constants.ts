@@ -36,6 +36,35 @@ export const SOURCE_CONFIDENCE_OPTIONS = [
 
 export type SourceConfidenceId = (typeof SOURCE_CONFIDENCE_OPTIONS)[number]["id"];
 
+/**
+ * Mirrors STEEPLED in src/data/seeds.js. Multi-select — stored directly as
+ * the array of matching strings (not ids), same as the main app.
+ */
+export const STEEPLED_OPTIONS = [
+  "Social",
+  "Technological",
+  "Economic",
+  "Environmental",
+  "Political",
+  "Legal",
+  "Ethical",
+  "Demographic",
+] as const;
+
+export type SteepledCategory = (typeof STEEPLED_OPTIONS)[number];
+
+/**
+ * Mirrors the H1/H2/H3 toggle in HorizonSelector, InputFormFields.jsx.
+ * Optional, defaults to null, same as Signal strength / Source confidence.
+ */
+export const HORIZON_OPTIONS = [
+  { id: "H1", label: "H1" },
+  { id: "H2", label: "H2" },
+  { id: "H3", label: "H3" },
+] as const;
+
+export type HorizonId = (typeof HORIZON_OPTIONS)[number]["id"];
+
 export const DRAFT_STORAGE_KEY = "fs_extension_capture_draft_v1";
 
 export const PAGE_QUERY_MESSAGE_TYPE      = "FS_GET_PAGE_DATA"      as const;

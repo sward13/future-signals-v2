@@ -1,5 +1,11 @@
-import type { InputSubtypeId, SignalStrengthId, SourceConfidenceId } from "../constants.js";
-import { DRAFT_STORAGE_KEY, SIGNAL_STRENGTH_OPTIONS, SOURCE_CONFIDENCE_OPTIONS } from "../constants.js";
+import type { InputSubtypeId, SignalStrengthId, SourceConfidenceId, HorizonId } from "../constants.js";
+import {
+  DRAFT_STORAGE_KEY,
+  SIGNAL_STRENGTH_OPTIONS,
+  SOURCE_CONFIDENCE_OPTIONS,
+  STEEPLED_OPTIONS,
+  HORIZON_OPTIONS,
+} from "../constants.js";
 import { normalizeSubtypeId } from "./subtype.js";
 
 export type CaptureDraft = {
@@ -12,6 +18,9 @@ export type CaptureDraft = {
   /** Optional — no default tier, unlike subtype. */
   signal_strength: SignalStrengthId | null;
   source_confidence: SourceConfidenceId | null;
+  /** Multi-select — empty array means none tagged. */
+  steepled: string[];
+  horizon: HorizonId | null;
   updatedAt: string;
 };
 
@@ -23,6 +32,12 @@ function normalizeOptionId<T extends string>(
   if (typeof raw !== "string") return null;
   const match = options.find((o) => o.id === raw);
   return match?.id ?? null;
+}
+
+/** Filters to only the entries that are valid options; drops anything else. */
+function normalizeStringArray(raw: unknown, options: readonly string[]): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((v): v is string => typeof v === "string" && options.includes(v));
 }
 
 export async function loadDraft(): Promise<CaptureDraft | null> {
@@ -43,6 +58,8 @@ export async function loadDraft(): Promise<CaptureDraft | null> {
     project_id: d.project_id ?? null,
     signal_strength: normalizeOptionId(d.signal_strength, SIGNAL_STRENGTH_OPTIONS),
     source_confidence: normalizeOptionId(d.source_confidence, SOURCE_CONFIDENCE_OPTIONS),
+    steepled: normalizeStringArray(d.steepled, STEEPLED_OPTIONS),
+    horizon: normalizeOptionId(d.horizon, HORIZON_OPTIONS),
     updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : new Date().toISOString(),
   };
 }

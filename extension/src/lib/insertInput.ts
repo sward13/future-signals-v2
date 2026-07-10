@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../../../src/types/database.types";
 import { cleanUrl } from "../utils/cleanUrl.js";
-import type { InputSubtypeId, SignalStrengthId, SourceConfidenceId } from "../constants.js";
+import type { InputSubtypeId, SignalStrengthId, SourceConfidenceId, HorizonId } from "../constants.js";
 
 export type InsertInputParams = {
   workspaceId: string;
@@ -14,6 +14,9 @@ export type InsertInputParams = {
   /** Optional practitioner-set fields — no default, null means unset. */
   signalStrength: SignalStrengthId | null;
   sourceConfidence: SourceConfidenceId | null;
+  /** Multi-select — empty array means none tagged. */
+  steepled: string[];
+  horizon: HorizonId | null;
   metadata: Record<string, unknown>;
 };
 
@@ -36,8 +39,8 @@ export async function insertInputAndRequestEmbed(
     description: params.description.trim() || "",
     source_url: cleaned || null,
     subtype: params.subtype,
-    steepled: [],
-    horizon: null,
+    steepled: params.steepled,
+    horizon: params.horizon,
     project_id: params.projectId,
     is_seeded: false,
     signal_strength: params.signalStrength,
