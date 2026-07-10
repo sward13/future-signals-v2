@@ -440,6 +440,22 @@ The 320px right-hand panel in the Cluster workspace (`ClusterScreen.jsx`). Proje
 
 ---
 
+## Sample project cloning
+
+Every new user finishes onboarding with a second project alongside their own: a full, working clone of a canonical template project, so they see a completed methodology pass (Signal → Cluster → System Map → Analysis → Scenario) rather than inferring it from empty states. See `Sample_Project_Onboarding_PRD.md` for the full spec.
+
+- **`server-lib/clone-project.js`** — `cloneProject(sourceProjectId, destWorkspaceId, options)` and `rollback(projectId, clonedInputIds)`. Service-role only (RLS blocks a client session from reading another workspace's data, and there's no reason to trust a client-supplied destination workspace). Walks all 13 project-scoped tables (`inputs`, `clusters`, `cluster_inputs`, `scenarios`, `scenario_clusters`, `relationships`, `canvas_nodes`, `canvas_text_nodes`, `analyses`, `preferred_futures`, `strategic_options`, `cluster_suggestions`, `project_negative_pool`), generating a new id per row and remapping every FK reference — including the non-FK-enforced jsonb/array id references (`preferred_futures.scenario_ids`, `strategic_options.scenario_ids`, `cluster_suggestions.input_ids`), which get filtered (dropping anything that doesn't resolve) rather than erroring.
+- **`project_candidates` is never cloned**, by either path — it's derived scanner data (Layer 3 relevance scores against a specific project's key question at a point in time) that goes stale the moment scanning is re-enabled on a clone. This was a deliberate exclusion added 2026-07-09 after the fact; if a clone predates that fix, its stale `project_candidates` rows need a one-off cleanup (`delete from project_candidates where project_id = '<clone-id>'`).
+- **`project_sources`** is cloned only when `options.includeProjectSources` is true (the template-creation path), always pointing at the existing shared `source_id` — never a new row in `sources`/`candidates` (both are global, url-unique registries, never cloned).
+- **`sources`/`candidates` themselves are never touched** by cloning.
+- **`options.includeProjectSources`**: `true` for template creation (John's live project → the templates account, one-time/re-run only if the source changes), `false` for per-user clones (every onboarding completion). `options.isSampleTemplate` is `true` only on the one canonical templates-account project. `options.sourceTemplateId` is set to the templates-account project's id on a per-user clone.
+- **Reads/writes are paginated/chunked**, not single-shot — PostgREST caps an unranged `select()` at ~1000 rows and doesn't auto-paginate; a real project's `project_candidates` (before it was excluded) hit 8,100 rows and would have silently truncated. `selectAll()` pages every multi-row read; `insertMany()` chunks every insert at 500 rows.
+- **`api/clone-sample-project.js`** — the onboarding-facing endpoint. Bearer-auth (same pattern as `seed-onboarding.js`): verifies the token, derives `destWorkspaceId` from the caller's own session server-side, and reads the source project id only from `SAMPLE_TEMPLATE_PROJECT_ID` (env var) — never from the request body. Wired into `App.jsx`'s `handleOnboardingComplete` as a fire-and-forget call alongside the existing `onboarding_completed` write; on success it calls `appState.refreshProjects()` so the clone appears without a manual reload (the redirect itself never waits on it).
+- **Dashboard labeling**: `ProjectCard` and the table/list view both prefix the name with `"[Sample] "` when `project.source_template_id` is non-null — computed at render time only, `project.name` is never mutated. Scoped to the two dashboard list views; `ProjectOverview` and other name-rendering surfaces intentionally don't show the prefix.
+- **`scripts/clone-project.js`** — standalone CLI for testing/re-running a clone outside the onboarding flow (e.g. regenerating a template after the source project changes). Not imported by the app.
+
+---
+
 ## App architecture
 
 ### State
@@ -515,11 +531,22 @@ src/
       ClusterAssignMenu.jsx ← portal-based cluster picker; used by all "Assign →" buttons
       FilterDropdown.jsx    ← reusable filter pill + dropdown; used by ProjectDetail, Inbox, ClusterScreen
   data/
-    seeds.js
+    seeds.js                ← DOMAINS, STEEPLED, DOMAIN_META, SEEDED_SIGNALS_POOL, DEFAULT_SEEDED_INPUTS. The SAMPLE_PROJECTS/SAMPLE_CLUSTERS/SAMPLE_SCENARIOS/SAMPLE_CANVAS_NODES/SAMPLE_RELATIONSHIPS dead data (an abandoned earlier sample-project attempt) was removed 2026-07-09 — superseded by the clone-based sample project (see below)
   styles/
     tokens.js               ← c{} object and shared style primitives
   prototypes/
     future-signals-inputs-redesign_4.html   ← visual reference only
+
+api/                        ← Vercel serverless functions — see "Vercel function-count limit" below before adding new endpoints
+  scan.js, score.js, classify.js, trigger-score.js, run-health-check.js  ← cron-triggered (see Security patterns for API endpoints)
+  seed-onboarding.js, scrape.js, clone-sample-project.js                ← client-callable, Bearer-auth
+  unsubscribe.js, validate-feed.js
+server-lib/                 ← shared server-side logic imported by api/*.js. Deliberately NOT under api/ — see gotcha below
+  cron-auth.js               ← cronSecretOk / bearerToken helpers
+  scoring.js                 ← Layer 3 scoring primitives (cosineSimilarity, recencyScore, CREDIBILITY_SCORES)
+  clone-project.js           ← cloneProject() / rollback() — see "Sample project cloning" below
+scripts/
+  clone-project.js           ← standalone CLI runner for cloneProject(), not wired into the app. Usage: `node --env-file=.env.local scripts/clone-project.js --source <id> --dest-workspace <id> [--include-sources] [--sample-template] [--source-template-id <id>]`
 ```
 
 ---
@@ -597,6 +624,8 @@ All tables carry `workspace_id` and (where applicable) `project_id`. `workspace_
   last_reviewed_at: string|null,         // Inbox inactivity detection
   last_visited_at: string|null,          // stamped fire-and-forget in openProject(); used by ProjectOverview for "N new signals since your last visit"
   key_question_embedding: number[]|null, // internal — cached embedding of `question` only; api/score.js builds a richer in-memory embedding (question + focus) at scoring time but never overwrites this cache
+  is_sample_template: boolean,           // added 2026-07-09 — true only for the one canonical templates-account copy (see Sample_Project_Onboarding_PRD.md); false on every per-user clone and every normal project
+  source_template_id: string|null,       // added 2026-07-09 — self-referencing FK to projects(id); set to the templates-account project's id on a per-user clone, null otherwise. Non-null is what the Dashboard checks to render the "[Sample] " name prefix (computed at render time — project.name itself is never modified)
   created_at: string,
 }
 ```
@@ -695,7 +724,8 @@ Key decisions already made:
 |---|---|
 | `design-principles.md` | Before any UX, form, AI output, nudge, or navigation decision |
 | `signal-scanner-spec.md` | Any work touching the scanner, candidate ingestion, scoring, or onboarding seeding |
-| `FutureSignals_Onboarding_ProgressiveDisclosure_Spec.md` | Any work touching the onboarding flow, project creation, or first-session experience |
+| `FutureSignals_Onboarding_ProgressiveDisclosure_Spec.md` | Any work touching the onboarding flow, project creation, or first-session experience. Its sample-project section (read-only project + structural-only "promote") is superseded by `Sample_Project_Onboarding_PRD.md`'s clone-based model — that section of this spec has not yet been formally retired/updated, don't treat it as current for sample-project behavior |
+| `Sample_Project_Onboarding_PRD.md` | Any work touching sample-project cloning, `cloneProject()`, `is_sample_template`/`source_template_id`, or the per-user clone triggered at onboarding completion — see also "Sample project cloning" above |
 
 ---
 
@@ -713,9 +743,14 @@ Key decisions already made:
   - Relevance scores live on the **promoted `inputs` row**, not on `candidates`: `inputs.metadata.suggested_projects: [{id, name, score, classification}]` and `inputs.metadata.top_score` (set by `api/score.js` at promotion time).
   - Domain relevance for a promoted candidate is implicit, not a column: `api/score.js` only promotes a candidate into the workspace whose project scored it highest, so anything in a workspace's Inbox (`inputs.project_id IS NULL`) is inherently relevant to that workspace's projects.
 - `user_preferences` table (added 2026-06-14) holds per-user digest preferences (`digest_unsubscribed`), keyed by `user_id` referencing `auth.users.id`, RLS enabled. A row may not exist for every user — always `maybeSingle()` on reads and `upsert` on writes.
+- **`trg_auto_populate_project_sources`** — an `AFTER INSERT` trigger on `projects` (documented in migration `20260709140000_document_auto_populate_project_sources.sql`, but was live on both databases long before that, undiscovered until a clone-testing session found it). On every new project row, it auto-inserts `project_sources` rows for every active `sources` row matching the new project's `domain`, with `opted_in` hardcoded `true`. This fires independent of and invisible to any application code that inserts a project — `cloneProject()` has to explicitly purge or neutralize whatever it creates (see "Sample project cloning" above). If you ever see unexpected `project_sources` rows appear right after a project insert, this is why.
+- **Undocumented-schema-change pattern**: `projects.source_template_id`, `projects.is_sample_template`, `projects.last_visited_at`, `analyses.updated_at`, and the trigger above were all added directly to staging/production (dashboard or ad hoc SQL) with no migration file, discovered only via later audits and backfilled with documentation migrations. If a column or trigger seems to exist live but isn't accounted for in `supabase/migrations/`, this has happened before and will likely happen again — confirm live state directly (`information_schema.columns`, `pg_trigger`) rather than assuming the migrations directory is complete.
 
 ### `database.types.ts` can lag behind `supabase/migrations/`
-Regenerated 2026-07-02. Now includes `canvas_text_nodes`, `projects.last_visited_at`, and `analyses.updated_at`. **For schema questions, always treat `supabase/migrations/` (read chronologically, latest wins) as the source of truth, not `database.types.ts`** — this file will drift again after future migrations until regenerated with: `supabase gen types typescript --project-id kptatqipjwihkdxdxlvh > src/types/database.types.ts`
+Regenerated 2026-07-09. Now includes `canvas_text_nodes`, `projects.last_visited_at`, `analyses.updated_at`, `projects.source_template_id`, and `projects.is_sample_template`. **For schema questions, always treat `supabase/migrations/` (read chronologically, latest wins) as the source of truth, not `database.types.ts`** — this file will drift again after future migrations until regenerated with: `supabase gen types typescript --project-id kptatqipjwihkdxdxlvh > src/types/database.types.ts`
+
+### `supabase db push` version-collision bug
+Multiple migration files sharing the same bare `YYYYMMDD` version (no time component) will collide in `supabase_migrations.schema_migrations`'s primary key on push, and — more confusingly — once one of them is applied, `db push`/`db push --dry-run` starts failing with `"Remote migration versions not found in local migrations directory"` even for unrelated, correctly-versioned migrations. This recurred repeatedly in the 2026-07-09 session. Fix each time: `supabase migration repair --linked --status reverted <bare-date-version> [<other-bare-date-version>...]`, then retry `db push --dry-run` (sometimes needs `--include-all` if it now reports "local migration files to be inserted before the last migration on remote"). This is a bookkeeping-only operation — it doesn't touch actual schema/data, and re-applying an already-applied idempotent migration is harmless. Avoid the root cause going forward: give new migrations a full timestamp version (`YYYYMMDDHHMMSS_description.sql`), not just a bare date, especially when another migration might land the same day.
 
 ### RLS patterns
 Two patterns are in use, depending on the table's key column:
@@ -736,7 +771,7 @@ Two patterns are in use, depending on the table's key column:
 
 ### Environment variable conventions
 - **Frontend (`src/`)**: only `VITE_`-prefixed vars are available to the client bundle — `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_ENABLE_QA_TOOLS`.
-- **Server-side (`api/*.js`, Supabase Edge Functions)**: bare names, never `VITE_`-prefixed — `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `CRON_SECRET`, `APP_URL`, `ADMIN_EMAIL`, `RESEND_API_KEY`, `UNSUBSCRIBE_SECRET`.
+- **Server-side (`api/*.js`, Supabase Edge Functions)**: bare names, never `VITE_`-prefixed — `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `CRON_SECRET`, `APP_URL`, `ADMIN_EMAIL`, `RESEND_API_KEY`, `UNSUBSCRIBE_SECRET`, `SAMPLE_TEMPLATE_PROJECT_ID` (added 2026-07-09 — the templates-account project id `cloneProject()` reads for the per-user clone; not a secret, set via `vercel env add ... --no-sensitive` so it stays readable, but still only ever read server-side, never client-supplied. Production: `566911c6-65b4-4648-962f-f0e662033cb8`. Preview/`workspace-refactor`: `44b699ff-0fb1-44fb-9eb6-17a077cc7c9d`).
 
 ### Cron-triggered endpoints
 - Both Vercel functions (`api/scan.js`, `api/score.js`) and Supabase Edge Functions (`check-scanner-health`, `send-weekly-digest`) that run on a schedule check an `x-cron-secret` header against `CRON_SECRET` (`process.env.CRON_SECRET` / `Deno.env.get("CRON_SECRET")`) and return 401 on mismatch. Use this pattern for any new cron-triggered endpoint.
@@ -747,6 +782,9 @@ Two patterns are in use, depending on the table's key column:
 
 ### Security patterns for API endpoints
 - **Cron-only endpoints** (`scan.js`, `classify.js`, `score.js`, `run-health-check.js`): check `x-cron-secret` header, return 401 on mismatch.
-- **Client-callable endpoints** (`scrape.js`, `seed-onboarding.js`): require a Supabase Bearer token, verify with `supabase.auth.getUser(token)`, return 401 if invalid.
+- **Client-callable endpoints** (`scrape.js`, `seed-onboarding.js`, `clone-sample-project.js`): require a Supabase Bearer token, verify with `supabase.auth.getUser(token)`, return 401 if invalid. `clone-sample-project.js` additionally derives `destWorkspaceId` server-side from the verified user (`workspaces.user_id = user.id`) rather than trusting a client-supplied workspace, and reads the source project id only from `SAMPLE_TEMPLATE_PROJECT_ID` — never the request body.
 - **Dual-auth endpoints** (`trigger-score.js`): accept either `x-cron-secret` OR a valid Bearer token — used by both cron and the client (after project creation).
 - **`api/scrape.js` SSRF protection**: validates URL is HTTPS, rejects private/loopback/IMDS IP ranges, caps response body at 512 KB.
+
+### Vercel function-count limit (Hobby plan)
+Vercel's zero-config Node builder treats **every** `.js`/`.ts` file under `api/` as its own serverless function — including helper files with no `handler` export, and files nested in subdirectories like `api/lib/`. The Hobby plan caps a deployment at 12 functions total. This is why shared server-side logic lives in a top-level `server-lib/` directory (outside `api/`) rather than `api/lib/` — files outside `api/` are never counted. Adding a new `api/*.js` endpoint that imports a new shared helper: put the helper in `server-lib/`, not `api/lib/`. Check the count before adding a new top-level `api/*.js` file: `find api -name "*.js" -o -name "*.ts" | wc -l` (currently 10, so there's headroom, but it's not unlimited).

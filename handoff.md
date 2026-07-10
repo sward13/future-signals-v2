@@ -1,6 +1,6 @@
 # Future Signals v2 — Handoff
 
-_Last updated: 2026-07-07_
+_Last updated: 2026-07-09_
 
 ---
 
@@ -33,6 +33,17 @@ All core screens are built and functional:
 | Future Models (Scenarios + Strategic Options) | Done |
 
 Note: Scan and Cluster are now separate sidebar items and separate screens. `Clustering.jsx` is dead code (no longer imported). The `"clustering"` case in App.jsx is a legacy redirect to `ClusterScreen` to handle any stored localStorage state.
+
+**2026-07-09 session — Sample project cloning shipped end-to-end (on `workspace-refactor` branch):**
+- **Started as a read-only schema audit** (per `Sample_Project_Onboarding_PRD.md`) that surfaced several undocumented direct-to-database changes: `projects.source_template_id` and `projects.is_sample_template` (added with no migration file), `projects.last_visited_at`/`analyses.updated_at` present on staging but missing on production for a week (the consuming `openProject()` write was a bare `.then()` with no error capture — silently failing the whole time), and an undocumented `AFTER INSERT` trigger on `projects`, `trg_auto_populate_project_sources`, that auto-populates `project_sources` with `opted_in: true` on every new project. All four backfilled with proper migrations on both databases; the two silent-failure write sites (`last_visited_at` in `useAppState.js`, `onboarding_completed` in `App.jsx`) now log via `console.error`, still fire-and-forget.
+- **`server-lib/clone-project.js`** (moved from `api/lib/` — see Infrastructure notes) — `cloneProject(sourceProjectId, destWorkspaceId, options)` / `rollback()`. Walks all 13 project-scoped tables, remaps every FK including the jsonb/array id references with no FK enforcement (`preferred_futures.scenario_ids`, `strategic_options.scenario_ids`, `cluster_suggestions.input_ids`). Paginates every read and chunks every insert (PostgREST's ~1000-row cap bit a real project with 8,100 `project_candidates` rows). `project_candidates` is now **never** cloned by either path — it's derived scanner data that goes stale the moment scanning is re-enabled; 8,100 stale rows already cloned into the production template were purged after the fact.
+- **Tested thoroughly before touching real data**: constructed throwaway staging projects to deliberately force the `project_sources` trigger-collision path and the jsonb-remap path (including a dangling-reference case), both passed. Then ran the real clone against John's live production project ("Future of Alternative Proteins") into the templates account — all 13 tables matched exactly, including 8,100 `project_candidates` (pre-exclusion-fix) and full jsonb-remap correctness on real non-empty data.
+- **`api/clone-sample-project.js`** — Bearer-auth endpoint (same pattern as `seed-onboarding.js`), source project id from `SAMPLE_TEMPLATE_PROJECT_ID` env var only, never client-supplied. Wired into `App.jsx`'s `handleOnboardingComplete` as fire-and-forget, alongside the existing `onboarding_completed` write.
+- **Real end-to-end test via preview deployment**: signed up a throwaway account and completed onboarding through the actual UI. Found the clone had succeeded server-side (confirmed via Vercel function logs + direct SQL) but didn't appear on the dashboard without a manual reload — `appState.projects` was never refetched after the fire-and-forget clone landed. Fixed by adding `refreshProjectsRef`/`refreshProjects`, following the exact existing `refreshInputs`/`refreshClusters` pattern; the clone's fetch `.then()` now calls it on success. Verified the delete-through-app flow too: deleting the clone correctly moves its inputs to the Inbox (not deleted — matches `deleteProject`'s existing semantics) and leaves the template completely untouched.
+- **Dashboard labeling**: cloned projects show a `"[Sample] "` name prefix in both the card and table views, computed at render time only (`project.name` never mutated).
+- **Removed dead `seeds.js` sample data** (`SAMPLE_PROJECTS`/`SAMPLE_CLUSTERS`/`SAMPLE_SCENARIOS`/`SAMPLE_CANVAS_NODES`/`SAMPLE_RELATIONSHIPS`) — an earlier abandoned attempt at the same problem, never imported anywhere, superseded by the clone-based approach.
+- **Permanent template projects now exist**: staging `44b699ff-0fb1-44fb-9eb6-17a077cc7c9d`, production `566911c6-65b4-4648-962f-f0e662033cb8`. `SAMPLE_TEMPLATE_PROJECT_ID` set in Vercel for both Production and Preview/`workspace-refactor`.
+- **Security note**: both the production DB password and the production `service_role` key ended up pasted in plaintext into the session transcript at different points (mechanics of relaying credentials between terminal and chat) — **both should be rotated** if not already done. Also found and removed a leftover `PGPASSWORD=...` allowlist entry in `.claude/settings.local.json` (gitignored, never committed, but was sitting in plaintext on disk).
 
 **2026-07-07 session — Badge/chip audit + form-field label consistency fix (on `workspace-refactor` branch):**
 - **Badge/chip audit (read-only):** Full audit of every badge/chip in the app (Signal Strength, Source Confidence, STEEPLED, Horizon, Likelihood, Cluster Subtype, Archetype) against the one real shared primitive, `Tag.jsx` (`Tag`/`StrengthDot`/`HorizTag`/`ArchTag`/`SubtypeTag`/`ConfidenceBadge` — font-size 10px, padding `2px 7px`, radius 10px, 1px border). Found the root cause of most drift: `StrengthDot`/`ConfidenceBadge` expect Title-Case keys (`Weak`/`Moderate`/`High`) but the real DB fields are lowercase, so nearly every screen reimplements its own inline badge instead of using the shared component. Surfaced a live color-scale conflict for Signal Strength (shared component vs. four ad hoc inline copies), a cyan-vs-blue mismatch for Cluster Subtype "Driver" between `Tag.jsx` and `ScenarioCanvas.jsx`, at least 4 distinct STEEPLED tag treatments, and several places where Horizon/Likelihood/Confidence render as plain text instead of a badge (System Map relationships table, Inbox table view). No code changed in this pass — findings and a consolidation plan written to `fable-badge-consolidation-prompt.md` (untracked) for a future fix pass.
@@ -247,6 +258,8 @@ send-email                   — thin Resend wrapper used by health check
 - **`workspaces` table** uses `user_id` not `owner_id` — check this on any new RLS policy
 - **pgvector** columns: do not use `.not('embedding', 'is', null)` via PostgREST — use a workaround
 - **Vercel API routes** must be flat files under `api/` — dynamic route paths (e.g. `api/projects/[id]/action.js`) are not recognised by the Vite preset; use query params instead (e.g. `api/action.js?id=`)
+- **Vercel Hobby plan caps deployments at 12 serverless functions**, and every `.js` file under `api/` counts — including helper files with no `handler` export, even nested ones (`api/lib/*.js` used to count). Shared server-side logic now lives in a top-level `server-lib/` directory instead (outside `api/`, never counted). Hit this limit 2026-07-09 adding `clone-sample-project.js` + its dependency; fixed by moving `cron-auth.js`/`scoring.js`/`clone-project.js` out of `api/lib/`. Check count before adding a new endpoint: `find api -name "*.js" | wc -l` (currently 10).
+- **`supabase db push` version-collision bug**: multiple migrations sharing the same bare `YYYYMMDD` version (no time) collide in the remote bookkeeping table, and once one's applied, `db push`/`--dry-run` fails for unrelated migrations too ("Remote migration versions not found in local migrations directory"). Fix: `supabase migration repair --linked --status reverted <bare-date-version...>`, retry (sometimes needs `--include-all`). Bookkeeping-only, doesn't touch schema/data. Avoid by giving new migrations full `YYYYMMDDHHMMSS` versions.
 
 ---
 
@@ -257,6 +270,7 @@ send-email                   — thin Resend wrapper used by health check
 - `OPENAI_API_KEY`
 - `CRON_SECRET`
 - `APP_URL` (= `https://future-signals-v2.vercel.app`)
+- `SAMPLE_TEMPLATE_PROJECT_ID` (added 2026-07-09) — not a secret, set with `--no-sensitive` so `vercel env pull` returns it in plaintext. Production: `566911c6-65b4-4648-962f-f0e662033cb8`. Preview/`workspace-refactor`: `44b699ff-0fb1-44fb-9eb6-17a077cc7c9d`.
 
 **Supabase edge function secrets:**
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
