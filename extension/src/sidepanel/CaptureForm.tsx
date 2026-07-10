@@ -11,7 +11,7 @@ import {
 import type { InputSubtypeId, SignalStrengthId, SourceConfidenceId } from "../constants.js";
 import { Topbar } from "./Topbar";
 import { SubtypePicker } from "./SubtypePicker";
-import { ToggleOptionRow } from "./ToggleOptionRow";
+import { ThreeCardSelector } from "./ThreeCardSelector";
 import { debugLogPageExtraction, fetchActiveTabPage } from "../lib/activeTabPage.js";
 import { resolveBestDescription, resolveMetaDescription } from "../lib/metadata.js";
 import type { ProjectRow } from "../lib/workspace.js";
@@ -519,14 +519,14 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
           />
         </div>
 
-        <ToggleOptionRow
+        <ThreeCardSelector
           label="Signal strength"
           options={SIGNAL_STRENGTH_OPTIONS}
           value={signalStrength}
           onChange={(id) => setSignalStrength(id as SignalStrengthId | null)}
         />
 
-        <ToggleOptionRow
+        <ThreeCardSelector
           label="Source confidence"
           options={SOURCE_CONFIDENCE_OPTIONS}
           value={sourceConfidence}
