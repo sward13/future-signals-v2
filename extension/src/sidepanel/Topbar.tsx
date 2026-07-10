@@ -1,10 +1,17 @@
 import type { ReactNode } from "react";
 import { c } from "../../../src/styles/tokens.js";
-import logoLight from "../../../src/assets/logo_light.svg";
 
 type Props = { right?: ReactNode };
 
+/**
+ * No logo here — Chrome's native side panel header (icon + "Future Signals")
+ * already carries that branding via manifest.json's icons/default_icon, so
+ * repeating the wordmark in-panel was redundant. This bar now only exists
+ * to host per-screen right-aligned actions (e.g. Sign out); it collapses to
+ * an empty strip when there's nothing to show.
+ */
 export function Topbar({ right }: Props) {
+  if (!right) return null;
   return (
     <div
       style={{
@@ -14,17 +21,12 @@ export function Topbar({ right }: Props) {
         height: 48,
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between",
+        justifyContent: "flex-end",
         flexShrink: 0,
         boxSizing: "border-box",
       }}
     >
-      <img
-        src={logoLight}
-        alt="Future Signals"
-        style={{ width: 124, height: "auto", display: "block" }}
-      />
-      {right ?? null}
+      {right}
     </div>
   );
 }
