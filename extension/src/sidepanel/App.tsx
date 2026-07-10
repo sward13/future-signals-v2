@@ -27,6 +27,7 @@ export function App() {
   );
 
   const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -36,7 +37,23 @@ export function App() {
       setSession(s ?? null);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    // Mirrors the main app's App.jsx: a "reset your password" email link
+    // opens this side panel with a recovery token in the URL. Once
+    // detectSessionInUrl processes it, Supabase fires PASSWORD_RECOVERY
+    // with a live (but recovery-only) session. That session must not be
+    // treated as a normal sign-in — passwordRecovery gates the render
+    // below to force the "choose a new password" form instead. USER_UPDATED
+    // fires after a successful supabase.auth.updateUser({ password }) call
+    // and clears the gate so the app proceeds normally.
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setPasswordRecovery(true);
+        setSession(s ?? null);
+        return;
+      }
+      if (event === "USER_UPDATED") {
+        setPasswordRecovery(false);
+      }
       setSession(s ?? null);
     });
     return () => sub.subscription.unsubscribe();
@@ -77,6 +94,10 @@ export function App() {
         Loading…
       </div>
     );
+  }
+
+  if (passwordRecovery) {
+    return <AuthView supabase={supabase} initialMode="reset" />;
   }
 
   if (!session) {

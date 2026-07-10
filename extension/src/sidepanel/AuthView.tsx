@@ -15,12 +15,14 @@ const mutedLink = {
   textDecoration: "underline",
 } as const;
 
-type Props = { supabase: SupabaseClient<Database> };
+type Mode = "signin" | "signup" | "forgot" | "reset";
+type Props = { supabase: SupabaseClient<Database>; initialMode?: Mode };
 
-export function AuthView({ supabase }: Props) {
-  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
+export function AuthView({ supabase, initialMode = "signin" }: Props) {
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -61,38 +63,100 @@ export function AuthView({ supabase }: Props) {
     setLoading(false);
   };
 
+  const handleReset = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setInfo(null);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+
+    setLoading(true);
+    const { error: er } = await supabase.auth.updateUser({ password });
+    if (er) {
+      setError(er.message);
+    } else {
+      setInfo("Password updated. You can now sign in.");
+      setPassword("");
+      setConfirmPassword("");
+      setMode("signin");
+    }
+    setLoading(false);
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Topbar />
 
       <div style={{ padding: "20px 16px", flex: 1, overflowY: "auto" }}>
 
-        {/* Mode tabs */}
-        <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
-          {(["signin", "signup"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => { setMode(m); setError(null); setInfo(null); }}
-              style={{
-                fontSize: 12,
-                padding: "6px 14px",
-                borderRadius: 6,
-                border: `1px solid ${mode === m ? c.brand : c.borderMid}`,
-                background: mode === m ? "#EFF6FF" : c.white,
-                color: mode === m ? c.brand : c.muted,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                fontWeight: mode === m ? 500 : 400,
-                transition: "background 0.15s, border-color 0.15s",
-              }}
-            >
-              {m === "signin" ? "Sign in" : "Sign up"}
-            </button>
-          ))}
-        </div>
+        {/* Mode tabs — hidden during forgot/reset, which are their own flows */}
+        {mode === "signin" || mode === "signup" ? (
+          <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
+            {(["signin", "signup"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => { setMode(m); setError(null); setInfo(null); }}
+                style={{
+                  fontSize: 12,
+                  padding: "6px 14px",
+                  borderRadius: 6,
+                  border: `1px solid ${mode === m ? c.brand : c.borderMid}`,
+                  background: mode === m ? "#EFF6FF" : c.white,
+                  color: mode === m ? c.brand : c.muted,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  fontWeight: mode === m ? 500 : 400,
+                  transition: "background 0.15s, border-color 0.15s",
+                }}
+              >
+                {m === "signin" ? "Sign in" : "Sign up"}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
-        {mode === "forgot" ? (
+        {mode === "reset" ? (
+          <form onSubmit={handleReset}>
+            <Label>New password</Label>
+            <input
+              style={{ ...inp, marginBottom: 14 }}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 6 characters"
+              autoFocus
+              required
+            />
+            <Label>Confirm password</Label>
+            <input
+              style={inp}
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Re-enter new password"
+              required
+            />
+            {error ? <Banner kind="error" text={error} /> : null}
+            {info  ? <Banner kind="info"  text={info}  /> : null}
+            <div style={{ marginTop: 14 }}>
+              <button
+                type="submit"
+                style={{ ...btnP, width: "100%", opacity: loading ? 0.7 : 1 }}
+                disabled={loading}
+              >
+                {loading ? "Updating…" : "Update password"}
+              </button>
+            </div>
+          </form>
+        ) : mode === "forgot" ? (
           <form onSubmit={handleForgot}>
             <Label>Email</Label>
             <input
