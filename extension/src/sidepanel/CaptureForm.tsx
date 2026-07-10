@@ -2,10 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../../../src/types/database.types";
 import { c, inp, ta, sel, btnP, btnSec, fl } from "../../../src/styles/tokens.js";
-import { DEFAULT_SUBTYPE, SELECTION_CHANGED_MESSAGE_TYPE } from "../constants.js";
-import type { InputSubtypeId } from "../constants.js";
+import {
+  DEFAULT_SUBTYPE,
+  SELECTION_CHANGED_MESSAGE_TYPE,
+  SIGNAL_STRENGTH_OPTIONS,
+  SOURCE_CONFIDENCE_OPTIONS,
+} from "../constants.js";
+import type { InputSubtypeId, SignalStrengthId, SourceConfidenceId } from "../constants.js";
 import { Topbar } from "./Topbar";
 import { SubtypePicker } from "./SubtypePicker";
+import { ToggleOptionRow } from "./ToggleOptionRow";
 import { debugLogPageExtraction, fetchActiveTabPage } from "../lib/activeTabPage.js";
 import { resolveBestDescription, resolveMetaDescription } from "../lib/metadata.js";
 import type { ProjectRow } from "../lib/workspace.js";
@@ -52,6 +58,8 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
   const [sourceUrl, setSourceUrl] = useState("");
   const [subtype, setSubtype] = useState<InputSubtypeId>(DEFAULT_SUBTYPE);
   const [projectId, setProjectId] = useState<string>(""); // "" → Inbox (null)
+  const [signalStrength, setSignalStrength] = useState<SignalStrengthId | null>(null);
+  const [sourceConfidence, setSourceConfidence] = useState<SourceConfidenceId | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
@@ -225,6 +233,8 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
         setSourceUrl(draft.source_url);
         setSubtype(normalizeSubtypeId(draft.subtype));
         setProjectId(draft.project_id ?? "");
+        setSignalStrength(draft.signal_strength);
+        setSourceConfidence(draft.source_confidence);
         setNameDirty(Boolean(draft.name.trim()));
         setDescriptionDirty(Boolean(draft.description.trim()));
         setSourceUrlDirty(Boolean(draft.source_url.trim()));
@@ -249,9 +259,11 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
       source_url: sourceUrl,
       subtype,
       project_id: projectId || null,
+      signal_strength: signalStrength,
+      source_confidence: sourceConfidence,
       updatedAt: new Date().toISOString(),
     });
-  }, [hydrated, savedId, name, description, sourceUrl, subtype, projectId]);
+  }, [hydrated, savedId, name, description, sourceUrl, subtype, projectId, signalStrength, sourceConfidence]);
 
   // ── Reload from tab ─────────────────────────────────────────────────────────
   // Detects page changes: if the fetched URL differs from the form's current
@@ -288,6 +300,8 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
     setReloadStatus(null);
     setSubtype(DEFAULT_SUBTYPE);
     setProjectId("");
+    setSignalStrength(null);
+    setSourceConfidence(null);
     setNameDirty(false);
     setDescriptionDirty(false);
     setSourceUrlDirty(false);
@@ -335,6 +349,8 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
       sourceUrlRaw: sourceUrl,
       subtype: normalizeSubtypeId(subtype),
       projectId: effectiveProjectId,
+      signalStrength,
+      sourceConfidence,
       metadata,
     });
 
@@ -359,6 +375,8 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
     setReloadStatus(null);
     setSubtype(DEFAULT_SUBTYPE);
     setProjectId("");
+    setSignalStrength(null);
+    setSourceConfidence(null);
     setNameDirty(false);
     setDescriptionDirty(false);
     setSourceUrlDirty(false);
@@ -500,6 +518,20 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
             onChange={(id) => setSubtype(normalizeSubtypeId(id))}
           />
         </div>
+
+        <ToggleOptionRow
+          label="Signal strength"
+          options={SIGNAL_STRENGTH_OPTIONS}
+          value={signalStrength}
+          onChange={(id) => setSignalStrength(id as SignalStrengthId | null)}
+        />
+
+        <ToggleOptionRow
+          label="Source confidence"
+          options={SOURCE_CONFIDENCE_OPTIONS}
+          value={sourceConfidence}
+          onChange={(id) => setSourceConfidence(id as SourceConfidenceId | null)}
+        />
 
         <div style={{ marginBottom: 16 }}>
           <div style={fl}>Project</div>

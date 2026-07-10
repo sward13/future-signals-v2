@@ -62,6 +62,8 @@ The SPA is **state-driven**; URLs are mostly cosmetic. After capture, “Open Fu
 
 11. **Sign out / sign back in preserves draft** — Start filling in a capture. Click “Sign out”. Sign back in. The draft fields are still populated (draft is stored in `chrome.storage.local`, not cleared on sign-out).
 
+12. **Signal strength / Source confidence** — Rows render below Input type. Selecting an option shows it as selected (checkmark); clicking the selected option again clears it back to unset. Selection survives closing and reopening the side panel (draft persistence). After saving, the input's `signal_strength` / `source_confidence` columns are set in Supabase — not `signal_quality`.
+
 ## Scripts
 
 | Command | Purpose |

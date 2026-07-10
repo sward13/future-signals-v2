@@ -1,5 +1,5 @@
-import type { InputSubtypeId } from "../constants.js";
-import { DRAFT_STORAGE_KEY } from "../constants.js";
+import type { InputSubtypeId, SignalStrengthId, SourceConfidenceId } from "../constants.js";
+import { DRAFT_STORAGE_KEY, SIGNAL_STRENGTH_OPTIONS, SOURCE_CONFIDENCE_OPTIONS } from "../constants.js";
 import { normalizeSubtypeId } from "./subtype.js";
 
 export type CaptureDraft = {
@@ -9,8 +9,21 @@ export type CaptureDraft = {
   subtype: InputSubtypeId;
   /** null = Inbox (default). Set only when user picks a project. */
   project_id: string | null;
+  /** Optional — no default tier, unlike subtype. */
+  signal_strength: SignalStrengthId | null;
+  source_confidence: SourceConfidenceId | null;
   updatedAt: string;
 };
+
+/** Returns the value unchanged if it's a valid option id, otherwise null. */
+function normalizeOptionId<T extends string>(
+  raw: unknown,
+  options: readonly { id: T }[],
+): T | null {
+  if (typeof raw !== "string") return null;
+  const match = options.find((o) => o.id === raw);
+  return match?.id ?? null;
+}
 
 export async function loadDraft(): Promise<CaptureDraft | null> {
   const result = await chrome.storage.local.get(DRAFT_STORAGE_KEY);
@@ -28,6 +41,8 @@ export async function loadDraft(): Promise<CaptureDraft | null> {
     source_url: d.source_url,
     subtype: normalizeSubtypeId(d.subtype),
     project_id: d.project_id ?? null,
+    signal_strength: normalizeOptionId(d.signal_strength, SIGNAL_STRENGTH_OPTIONS),
+    source_confidence: normalizeOptionId(d.source_confidence, SOURCE_CONFIDENCE_OPTIONS),
     updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : new Date().toISOString(),
   };
 }
