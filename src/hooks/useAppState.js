@@ -389,6 +389,10 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     setActiveProjectId(id);
     setActiveScreen("project-overview");
     if (id) {
+      // Keep the address bar in sync with what's actually being viewed, so a
+      // reload restores the right project. replaceState (not pushState) — this
+      // is a cosmetic mirror of state, not a new history entry.
+      window.history.replaceState({}, "", `/projects/${id}`);
       supabase
         .from("projects")
         .update({ last_visited_at: new Date().toISOString() })

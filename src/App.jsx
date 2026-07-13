@@ -3,7 +3,7 @@
  * via useAppState, renders the AppShell, active screen, modals, and toast.
  * New users are gated behind OnboardingFlow until workspace_settings.onboarding_complete.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./lib/supabase.js";
 import { useAppState } from "./hooks/useAppState.js";
 import { AuthScreen } from "./components/auth/AuthScreen.jsx";
@@ -267,11 +267,25 @@ export default function App() {
   }, [session, onboardingComplete]);
 
   // ── Deep-link handler — /projects/[uuid] ──────────────────────────────────
-  // Fires once after projects have loaded. If the URL matches /projects/[id],
-  // opens that project rather than landing at root state.
-  // Handles both post-onboarding redirect and hard-refresh at a project URL.
+  // Runs ONCE, on the initial mount after projects first load. It is only a
+  // fallback for the localStorage last-viewed restore (useAppState) — not the
+  // source of truth. If localStorage already restored a valid project, that
+  // wins and the URL is left for openProject() to re-sync going forward;
+  // otherwise (no restore, or a stale id the guard reset to null) we honour a
+  // /projects/[id] URL. The one-shot ref stops this from re-firing on later
+  // projects changes (e.g. the post-onboarding clone's refreshProjects) and
+  // yanking the user off whatever they've since navigated to.
+  const deepLinkHandledRef = useRef(false);
   useEffect(() => {
     if (!onboardingComplete || projects.length === 0) return;
+    if (deepLinkHandledRef.current) return;
+    deepLinkHandledRef.current = true;
+
+    // localStorage-restored project wins — leave the (possibly stale) URL alone.
+    const hasRestoredProject =
+      activeProjectId && projects.some((p) => p.id === activeProjectId);
+    if (hasRestoredProject) return;
+
     const match = window.location.pathname.match(
       /^\/projects\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
     );
@@ -284,7 +298,7 @@ export default function App() {
       // Project not in workspace — fall back to root and clean the URL
       window.history.replaceState({}, "", "/");
     }
-  }, [onboardingComplete, projects]);
+  }, [onboardingComplete, projects, activeProjectId]);
 
   // ── Deep-link handler — /inbox?candidate=<candidates.id> ──────────────────
   // Fires once after inputs have loaded. Weekly digest emails link to
