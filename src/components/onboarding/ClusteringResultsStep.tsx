@@ -216,7 +216,7 @@ function ZeroInputsState({ onComplete }: { onComplete: () => void }) {
           Your project is ready
         </h2>
         <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 24px", lineHeight: 1.6 }}>
-          You skipped signal selection for now — you can discover signals from the Scanner tab inside your project.
+          No signals added yet — find them anytime from the Scanner tab inside your project.
         </p>
         <button onClick={onComplete} style={{ ...btnP, fontSize: 13, padding: "10px 24px" }}>
           Open my project

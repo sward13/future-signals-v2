@@ -182,7 +182,7 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
 
           {/* Sub */}
           <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 22px", lineHeight: 1.6 }}>
-            Three fields to get started. Your scanner starts finding signals as soon as you hit create.
+            Your scanner starts pulling from your domain's sources as soon as you hit create. Add a key question next and it'll rank signals against it too.
           </p>
 
           {/* ── Project name ────────────────────────────── */}
@@ -279,18 +279,6 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
               placeholder="e.g. How might AI reshape diagnostic medicine over the next decade?"
               style={{ ...ta }}
             />
-            <p
-              style={{
-                fontSize: 11,
-                color: "#9CA3AF",
-                fontStyle: "italic",
-                marginTop: 5,
-                marginBottom: 0,
-                lineHeight: 1.5,
-              }}
-            >
-              A starting point — you'll refine this as your project develops.
-            </p>
           </div>
 
           {/* ── Enhanced toggle ──────────────────────────── */}
@@ -402,7 +390,7 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
                 >
                   ►
                 </span>
-                + Add more detail (optional for now)
+                + Add more detail
               </button>
 
               {enhancedOpen && (
