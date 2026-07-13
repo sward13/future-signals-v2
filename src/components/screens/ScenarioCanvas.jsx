@@ -72,12 +72,17 @@ function ClusterNodeComponent({ id, data }) {
   const [hovered, setHovered] = useState(false);
   const updateNodeInternals = useUpdateNodeInternals();
   const { cluster, onRemove, connectMode, isConnectSource, selected } = data;
+
+  // Must run on every render (before any early return) to satisfy rules-of-hooks.
+  // The guard lives inside the effect body so the hook order stays stable even
+  // when `cluster` is missing (e.g. its node lingers after the cluster is deleted).
+  useEffect(() => {
+    if (!cluster) return;
+    updateNodeInternals(id);
+  }, [id, cluster?.name, cluster?.description, cluster?.input_ids?.length]);
+
   if (!cluster) return null;
   const st = SUBTYPE_STYLE[cluster.subtype] || SUBTYPE_STYLE.Trend;
-
-  useEffect(() => {
-    updateNodeInternals(id);
-  }, [id, cluster.name, cluster.description, cluster.input_ids?.length]);
 
   const handleStyle = {
     width: 8, height: 8, borderRadius: "50%",
