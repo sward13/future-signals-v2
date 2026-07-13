@@ -63,6 +63,18 @@ function SourcesSection({ workspaceId, addSource, deleteSource, showToast }) {
   const [addOpen,     setAddOpen]     = useState(false);
   // { source: <row>, optInCount: number } when confirm modal is open, else null
   const [confirmDelete, setConfirmDelete] = useState(null);
+  // Set of domain keys the user has manually collapsed; ignored while searching
+  const [collapsedDomains, setCollapsedDomains] = useState(() => new Set());
+  const isSearching = search.trim().length > 0;
+
+  function toggleDomain(domain) {
+    setCollapsedDomains(prev => {
+      const next = new Set(prev);
+      if (next.has(domain)) next.delete(domain);
+      else next.add(domain);
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -195,20 +207,36 @@ function SourcesSection({ workspaceId, addSource, deleteSource, showToast }) {
         </div>
       )}
 
-      {!loading && grouped.map(([domain, rows]) => (
+      {!loading && grouped.map(([domain, rows]) => {
+        const isOpen = isSearching || !collapsedDomains.has(domain);
+        return (
         <div key={domain || "_none"} style={{ marginBottom: 14 }}>
           {/* Group header */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            paddingBottom: 5, borderBottom: `1px solid ${c.border}`, marginBottom: 2,
-          }}>
-            <span style={{ fontSize: 11, fontWeight: 500, color: c.muted }}>
-              {domain || "No domain"}
+          <button
+            onClick={() => toggleDomain(domain)}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              width: "100%", marginBottom: 2,
+              background: "none", border: "none", borderBottom: `1px solid ${c.border}`,
+              cursor: "pointer", fontFamily: "inherit", padding: "0 0 5px 0", textAlign: "left",
+            }}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <span style={{
+                fontSize: 9, color: c.faint,
+                transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
+                transition: "transform 0.15s", display: "inline-block", width: 8,
+              }}>
+                ▶
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 500, color: c.muted }}>
+                {domain || "No domain"}
+              </span>
             </span>
             <span style={{ fontSize: 11, color: c.faint }}>{rows.length}</span>
-          </div>
+          </button>
 
-          {rows.map(src => (
+          {isOpen && rows.map(src => (
             <div key={src.id} style={{
               display: "flex", alignItems: "center", gap: 8,
               padding: "7px 0",
@@ -254,7 +282,8 @@ function SourcesSection({ workspaceId, addSource, deleteSource, showToast }) {
             </div>
           ))}
         </div>
-      ))}
+        );
+      })}
 
       {/* Footer count */}
       {!loading && sources.length > 0 && (
