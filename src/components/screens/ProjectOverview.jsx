@@ -53,8 +53,7 @@ function PhaseCard({ name, statusKey, isResume, onClick, children }) {
     <div
       onClick={onClick}
       className={clsx(
-        "bg-white border rounded-container p-4 flex flex-col transition-shadow duration-150",
-        isResume ? "border-brand-border border-l-[3px] border-l-brand" : "border-border",
+        "bg-white border border-border rounded-container p-4 flex flex-col transition-shadow duration-150",
         onClick ? "cursor-pointer hover:shadow-hover" : "cursor-default"
       )}
     >
