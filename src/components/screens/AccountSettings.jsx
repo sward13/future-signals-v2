@@ -66,6 +66,7 @@ function SourcesSection({ workspaceId, addSource, deleteSource, showToast }) {
   // Set of domain keys the user has manually collapsed; ignored while searching
   const [collapsedDomains, setCollapsedDomains] = useState(() => new Set());
   const isSearching = search.trim().length > 0;
+  const seededCollapseRef = useRef(false);
 
   function toggleDomain(domain) {
     setCollapsedDomains(prev => {
@@ -98,6 +99,14 @@ function SourcesSection({ workspaceId, addSource, deleteSource, showToast }) {
     })();
     return () => { cancelled = true; };
   }, [workspaceId]);
+
+  // Default every domain group to collapsed on first load, once domains are known
+  useEffect(() => {
+    if (seededCollapseRef.current) return;
+    if (sources.length === 0) return;
+    seededCollapseRef.current = true;
+    setCollapsedDomains(new Set(sources.map(s => s.domain || "")));
+  }, [sources]);
 
   const filtered = useMemo(() => {
     let list = sources;
