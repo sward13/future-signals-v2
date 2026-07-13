@@ -1,10 +1,10 @@
 /**
  * ClusterDrawer — slide-over drawer for creating a new cluster.
- * Fields: name (required), subtype (3-card selector), horizon (pill), likelihood (pill), description, linked inputs.
+ * Fields: name (only required field), subtype (3-card selector), horizon (pill), likelihood (pill), description, linked inputs.
  * @param {{ open: boolean, onClose: () => void, onSave: (fields: object) => void, projectId: string, projectInputs: object[] }} props
  */
 import { useState, useEffect } from "react";
-import { c, inp, ta, btnP, btnSec, btnG, fl, fh, badg } from "../../styles/tokens.js";
+import { c, inp, ta, btnP, btnSec, btnG, fl, fh, legend } from "../../styles/tokens.js";
 import { StrengthDot, HorizTag, SubtypeTag } from "../shared/Tag.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 
@@ -25,15 +25,19 @@ const HORIZON_COLORS = {
   H3: [c.amber700, c.amber50, c.amberBorder],
 };
 
-export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs = [], preselectedInputIds = [], onAddInput, projects = [] }) {
+export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs = [], preselectedInputIds = [], onAddInput, projects = [], initialValues, mode = "create" }) {
   const [fields, setFields] = useState(EMPTY);
   const [nameError, setNameError] = useState(false);
   const [selectedInputIds, setSelectedInputIds] = useState([]);
   const [addInputLayerOpen, setAddInputLayerOpen] = useState(false);
 
-  // Sync pre-selected IDs whenever the drawer is opened
+  // Seed fields from initialValues (edit mode) or EMPTY (create mode) on each open
   useEffect(() => {
-    if (open) setSelectedInputIds([...preselectedInputIds]);
+    if (open) {
+      setFields(initialValues ?? EMPTY);
+      setNameError(false);
+      setSelectedInputIds([...preselectedInputIds]);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -46,7 +50,11 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
 
   const handleSave = () => {
     if (!fields.name.trim()) { setNameError(true); return; }
-    onSave({ ...fields, name: fields.name.trim(), project_id: projectId, input_ids: selectedInputIds });
+    if (mode === "edit") {
+      onSave({ name: fields.name.trim(), subtype: fields.subtype, horizon: fields.horizon, likelihood: fields.likelihood, description: fields.description });
+    } else {
+      onSave({ ...fields, name: fields.name.trim(), project_id: projectId, input_ids: selectedInputIds });
+    }
     reset();
   };
 
@@ -73,10 +81,12 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
           display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexShrink: 0,
         }}>
           <div>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 2 }}>
-              New cluster
+            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 2 }}>
+              {mode === "edit" ? "Edit cluster" : "New cluster"}
             </div>
-            <div style={{ fontSize: 17, fontWeight: 500, color: c.ink }}>Build a cluster</div>
+            <div style={{ fontSize: 17, fontWeight: 500, color: c.ink }}>
+              {mode === "edit" ? "Edit cluster" : "Build a cluster"}
+            </div>
           </div>
           <button onClick={handleClose} style={{ ...btnG, fontSize: 16, padding: "2px 6px", color: c.muted }}>×</button>
         </div>
@@ -86,7 +96,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
 
           {/* Name */}
           <div style={{ marginBottom: 18 }}>
-            <div style={fl}>Cluster name <span style={badg}>required</span></div>
+            <div style={fl}>Cluster name <span style={{ marginLeft: 2 }}>*</span></div>
             <input
               style={{ ...inp, borderColor: nameError ? c.redBorder : undefined }}
               type="text"
@@ -96,6 +106,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
               autoFocus
             />
             {nameError && <div style={{ fontSize: 11, color: c.red800, marginTop: 4 }}>Cluster name is required.</div>}
+            <div style={legend}>* required</div>
           </div>
 
           {/* Subtype — 3-card selector */}
@@ -162,7 +173,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
                     onClick={() => set("likelihood", l)}
                     style={{
                       padding: "6px 16px", borderRadius: 20,
-                      border: `1px solid ${on ? c.borderMid : c.border}`,
+                      border: `1px solid ${on ? c.borderStrong : c.border}`,
                       background: on ? c.ink : c.white,
                       color: on ? c.white : c.muted,
                       fontSize: 12, fontWeight: on ? 500 : 400,
@@ -178,7 +189,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
 
           {/* Description */}
           <div style={{ marginBottom: 18 }}>
-            <div style={fl}>Description <span style={{ ...badg, marginLeft: 2 }}>optional</span></div>
+            <div style={fl}>Description</div>
             <div style={fh}>What does this cluster represent? What drives it?</div>
             <textarea
               style={ta}
@@ -189,9 +200,10 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
             />
           </div>
 
-          {/* Link inputs */}
+          {/* Link inputs — create mode only */}
+          {mode === "create" && (
           <div style={{ marginBottom: 8 }}>
-            <div style={fl}>Link inputs <span style={{ ...badg, marginLeft: 2 }}>optional</span></div>
+            <div style={fl}>Link inputs</div>
             <div style={fh}>Select the inputs that belong to this cluster.</div>
 
             {projectInputs.length === 0 ? (
@@ -245,7 +257,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
                       {/* Checkbox */}
                       <div style={{
                         width: 15, height: 15, borderRadius: 3, flexShrink: 0,
-                        border: `1.5px solid ${checked ? c.ink : c.borderMid}`,
+                        border: `1.5px solid ${checked ? c.ink : c.borderStrong}`,
                         background: checked ? c.ink : c.white,
                         display: "flex", alignItems: "center", justifyContent: "center",
                       }}>
@@ -265,7 +277,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
                       {/* Tags */}
                       <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
                         {input.subtype && <SubtypeTag sub={input.subtype} />}
-                        {input.strength && <StrengthDot str={input.strength} />}
+                        {input.signal_strength && <StrengthDot str={input.signal_strength} />}
                         {input.horizon && <HorizTag h={input.horizon} />}
                       </div>
                     </div>
@@ -281,6 +293,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
                 : "No inputs linked yet"}
             </div>
           </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -293,7 +306,7 @@ export function ClusterDrawer({ open, onClose, onSave, projectId, projectInputs 
             onClick={handleSave}
             style={{ ...btnP, opacity: fields.name.trim() ? 1 : 0.4 }}
           >
-            Build cluster
+            {mode === "edit" ? "Save changes" : "Build cluster"}
           </button>
         </div>
       </div>

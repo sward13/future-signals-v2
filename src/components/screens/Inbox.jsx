@@ -8,50 +8,34 @@
  */
 import { useState, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { c, inp, btnP, btnSm, btnSec, btnG } from "../../styles/tokens.js";
+import { c, inp, btnP, btnSm, btnSec, btnG, fontHeading, countBadge } from "../../styles/tokens.js";
 import { CirclePlus, Sparkles } from "lucide-react";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { HorizTag } from "../shared/Tag.jsx";
 import { AddToProjectButton } from "../shared/AddToProjectButton.jsx";
-import { FilterDropdown } from "./ProjectDetail.jsx";
+import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { STEEPLED } from "../../data/seeds.js";
 
 const STEEPLED_ABB  = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
 const INPUT_TYPE_OPTS = ["Signal", "Issue", "Projection", "Plan", "Obstacle"];
 
 const STRENGTH_COLORS = {
-  weak:     [c.amber700, c.amber50, c.amberBorder],
-  moderate: [c.blue700,  c.blue50,  c.blueBorder],
-  high:     [c.green700, c.green50, c.greenBorder],
+  weak:     [c.rust700, c.rust50, c.rustBorder],
+  moderate: [c.tan700,  c.tan50,  c.tanBorder],
+  strong:   [c.sage700, c.sage50, c.sageBorder],
 };
 
 const CONFIDENCE_COLORS = {
-  low:    [c.amber700, c.amber50, c.amberBorder],
-  medium: [c.blue700,  c.blue50,  c.blueBorder],
-  high:   [c.green700, c.green50, c.greenBorder],
+  low:    [c.rust700, c.rust50, c.rustBorder],
+  medium: [c.tan700,  c.tan50,  c.tanBorder],
+  high:   [c.sage700, c.sage50, c.sageBorder],
 };
 
 const AI_PREVIEW_COUNT = 10;
 
 // Column widths for list/table layout
-const COL = { type: 76, quality: 120, horizon: 52, steepled: 100, date: 55, cta: 220 };
-
-function StrengthCell({ strength, confidence }) {
-  if (!strength && !confidence) return <span style={{ fontSize: 10, color: c.hint }}>—</span>;
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      {strength && (() => {
-        const [col, bg, brd] = STRENGTH_COLORS[strength] || [c.hint, c.surfaceAlt, c.border];
-        return <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{strength.charAt(0).toUpperCase() + strength.slice(1)}</span>;
-      })()}
-      {confidence && (() => {
-        const [col, bg, brd] = CONFIDENCE_COLORS[confidence] || [c.hint, c.surfaceAlt, c.border];
-        return <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 5, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{confidence.charAt(0).toUpperCase() + confidence.slice(1)} conf.</span>;
-      })()}
-    </div>
-  );
-}
+const COL = { type: 76, strength: 60, confidence: 60, horizon: 52, steepled: 100, date: 55, cta: 220 };
 
 function formatDate(str) {
   if (!str) return "—";
@@ -65,7 +49,7 @@ function RowCheckbox({ checked, indeterminate, visible }) {
   return (
     <div style={{
       width: 15, height: 15, borderRadius: 3, flexShrink: 0,
-      border: `1.5px solid ${checked || indeterminate ? c.ink : visible ? c.borderMid : "rgba(0,0,0,0.12)"}`,
+      border: `1.5px solid ${checked || indeterminate ? c.ink : visible ? c.borderStrong : "rgba(0,0,0,0.12)"}`,
       background: checked || indeterminate ? c.ink : "transparent",
       display: "flex", alignItems: "center", justifyContent: "center",
       transition: "border-color 0.15s, background 0.15s",
@@ -141,7 +125,7 @@ function SectionHeader({ title, count, icon }) {
       <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>{title}</div>
       {count > 0 && (
         <span style={{
-          fontSize: 10, padding: "2px 7px", borderRadius: 10,
+          ...countBadge,
           background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500,
         }}>
           {count}
@@ -154,7 +138,7 @@ function SectionHeader({ title, count, icon }) {
 // ─── List table header ────────────────────────────────────────────────────────
 
 function ListHeader({ checked, indeterminate, onToggleAll }) {
-  const cell = { fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, flexShrink: 0 };
+  const cell = { fontSize: 11, letterSpacing: "0.02em", color: c.hint, flexShrink: 0 };
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 10,
@@ -165,9 +149,10 @@ function ListHeader({ checked, indeterminate, onToggleAll }) {
         <RowCheckbox checked={checked} indeterminate={indeterminate} visible={true} />
       </div>
       <div style={{ flex: 1, minWidth: 0, ...cell }}>Title</div>
-      <div style={{ width: COL.type,     ...cell }}>Type</div>
-      <div style={{ width: COL.quality,  ...cell }}>Strength</div>
-      <div style={{ width: COL.horizon,  ...cell }}>Horizon</div>
+      <div style={{ width: COL.type,       ...cell }}>Type</div>
+      <div style={{ width: COL.strength,   ...cell }}>Strength</div>
+      <div style={{ width: COL.confidence, ...cell }}>Confidence</div>
+      <div style={{ width: COL.horizon,    ...cell }}>Horizon</div>
       <div style={{ width: COL.steepled, ...cell }}>STEEPLED</div>
       <div style={{ width: COL.date,     ...cell }}>Date</div>
       <div style={{ width: COL.cta, flexShrink: 0 }} />
@@ -214,26 +199,37 @@ function ListRow({ input, isScannerSuggested, suggestedProjects, recommendedProj
       </div>
 
       {/* Type */}
-      <div style={{ width: COL.type, flexShrink: 0, fontSize: 11, color: c.muted }}>
+      <div style={{ width: COL.type, flexShrink: 0 }}>
         {input.subtype
-          ? input.subtype.charAt(0).toUpperCase() + input.subtype.slice(1)
-          : <span style={{ color: c.hint }}>—</span>}
+          ? <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: "#f0f0ee", color: c.faint, border: `1px solid ${c.border}` }}>{input.subtype}</span>
+          : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
       </div>
 
-      {/* Strength / Confidence */}
-      <div style={{ width: COL.quality, flexShrink: 0 }}>
-        <StrengthCell strength={input.signal_strength} confidence={input.source_confidence} />
+      {/* Signal Strength */}
+      <div style={{ width: COL.strength, flexShrink: 0 }}>
+        {input.signal_strength ? (() => {
+          const [col, bg, brd] = STRENGTH_COLORS[input.signal_strength] || [c.hint, c.surfaceAlt, c.border];
+          return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.signal_strength.charAt(0).toUpperCase() + input.signal_strength.slice(1)}</span>;
+        })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+      </div>
+
+      {/* Source Confidence */}
+      <div style={{ width: COL.confidence, flexShrink: 0 }}>
+        {input.source_confidence ? (() => {
+          const [col, bg, brd] = CONFIDENCE_COLORS[input.source_confidence] || [c.hint, c.surfaceAlt, c.border];
+          return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.source_confidence.charAt(0).toUpperCase() + input.source_confidence.slice(1)}</span>;
+        })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
       </div>
 
       {/* Horizon */}
-      <div style={{ width: COL.horizon, flexShrink: 0, fontSize: 11, color: input.horizon ? c.muted : c.hint }}>
-        {input.horizon || "—"}
+      <div style={{ width: COL.horizon, flexShrink: 0 }}>
+        {input.horizon ? <HorizTag h={input.horizon} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
       </div>
 
       {/* STEEPLED */}
       <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
         {vis2.map((t) => (
-          <span key={t} style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: c.surfaceAlt, color: c.muted }}>
+          <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>
             {STEEPLED_ABB[t] || t}
           </span>
         ))}
@@ -293,11 +289,20 @@ function FullCard({ input, isScannerSuggested, suggestedProjects, recommendedPro
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
           {!isScannerSuggested && input.subtype && (
-            <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#f0f0ee", color: c.faint }}>
+            <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: "#f0f0ee", color: c.faint, border: `1px solid ${c.border}` }}>
               {input.subtype}
             </span>
           )}
-          <span style={{ marginLeft: "auto" }}><StrengthCell strength={input.signal_strength} confidence={input.source_confidence} /></span>
+          <div style={{ marginLeft: "auto", display: "flex", flexDirection: "row", gap: 4, alignItems: "center" }}>
+            {input.signal_strength && (() => {
+              const [col, bg, brd] = STRENGTH_COLORS[input.signal_strength] || [c.hint, c.surfaceAlt, c.border];
+              return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.signal_strength.charAt(0).toUpperCase() + input.signal_strength.slice(1)}</span>;
+            })()}
+            {input.source_confidence && (() => {
+              const [col, bg, brd] = CONFIDENCE_COLORS[input.source_confidence] || [c.hint, c.surfaceAlt, c.border];
+              return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{input.source_confidence.charAt(0).toUpperCase() + input.source_confidence.slice(1)} conf.</span>;
+            })()}
+          </div>
         </div>
 
         <div
@@ -324,7 +329,7 @@ function FullCard({ input, isScannerSuggested, suggestedProjects, recommendedPro
 
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           {(input.steepled || []).map((cat) => (
-            <span key={cat} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#f0f0ee", color: c.muted }}>
+            <span key={cat} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: "#f0f0ee", color: c.muted, border: `1px solid ${c.border}` }}>
               {cat}
             </span>
           ))}
@@ -447,7 +452,7 @@ function ConfirmDeleteModal({ count, onConfirm, onCancel }) {
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
         background: c.white, borderRadius: 12, padding: "24px 28px",
         boxShadow: "0 16px 48px rgba(0,0,0,0.18)", zIndex: 401, minWidth: 320,
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
+        fontFamily: "inherit",
       }}>
         <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
           Delete {count} input{count !== 1 ? "s" : ""}?
@@ -765,13 +770,13 @@ export default function Inbox({ appState }) {
         {/* ── Header ───────────────────────────────────────────── */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 18, gap: 12 }}>
           <div>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
+            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 3 }}>
               Workspace
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>Inbox</div>
+              <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>Inbox</div>
               {allInboxInputs.length > 0 && (
-                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500 }}>
+                <span style={{ ...countBadge, background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500 }}>
                   {allInboxInputs.length}
                 </span>
               )}
@@ -787,7 +792,7 @@ export default function Inbox({ appState }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: c.ink }}>Unassigned Inputs</div>
           {filteredManual.length > 0 && (
-            <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500 }}>
+            <span style={{ ...countBadge, background: "rgba(0,0,0,0.06)", color: c.muted, fontWeight: 500 }}>
               {filteredManual.length}
             </span>
           )}

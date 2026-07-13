@@ -4,7 +4,7 @@
  * @param {{ project: object, onClose: () => void, onSave: (fields: object) => void, scrollTo?: string }} props
  */
 import { useState, useRef, useEffect, useCallback } from "react";
-import { c, inp, ta, sel, btnP, btnSec, btnG, fl, fh } from "../../styles/tokens.js";
+import { c, inp, ta, sel, btnP, btnSec, btnG, fl, fh, legend } from "../../styles/tokens.js";
 import { DOMAINS } from "../../data/seeds.js";
 import { HorizonSlider, YearInput, ChipInput } from "./NewProjectModal.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
@@ -26,11 +26,12 @@ function parseHorizonState(project) {
   };
 }
 
-export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo, workspaceScanningEnabled = true }) {
+export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo, workspaceScanningEnabled = true, showToast }) {
   const initial = parseHorizonState(project);
 
   const [name, setName] = useState(project.name || "");
   const [domain, setDomain] = useState(project.domain || "");
+  const hasDomain = !!domain.trim();
   const [question, setQuestion] = useState(project.question || "");
   const [focus, setFocus] = useState(project.focus || "");
   const [scopeIn, setScopeIn] = useState(project.scope_in || []);
@@ -89,7 +90,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
       h2_end: h2End,
       h3_start: h2End,
       h3_end: String(endYear),
-      scanning_enabled: workspaceScanningEnabled && scanningEnabled,
+      scanning_enabled: workspaceScanningEnabled && scanningEnabled && hasDomain,
     });
   };
 
@@ -113,7 +114,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 2 }}>
+              <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 2 }}>
                 Project
               </div>
               <div style={{ fontSize: 17, fontWeight: 500, color: c.ink }}>Edit project</div>
@@ -127,7 +128,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
 
           {/* Name */}
           <div style={{ marginBottom: 16 }} data-field="name">
-            <div style={fl}>Project name <span style={{ color: c.red800, marginLeft: 2 }}>*</span></div>
+            <div style={fl}>Project name <span style={{ marginLeft: 2 }}>*</span></div>
             <input
               style={{ ...inp, borderColor: nameError ? c.redBorder : undefined }}
               value={name}
@@ -137,6 +138,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
             {nameError && (
               <div style={{ fontSize: 11, color: c.red800, marginTop: 4 }}>Project name is required.</div>
             )}
+            <div style={legend}>* required</div>
           </div>
 
           {/* Domain */}
@@ -200,13 +202,13 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
           </div>
 
           {/* Methodology divider */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 16 }}>
             Methodology <div style={{ flex: 1, height: 1, background: c.border }} />
           </div>
 
           {/* Project Scope group */}
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 10 }}>
+            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 10 }}>
               Project scope
             </div>
             <div style={{ marginBottom: 10 }} data-field="unit">
@@ -264,24 +266,33 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
                   Scan for signals on this project
                 </div>
                 <div style={{ fontSize: 11, color: c.muted, lineHeight: 1.5 }}>
-                  {workspaceScanningEnabled
-                    ? "The AI scanner will surface relevant signals from curated sources into your Inbox."
-                    : "Enable scanning in Account Settings to activate."}
+                  {!workspaceScanningEnabled
+                    ? "Enable scanning in Account Settings to activate."
+                    : !hasDomain
+                    ? "Set a domain for this project to enable signal scanning."
+                    : "The AI scanner will surface relevant signals from curated sources into your Inbox."}
                 </div>
               </div>
               <button
                 role="switch"
                 aria-checked={workspaceScanningEnabled && scanningEnabled}
-                disabled={!workspaceScanningEnabled}
-                onClick={() => setScanningEnabled((s) => !s)}
+                disabled={!workspaceScanningEnabled || !hasDomain}
+                title={!workspaceScanningEnabled ? undefined : !hasDomain ? "Set a domain for this project to enable signal scanning" : undefined}
+                onClick={() => {
+                  if (!scanningEnabled && !hasDomain) {
+                    showToast?.("A domain is required to enable signal scanning. Add one in Project Settings.", "error");
+                    return;
+                  }
+                  setScanningEnabled((s) => !s);
+                }}
                 style={{
                   flexShrink: 0,
                   width: 40, height: 22, borderRadius: 11,
                   background: workspaceScanningEnabled && scanningEnabled ? c.ink : c.hint,
                   border: "none",
-                  cursor: workspaceScanningEnabled ? "pointer" : "default",
+                  cursor: workspaceScanningEnabled && hasDomain ? "pointer" : "default",
                   padding: 0, position: "relative", transition: "background 0.2s",
-                  opacity: workspaceScanningEnabled ? 1 : 0.5,
+                  opacity: workspaceScanningEnabled && hasDomain ? 1 : 0.5,
                 }}
               >
                 <span style={{

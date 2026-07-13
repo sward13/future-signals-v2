@@ -5,7 +5,7 @@
  * @param {{ appState: object }} props
  */
 import { useState, useEffect, useMemo } from "react";
-import { c, btnSec } from "../../styles/tokens.js";
+import { c, btnSec, fontHeading } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 
@@ -58,6 +58,13 @@ function getDefault(panel) {
   if (panel.type === "chips")      return [];
   if (panel.type === "confidence") return null;
   return "";
+}
+
+/** Returns true if the given panel value contains practitioner-entered content. */
+export function analysisHasCont(panelType, value) {
+  if (panelType === "text")  return (value || "").trim().length > 0;
+  if (panelType === "chips") return (value || []).length > 0;
+  return value !== null && value !== undefined;
 }
 
 // ─── Chips sub-panel ───────────────────────────────────────────────────────────
@@ -145,11 +152,7 @@ function ConfidencePanel({ value, onChange, prompt }) {
 function AnalysisPanel({ panel, value, onChange, selected, onSelect }) {
   const isFocused = selected === panel.id;
 
-  const hasCont = panel.type === "text"
-    ? (value || "").trim().length > 0
-    : panel.type === "chips"
-    ? (value || []).length > 0
-    : value !== null && value !== undefined;
+  const hasCont = analysisHasCont(panel.type, value);
 
   // Prompt: shown in header area for text/chips when focused or empty; confidence renders it inline
   const showPrompt = panel.type !== "confidence" && (isFocused || !hasCont);
@@ -292,8 +295,8 @@ export default function SystemAnalysisCanvas({ appState }) {
         flexShrink: 0,
       }}>
         <div>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 2 }}>{project.name}</div>
-          <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>System Analysis</div>
+          <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 2 }}>{project.name}</div>
+          <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>System Analysis</div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

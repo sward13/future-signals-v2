@@ -24,6 +24,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ─── Caller-ownership guard ───────────────────────────────────────────────────
+// Invoked with the caller's session JWT (supabase.functions.invoke). Resolves
+// the caller's workspace so the handler can verify the target resource belongs
+// to it before running any service-role query. Returns null when the JWT is
+// missing or invalid.
+async function getCallerWorkspaceId(
+  req: Request,
+  supabase: ReturnType<typeof createClient>,
+): Promise<string | null> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const { data: { user }, error } = await supabase.auth.getUser(authHeader.slice(7));
+  if (error || !user) return null;
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("id")
+    .eq("user_id", user.id)
+    .single();
+  return (workspace?.id as string | undefined) ?? null;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Input = {
@@ -82,6 +103,9 @@ serve(async (req: Request) => {
   );
 
   try {
+    const callerWorkspaceId = await getCallerWorkspaceId(req, supabase);
+    if (!callerWorkspaceId) return respond({ error: "Unauthorised" }, 401);
+
     const { project_id, threshold: thresholdParam, min_cluster_size: minSizeParam } = await req.json();
     if (!project_id) {
       return respond({ error: "project_id required" }, 400);
@@ -107,6 +131,7 @@ serve(async (req: Request) => {
     if (projectError) throw projectError;
     if (inputsError) throw inputsError;
     if (!project) return respond({ error: "Project not found" }, 404);
+    if (project.workspace_id !== callerWorkspaceId) return respond({ error: "Forbidden" }, 403);
 
     // Normalise embeddings — Supabase may return them as JSON strings or arrays
     const inputs: Input[] = (rawInputs ?? []).map((inp) => ({

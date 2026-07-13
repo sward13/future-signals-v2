@@ -4,8 +4,8 @@
  * plus optional methodology fields behind a disclosure toggle.
  * @param {{ open: boolean, onClose: () => void, onSave: (fields: object) => void }} props
  */
-import { useState, useRef, useEffect, useCallback } from "react";
-import { c, inp, ta, sel, btnP, btnG, fl, fh, badg } from "../../styles/tokens.js";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
+import { c, inp, ta, sel, btnP, btnG, fl, fh, legend } from "../../styles/tokens.js";
 import { DOMAINS } from "../../data/seeds.js";
 
 // ─── Horizon slider ────────────────────────────────────────────────────────────
@@ -14,7 +14,7 @@ import { DOMAINS } from "../../data/seeds.js";
  * HorizonSlider — graphical drag-handle slider that sets H1/H2/H3 boundaries.
  * @param {{ startYear: number, endYear: number, h1Pct: number, h2Pct: number, onH1Change: fn, onH2Change: fn }} props
  */
-export function HorizonSlider({ startYear, endYear, h1Pct, h2Pct, onH1Change, onH2Change }) {
+export const HorizonSlider = memo(function HorizonSlider({ startYear, endYear, h1Pct, h2Pct, onH1Change, onH2Change }) {
   const containerRef = useRef(null);
   const [dragging, setDragging] = useState(null); // null | 0 (h1 handle) | 1 (h2 handle)
 
@@ -201,21 +201,21 @@ export function HorizonSlider({ startYear, endYear, h1Pct, h2Pct, onH1Change, on
       {/* Horizon breakdown cards */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 14 }}>
         <div style={{ padding: "9px 12px", borderRadius: 8, background: c.green50, border: `1px solid ${c.greenBorder}` }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: c.green700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>H1 · Near</div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: c.green700, letterSpacing: "0.06em", marginBottom: 3 }}>H1 · Near</div>
           <div style={{ fontSize: 13, fontWeight: 500, color: c.green700 }}>{startYear}–{h1EndYear}</div>
         </div>
         <div style={{ padding: "9px 12px", borderRadius: 8, background: c.blue50, border: `1px solid ${c.blueBorder}` }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: c.blue700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>H2 · Transition</div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: c.blue700, letterSpacing: "0.06em", marginBottom: 3 }}>H2 · Transition</div>
           <div style={{ fontSize: 13, fontWeight: 500, color: c.blue700 }}>{h1EndYear}–{h2EndYear}</div>
         </div>
         <div style={{ padding: "9px 12px", borderRadius: 8, background: c.amber50, border: `1px solid ${c.amberBorder}` }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: c.amber700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>H3 · Emerging</div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: c.amber700, letterSpacing: "0.06em", marginBottom: 3 }}>H3 · Emerging</div>
           <div style={{ fontSize: 13, fontWeight: 500, color: c.amber700 }}>{h2EndYear}–{endYear}</div>
         </div>
       </div>
     </div>
   );
-}
+});
 
 // ─── Range year controls ───────────────────────────────────────────────────────
 
@@ -235,7 +235,7 @@ export function YearInput({ label, value, onChange, min, max }) {
         style={{
           width: 62,
           padding: "5px 7px",
-          border: `1px solid ${c.borderMid}`,
+          border: `1px solid ${c.borderStrong}`,
           borderRadius: 6,
           fontSize: 12,
           textAlign: "center",
@@ -251,7 +251,7 @@ export function YearInput({ label, value, onChange, min, max }) {
 
 // ─── Chip (tag) input ─────────────────────────────────────────────────────────
 
-export function ChipInput({ values, onChange, placeholder }) {
+export const ChipInput = memo(function ChipInput({ values, onChange, placeholder }) {
   const [text, setText] = useState("");
 
   const addChip = () => {
@@ -267,7 +267,7 @@ export function ChipInput({ values, onChange, placeholder }) {
 
   return (
     <div style={{
-      border: `1px solid ${c.borderMid}`, borderRadius: 8, background: c.white,
+      border: `1px solid ${c.borderStrong}`, borderRadius: 8, background: c.white,
       padding: "5px 8px", minHeight: 38, cursor: "text",
     }}
       onClick={(e) => e.currentTarget.querySelector("input")?.focus()}
@@ -302,7 +302,7 @@ export function ChipInput({ values, onChange, placeholder }) {
       </div>
     </div>
   );
-}
+});
 
 // ─── Mode selector ─────────────────────────────────────────────────────────────
 
@@ -355,14 +355,14 @@ function _ModeSelector_removed({ value, onChange }) {
 const CURRENT_YEAR = new Date().getFullYear();
 const DEFAULT_END_YEAR = CURRENT_YEAR + 15;
 
-export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnabled = true }) {
+export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnabled = true, showToast }) {
   // ── Form fields ──────────────────────────────────────────────────────
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
   const [question, setQuestion] = useState("");
   const [nameError, setNameError] = useState(false);
-  const [domainError, setDomainError] = useState(false);
   const [scanningEnabled, setScanningEnabled] = useState(true);
+  const hasDomain = !!domain.trim();
 
   // ── Horizon slider state ─────────────────────────────────────────────
   const [startYear, setStartYear] = useState(CURRENT_YEAR);
@@ -381,7 +381,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
 
   const resetForm = () => {
     setName(""); setDomain(""); setQuestion("");
-    setNameError(false); setDomainError(false);
+    setNameError(false);
     setStartYear(CURRENT_YEAR); setEndYear(DEFAULT_END_YEAR);
     setH1Pct(0.22); setH2Pct(0.58);
     setFocus(""); setScopeIn([]); setScopeOut([]); setGeo(""); setAssumptions(""); setStakeholders(""); setAudience("");
@@ -416,7 +416,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
       assumptions,
       stakeholders,
       audience,
-      scanning_enabled: workspaceScanningEnabled && scanningEnabled,
+      scanning_enabled: workspaceScanningEnabled && scanningEnabled && hasDomain,
     });
     resetForm();
   };
@@ -485,7 +485,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
           borderBottom: `1px solid ${c.border}`,
           flexShrink: 0,
         }}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 3 }}>
+          <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 3 }}>
             New project
           </div>
           <div style={{ fontSize: 20, fontWeight: 500, color: c.ink }}>What are you investigating?</div>
@@ -499,7 +499,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
 
           {/* ── Name ──────────────────────────────────────────── */}
           <div style={{ marginBottom: 16 }}>
-            <div style={fl}>Project name <span style={badg}>required</span></div>
+            <div style={fl}>Project name <span style={{ marginLeft: 2 }}>*</span></div>
             <input
               style={{ ...inp, borderColor: nameError ? c.redBorder : undefined }}
               type="text"
@@ -509,6 +509,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
               autoFocus
             />
             {nameError && <div style={{ fontSize: 11, color: c.red800, marginTop: 4 }}>Project name is required.</div>}
+            <div style={legend}>* required</div>
           </div>
 
           {/* ── Domain ────────────────────────────────────────── */}
@@ -529,7 +530,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
 
           {/* ── Key question ──────────────────────────────────── */}
           <div style={{ marginBottom: 24 }}>
-            <div style={fl}>Key question <span style={{ ...badg, marginLeft: 2 }}>optional</span></div>
+            <div style={fl}>Key question</div>
             <div style={fh}>The central question this project seeks to explore.</div>
             <textarea
               style={ta}
@@ -570,13 +571,13 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
 
           {/* ── Methodology fields ────────────────────────────────────── */}
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 16 }}>
               Methodology <div style={{ flex: 1, height: 1, background: c.border }} />
             </div>
 
             {/* Project Scope group */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, marginBottom: 10 }}>
+              <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 10 }}>
                 Project scope
               </div>
               <div style={{ marginBottom: 10 }}>
@@ -631,24 +632,33 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
                   Scan for signals on this project
                 </div>
                 <div style={{ fontSize: 11, color: c.muted, lineHeight: 1.5 }}>
-                  {workspaceScanningEnabled
-                    ? "The AI scanner will surface relevant signals from curated sources into your Inbox."
-                    : "Enable scanning in Account Settings to activate."}
+                  {!workspaceScanningEnabled
+                    ? "Enable scanning in Account Settings to activate."
+                    : !hasDomain
+                    ? "Set a domain for this project to enable signal scanning."
+                    : "The AI scanner will surface relevant signals from curated sources into your Inbox."}
                 </div>
               </div>
               <button
                 role="switch"
                 aria-checked={workspaceScanningEnabled && scanningEnabled}
-                disabled={!workspaceScanningEnabled}
-                onClick={() => setScanningEnabled((s) => !s)}
+                disabled={!workspaceScanningEnabled || !hasDomain}
+                title={!workspaceScanningEnabled ? undefined : !hasDomain ? "Set a domain for this project to enable signal scanning" : undefined}
+                onClick={() => {
+                  if (!scanningEnabled && !hasDomain) {
+                    showToast?.("A domain is required to enable signal scanning. Add one in Project Settings.", "error");
+                    return;
+                  }
+                  setScanningEnabled((s) => !s);
+                }}
                 style={{
                   flexShrink: 0,
                   width: 40, height: 22, borderRadius: 11,
                   background: workspaceScanningEnabled && scanningEnabled ? c.ink : c.hint,
                   border: "none",
-                  cursor: workspaceScanningEnabled ? "pointer" : "default",
+                  cursor: workspaceScanningEnabled && hasDomain ? "pointer" : "default",
                   padding: 0, position: "relative", transition: "background 0.2s",
-                  opacity: workspaceScanningEnabled ? 1 : 0.5,
+                  opacity: workspaceScanningEnabled && hasDomain ? 1 : 0.5,
                 }}
               >
                 <span style={{

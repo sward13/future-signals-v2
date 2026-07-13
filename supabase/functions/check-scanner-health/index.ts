@@ -4,7 +4,7 @@
  * per-source health metrics, upserts into source_health, then emails an admin digest.
  *
  * Required secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET,
- *                   RESEND_API_KEY, ADMIN_EMAIL
+ *                   RESEND_API_KEY, ADMIN_EMAIL, EMAIL_RELAY_SECRET
  *
  * Status values: 'healthy' | 'degraded' | 'dead' | 'noisy'
  *   dead      — last_fetched_at > 7 days ago AND no candidates in last 7 days
@@ -245,9 +245,9 @@ async function runHealthCheck() {
 // ── Email digest ────────────────────────────────────────────────────────────
 
 async function sendDigest(rows: HealthRow[], now: Date): Promise<void> {
-  const ADMIN_EMAIL      = Deno.env.get("ADMIN_EMAIL");
-  const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!ADMIN_EMAIL || !SERVICE_ROLE_KEY) return;
+  const ADMIN_EMAIL        = Deno.env.get("ADMIN_EMAIL");
+  const EMAIL_RELAY_SECRET = Deno.env.get("EMAIL_RELAY_SECRET");
+  if (!ADMIN_EMAIL || !EMAIL_RELAY_SECRET) return;
 
   const dead     = rows.filter((r) => r.status === "dead");
   const degraded = rows.filter((r) => r.status === "degraded");
@@ -327,11 +327,11 @@ async function sendDigest(rows: HealthRow[], now: Date): Promise<void> {
   const html = `<pre style="font-family:sans-serif;font-size:14px;line-height:1.6">${lines.join("\n")}</pre>`;
 
   const res = await fetch(
-    "https://tbxjudpxzovbasuomekq.supabase.co/functions/v1/send-email",
+    `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-email`,
     {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+        "x-relay-secret": EMAIL_RELAY_SECRET,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

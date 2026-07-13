@@ -4,7 +4,7 @@
  * mode='edit' → edits appState.activeScenarioId
  */
 import { useState } from "react";
-import { c, ta, sel, btnP, btnG, fl, fh } from "../../styles/tokens.js";
+import { c, ta, sel, btnP, btnG, fl, fh, legend } from "../../styles/tokens.js";
 
 // ─── Zone divider ────────────────────────────────────────────────────────────
 
@@ -13,8 +13,8 @@ function ZoneDivider({ label }) {
     <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "28px 0 24px" }}>
       <div style={{ flex: 1, height: 1, background: c.border }} />
       <span style={{
-        fontSize: 10, fontWeight: 500, color: c.hint,
-        letterSpacing: "0.08em", textTransform: "uppercase",
+        fontSize: 11, fontWeight: 500, color: c.hint,
+        letterSpacing: "0.02em",
       }}>
         {label}
       </span>
@@ -36,7 +36,7 @@ function ChipMultiSelect({ label, hint, clusters, selected, onChange }) {
       <div style={fl}>{label}</div>
       {hint && <div style={fh}>{hint}</div>}
       <div style={{
-        border: `1px solid ${c.borderMid}`, borderRadius: 8,
+        border: `1px solid ${c.borderStrong}`, borderRadius: 8,
         background: c.white, overflow: "hidden",
       }}>
         {/* Selected chips */}
@@ -130,7 +130,7 @@ function KeyDiffsList({ diffs, onChange }) {
             <input
               style={{
                 flex: 1, padding: "8px 10px",
-                border: `1px solid ${c.borderMid}`, borderRadius: 7,
+                border: `1px solid ${c.borderStrong}`, borderRadius: 7,
                 background: c.white, color: c.ink, fontSize: 13,
                 fontFamily: "inherit", outline: "none",
               }}
@@ -275,25 +275,28 @@ export default function ScenarioForm({ appState, mode }) {
 
         {/* Eyebrow */}
         <div style={{
-          fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em",
+          fontSize: 11, letterSpacing: "0.02em",
           color: c.hint, marginBottom: 12,
         }}>
           {mode === "new" ? "New scenario" : "Edit scenario"}
         </div>
 
         {/* Name */}
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Name this scenario"
-          autoFocus
-          style={{
-            width: "100%", fontSize: 24, fontWeight: 500, color: c.ink,
-            border: "none", background: "transparent", outline: "none",
-            fontFamily: "inherit", padding: "0 0 16px", borderBottom: `1px solid ${c.border}`,
-            marginBottom: 24, boxSizing: "border-box",
-          }}
-        />
+        <div style={{ marginBottom: 24 }}>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Name this scenario"
+            autoFocus
+            style={{
+              width: "100%", fontSize: 24, fontWeight: 500, color: c.ink,
+              border: "none", background: "transparent", outline: "none",
+              fontFamily: "inherit", padding: "0 0 16px", borderBottom: `1px solid ${c.border}`,
+              boxSizing: "border-box",
+            }}
+          />
+          <div style={legend}>* required</div>
+        </div>
 
         {/* Zone 1: Frame */}
         <ZoneDivider label="Frame" />
@@ -312,7 +315,7 @@ export default function ScenarioForm({ appState, mode }) {
             </select>
           </div>
           <div>
-            <div style={fl}>Archetype <span style={{ color: c.hint, fontWeight: 400 }}>(optional)</span></div>
+            <div style={fl}>Archetype</div>
             <select
               value={archetype}
               onChange={(e) => setArchetype(e.target.value)}
@@ -363,9 +366,7 @@ export default function ScenarioForm({ appState, mode }) {
 
         {/* Narrative */}
         <div style={{ marginBottom: 20 }}>
-          <div style={fl}>
-            Narrative <span style={{ color: c.hint, fontWeight: 400, fontSize: 11 }}>(optional)</span>
-          </div>
+          <div style={fl}>Narrative</div>
           <div style={fh}>How does this world come to be? Write as much or as little as is useful.</div>
           <textarea
             value={narrative}

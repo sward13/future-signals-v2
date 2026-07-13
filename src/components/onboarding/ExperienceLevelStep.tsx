@@ -46,7 +46,7 @@ function StepDots() {
                 ? c.brand
                 : isDone
                   ? "rgba(59,130,246,0.4)"
-                  : "rgba(0,0,0,0.15)",
+                  : "#9C9B96",
               transition: "all 0.2s",
             }}
           />
@@ -128,7 +128,6 @@ export function ExperienceLevelStep({ onNext, onSelect }: Props) {
             style={{
               fontSize: 10,
               fontWeight: 500,
-              textTransform: "uppercase",
               letterSpacing: "0.07em",
               color: c.brand,
               marginBottom: 8,
@@ -147,12 +146,12 @@ export function ExperienceLevelStep({ onNext, onSelect }: Props) {
               margin: "0 0 7px",
             }}
           >
-            How do you practise foresight?
+            How do you practice foresight?
           </h2>
 
           {/* Sub */}
           <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 22, lineHeight: 1.6, margin: "0 0 22px" }}>
-            Helps us calibrate guidance levels. You can change this any time.
+            Helps us calibrate guidance levels.
           </p>
 
           {/* Option cards */}

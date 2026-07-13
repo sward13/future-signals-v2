@@ -4,7 +4,7 @@
 
 Future Signals v2 is a strategic foresight SPA built with React + Vite. It guides practitioners through a structured methodology: Inputs → Clusters → System Map → System Analysis → Future Models. The Vercel prototype phase is complete — we are now building the production app with Supabase (Postgres + pgvector + RLS) as the backend.
 
-**Stack:** React 18, Vite, React Flow (`@xyflow/react`), Supabase (auth + database + storage), Vercel (hosting), inline styles using the design token system below.
+**Stack:** React 18, Vite, React Flow (`@xyflow/react`), Supabase (auth + database + storage), Vercel (hosting), Tailwind CSS v4 (via `@tailwindcss/vite`) for migrated components; `tokens.js` inline styles for legacy components.
 
 **AI model stack:** OpenAI only — `text-embedding-3-small` for embeddings, `gpt-4o-mini` for classification/tagging, `gpt-4o` for enrichment and synthesis. Do NOT reference or use any Anthropic/Claude API in implementation.
 
@@ -16,20 +16,32 @@ Future Signals v2 is a strategic foresight SPA built with React + Vite. It guide
 
 ---
 
+## Staging environment (workspace-refactor branch)
+
+- **Staging Supabase project ID:** `kptatqipjwihkdxdxlvh`
+- **Staging URL:** `https://kptatqipjwihkdxdxlvh.supabase.co`
+- **Production Supabase project ID:** `tbxjudpxzovbasuomekq` (do not run experimental migrations here)
+- **Regenerate types against staging:** `supabase gen types typescript --project-id kptatqipjwihkdxdxlvh > src/types/database.types.ts`
+- **Migration workflow:** run new migrations on staging first via `supabase db push --db-url <staging-db-url>`, then on production when merging to master
+- **Vercel preview deployments** on the `workspace-refactor` branch automatically use staging credentials (`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` pointed at staging)
+- **DB passwords** are not stored here — retrieve from Supabase Dashboard → Project Settings → Database
+
+---
+
 ## Design principles — read before any UX or form decision
 
-**`docs/design-principles.md`** is the authoritative source for all design and UX decisions. Read it before making any decision involving forms, fields, AI outputs, nudges, navigation, or empty states.
+**`design-principles.md`** is the authoritative source for all design and UX decisions. Read it before making any decision involving forms, fields, AI outputs, nudges, navigation, or empty states.
 
 Key rules extracted here for fast access — but the full document has the reasoning behind each one:
 
-1. **Zero required fields.** No entity creation form should block on an empty field. Every field must have a sensible default or be skippable.
+1. **Every field is optional except the name of the object being created.** Naming (Input title, Cluster name, Project name) is the one piece of structure the product asks for; everything else can be filled in later or left blank. No entity creation form should block on any other field being empty.
 2. **Quick Start is the default.** Enhanced fields live behind a `+ Add more detail` toggle. Never open by default on first project creation.
 3. **New fields are Enhanced unless proven otherwise.** When adding a field to any form, place it in Enhanced tier. Promotion to Quick Start requires explicit justification: "Does a practitioner need this field *before* they can get value from this entity?"
 4. **AI outputs require a practitioner action before entering the record.** Pre-populate and suggest — never silently apply. The practitioner confirms, edits, or promotes.
 5. **No gate between stages.** Practitioners can navigate to any project stage at any time, regardless of whether earlier stages are "complete." Never block navigation on prior completion.
 6. **Nudges have lifespans.** Any nudge implementation must include suppression logic: if ignored twice, suppress for 30 days. Nudges are preferences, not defaults — practitioners opt in.
 7. **Re-entry surfaces answer "where was I and what's new?" —** not "here is your progress toward completion." Dashboard and project headers are re-entry surfaces, not progress trackers.
-8. **Terminology is locked.** Use the table in the Terminology section below and in `docs/design-principles.md`. No synonyms, no drift.
+8. **Terminology is locked.** Use the table in the Terminology section below and in `design-principles.md`. No synonyms, no drift.
 
 **Quick Start field sets by entity (minimum sufficient to create):**
 
@@ -132,6 +144,143 @@ const badg  = { fontSize:10, padding:"1px 6px", borderRadius:4, background:"#f0f
 
 ---
 
+## Styling: Tailwind CSS v4
+
+### Setup
+
+Tailwind CSS v4 is installed via the `@tailwindcss/vite` plugin. There is **no `tailwind.config.js`** — all theme customization lives in the `@theme` block at the top of `src/index.css`. The plugin is registered in `vite.config.js` alongside the React plugin.
+
+### Color tokens
+
+All 38 colors from the `c{}` object in `src/styles/tokens.js` are registered as `--color-*` custom properties. Each one generates `bg-{name}`, `text-{name}`, and `border-{name}` utility classes automatically.
+
+| `tokens.js` key | CSS variable | Example classes |
+|---|---|---|
+| `bg` | `--color-bg` | `bg-bg`, `text-bg` |
+| `white` | `--color-white` | `bg-white`, `text-white` |
+| `surfaceAlt` | `--color-surface-alt` | `bg-surface-alt` |
+| `fieldBg` | `--color-field-bg` | `bg-field-bg` |
+| `canvas` | `--color-canvas` | `bg-canvas` |
+| `surfaceHover` | `--color-surface-hover` | `bg-surface-hover` |
+| `ink` | `--color-ink` | `text-ink`, `bg-ink` |
+| `muted` | `--color-muted` | `text-muted` |
+| `faint` | `--color-faint` | `text-faint` |
+| `hint` | `--color-hint` | `text-hint` |
+| `border` | `--color-border` | `border-border` |
+| `borderMid` | `--color-border-mid` | `border-border-mid` |
+| `brand` | `--color-brand` | `bg-brand`, `text-brand`, `border-brand` |
+| `brandBg` | `--color-brand-bg` | `bg-brand-bg` |
+| `brandBorder` | `--color-brand-border` | `border-brand-border` |
+| `green25` | `--color-green-25` | `bg-green-25` |
+| `green50` | `--color-green-50` | `bg-green-50` |
+| `green600` | `--color-green-600` | `bg-green-600`, `text-green-600`, `outline-green-600` |
+| `green700` | `--color-green-700` | `text-green-700` |
+| `greenBorder` | `--color-green-border` | `border-green-border` |
+| `blue50` | `--color-blue-50` | `bg-blue-50` |
+| `blue700` | `--color-blue-700` | `text-blue-700` |
+| `blueBorder` | `--color-blue-border` | `border-blue-border` |
+| `amber50` | `--color-amber-50` | `bg-amber-50` |
+| `amber700` | `--color-amber-700` | `text-amber-700` |
+| `amberBorder` | `--color-amber-border` | `border-amber-border` |
+| `violet50` | `--color-violet-50` | `bg-violet-50` |
+| `violet700` | `--color-violet-700` | `text-violet-700` |
+| `violetBorder` | `--color-violet-border` | `border-violet-border` |
+| `cyan50` | `--color-cyan-50` | `bg-cyan-50` |
+| `cyan700` | `--color-cyan-700` | `text-cyan-700` |
+| `cyanBorder` | `--color-cyan-border` | `border-cyan-border` |
+| `red50` | `--color-red-50` | `bg-red-50` |
+| `red800` | `--color-red-800` | `text-red-800` |
+| `redBorder` | `--color-red-border` | `border-red-border` |
+| `teal50` | `--color-teal-50` | `bg-teal-50` |
+| `teal700` | `--color-teal-700` | `text-teal-700` |
+| `tealBorder` | `--color-teal-border` | `border-teal-border` |
+
+### Spacing tokens
+
+Seven off-grid values from the primitive objects (`inp`, `btnP`, etc.) are defined as custom spacing tokens. Values already on the 4px base grid (`4px=1`, `8px=2`, `12px=3`, `16px=4`) and Tailwind's fractional defaults (`6px=1.5`, `10px=2.5`) are **not** redefined — use Tailwind's built-in scale directly for those.
+
+**Naming convention:** Tailwind v4 CSS variable names cannot contain dots, so the decimal separator is encoded as an underscore. The class suffix still uses a dot. Example: class `p-1.75` → CSS variable `--spacing-1_75`.
+
+| CSS variable | Value | Class suffix | Source in tokens.js |
+|---|---|---|---|
+| `--spacing-px` | `1px` | `p-px`, `m-px`, etc. | `badg` padding-y |
+| `--spacing-1_25` | `0.3125rem` (5px) | `p-1.25`, `gap-1.25`, etc. | `fl` margin-bottom |
+| `--spacing-1_75` | `0.4375rem` (7px) | `p-1.75`, `rounded-1.75`, etc. | `btnSm`/`btnG` padding-y, border-radius |
+| `--spacing-2_25` | `0.5625rem` (9px) | `p-2.25`, `py-2.25`, etc. | `inp`/`btnSec` padding-y |
+| `--spacing-2_75` | `0.6875rem` (11px) | `px-2.75`, etc. | `inp` padding-x |
+| `--spacing-4_5` | `1.125rem` (18px) | `px-4.5`, etc. | `btnSec` padding-x |
+| `--spacing-5_5` | `1.375rem` (22px) | `px-5.5`, etc. | `btnP` padding-x |
+
+### Typography tokens
+
+Two scalars extracted from the inline-style primitive objects and promoted to `@theme`. Not in `tokens.js` — `c{}` is color-only; the primitive objects hold composite styles. These scalars have no natural home in either structure.
+
+| CSS variable | Value | Tailwind class | Source in tokens.js |
+|---|---|---|---|
+| `--text-ui` | `0.8125rem` (13px) | `text-ui` | `inp.fontSize`, `btnP.fontSize`, `btnSec.fontSize` — 115+ occurrences |
+| `--leading-body` | `1.55` | `leading-body` | `ta.lineHeight`, descriptions, canvas labels — 20+ occurrences |
+
+### Border-radius tokens
+
+All four radius values are now in `@theme` as `--radius-*` tokens. Tailwind v4 generates `rounded-{name}` utility classes from these automatically.
+
+| CSS variable | Value | Tailwind class | Use |
+|---|---|---|---|
+| `--radius-container` | `8px` | `rounded-container` | Containers, inputs, modals, drawers, cards |
+| `--radius-btn` | `7px` | `rounded-btn` | Compact interactive elements: toggle buttons, small action pills |
+| `--radius-pill` | `10px` | `rounded-pill` | Pill badges: resume pill, scope tags, subtype chips |
+| `--radius-chip` | `4px` | `rounded-chip` | Micro chips: AnalysisFillGrid cells, tight inline labels |
+
+`rounded-btn` is **not an inconsistency** with `rounded-container` — it is an intentional second tier for compact elements. Do not replace `rounded-btn` with `rounded-container`. Do not use `rounded-[7px]` or `rounded-lg` — use the named tokens.
+
+When inline-style components that currently use raw `borderRadius` values are migrated to Tailwind, replace:
+- `borderRadius: 8` → `rounded-container`
+- `borderRadius: 7` → `rounded-btn`
+- `borderRadius: 10` → `rounded-pill`
+- `borderRadius: 4` → `rounded-chip`
+
+### Shadow token
+
+| CSS variable | Value | Use |
+|---|---|---|
+| `--shadow-hover` | `0 1px 6px rgba(0,0,0,0.07)` | Card hover lift (e.g. phase cards on Overview) |
+
+Use as an arbitrary value in Tailwind: `shadow-[var(--shadow-hover)]`, or in inline styles as `boxShadow: "var(--shadow-hover)"` once the component is migrated.
+
+### 0.5px borders
+
+Where a `0.5px` border is required (e.g. the sidebar border-right, panel dividers), use a border-width token (`border-[0.5px]` arbitrary value) rather than a raw inline style. Do not add a custom `--spacing` entry for sub-pixel values.
+
+### Migration status and tokens.js
+
+**`src/styles/tokens.js` is still the active design system** for any component not yet migrated to Tailwind classes. Do not remove or modify it until migration is complete.
+
+- Components that **have not** been migrated: continue importing from `tokens.js` using inline styles as before.
+- Components that **have** been migrated to Tailwind classes: must **not** import from `tokens.js`. The Tailwind classes and the `@theme` variables are the sole source of style for migrated components.
+- The `@theme` block in `src/index.css` and `tokens.js` must stay in sync — if a token value changes, update both.
+
+**Migrated components (no `tokens.js` import):**
+- `src/components/shared/HorizonBar.jsx`
+- `src/components/clusters/ClustersPanel.jsx`
+- `src/components/screens/ProjectOverview.jsx`
+
+### Dynamic and conditional classes
+
+Use **`clsx`** for any component that assembles class strings conditionally. Do not use inline ternaries directly inside a `className` string or string concatenation.
+
+```jsx
+// ✓ correct
+import clsx from 'clsx';
+<div className={clsx('base-class', isActive && 'bg-brand text-white', hasError && 'border-red-border')} />
+
+// ✗ avoid
+<div className={`base-class ${isActive ? 'bg-brand text-white' : ''}`} />
+```
+
+`clsx` is installed (`npm install clsx` — already in `package.json`).
+
+---
+
 ## Typography
 
 **Heading font:** Roboto (Google Fonts)
@@ -144,7 +293,7 @@ Scale:
 - Body / table rows: 13px / weight 400
 - Labels / nav: 12–12.5px / weight 400
 - Metadata / badges: 10–11px
-- Column headers: 10px / weight 500 / uppercase / letter-spacing 0.07em
+- Column headers: 11px / weight 500 / uppercase / letter-spacing 0.02em
 - Micro-labels: 9px / weight 500 / uppercase / letter-spacing 0.08em (e.g. KEY QUESTION)
 
 ---
@@ -162,8 +311,9 @@ The sidebar is **196px wide**, `background: c.bg`, with a single `0.5px` border-
 - Dashboard *(global)*
 - Inbox *(global, shows unread count badge in `alertBg/alertText`)*
 - `0.5px` divider
-- Inputs *(project-scoped, shows input count)*
-- Clusters *(project-scoped, shows cluster count)*
+- Overview *(project-scoped, first item — default landing screen when opening a project)*
+- Scan *(project-scoped, shows input count — screen key `"project"`, file `ProjectDetail.jsx`)*
+- Cluster *(project-scoped, shows cluster count — screen key `"cluster"`, file `ClusterScreen.jsx`)*
 - System Map *(project-scoped)*
 - System Analysis *(project-scoped)*
 - Future Models *(project-scoped)*
@@ -174,60 +324,76 @@ The sidebar is **196px wide**, `background: c.bg`, with a single `0.5px` border-
 
 **Visibility rules:**
 - Dashboard and Inbox are always visible.
-- Divider and all project-scoped items (Inputs → Export) are only visible when `activeProjectId` is set.
+- Divider and all project-scoped items (Scan → Export) are only visible when `activeProjectId` is set.
 - Navigating to Dashboard or Inbox clears the active project context.
 
 ---
 
-## Page header — Inputs screen pattern
+## Page header — Overview screen (project landing)
 
-This pattern applies to all project-scoped screens.
+`ProjectOverview.jsx` is the default landing screen when a project is opened (`openProject(id)` navigates to `"project-overview"`). It owns all project-context header content. Other project-scoped screens have minimal headers — just an eyebrow + screen title.
 
+**Overview screen layout (top to bottom):**
 ```
-breadcrumb        → "Projects › {project name}"  (11px, c.faint)
-title row         → {Project name} (22px/500) + [Project settings ⚙] + [Domain tag] + CTAs (right-aligned)
-key question block→ blue left-border card (see below)
-time horizon bar  → proportional H1/H2/H3 bar with date labels
-```
-
-**Key question block:**
-```js
-{
-  padding: "9px 14px",
-  borderLeft: `2px solid ${c.brand}`,
-  background: c.brandDeep,
-  borderRadius: "0 6px 6px 0",
-}
-// Label: 9px, uppercase, tracked, c.brand — "KEY QUESTION"
-// Body: 13px, italic, c.ink
+eyebrow           → project.name (11px, c.faint)
+title row         → "Overview" (22px/500) + [⚙ Project settings] right-aligned
+key question card → 60% question (13px italic) / 40% Domain + Geography
+HorizonBar        → proportional H1/H2/H3 coloured band (shared component)
+scanner card      → "N new signals since your last visit" + source count + CTA buttons
+context card      → collapsible: Focus, Audience, Stakeholders, Assumptions, In scope, Out of scope
+phase cards       → 5-column grid: Scan · Cluster · System Map · System Analysis · Future Models
 ```
 
-**"Project settings" button** (not "Edit project") — opens the full project configuration panel (name, domain, key question, time horizons, focus, geography, stakeholders). Use a gear icon (⚙). Style as `btnSec`.
+**Phase card status borders:**
+- Active today (< 24 h) → `borderTop: 3px solid c.brand` + "Active today" label
+- Active this week (< 7 d) → `borderTop: 3px solid c.green600` + "Active this week" label
+- Not started / earlier → `borderTop: 3px solid c.border`, no label
+- Most-recently-active stage gets a "Continue here" pill (`background: c.brand, color: c.white`)
+
+**"N new signals since your last visit"** compares `inputs.created_at` to `priorVisitedAt`, captured at component mount via `useState(() => project?.last_visited_at ?? null)`. `openProject()` stamps `last_visited_at` fire-and-forget (no `setProjects` call), so state still holds the prior session's value at mount time.
+
+**`projectSources`** is fetched per active project in a `useEffect` on `activeProjectId` in `useAppState.js` (the `project_sources` table has no `workspace_id` — must be scoped by `project_id`). Exposed as `appState.projectSources`.
+
+**"Project settings" button** (not "Edit project") — opens `EditProjectDrawer`. Gear icon ⚙, styled `btnSec`. The drawer's prop API: `{ project, onClose, onSave, onDelete, workspaceScanningEnabled }` — not `appState`.
+
+**Scan screen header (trimmed):**
+The Scan screen (`ProjectDetail.jsx`) no longer shows the key question, metadata strip, or HorizonBar. Those now live on Overview. The Scan header contains only:
+```
+eyebrow  → project.name (11px, c.hint, letter-spacing 0.02em)
+title    → "Scan" (22px/500)
+CTAs     → "Add from Inbox" + "Add an input" (right-aligned)
+```
+
+**Scan screen input tabs:** All · Unassigned · Clustered · AI Suggested (4th tab). The AI Suggested tab shows scanner-promoted candidates scoped to this project (`project_id === null`, `is_seeded`, `metadata.source === "scanner"`, `!metadata.dismissed`, with a `metadata.suggested_projects` entry matching `activeProjectId`). Partitioned into Emerging (novel — `metadata.suggested_projects[].classification === "emerging"`) and Reinforcing (confirms existing clusters). Per-row hover actions: **Accept** (`saveInputToProject(id, activeProjectId)`) and **Dismiss** (`dismissSuggestedInput(input)`). Batch actions in sticky bar: **Accept N** (`saveInputsToProject`) and **Dismiss N**. Accepted inputs drop from AI Suggested and appear in All/Unassigned immediately via optimistic state. Horizon filter is omitted from this tab — scanner candidates don't have `horizon` set at promotion time.
 
 ---
 
-## Right panel — structure and rules
+## Clusters panel — structure and rules
 
-Width: `240px`. Contains three cards separated by `14px` gap.
+The 320px right-hand panel in the Cluster workspace (`ClusterScreen.jsx`). Project metadata lives on Overview; System Map status is visible via the nav item.
 
-**1. Clusters card**
-- Title: "Clusters" + built count badge (`builtBg/builtText`)
-- Full-width "New cluster" button (`btnFull`)
-- Lists existing clusters (show up to 4, then "View all" affordance)
-- Each cluster shows: subtype badge + horizon badge + input count + name
+**Panel header:**
+- Single row: Manual/Suggested mode toggle (left) + list/card view toggle (right, hidden in Suggested mode). `pt-4` (16px) top padding from panel top edge to toggle row. The "Clusters" heading has been removed — the panel header contains only the mode/view controls.
+- "+ New cluster" button lives in the ClusterScreen page header (above the panel), not inside ClustersPanel.
 
-**2. System Map card**
-- Title: "System Map" + binary status badge: "Built" (`builtBg/builtText`) or "Not built" (`notBuiltBg/notBuiltText`)
-- No count — there is always exactly one System Map per project, or none
-- If built: show canvas thumbnail (SVG/image snapshot), clickable → navigates to System Map. Footer strip shows node count + relationship count + "Open →"
-- If not built: explanatory text + full-width "Go to System Map →" button (`btnFull`)
+**Manual mode** (default):
+- Drop zone strip below header — dashed border, `c.faint` text "⊕ Drop inputs here to create a new cluster". Highlights `c.brand` / `c.brandBg` on drag-over. Drop opens ClusterDrawer with inputs pre-selected.
+- Scrollable cluster list — two view modes:
+  - **List view:** column header row (Name | Type | H | Likelihood | #); compact rows with `HorizTag` in a 34px column and `LikelihoodTag` in a 74px column. `LikelihoodTag` is a local Tailwind-only component in `ClustersPanel.jsx` — no `tokens.js` import.
+  - **Card view:** type badge + horizon badge (header row), name, description (always rendered with `minHeight: 34` to hold 2-line space even when empty), footer pinned via `marginTop: "auto"` (input count left, likelihood right). Cards fill grid cell height via `display:flex; flexDirection:column; height:100%` + CSS Grid default `align-items:stretch`.
+- **Multi-select (card view):** per-card checkboxes fade in on hover or when any card is selected (`anySelected` prop). Shift-click range-selects via `visibleClusters` render order. `selectedClusterIds` Set is shared across list and card view bulk-delete. Sticky action bar at bottom of scroll area shows "{N} selected · Delete N · ✕ Clear" when selection is non-empty; ConfirmDialog before bulk delete.
+- Drag-and-drop targets: move (default) or copy (⌥ Option held). Drop target shows "Move"/"Copy" pill in `c.brand` / green.
+- Cluster detail panel slides in from right on click (translateX, 220ms). Shows badges, name, description, linked inputs with ✕ remove per row, Edit button (opens `ClusterDrawer` in `mode="edit"` — full-field editing of name, subtype, horizon, likelihood, description; linked-inputs section hidden in edit mode), Delete button in footer. Closes on back-click, Escape, or clicking the inputs panel.
 
-**3. Project details card**
-- Title: "Project details" — no Edit button
-- Read-only summary: Domain, Focus, Geography, Stakeholders
-- Populated fields: `c.ink`, 11.5px
-- Empty fields: italic, `c.faint` — "Not set"
-- Editing is done via "Project settings" in the page header
+**Suggested mode:**
+- Toolbar: sensitivity toggle (Tight / Balanced / Exploratory) + "✦ Suggest clustering" button.
+- Calls `compute-cluster-suggestions` edge function. Requires `OPENAI_API_KEY` on the Supabase project.
+- Section 1 "Add to existing clusters": assignment suggestion cards — Accept / Dismiss per card, Accept all header link, Remove per input row.
+- Section 2 "New cluster suggestions": new cluster cards — Create cluster / Edit (inline) / Dismiss. Rationale expandable via "· Why this cluster?".
+- Empty states: "No suggestions yet" before first run; "All suggestions resolved" after all acted on.
+
+**Props ClustersPanel receives from ClusterScreen:**
+`projectId`, `clusters`, `inputs`, `onNewCluster`, `removeInputFromCluster`, `deleteCluster`, `showToast`, `dragIds`, `dragIsCopy`, `onDrop`, `onDropToNewCluster`, `assignInputToCluster`, `addCluster`, `updateCluster`
 
 ---
 
@@ -264,12 +430,29 @@ Width: `240px`. Contains three cards separated by `14px` gap.
 - The Inbox holds inputs that have not yet been assigned to a project (`project_id === null`). It is a workspace-level screen.
 - The Inbox's AI Suggested section has its own search/filter bar, including a Project filter (filters on `metadata.suggested_projects`). It defaults to "All projects" (no filter) on fresh page load and on first navigation to the Inbox. Within a session, the filter persists whatever the user last selected (including cleared).
 - A project's "Review N suggestions" action (Project Detail) sets `appState.inboxProjectFilter` and navigates to the Inbox — the AI Suggested Project filter picks this up as its initial selection (deep-link), pre-filtering AI Suggested to that project on arrival.
-- Clustering and System Map are project-scoped screens. They only appear in the sidebar when a project is active.
+- **Overview is the default project landing screen.** `openProject(id)` navigates to `"project-overview"`, not `"project"` (Inputs). Every entry path to a project — Dashboard card click, Inbox links, sidebar project list, new project creation — lands on Overview first.
+- The System Map is project-scoped and only appears in the sidebar when a project is active. Scan and Cluster are separate screens: `ProjectDetail.jsx` (`"project"`) is inputs-only; `ClusterScreen.jsx` (`"cluster"`) contains the InputRail + ClustersPanel and owns all drag-and-drop state.
 - At workspace level (Dashboard, Inbox, no active project) the sidebar shows only: Dashboard, Inbox. No project-scoped items.
 - Navigating to Dashboard or Inbox via the sidebar clears the active project context.
 - The Dashboard stats strip shows workspace-level counts only: Projects and Inputs in Inbox. Per-project counts appear on each project card.
 - There is always exactly one System Map per project (binary: built or not built). Never show a count.
 - Workspace is 1:1 with user account in v2 — no team/org layer yet.
+
+---
+
+## Sample project cloning
+
+Every new user finishes onboarding with a second project alongside their own: a full, working clone of a canonical template project, so they see a completed methodology pass (Signal → Cluster → System Map → Analysis → Scenario) rather than inferring it from empty states. See `Sample_Project_Onboarding_PRD.md` for the full spec.
+
+- **`server-lib/clone-project.js`** — `cloneProject(sourceProjectId, destWorkspaceId, options)` and `rollback(projectId, clonedInputIds)`. Service-role only (RLS blocks a client session from reading another workspace's data, and there's no reason to trust a client-supplied destination workspace). Walks all 13 project-scoped tables (`inputs`, `clusters`, `cluster_inputs`, `scenarios`, `scenario_clusters`, `relationships`, `canvas_nodes`, `canvas_text_nodes`, `analyses`, `preferred_futures`, `strategic_options`, `cluster_suggestions`, `project_negative_pool`), generating a new id per row and remapping every FK reference — including the non-FK-enforced jsonb/array id references (`preferred_futures.scenario_ids`, `strategic_options.scenario_ids`, `cluster_suggestions.input_ids`), which get filtered (dropping anything that doesn't resolve) rather than erroring.
+- **`project_candidates` is never cloned**, by either path — it's derived scanner data (Layer 3 relevance scores against a specific project's key question at a point in time) that goes stale the moment scanning is re-enabled on a clone. This was a deliberate exclusion added 2026-07-09 after the fact; if a clone predates that fix, its stale `project_candidates` rows need a one-off cleanup (`delete from project_candidates where project_id = '<clone-id>'`).
+- **`project_sources`** is cloned only when `options.includeProjectSources` is true (the template-creation path), always pointing at the existing shared `source_id` — never a new row in `sources`/`candidates` (both are global, url-unique registries, never cloned).
+- **`sources`/`candidates` themselves are never touched** by cloning.
+- **`options.includeProjectSources`**: `true` for template creation (John's live project → the templates account, one-time/re-run only if the source changes), `false` for per-user clones (every onboarding completion). `options.isSampleTemplate` is `true` only on the one canonical templates-account project. `options.sourceTemplateId` is set to the templates-account project's id on a per-user clone.
+- **Reads/writes are paginated/chunked**, not single-shot — PostgREST caps an unranged `select()` at ~1000 rows and doesn't auto-paginate; a real project's `project_candidates` (before it was excluded) hit 8,100 rows and would have silently truncated. `selectAll()` pages every multi-row read; `insertMany()` chunks every insert at 500 rows.
+- **`api/clone-sample-project.js`** — the onboarding-facing endpoint. Bearer-auth (same pattern as `seed-onboarding.js`): verifies the token, derives `destWorkspaceId` from the caller's own session server-side, and reads the source project id only from `SAMPLE_TEMPLATE_PROJECT_ID` (env var) — never from the request body. Wired into `App.jsx`'s `handleOnboardingComplete` as a fire-and-forget call alongside the existing `onboarding_completed` write; on success it calls `appState.refreshProjects()` so the clone appears without a manual reload (the redirect itself never waits on it).
+- **Dashboard labeling**: `ProjectCard` and the table/list view both prefix the name with `"[Sample] "` when `project.source_template_id` is non-null — computed at render time only, `project.name` is never mutated. Scoped to the two dashboard list views; `ProjectOverview` and other name-rendering surfaces intentionally don't show the prefix.
+- **`scripts/clone-project.js`** — standalone CLI for testing/re-running a clone outside the onboarding flow (e.g. regenerating a template after the source project changes). Not imported by the app.
 
 ---
 
@@ -286,7 +469,10 @@ All app state lives in a single `useAppState` hook (or context) at the root leve
   scenarios: [],
   projects: [],
   activeProjectId: null,
-  activeScreen: 'dashboard',  // 'dashboard' | 'inbox' | 'project' | 'clustering' | 'systemMap' | 'systemAnalysis' | 'futureModels'
+  activeScreen: 'dashboard',  // 'dashboard' | 'inbox' | 'project-overview' | 'project' | 'cluster' | 'scenarios' | 'analysis' | 'future-models'
+                              // 'project' = Scan screen (ProjectDetail.jsx); 'cluster' = Cluster screen (ClusterScreen.jsx)
+                              // 'clustering' is a legacy case in App.jsx that redirects to ClusterScreen (preserved for localStorage restore)
+                              // openProject(id) navigates to 'project-overview' — Overview is the default project landing screen
   drawer: null,               // null | { type: 'newInput' | 'newCluster' | 'inputDetail' | 'clusterDetail' | 'projectSettings', data: {} }
   toast: null,                // null | { message, type: 'success' | 'error' }
 }
@@ -320,8 +506,10 @@ src/
     screens/
       Dashboard.jsx
       Inbox.jsx
-      ProjectDetail.jsx     ← Inputs screen
-      Clustering.jsx        ← Clusters screen
+      ProjectOverview.jsx   ← default project landing: key question, horizons, scanner, phase cards
+      ProjectDetail.jsx     ← Scan screen (inputs table only; no clustering; screen key "project")
+      ClusterScreen.jsx     ← Cluster screen (InputRail + ClustersPanel + all drag state; screen key "cluster")
+      Clustering.jsx        ← dead code; no longer imported (legacy file, safe to delete later)
       SystemMap.jsx
       SystemAnalysis.jsx
       FutureModels.jsx
@@ -330,19 +518,35 @@ src/
       InputDrawer.jsx
       SeededSignalCard.jsx
     clusters/
-      ClusterCard.jsx
-      ClusterDrawer.jsx
+      ClusterCard.jsx           ← card-view item for cluster in ClustersPanel
+      ClusterDrawer.jsx         ← create/edit cluster slide-over
+      ClusterDetailPanel.jsx    ← sliding detail panel inside ClustersPanel
+      ClustersPanel.jsx         ← 320px right-hand panel (Manual/Suggested modes)
+      ClusterSuggestions.jsx    ← Suggested mode content: AI suggestion cards
+      DragGhost.jsx             ← portal-based custom drag ghost element
     shared/
       Tag.jsx               ← QualityBadge, HorizonTag, SubtypeTag
       EmptyState.jsx
-      RightPanel.jsx        ← shared right panel (Clusters + SystemMap + ProjectDetails cards)
-      ClusterAssignMenu.jsx ← shared portal-based cluster picker; used by all "Assign →" buttons
+      HorizonBar.jsx        ← proportional H1/H2/H3 time horizon band; used by ProjectOverview
+      ClusterAssignMenu.jsx ← portal-based cluster picker; used by all "Assign →" buttons
+      FilterDropdown.jsx    ← reusable filter pill + dropdown; used by ProjectDetail, Inbox, ClusterScreen
   data/
-    seeds.js
+    seeds.js                ← DOMAINS, STEEPLED, DOMAIN_META, SEEDED_SIGNALS_POOL, DEFAULT_SEEDED_INPUTS. The SAMPLE_PROJECTS/SAMPLE_CLUSTERS/SAMPLE_SCENARIOS/SAMPLE_CANVAS_NODES/SAMPLE_RELATIONSHIPS dead data (an abandoned earlier sample-project attempt) was removed 2026-07-09 — superseded by the clone-based sample project (see below)
   styles/
     tokens.js               ← c{} object and shared style primitives
   prototypes/
     future-signals-inputs-redesign_4.html   ← visual reference only
+
+api/                        ← Vercel serverless functions — see "Vercel function-count limit" below before adding new endpoints
+  scan.js, score.js, classify.js, trigger-score.js, run-health-check.js  ← cron-triggered (see Security patterns for API endpoints)
+  seed-onboarding.js, scrape.js, clone-sample-project.js                ← client-callable, Bearer-auth
+  unsubscribe.js, validate-feed.js
+server-lib/                 ← shared server-side logic imported by api/*.js. Deliberately NOT under api/ — see gotcha below
+  cron-auth.js               ← cronSecretOk / bearerToken helpers
+  scoring.js                 ← Layer 3 scoring primitives (cosineSimilarity, recencyScore, CREDIBILITY_SCORES)
+  clone-project.js           ← cloneProject() / rollback() — see "Sample project cloning" below
+scripts/
+  clone-project.js           ← standalone CLI runner for cloneProject(), not wired into the app. Usage: `node --env-file=.env.local scripts/clone-project.js --source <id> --dest-workspace <id> [--include-sources] [--sample-template] [--source-template-id <id>]`
 ```
 
 ---
@@ -418,7 +622,10 @@ All tables carry `workspace_id` and (where applicable) `project_id`. `workspace_
   scope_out: string[],                   // added 2026-04-28 — explicitly out-of-scope topics; used as a hard/soft penalty in Layer 3 scoring
   scanning_enabled: boolean,             // per-project scanner toggle; workspace_settings.scanning_enabled is the workspace-wide override (see Known database gotchas)
   last_reviewed_at: string|null,         // Inbox inactivity detection
+  last_visited_at: string|null,          // stamped fire-and-forget in openProject(); used by ProjectOverview for "N new signals since your last visit"
   key_question_embedding: number[]|null, // internal — cached embedding of `question` only; api/score.js builds a richer in-memory embedding (question + focus) at scoring time but never overwrites this cache
+  is_sample_template: boolean,           // added 2026-07-09 — true only for the one canonical templates-account copy (see Sample_Project_Onboarding_PRD.md); false on every per-user clone and every normal project
+  source_template_id: string|null,       // added 2026-07-09 — self-referencing FK to projects(id); set to the templates-account project's id on a per-user clone, null otherwise. Non-null is what the Dashboard checks to render the "[Sample] " name prefix (computed at render time — project.name itself is never modified)
   created_at: string,
 }
 ```
@@ -515,9 +722,10 @@ Key decisions already made:
 
 | Spec | When to read |
 |---|---|
-| `docs/design-principles.md` | Before any UX, form, AI output, nudge, or navigation decision |
+| `design-principles.md` | Before any UX, form, AI output, nudge, or navigation decision |
 | `signal-scanner-spec.md` | Any work touching the scanner, candidate ingestion, scoring, or onboarding seeding |
-| `docs/onboarding-spec.md` | Any work touching the onboarding flow, project creation, or first-session experience |
+| `FutureSignals_Onboarding_ProgressiveDisclosure_Spec.md` | Any work touching the onboarding flow, project creation, or first-session experience. Its sample-project section (read-only project + structural-only "promote") is superseded by `Sample_Project_Onboarding_PRD.md`'s clone-based model — that section of this spec has not yet been formally retired/updated, don't treat it as current for sample-project behavior |
+| `Sample_Project_Onboarding_PRD.md` | Any work touching sample-project cloning, `cloneProject()`, `is_sample_template`/`source_template_id`, or the per-user clone triggered at onboarding completion — see also "Sample project cloning" above |
 
 ---
 
@@ -535,9 +743,16 @@ Key decisions already made:
   - Relevance scores live on the **promoted `inputs` row**, not on `candidates`: `inputs.metadata.suggested_projects: [{id, name, score, classification}]` and `inputs.metadata.top_score` (set by `api/score.js` at promotion time).
   - Domain relevance for a promoted candidate is implicit, not a column: `api/score.js` only promotes a candidate into the workspace whose project scored it highest, so anything in a workspace's Inbox (`inputs.project_id IS NULL`) is inherently relevant to that workspace's projects.
 - `user_preferences` table (added 2026-06-14) holds per-user digest preferences (`digest_unsubscribed`), keyed by `user_id` referencing `auth.users.id`, RLS enabled. A row may not exist for every user — always `maybeSingle()` on reads and `upsert` on writes.
+- **`trg_auto_populate_project_sources`** — an `AFTER INSERT` trigger on `projects` (documented in migration `20260709140000_document_auto_populate_project_sources.sql`, but was live on both databases long before that, undiscovered until a clone-testing session found it). On every new project row, it auto-inserts `project_sources` rows for every active `sources` row matching the new project's `domain`, with `opted_in` hardcoded `true`. This fires independent of and invisible to any application code that inserts a project — `cloneProject()` has to explicitly purge or neutralize whatever it creates (see "Sample project cloning" above). If you ever see unexpected `project_sources` rows appear right after a project insert, this is why.
+- **Undocumented-schema-change pattern**: `projects.source_template_id`, `projects.is_sample_template`, `projects.last_visited_at`, `analyses.updated_at`, and the trigger above were all added directly to staging/production (dashboard or ad hoc SQL) with no migration file, discovered only via later audits and backfilled with documentation migrations. If a column or trigger seems to exist live but isn't accounted for in `supabase/migrations/`, this has happened before and will likely happen again — confirm live state directly (`information_schema.columns`, `pg_trigger`) rather than assuming the migrations directory is complete.
 
 ### `database.types.ts` can lag behind `supabase/migrations/`
-Regenerated 2026-06-14. **Known gap as of 2026-06-23:** `canvas_text_nodes` table (added in `20260624_canvas_text_nodes.sql`) is not yet in the generated types file — use raw Supabase queries or cast as needed until it's regenerated. `supabase migration list` shows local and remote in sync. **For schema questions, always treat `supabase/migrations/` (read chronologically, latest wins) as the source of truth, not `database.types.ts`** — this file will drift again after future migrations until it's regenerated.
+Regenerated 2026-07-09. Now includes `canvas_text_nodes`, `projects.last_visited_at`, `analyses.updated_at`, `projects.source_template_id`, and `projects.is_sample_template`. **For schema questions, always treat `supabase/migrations/` (read chronologically, latest wins) as the source of truth, not `database.types.ts`** — this file will drift again after future migrations until regenerated with: `supabase gen types typescript --project-id kptatqipjwihkdxdxlvh > src/types/database.types.ts`
+
+### `supabase db push` version-collision bug
+Multiple migration files sharing the same bare `YYYYMMDD` version (no time component) will collide in `supabase_migrations.schema_migrations`'s primary key on push, and — more confusingly — once one of them is applied, `db push`/`db push --dry-run` starts failing with `"Remote migration versions not found in local migrations directory"` even for unrelated, correctly-versioned migrations. This recurred repeatedly in the 2026-07-09 session. Fix each time: `supabase migration repair --linked --status reverted <bare-date-version> [<other-bare-date-version>...]`, then retry `db push --dry-run` (sometimes needs `--include-all` if it now reports "local migration files to be inserted before the last migration on remote"). This is a bookkeeping-only operation — it doesn't touch actual schema/data, and re-applying an already-applied idempotent migration is harmless. Avoid the root cause going forward: give new migrations a full timestamp version (`YYYYMMDDHHMMSS_description.sql`), not just a bare date, especially when another migration might land the same day.
+
+Recurred again on 2026-07-13 during the workspace-refactor merge-readiness push (versions 20260705 and 20260709). Same fix worked: `migration repair --status reverted 20260705 20260709`, then `db push --dry-run --include-all` came back clean listing both files, then the real `db push --include-all` applied cleanly, with NOTICEs confirming both migrations were already-satisfied no-ops. One new wrinkle: `migration list --linked` kept showing both versions as unmatched even after the successful push—this is a display bug in CLI 2.84.2, not a sign the ledger or schema is actually wrong. Confirm real state directly with `information_schema.columns` or `pg_policies` rather than trusting this command's output. Upgraded the CLI to 2.109.1 as a mitigation; not yet confirmed whether that resolves the display bug itself.
 
 ### RLS patterns
 Two patterns are in use, depending on the table's key column:
@@ -558,7 +773,7 @@ Two patterns are in use, depending on the table's key column:
 
 ### Environment variable conventions
 - **Frontend (`src/`)**: only `VITE_`-prefixed vars are available to the client bundle — `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_ENABLE_QA_TOOLS`.
-- **Server-side (`api/*.js`, Supabase Edge Functions)**: bare names, never `VITE_`-prefixed — `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `CRON_SECRET`, `APP_URL`, `ADMIN_EMAIL`, `RESEND_API_KEY`, `UNSUBSCRIBE_SECRET`.
+- **Server-side (`api/*.js`, Supabase Edge Functions)**: bare names, never `VITE_`-prefixed — `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `CRON_SECRET`, `APP_URL`, `ADMIN_EMAIL`, `RESEND_API_KEY`, `UNSUBSCRIBE_SECRET`, `SAMPLE_TEMPLATE_PROJECT_ID` (added 2026-07-09 — the templates-account project id `cloneProject()` reads for the per-user clone; not a secret, set via `vercel env add ... --no-sensitive` so it stays readable, but still only ever read server-side, never client-supplied. Production: `566911c6-65b4-4648-962f-f0e662033cb8`. Preview/`workspace-refactor`: `44b699ff-0fb1-44fb-9eb6-17a077cc7c9d`).
 
 ### Cron-triggered endpoints
 - Both Vercel functions (`api/scan.js`, `api/score.js`) and Supabase Edge Functions (`check-scanner-health`, `send-weekly-digest`) that run on a schedule check an `x-cron-secret` header against `CRON_SECRET` (`process.env.CRON_SECRET` / `Deno.env.get("CRON_SECRET")`) and return 401 on mismatch. Use this pattern for any new cron-triggered endpoint.
@@ -569,6 +784,9 @@ Two patterns are in use, depending on the table's key column:
 
 ### Security patterns for API endpoints
 - **Cron-only endpoints** (`scan.js`, `classify.js`, `score.js`, `run-health-check.js`): check `x-cron-secret` header, return 401 on mismatch.
-- **Client-callable endpoints** (`scrape.js`, `seed-onboarding.js`): require a Supabase Bearer token, verify with `supabase.auth.getUser(token)`, return 401 if invalid.
+- **Client-callable endpoints** (`scrape.js`, `seed-onboarding.js`, `clone-sample-project.js`): require a Supabase Bearer token, verify with `supabase.auth.getUser(token)`, return 401 if invalid. `clone-sample-project.js` additionally derives `destWorkspaceId` server-side from the verified user (`workspaces.user_id = user.id`) rather than trusting a client-supplied workspace, and reads the source project id only from `SAMPLE_TEMPLATE_PROJECT_ID` — never the request body.
 - **Dual-auth endpoints** (`trigger-score.js`): accept either `x-cron-secret` OR a valid Bearer token — used by both cron and the client (after project creation).
 - **`api/scrape.js` SSRF protection**: validates URL is HTTPS, rejects private/loopback/IMDS IP ranges, caps response body at 512 KB.
+
+### Vercel function-count limit (Hobby plan)
+Vercel's zero-config Node builder treats **every** `.js`/`.ts` file under `api/` as its own serverless function — including helper files with no `handler` export, and files nested in subdirectories like `api/lib/`. The Hobby plan caps a deployment at 12 functions total. This is why shared server-side logic lives in a top-level `server-lib/` directory (outside `api/`) rather than `api/lib/` — files outside `api/` are never counted. Adding a new `api/*.js` endpoint that imports a new shared helper: put the helper in `server-lib/`, not `api/lib/`. Check the count before adding a new top-level `api/*.js` file: `find api -name "*.js" -o -name "*.ts" | wc -l` (currently 10, so there's headroom, but it's not unlimited).

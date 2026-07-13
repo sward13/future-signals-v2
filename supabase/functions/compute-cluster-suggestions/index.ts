@@ -39,6 +39,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ─── Caller-ownership guard ───────────────────────────────────────────────────
+// Invoked with the caller's session JWT (supabase.functions.invoke). Resolves
+// the caller's workspace so the handler can verify the target resource belongs
+// to it before running any service-role query. Returns null when the JWT is
+// missing or invalid.
+async function getCallerWorkspaceId(
+  req: Request,
+  supabase: ReturnType<typeof createClient>,
+): Promise<string | null> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const { data: { user }, error } = await supabase.auth.getUser(authHeader.slice(7));
+  if (error || !user) return null;
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("id")
+    .eq("user_id", user.id)
+    .single();
+  return (workspace?.id as string | undefined) ?? null;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type EmbeddedInput = {
@@ -86,6 +107,9 @@ serve(async (req: Request) => {
   );
 
   try {
+    const callerWorkspaceId = await getCallerWorkspaceId(req, supabase);
+    if (!callerWorkspaceId) return respond({ error: "Unauthorised" }, 401);
+
     const body = await req.json();
     const {
       project_id,
@@ -111,6 +135,7 @@ serve(async (req: Request) => {
 
     if (projectError) throw projectError;
     if (!project) return respond({ error: "Project not found" }, 404);
+    if (project.workspace_id !== callerWorkspaceId) return respond({ error: "Forbidden" }, 403);
 
     // ── 2. Fetch all project inputs (filter embeddings in TS — pgvector/PostgREST
     //       does not reliably support .not('embedding', 'is', null)) ────────────

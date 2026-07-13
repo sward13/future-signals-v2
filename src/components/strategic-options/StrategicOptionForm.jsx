@@ -13,8 +13,8 @@ function ZoneDivider({ label }) {
     <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "28px 0 24px" }}>
       <div style={{ flex: 1, height: 1, background: c.border }} />
       <span style={{
-        fontSize: 10, fontWeight: 500, color: c.hint,
-        letterSpacing: "0.08em", textTransform: "uppercase",
+        fontSize: 11, fontWeight: 500, color: c.hint,
+        letterSpacing: "0.02em",
       }}>
         {label}
       </span>
@@ -36,7 +36,7 @@ function ScenarioMultiSelect({ scenarios, selected, onChange }) {
       <div style={fl}>Responds to scenarios</div>
       <div style={fh}>Which scenarios is this option designed to address?</div>
       <div style={{
-        border: `1px solid ${c.borderMid}`, borderRadius: 8,
+        border: `1px solid ${c.borderStrong}`, borderRadius: 8,
         background: c.white, overflow: "hidden",
       }}>
         <div style={{
@@ -208,7 +208,7 @@ export default function StrategicOptionForm({ appState, mode }) {
 
         {/* Eyebrow */}
         <div style={{
-          fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em",
+          fontSize: 11, letterSpacing: "0.02em",
           color: c.hint, marginBottom: 12,
         }}>
           {mode === "new" ? "New strategic option" : "Edit strategic option"}
@@ -296,7 +296,7 @@ export default function StrategicOptionForm({ appState, mode }) {
             </select>
           </div>
           <div>
-            <div style={fl}>Feasibility <span style={{ color: c.hint, fontWeight: 400 }}>(optional)</span></div>
+            <div style={fl}>Feasibility</div>
             <select value={feasibility} onChange={(e) => setFeasibility(e.target.value)} style={selectStyle}>
               <option value="">— Select feasibility</option>
               {FEASIBILITIES.map((f) => <option key={f} value={f}>{f}</option>)}
@@ -313,7 +313,7 @@ export default function StrategicOptionForm({ appState, mode }) {
 
         {/* Dependencies */}
         <div style={{ marginBottom: 20 }}>
-          <div style={fl}>Dependencies <span style={{ color: c.hint, fontWeight: 400 }}>(optional)</span></div>
+          <div style={fl}>Dependencies</div>
           <textarea
             value={dependencies}
             onChange={(e) => setDependencies(e.target.value)}
@@ -325,7 +325,7 @@ export default function StrategicOptionForm({ appState, mode }) {
 
         {/* Risks */}
         <div style={{ marginBottom: 20 }}>
-          <div style={fl}>Risks <span style={{ color: c.hint, fontWeight: 400 }}>(optional)</span></div>
+          <div style={fl}>Risks</div>
           <textarea
             value={risks}
             onChange={(e) => setRisks(e.target.value)}
@@ -338,14 +338,14 @@ export default function StrategicOptionForm({ appState, mode }) {
         {/* Reversibility + Resource Intensity */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
           <div>
-            <div style={fl}>Reversibility <span style={{ color: c.hint, fontWeight: 400 }}>(optional)</span></div>
+            <div style={fl}>Reversibility</div>
             <select value={reversibility} onChange={(e) => setReversibility(e.target.value)} style={selectStyle}>
               <option value="">— Select reversibility</option>
               {HML.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
           </div>
           <div>
-            <div style={fl}>Resource Intensity <span style={{ color: c.hint, fontWeight: 400 }}>(optional)</span></div>
+            <div style={fl}>Resource Intensity</div>
             <select value={resourceIntensity} onChange={(e) => setResourceIntensity(e.target.value)} style={selectStyle}>
               <option value="">— Select intensity</option>
               {HML.map((v) => <option key={v} value={v}>{v}</option>)}

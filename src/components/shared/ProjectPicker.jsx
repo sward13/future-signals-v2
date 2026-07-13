@@ -3,7 +3,7 @@
  * Displays all projects with counts; clicking one sets it as the active project.
  * @param {{ heading: string, description: string, projects: object[], inputs: object[], clusters: object[], scenarios: object[], onSelect: (id: string) => void, onNewProject: () => void }} props
  */
-import { c, btnSm, btnG } from "../../styles/tokens.js";
+import { c, btnSm, btnG, fontHeading } from "../../styles/tokens.js";
 
 export function ProjectPicker({ heading, description, projects, inputs, clusters, scenarios, onSelect, onNewProject }) {
   if (projects.length === 0) {
@@ -22,7 +22,7 @@ export function ProjectPicker({ heading, description, projects, inputs, clusters
   return (
     <div style={{ padding: "28px 32px", background: c.bg, minHeight: "100%" }}>
       <div style={{ maxWidth: 560 }}>
-        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 6 }}>{heading}</div>
+        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 6, fontFamily: fontHeading }}>{heading}</div>
         <div style={{ fontSize: 12, color: c.muted, marginBottom: 24, lineHeight: 1.6 }}>{description}</div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -42,7 +42,7 @@ export function ProjectPicker({ heading, description, projects, inputs, clusters
                   cursor: "pointer", fontFamily: "inherit",
                   transition: "border-color 0.1s",
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = c.borderMid}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = c.borderStrong}
                 onMouseLeave={(e) => e.currentTarget.style.borderColor = c.border}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -80,7 +80,7 @@ export function ProjectPicker({ heading, description, projects, inputs, clusters
           style={{
             marginTop: 14, width: "100%",
             padding: "10px 0", borderRadius: 9,
-            border: `1px dashed ${c.borderMid}`,
+            border: `1px dashed ${c.borderStrong}`,
             background: "transparent",
             color: c.muted, fontSize: 12,
             cursor: "pointer", fontFamily: "inherit",

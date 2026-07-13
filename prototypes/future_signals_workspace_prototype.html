@@ -1,0 +1,428 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); font-size: 14px; color: var(--text-primary); background: var(--surface-0); }
+
+.app { display: flex; height: 100vh; min-height: 700px; overflow: hidden; }
+
+.sidebar { width: 200px; min-width: 200px; background: var(--surface-1); border-right: 0.5px solid var(--border); display: flex; flex-direction: column; padding: 16px 0; }
+.sidebar-logo { display: flex; align-items: center; gap: 8px; padding: 0 16px 20px; }
+.logo-mark { width: 28px; height: 28px; background: #C1382B; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.logo-mark svg { width: 14px; height: 14px; fill: white; }
+.logo-text { font-size: 13px; font-weight: 500; letter-spacing: 0.02em; }
+
+.sidebar-nav { flex: 1; }
+.nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 16px; font-size: 13px; color: var(--text-secondary); cursor: pointer; border-radius: 0; }
+.nav-item:hover { background: var(--surface-0); color: var(--text-primary); }
+.nav-item.active { color: var(--text-accent); background: var(--bg-accent); }
+.nav-item i { font-size: 15px; }
+.nav-badge { margin-left: auto; font-size: 11px; background: var(--surface-0); color: var(--text-muted); padding: 1px 6px; border-radius: 10px; border: 0.5px solid var(--border); }
+.nav-section { padding: 12px 16px 4px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+
+.sidebar-footer { padding: 12px 16px; border-top: 0.5px solid var(--border); display: flex; align-items: center; gap: 8px; }
+.avatar { width: 24px; height: 24px; background: var(--bg-accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; color: var(--text-accent); }
+.sidebar-footer-text { font-size: 12px; }
+.sidebar-footer-name { color: var(--text-primary); font-weight: 500; }
+.sidebar-footer-role { color: var(--text-muted); font-size: 11px; }
+
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+.project-header { background: var(--surface-2); border-bottom: 0.5px solid var(--border); padding: 0 24px; flex-shrink: 0; }
+
+.breadcrumb { display: flex; align-items: center; gap: 6px; padding: 12px 0 0; font-size: 12px; color: var(--text-muted); }
+.breadcrumb a { color: var(--text-muted); text-decoration: none; }
+.breadcrumb a:hover { color: var(--text-secondary); }
+.breadcrumb-sep { color: var(--border-strong); }
+
+.project-title-row { display: flex; align-items: center; gap: 12px; padding: 8px 0 12px; }
+.project-title { font-size: 20px; font-weight: 500; color: var(--text-primary); }
+.project-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--bg-accent); color: var(--text-accent); border: 0.5px solid var(--border-accent); font-weight: 500; }
+.project-actions { margin-left: auto; display: flex; gap: 8px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius); font-size: 13px; cursor: pointer; border: 0.5px solid var(--border-strong); background: var(--surface-2); color: var(--text-secondary); }
+.btn:hover { background: var(--surface-1); color: var(--text-primary); }
+.btn-primary { background: #185FA5; color: white; border-color: #185FA5; }
+.btn-primary:hover { background: #0C447C; border-color: #0C447C; }
+.btn i { font-size: 14px; }
+
+.key-question { background: var(--bg-accent); border: 0.5px solid var(--border-accent); border-radius: var(--radius); padding: 9px 14px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 8px; }
+.kq-label { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-accent); white-space: nowrap; padding-top: 1px; }
+.kq-text { font-size: 13px; color: var(--text-primary); line-height: 1.5; font-style: italic; }
+
+.horizons { display: flex; gap: 0; border-radius: var(--radius); overflow: hidden; border: 0.5px solid var(--border); margin-bottom: 16px; }
+.horizon-band { flex: 1; text-align: center; padding: 6px 12px; font-size: 11px; font-weight: 500; }
+.horizon-band .h-label { font-size: 12px; font-weight: 600; margin-bottom: 1px; }
+.horizon-band .h-range { font-size: 10px; opacity: 0.75; }
+.h1 { background: #EAF3DE; color: #3B6D11; border-right: 0.5px solid #C0DD97; }
+.h2 { background: #E6F1FB; color: #185FA5; border-right: 0.5px solid #B5D4F4; }
+.h3 { background: #FAEEDA; color: #854F0B; }
+
+.workspace { flex: 1; display: flex; overflow: hidden; }
+
+.inputs-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-right: 0.5px solid var(--border); }
+
+.panel-toolbar { padding: 12px 20px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; background: var(--surface-2); }
+.panel-title { font-size: 13px; font-weight: 500; color: var(--text-primary); margin-right: 4px; }
+
+.tabs { display: flex; gap: 0; border-bottom: 0.5px solid var(--border); padding: 0 20px; background: var(--surface-2); flex-shrink: 0; }
+.tab { padding: 9px 14px; font-size: 13px; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -0.5px; }
+.tab:hover { color: var(--text-secondary); }
+.tab.active { color: var(--text-accent); border-bottom-color: #185FA5; font-weight: 500; }
+.tab-count { font-size: 11px; color: var(--text-muted); margin-left: 4px; }
+
+.filters { display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-bottom: 0.5px solid var(--border); background: var(--surface-1); flex-shrink: 0; }
+.filter-chip { display: flex; align-items: center; gap: 5px; padding: 4px 10px; border: 0.5px solid var(--border-strong); border-radius: 20px; font-size: 12px; color: var(--text-secondary); cursor: pointer; background: var(--surface-2); }
+.filter-chip:hover { border-color: var(--border-stronger); color: var(--text-primary); }
+.filter-chip i { font-size: 11px; }
+.search-input { flex: 1; max-width: 220px; padding: 5px 10px; border: 0.5px solid var(--border-strong); border-radius: var(--radius); font-size: 12px; background: var(--surface-2); color: var(--text-primary); outline: none; }
+.search-input::placeholder { color: var(--text-muted); }
+
+.inputs-table { flex: 1; overflow-y: auto; }
+.table-header { display: grid; grid-template-columns: 28px 1fr 80px 90px 110px 130px; gap: 0; padding: 8px 20px; border-bottom: 0.5px solid var(--border); background: var(--surface-1); position: sticky; top: 0; z-index: 2; }
+.th { font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.th:hover { color: var(--text-secondary); }
+
+.input-row { display: grid; grid-template-columns: 28px 1fr 80px 90px 110px 130px; gap: 0; padding: 10px 20px; border-bottom: 0.5px solid var(--border); align-items: center; background: var(--surface-2); }
+.input-row:hover { background: var(--surface-1); }
+.input-row:hover .assign-btn { opacity: 1; }
+
+.input-check { width: 14px; height: 14px; border: 0.5px solid var(--border-strong); border-radius: 3px; cursor: pointer; }
+.input-title { font-size: 13px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 12px; }
+.input-type { font-size: 11px; color: var(--text-muted); }
+.strength-badge { display: inline-flex; align-items: center; font-size: 11px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+.strength-confirmed { background: #EAF3DE; color: #3B6D11; }
+.strength-established { background: #E6F1FB; color: #185FA5; }
+.strength-emerging { background: #FAEEDA; color: #854F0B; }
+.steepled-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.steepled-tag { font-size: 10px; padding: 1px 5px; border-radius: 3px; background: var(--surface-0); color: var(--text-muted); border: 0.5px solid var(--border); }
+
+.assign-btn { opacity: 0; font-size: 12px; padding: 4px 10px; border: 0.5px solid var(--border-accent); border-radius: var(--radius); color: var(--text-accent); background: var(--bg-accent); cursor: pointer; display: flex; align-items: center; gap: 5px; white-space: nowrap; transition: opacity 0.1s; }
+.assign-btn i { font-size: 12px; }
+.cluster-name { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.clusters-panel { width: 340px; min-width: 300px; display: flex; flex-direction: column; overflow: hidden; background: var(--surface-1); }
+
+.clusters-header { padding: 12px 16px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 8px; flex-shrink: 0; background: var(--surface-2); }
+.clusters-title { font-size: 13px; font-weight: 500; }
+.cluster-count { font-size: 12px; color: var(--text-muted); }
+.build-btn { margin-left: auto; display: flex; align-items: center; gap: 5px; font-size: 12px; padding: 5px 10px; border: 0.5px solid var(--border-accent); border-radius: var(--radius); color: var(--text-accent); background: var(--bg-accent); cursor: pointer; }
+.build-btn:hover { background: #B5D4F4; }
+.build-btn i { font-size: 13px; }
+
+.clusters-scroll { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+.cluster-card { background: var(--surface-2); border: 0.5px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; }
+.cluster-card:hover { border-color: var(--border-strong); }
+.cluster-card-header { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+.cluster-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.cluster-tag { font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 500; }
+.tag-trend { background: #EEEDFE; color: #3C3489; }
+.tag-tension { background: #FAEEDA; color: #854F0B; }
+.tag-driver { background: #E1F5EE; color: #085041; }
+.tag-h1 { background: var(--surface-1); color: var(--text-muted); border: 0.5px solid var(--border); }
+.tag-plausible { background: var(--surface-1); color: var(--text-muted); border: 0.5px solid var(--border); }
+
+.cluster-input-count { margin-left: auto; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.cluster-name-text { font-size: 13px; font-weight: 500; color: var(--text-primary); line-height: 1.4; margin-bottom: 4px; }
+.cluster-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.project-meta { border-top: 0.5px solid var(--border); padding: 12px 16px; background: var(--surface-2); flex-shrink: 0; }
+.meta-row { display: flex; gap: 16px; }
+.meta-item { flex: 1; }
+.meta-label { font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; }
+.meta-value { font-size: 12px; color: var(--text-secondary); }
+.meta-value.not-set { color: var(--text-muted); font-style: italic; }
+
+.sys-map-preview { border-top: 0.5px solid var(--border); padding: 10px 16px; background: var(--surface-2); flex-shrink: 0; display: flex; align-items: center; gap: 10px; }
+.sys-map-thumb { width: 48px; height: 36px; background: var(--surface-0); border: 0.5px solid var(--border); border-radius: 5px; display: flex; align-items: center; justify-content: center; }
+.sys-map-info { flex: 1; }
+.sys-map-label { font-size: 11px; color: var(--text-muted); margin-bottom: 1px; display: flex; align-items: center; gap: 5px; }
+.sys-map-label i { font-size: 12px; }
+.sys-map-stats { font-size: 12px; color: var(--text-secondary); }
+.sys-map-link { font-size: 12px; color: var(--text-accent); text-decoration: none; display: flex; align-items: center; gap: 4px; }
+.sys-map-link:hover { text-decoration: underline; }
+
+.unassigned-note { padding: 8px 16px 0; font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
+.unassigned-note i { font-size: 12px; color: var(--text-accent); }
+
+.empty-cluster { border: 0.5px dashed var(--border-strong); border-radius: 10px; padding: 16px; text-align: center; color: var(--text-muted); font-size: 12px; }
+.empty-cluster i { font-size: 20px; margin-bottom: 6px; display: block; }
+</style>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 14 14"><circle cx="7" cy="7" r="5"/></svg>
+      </div>
+      <span class="logo-text">Future Signals</span>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-item"><i class="ti ti-layout-dashboard" aria-hidden="true"></i>Dashboard</div>
+      <div class="nav-item"><i class="ti ti-inbox" aria-hidden="true"></i>Inbox<span class="nav-badge">18</span></div>
+      <div class="nav-section">Current project</div>
+      <div class="nav-item active"><i class="ti ti-table" aria-hidden="true"></i>Inputs<span class="nav-badge" style="background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent)">84</span></div>
+      <div class="nav-item"><i class="ti ti-sitemap" aria-hidden="true"></i>System Map<span class="nav-badge">1</span></div>
+      <div class="nav-item"><i class="ti ti-chart-dots" aria-hidden="true"></i>System Analysis</div>
+      <div class="nav-item"><i class="ti ti-sparkles" aria-hidden="true"></i>Future Models</div>
+      <div class="nav-item" style="margin-top:auto"><i class="ti ti-download" aria-hidden="true"></i>Export</div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="avatar">S</div>
+      <div class="sidebar-footer-text">
+        <div class="sidebar-footer-name">sam@aldermanandw...</div>
+        <div class="sidebar-footer-role">Beginner</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="project-header">
+      <div class="breadcrumb">
+        <a href="#">Projects</a>
+        <span class="breadcrumb-sep">›</span>
+        <span>Future of data centers</span>
+      </div>
+      <div class="project-title-row">
+        <span class="project-title">Future of data centers</span>
+        <span class="project-badge">Technology & AI</span>
+        <div class="project-actions">
+          <div class="btn"><i class="ti ti-settings" aria-hidden="true"></i>Project settings</div>
+          <div class="btn"><i class="ti ti-inbox" aria-hidden="true"></i>Add from Inbox</div>
+          <div class="btn btn-primary"><i class="ti ti-plus" aria-hidden="true"></i>Add an input</div>
+        </div>
+      </div>
+      <div class="key-question">
+        <span class="kq-label">Key question</span>
+        <span class="kq-text">"What impact will the increasing regulation of data centers have on AI adoption?"</span>
+      </div>
+      <div class="horizons">
+        <div class="horizon-band h1"><div class="h-label">H1</div><div class="h-range">2026–2029</div></div>
+        <div class="horizon-band h2"><div class="h-label">H2</div><div class="h-range">2029–2035</div></div>
+        <div class="horizon-band h3"><div class="h-label">H3</div><div class="h-range">2035–2041</div></div>
+      </div>
+    </div>
+
+    <div class="workspace">
+      <div class="inputs-panel">
+        <div class="tabs">
+          <div class="tab active">All <span class="tab-count">84</span></div>
+          <div class="tab">Unassigned <span class="tab-count">81</span></div>
+          <div class="tab">In cluster <span class="tab-count">3</span></div>
+        </div>
+        <div class="filters">
+          <input class="search-input" type="text" placeholder="Search inputs…" />
+          <div class="filter-chip">Type <i class="ti ti-chevron-down"></i></div>
+          <div class="filter-chip">Horizon <i class="ti ti-chevron-down"></i></div>
+          <div class="filter-chip">STEEPLED <i class="ti ti-chevron-down"></i></div>
+          <div class="filter-chip"><i class="ti ti-plus"></i>Filter</div>
+        </div>
+        <div class="inputs-table">
+          <div class="table-header">
+            <div></div>
+            <div class="th">Title <i class="ti ti-selector" style="font-size:10px"></i></div>
+            <div class="th">Type</div>
+            <div class="th">Strength</div>
+            <div class="th">STEEPLED</div>
+            <div class="th">Cluster</div>
+          </div>
+
+          <div class="input-row">
+            <input type="checkbox" class="input-check">
+            <div class="input-title">Navigating the EU's AI and health regulation</div>
+            <div class="input-type">Signal</div>
+            <div><span class="strength-badge strength-confirmed">Confirmed</span></div>
+            <div class="steepled-tags"><span class="steepled-tag">Tech</span><span class="steepled-tag">Pol</span><span class="steepled-tag">+1</span></div>
+            <div class="assign-btn"><i class="ti ti-arrow-right"></i>Assign</div>
+          </div>
+
+          <div class="input-row">
+            <input type="checkbox" class="input-check">
+            <div class="input-title">What to Know About AI and Mental Health</div>
+            <div class="input-type">Signal</div>
+            <div><span class="strength-badge strength-established">Established</span></div>
+            <div class="steepled-tags"><span class="steepled-tag">Soc</span><span class="steepled-tag">Tech</span><span class="steepled-tag">+1</span></div>
+            <div class="assign-btn"><i class="ti ti-arrow-right"></i>Assign</div>
+          </div>
+
+          <div class="input-row">
+            <input type="checkbox" class="input-check">
+            <div class="input-title">Southeast Asia's AI Dilemma</div>
+            <div class="input-type">Signal</div>
+            <div><span class="strength-badge strength-established">Established</span></div>
+            <div class="steepled-tags"><span class="steepled-tag">Soc</span><span class="steepled-tag">Eco</span><span class="steepled-tag">+1</span></div>
+            <div class="assign-btn"><i class="ti ti-arrow-right"></i>Assign</div>
+          </div>
+
+          <div class="input-row">
+            <input type="checkbox" class="input-check">
+            <div class="input-title">Big Tech Shouldn't Be Writing the Rules for AI</div>
+            <div class="input-type">Signal</div>
+            <div><span class="strength-badge strength-confirmed">Confirmed</span></div>
+            <div class="steepled-tags"><span class="steepled-tag">Pol</span><span class="steepled-tag">Eth</span><span class="steepled-tag">+1</span></div>
+            <div class="assign-btn"><i class="ti ti-arrow-right"></i>Assign</div>
+          </div>
+
+          <div class="input-row">
+            <input type="checkbox" class="input-check">
+            <div class="input-title">White-collar industries bet on a secret weapon</div>
+            <div class="input-type">Signal</div>
+            <div><span class="strength-badge strength-confirmed">Confirmed</span></div>
+            <div class="steepled-tags"><span class="steepled-tag">Soc</span><span class="steepled-tag">Tech</span></div>
+            <div class="assign-btn"><i class="ti ti-arrow-right"></i>Assign</div>
+          </div>
+
+          <div class="input-row">
+            <input type="checkbox" class="input-check">
+            <div class="input-title">Gen Z's fading AI hype</div>
+            <div class="input-type">Signal</div>
+            <div><span class="strength-badge strength-established">Established</span></div>
+            <div class="steepled-tags"><span class="steepled-tag">Soc</span><span class="steepled-tag">Tech</span><span class="steepled-tag">+1</span></div>
+            <div class="assign-btn"><i class="ti ti-arrow-right"></i>Assign</div>
+          </div>
+
+          <div class="input-row">
+            <input type="checkbox" class="input-check">
+            <div class="input-title">xAI sues Colorado over first state AI anti-dis.</div>
+            <div class="input-type">Signal</div>
+            <div><span class="strength-badge strength-confirmed">Confirmed</span></div>
+            <div class="steepled-tags"><span class="steepled-tag">Leg</span><span class="steepled-tag">Pol</span><span class="steepled-tag">+1</span></div>
+            <div class="assign-btn"><i class="ti ti-arrow-right"></i>Assign</div>
+          </div>
+
+          <div class="input-row">
+            <input type="checkbox" class="input-check">
+            <div class="input-title">Advice for economics graduate students</div>
+            <div class="input-type">Signal</div>
+            <div><span class="strength-badge strength-established">Established</span></div>
+            <div class="steepled-tags"><span class="steepled-tag">Tech</span><span class="steepled-tag">Eco</span></div>
+            <div class="assign-btn"><i class="ti ti-arrow-right"></i>Assign</div>
+          </div>
+
+          <div class="input-row">
+            <input type="checkbox" class="input-check">
+            <div class="input-title">Datadog's Expanding Portfolio Drives ARR</div>
+            <div class="input-type">Signal</div>
+            <div><span class="strength-badge strength-established">Established</span></div>
+            <div class="steepled-tags"><span class="steepled-tag">Tech</span><span class="steepled-tag">Eco</span><span class="steepled-tag">+1</span></div>
+            <div class="assign-btn"><i class="ti ti-arrow-right"></i>Assign</div>
+          </div>
+
+          <div class="input-row">
+            <input type="checkbox" class="input-check">
+            <div class="input-title">From Compliance to Coherence: A Global Survey</div>
+            <div class="input-type">Signal</div>
+            <div><span class="strength-badge strength-established">Established</span></div>
+            <div class="steepled-tags"><span class="steepled-tag">Pol</span><span class="steepled-tag">Leg</span><span class="steepled-tag">+1</span></div>
+            <div class="assign-btn"><i class="ti ti-arrow-right"></i>Assign</div>
+          </div>
+
+          <div class="input-row">
+            <input type="checkbox" class="input-check">
+            <div class="input-title">Sam Altman's 'New Deal' for superintelligence</div>
+            <div class="input-type">Signal</div>
+            <div><span class="strength-badge strength-established">Established</span></div>
+            <div class="steepled-tags"><span class="steepled-tag">Soc</span><span class="steepled-tag">Tech</span></div>
+            <div class="assign-btn"><i class="ti ti-arrow-right"></i>Assign</div>
+          </div>
+
+          <div class="input-row">
+            <input type="checkbox" class="input-check">
+            <div class="input-title">Oracle's 21,000 layoffs help drive its debt-fueled AI investments</div>
+            <div class="input-type">Signal</div>
+            <div><span class="strength-badge strength-confirmed">Confirmed</span></div>
+            <div class="steepled-tags"><span class="steepled-tag">Eco</span><span class="steepled-tag">Tech</span><span class="steepled-tag">+1</span></div>
+            <div class="assign-btn"><i class="ti ti-arrow-right"></i>Assign</div>
+          </div>
+
+          <div class="input-row">
+            <input type="checkbox" class="input-check">
+            <div class="input-title">The AI-powered World Cup runs on thousands of data workers</div>
+            <div class="input-type">Signal</div>
+            <div><span class="strength-badge strength-emerging">Emerging</span></div>
+            <div class="steepled-tags"><span class="steepled-tag">Tech</span><span class="steepled-tag">Eco</span><span class="steepled-tag">+1</span></div>
+            <div class="assign-btn"><i class="ti ti-arrow-right"></i>Assign</div>
+          </div>
+
+          <div class="input-row">
+            <input type="checkbox" class="input-check">
+            <div class="input-title">Chinese universities cutting language majors for AI</div>
+            <div class="input-type">Signal</div>
+            <div><span class="strength-badge strength-emerging">Emerging</span></div>
+            <div class="steepled-tags"><span class="steepled-tag">Eco</span><span class="steepled-tag">Soc</span><span class="steepled-tag">+1</span></div>
+            <div class="cluster-name">Ethics and Practicality in AI</div>
+          </div>
+
+          <div class="input-row">
+            <input type="checkbox" class="input-check">
+            <div class="input-title">Some Electricians Think Building Data Centers Is for Sellouts</div>
+            <div class="input-type">Signal</div>
+            <div><span class="strength-badge strength-established">Established</span></div>
+            <div class="steepled-tags"><span class="steepled-tag">Eco</span><span class="steepled-tag">Soc</span><span class="steepled-tag">+1</span></div>
+            <div class="cluster-name">Ethics and Practicality in AI</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="clusters-panel">
+        <div class="clusters-header">
+          <i class="ti ti-diamonds" style="font-size:14px;color:var(--text-muted)" aria-hidden="true"></i>
+          <span class="clusters-title">Clusters</span>
+          <span class="cluster-count">1 cluster · 3 assigned</span>
+          <div class="build-btn"><i class="ti ti-plus"></i>Build a cluster</div>
+        </div>
+
+        <div class="unassigned-note">
+          <i class="ti ti-info-circle"></i>
+          81 inputs unassigned. Assign inputs by hovering a row.
+        </div>
+
+        <div class="clusters-scroll">
+          <div class="cluster-card">
+            <div class="cluster-card-header">
+              <div class="cluster-tags">
+                <span class="cluster-tag tag-driver">Driver</span>
+                <span class="cluster-tag tag-h1">H1</span>
+                <span class="cluster-tag tag-plausible">Plausible</span>
+              </div>
+              <span class="cluster-input-count">3 inputs</span>
+            </div>
+            <div class="cluster-name-text">Ethics and Practicality in AI Development</div>
+            <div class="cluster-desc">Growing tensions between the ethical implications and practical realities of AI deployment signal a near-term inflection point in governance and adoption norms.</div>
+          </div>
+
+          <div class="empty-cluster">
+            <i class="ti ti-plus-circle" aria-hidden="true"></i>
+            Build a cluster to start grouping inputs into patterns.
+          </div>
+        </div>
+
+        <div class="sys-map-preview">
+          <div class="sys-map-thumb">
+            <i class="ti ti-topology-star" style="font-size:18px;color:var(--text-muted)" aria-hidden="true"></i>
+          </div>
+          <div class="sys-map-info">
+            <div class="sys-map-label"><i class="ti ti-diamonds"></i>System Map</div>
+            <div class="sys-map-stats" style="font-size:11px;color:var(--text-muted)">Complete clustering to unlock</div>
+          </div>
+        </div>
+
+        <div class="project-meta">
+          <div class="meta-row">
+            <div class="meta-item">
+              <div class="meta-label">Domain</div>
+              <div class="meta-value">Technology & AI</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Focus</div>
+              <div class="meta-value not-set">Not set</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Geography</div>
+              <div class="meta-value not-set">Not set</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

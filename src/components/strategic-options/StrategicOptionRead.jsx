@@ -3,7 +3,7 @@
  * Two-column layout: main content + metadata sidebar.
  */
 import { useState } from "react";
-import { c, btnSec, btnG } from "../../styles/tokens.js";
+import { c, btnSec, btnG, fontHeading } from "../../styles/tokens.js";
 import { HorizTag } from "../shared/Tag.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 
@@ -97,14 +97,14 @@ export default function StrategicOptionRead({ appState }) {
   };
 
   const sideLabel = {
-    fontSize: 10, fontWeight: 500, color: c.hint,
-    letterSpacing: "0.07em", textTransform: "uppercase",
+    fontSize: 11, fontWeight: 500, color: c.hint,
+    letterSpacing: "0.02em",
     marginBottom: 8,
   };
 
   const sectionHeading = {
-    fontSize: 10, fontWeight: 500, color: c.hint,
-    letterSpacing: "0.07em", textTransform: "uppercase",
+    fontSize: 11, fontWeight: 500, color: c.hint,
+    letterSpacing: "0.02em",
     marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid ${c.border}`,
   };
 
@@ -155,8 +155,8 @@ export default function StrategicOptionRead({ appState }) {
             {/* Eyebrow */}
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
-              fontSize: 10, fontWeight: 500, color: c.hint,
-              letterSpacing: "0.08em", textTransform: "uppercase",
+              fontSize: 11, fontWeight: 500, color: c.hint,
+              letterSpacing: "0.02em",
               marginBottom: 10,
             }}>
               Strategic Option
@@ -168,6 +168,7 @@ export default function StrategicOptionRead({ appState }) {
             <div style={{
               fontSize: 22, fontWeight: 500, color: c.ink,
               lineHeight: 1.25, marginBottom: 12, letterSpacing: "-0.01em",
+              fontFamily: fontHeading,
             }}>
               {opt.name}
             </div>

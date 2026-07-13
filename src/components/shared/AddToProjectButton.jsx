@@ -4,8 +4,8 @@ import { c } from "../../styles/tokens.js";
 import { ChevronDown } from "lucide-react";
 
 const sectionHeader = {
-  padding: "8px 14px 4px", fontSize: 10, textTransform: "uppercase",
-  letterSpacing: "0.07em", color: c.hint, fontWeight: 500,
+  padding: "8px 14px 4px", fontSize: 11,
+  letterSpacing: "0.02em", color: c.hint, fontWeight: 500,
 };
 
 const item = {
@@ -65,7 +65,7 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
               borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
               minWidth: 220, maxHeight: 280, overflowY: "auto",
               zIndex: 51, textAlign: "left",
-              fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
+              fontFamily: "inherit",
             }}
           >
             {recommendedProject && (

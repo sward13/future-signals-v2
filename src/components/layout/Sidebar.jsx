@@ -2,7 +2,7 @@
  * Sidebar — primary navigation with two states:
  *   Workspace level (no active project): Dashboard, Inbox, Projects only.
  *   Project level (active project): same top nav + PROJECT section with
- *     Inputs, Clustering, Systems scoped to that project.
+ *     Scan, Cluster, Systems scoped to that project.
  * @param {{
  *   activeScreen: string,
  *   setActiveScreen: (screen: string) => void,
@@ -17,10 +17,10 @@
  * }} props
  */
 import logoLight from "../../assets/logo_light.svg";
-import { c } from "../../styles/tokens.js";
+import { c, countBadge } from "../../styles/tokens.js";
 import {
-  Home, Inbox as InboxIcon, SquareArrowRight, Boxes,
-  Network, LayoutDashboard, ChartNoAxesCombined, Download,
+  Home, Inbox as InboxIcon, PanelsTopLeft, SquareArrowRight,
+  Boxes, Network, LayoutDashboard, ChartNoAxesCombined, Download,
 } from "lucide-react";
 
 function getInitials(user) {
@@ -39,8 +39,9 @@ const NAV_ITEMS = [
 ];
 
 const PROJECT_ITEMS = [
-  { icon: <SquareArrowRight size={16} />, label: "Inputs",          screen: "project" },
-  { icon: <Boxes size={16} />,            label: "Clusters",        screen: "clustering" },
+  { icon: <PanelsTopLeft size={16} />,     label: "Overview",        screen: "project-overview" },
+  { icon: <SquareArrowRight size={16} />, label: "Scan",            screen: "project" },
+  { icon: <Boxes size={16} />,             label: "Cluster",         screen: "cluster" },
   { icon: <Network size={16} />,          label: "System Map",      screen: "scenarios" },
   { icon: <LayoutDashboard size={16} />,  label: "System Analysis", screen: "analysis" },
 ];
@@ -61,6 +62,7 @@ export function Sidebar({
   onExport,
   projects = [],
   setActiveProjectId,
+  openProject,
 }) {
   const inProject = !!activeProject;
 
@@ -69,11 +71,11 @@ export function Sidebar({
   };
 
   const projCounts = {
-    project:       projectInputCount  || null,
-    clustering:    clusterCount       || null,
-    scenarios:     scenarioCount      || null,
-    analysis:      analysisCount      || null,
-    "future-models": futureModelsCount || null,
+    project:         projectInputCount  || null,
+    cluster:         clusterCount       || null,
+    scenarios:       scenarioCount      || null,
+    analysis:        analysisCount      || null,
+    "future-models": futureModelsCount  || null,
   };
 
   const NavButton = ({ icon, label, screen, isActive, count, indented = false }) => (
@@ -86,7 +88,7 @@ export function Sidebar({
         padding: indented ? "6px 14px 6px 30px" : "7px 14px",
         width: "100%",
         fontSize: indented ? 11 : 12,
-        color: isActive ? "#3B82F6" : c.muted,
+        color: isActive ? c.blue700 : c.muted,
         fontWeight: isActive ? 500 : 400,
         background: isActive ? "#EFF6FF" : "transparent",
         border: "none",
@@ -108,11 +110,9 @@ export function Sidebar({
       </span>
       {count != null && !indented && (
         <span style={{
-          fontSize: 10,
-          padding: "1px 6px",
-          borderRadius: 10,
+          ...countBadge,
           background: isActive ? "#DBEAFE" : "rgba(0,0,0,0.07)",
-          color: isActive ? "#3B82F6" : c.muted,
+          color: isActive ? c.blue700 : c.muted,
           fontWeight: 500,
           flexShrink: 0,
         }}>
@@ -160,15 +160,15 @@ export function Sidebar({
           <>
             <div style={{ height: 1, background: c.border, margin: "6px 0" }} />
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 14px 4px" }}>
-              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint, fontWeight: 500 }}>Projects</div>
-              <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 10, background: "rgba(0,0,0,0.07)", color: c.muted, fontWeight: 500 }}>
+              <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, fontWeight: 500 }}>Projects</div>
+              <span style={{ ...countBadge, background: "rgba(0,0,0,0.07)", color: c.muted, fontWeight: 500 }}>
                 {projects.length}
               </span>
             </div>
             {projects.slice(0, 8).map((p) => (
               <button
                 key={p.id}
-                onClick={() => { setActiveProjectId(p.id); setActiveScreen("project"); }}
+                onClick={() => openProject(p.id)}
                 style={{
                   display: "block", width: "100%", padding: "5px 14px",
                   textAlign: "left", background: "transparent", border: "none",

@@ -6,15 +6,15 @@
  * @param {{ appState: object }} props
  */
 import { useState, useMemo, useRef } from "react";
-import { c, btnSec } from "../../styles/tokens.js";
+import { c, btnSec, fontHeading } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 
 // ─── Color maps ────────────────────────────────────────────────────────────────
 
 const SUBTYPE_COLORS = {
-  Trend:   { bg: c.green50,  color: c.green700, border: c.greenBorder },
-  Driver:  { bg: c.blue50,   color: c.blue700,  border: c.blueBorder  },
-  Tension: { bg: c.amber50,  color: c.amber700, border: c.amberBorder },
+  Trend:   { bg: c.dustyViolet50, color: c.dustyViolet700, border: c.dustyVioletBorder },
+  Driver:  { bg: c.mutedTeal50,   color: c.mutedTeal700,   border: c.mutedTealBorder   },
+  Tension: { bg: c.dustyRose50,   color: c.dustyRose700,   border: c.dustyRoseBorder   },
 };
 
 const ARCHETYPE_TYPES = [
@@ -24,7 +24,7 @@ const ARCHETYPE_TYPES = [
     icon: "◎",
     category: "Gradual",
     categoryColor: c.green700, categoryBg: c.green50, categoryBorder: c.greenBorder,
-    color: c.green700, bg: c.green50, border: c.greenBorder,
+    color: c.archContinuation700, bg: c.archContinuation50, border: c.archContinuationBorder,
     description: "The present trajectory extends with incremental shifts but no fundamental breaks.",
   },
   {
@@ -33,7 +33,7 @@ const ARCHETYPE_TYPES = [
     icon: "▼",
     category: "Disruptive",
     categoryColor: c.red800, categoryBg: c.red50, categoryBorder: c.redBorder,
-    color: c.red800, bg: c.red50, border: c.redBorder,
+    color: c.archCollapse700, bg: c.archCollapse50, border: c.archCollapseBorder,
     description: "A critical system fails or fractures, triggering cascading breakdown.",
   },
   {
@@ -42,7 +42,7 @@ const ARCHETYPE_TYPES = [
     icon: "◈",
     category: "Structural",
     categoryColor: c.amber700, categoryBg: c.amber50, categoryBorder: c.amberBorder,
-    color: c.amber700, bg: c.amber50, border: c.amberBorder,
+    color: c.archConstraint700, bg: c.archConstraint50, border: c.archConstraintBorder,
     description: "Growing limits — regulatory, resource, or social — reshape what's possible.",
   },
   {
@@ -51,7 +51,7 @@ const ARCHETYPE_TYPES = [
     icon: "◆",
     category: "Disruptive",
     categoryColor: c.violet700, categoryBg: c.violet50, categoryBorder: c.violetBorder,
-    color: c.violet700, bg: c.violet50, border: c.violetBorder,
+    color: c.archTransformation700, bg: c.archTransformation50, border: c.archTransformationBorder,
     description: "A fundamental reorganisation of the system creates a new equilibrium.",
   },
 ];
@@ -171,7 +171,7 @@ function ArchetypeSwitcherChip({ selected, onChange }) {
         style={{
           display: "inline-flex", alignItems: "center", gap: 6,
           padding: "3px 10px 3px 8px", borderRadius: 20,
-          border: `1px solid ${arch ? arch.border : c.borderMid}`,
+          border: `1px solid ${arch ? arch.border : c.borderStrong}`,
           background: arch ? arch.bg : c.surfaceAlt,
           color: arch ? arch.color : c.muted,
           fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit",
@@ -497,7 +497,7 @@ export default function ScenarioNarrativeCanvas({ appState }) {
   if (projectScenarios.length === 0) {
     return (
       <div style={{ padding: "36px 32px", background: c.bg, minHeight: "100%" }}>
-        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 8 }}>Scenarios</div>
+        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 8, fontFamily: fontHeading }}>Scenarios</div>
         <div style={{ maxWidth: 420 }}>
           <div style={{ fontSize: 13, color: c.muted, lineHeight: 1.7, marginBottom: 20 }}>
             No scenarios yet for <strong>{project.name}</strong>. Build your System Map first, then create a scenario to start writing narrative.

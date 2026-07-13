@@ -19,6 +19,20 @@ function newId() {
   return crypto.randomUUID();
 }
 
+// Mirror of the scanner's source-URL validation (api/scan.js). Advisory only:
+// the insert below is a direct Supabase client call, so a hostile client can
+// bypass this check — api/scan.js re-validates every source URL before
+// fetching it, which is the enforcement point.
+const PRIVATE_IP = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|::1$|fc00:|fe80:)/;
+
+function validateSourceUrl(raw) {
+  let u;
+  try { u = new URL(raw); } catch { return "Invalid URL"; }
+  if (u.protocol !== "https:") return "Only HTTPS URLs are supported";
+  if (PRIVATE_IP.test(u.hostname)) return "Disallowed host";
+  return null;
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useAppState(workspaceId = null, session = null, preferences = {}) {
@@ -56,6 +70,9 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [canvasTextNodes, setCanvasTextNodes] = useState([]);
   const [relationships, setRelationships] = useState([]);
 
+  // Per-project scanner sources
+  const [projectSources, setProjectSources] = useState([]);
+
   const connectionsRef = useRef(connections);
   connectionsRef.current = connections;
 
@@ -76,8 +93,14 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [activePFId, setActivePFId] = useState(null);
   // undefined = first visit (apply default); null = user explicitly cleared; "uuid" = deep-link/selected
   const [inboxProjectFilter, setInboxProjectFilter] = useState(undefined);
+  // Cross-screen signal: Overview "Manage sources" sets this true; ProjectDetail reads and clears it
+  const [openScanningPrefs, setOpenScanningPrefs] = useState(false);
+  // Cross-screen signal: ClusterScreen's InputRail sets this true while its sticky
+  // multi-select bar is visible, so the global Toast can lift above it and avoid overlap.
+  const [bulkBarActive, setBulkBarActive] = useState(false);
 
   const toastTimer = useRef(null);
+  const refreshProjectsRef = useRef(null);
   const refreshInputsRef  = useRef(null);
   const refreshClustersRef = useRef(null);
   const systemMapExportRef = useRef(null);
@@ -112,6 +135,27 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     }
   }, [projects, activeProjectId]);
 
+  // ── Project sources — re-fetched whenever the active project changes ───────
+
+  useEffect(() => {
+    if (!activeProjectId) {
+      setProjectSources([]);
+      return;
+    }
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("project_sources")
+          .select("*, sources(*)")
+          .eq("project_id", activeProjectId);
+        if (error) throw error;
+        setProjectSources(data ?? []);
+      } catch {
+        // non-fatal — Overview scanner card degrades gracefully without source count
+      }
+    })();
+  }, [activeProjectId]);
+
   // ── Supabase data fetching ────────────────────────────────────────────────
 
   useEffect(() => {
@@ -141,6 +185,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
         showToast("Failed to load projects", "error");
       }
     };
+
+    refreshProjectsRef.current = fetchProjects;
 
     const fetchInputs = async () => {
       try {
@@ -233,6 +279,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
           bold: n.bold,
           italic: n.italic,
           color: n.color,
+          created_at: n.created_at,
         })));
       } catch {
         showToast("Failed to load canvas text nodes", "error");
@@ -340,8 +387,21 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   /** Navigate into a project — sets activeProjectId and switches screen. */
   const openProject = useCallback((id) => {
     setActiveProjectId(id);
-    setActiveScreen("project");
-  }, []);
+    setActiveScreen("project-overview");
+    if (id) {
+      // Keep the address bar in sync with what's actually being viewed, so a
+      // reload restores the right project. replaceState (not pushState) — this
+      // is a cosmetic mirror of state, not a new history entry.
+      window.history.replaceState({}, "", `/projects/${id}`);
+      supabase
+        .from("projects")
+        .update({ last_visited_at: new Date().toISOString() })
+        .eq("id", id)
+        .then(({ error }) => {
+          if (error) console.error("[openProject] last_visited_at write failed:", error);
+        });
+    }
+  }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Projects ──────────────────────────────────────────────────────────────
 
@@ -437,6 +497,50 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       })();
     }
   }, [workspaceId, showToast]);
+
+  const updateProjectSource = useCallback((id, fields) => {
+    setProjectSources((prev) => prev.map((ps) => ps.id === id ? { ...ps, ...fields } : ps));
+    supabase
+      .from("project_sources")
+      .update(fields)
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) showToast("Failed to update source", "error");
+      });
+  }, [showToast]);
+
+  const deleteSource = useCallback(async (id) => {
+    const { error } = await supabase.from("sources").delete().eq("id", id);
+    if (error) throw error;
+  }, []);
+
+  const addSource = useCallback(async (fields) => {
+    const urlError = validateSourceUrl(fields.url);
+    if (urlError) throw new Error(urlError);
+
+    const id = newId();
+    const row = {
+      id,
+      name: fields.name,
+      url: fields.url,
+      domain: fields.domain,
+      source_type: "custom",
+      credibility: "unvetted",
+      owner_id: workspaceId,
+      active: true,
+    };
+    const { error } = await supabase.from("sources").insert(row);
+    if (error) throw error;
+    return { ...row, last_fetched_at: null, created_at: new Date().toISOString() };
+  }, [workspaceId]);
+
+  const addProjectSource = useCallback(async ({ source_id, project_id, source }) => {
+    const id = newId();
+    const row = { id, source_id, project_id, opted_in: true };
+    const { error } = await supabase.from("project_sources").insert(row);
+    if (error) throw error;
+    setProjectSources(prev => [...prev, { ...row, created_at: new Date().toISOString(), sources: source }]);
+  }, []);
 
   // ── Inputs ────────────────────────────────────────────────────────────────
 
@@ -1631,6 +1735,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     activeScreen,
     drawer,
     toast,
+    bulkBarActive,
+    setBulkBarActive,
     projectModalOpen,
     setActiveScreen,
     setActiveProjectId,
@@ -1658,6 +1764,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     updateCluster,
     dismissInput,
     dismissSuggestedInput,
+    refreshProjects: () => refreshProjectsRef.current?.(),
     refreshInputs:   () => refreshInputsRef.current?.(),
     refreshClusters: () => refreshClustersRef.current?.(),
     saveInputToProject,
@@ -1692,6 +1799,11 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     canvasNodes,
     canvasTextNodes,
     relationships,
+    projectSources,
+    updateProjectSource,
+    deleteSource,
+    addSource,
+    addProjectSource,
     addCanvasNode,
     removeCanvasNode,
     updateCanvasNodePos,
@@ -1710,6 +1822,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     showToast,
     inboxProjectFilter,
     setInboxProjectFilter,
+    openScanningPrefs,
+    setOpenScanningPrefs,
     systemMapExportRef,
   };
 }

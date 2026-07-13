@@ -1,3 +1,168 @@
+@import "tailwindcss";
+
+/*
+ * Maps 1:1 from src/styles/tokens.js.
+ * tokens.js remains the active design system until component migration is
+ * complete. This @theme block makes the same values available as Tailwind
+ * utility classes; neither file should diverge from the other.
+ */
+@theme {
+  /* ── Colors (c{} in tokens.js) ─────────────────────────────────────── */
+
+  /* Surfaces */
+  --color-bg:           #f5f4f0;
+  --color-white:        #ffffff;
+  --color-surface-alt:  #f9f9f7;
+  --color-field-bg:     #fafaf8;
+  --color-canvas:       #f7f6f2;
+  --color-surface-hover: rgba(0,0,0,0.02);
+
+  /* Text */
+  --color-ink:         #111111;
+  --color-muted:       #666666;
+  --color-faint:       #5F5F5F;
+  --color-hint:        #6B6860;
+  --color-placeholder: #6B7280;
+
+  /* Borders */
+  --color-border:        rgba(0,0,0,0.09);
+  --color-border-mid:    rgba(0,0,0,0.18);
+  --color-border-strong: #9CA3AF;
+
+  /* Brand */
+  --color-brand:        #2563EB;
+  --color-brand-bg:     #EFF6FF;
+  --color-brand-border: #BFDBFE;
+
+  /* Semantic — green */
+  --color-green-25:     #F0FDF4;
+  --color-green-50:     #EAF3DE;
+  --color-green-600:    #16a34a;
+  --color-green-700:    #3B6D11;
+  --color-green-border: #C0DD97;
+
+  /* Semantic — blue */
+  --color-blue-50:      #E6F1FB;
+  --color-blue-700:     #185FA5;
+  --color-blue-border:  #B5D4F4;
+
+  /* Semantic — amber */
+  --color-amber-50:     #FAEEDA;
+  --color-amber-700:    #854F0B;
+  --color-amber-border: #FAC775;
+
+  /* Semantic — violet */
+  --color-violet-50:     #F0EAFA;
+  --color-violet-700:    #5B21B6;
+  --color-violet-border: #C4B5FD;
+
+  /* Semantic — cyan */
+  --color-cyan-50:     #E0F9F9;
+  --color-cyan-700:    #0E7490;
+  --color-cyan-border: #A5F3FC;
+
+  /* Semantic — red */
+  --color-red-50:     #FCEBEB;
+  --color-red-800:    #791F1F;
+  --color-red-border: #F7C1C1;
+
+  /* Semantic — teal */
+  --color-teal-50:     #E6FFFA;
+  --color-teal-700:    #0F766E;
+  --color-teal-border: #5EEAD4;
+
+  /* Signal Strength / Source Confidence tier scale (locked badge-consolidation
+     colors, 2026-07-07 audit). Source Confidence reuses this scale:
+     low→rust, medium→tan, high→sage. */
+  --color-rust-50:     #EFE1DC;
+  --color-rust-700:    #A05F4E;
+  --color-rust-border: #C8A095;
+
+  --color-tan-50:     #EFE6D3;
+  --color-tan-700:    #9C7A3C;
+  --color-tan-border: #C6B088;
+
+  --color-sage-50:     #DEE6D6;
+  --color-sage-700:    #5C7A52;
+  --color-sage-border: #9DB094;
+
+  /* Cluster Subtype color scale (locked badge-consolidation colors, 2026-07-07 audit). */
+  --color-dusty-violet-50:     #E6E1EA;
+  --color-dusty-violet-700:    #6B5B7E;
+  --color-dusty-violet-border: #A99EB4;
+
+  --color-muted-teal-50:     #DCE6E4;
+  --color-muted-teal-700:    #4E7A73;
+  --color-muted-teal-border: #95B0AC;
+
+  --color-dusty-rose-50:     #EAE0E1;
+  --color-dusty-rose-700:    #8A5560;
+  --color-dusty-rose-border: #BA9BA1;
+
+  /* Scenario Archetype color scale (locked badge-consolidation colors, 2026-07-09).
+     Closes the Archetype consistency gap — the last badge family still on fully
+     saturated colors after Signal Strength / Source Confidence / Subtype went muted. */
+  --color-arch-continuation-50:     #E4E8D2;
+  --color-arch-continuation-700:    #6B7A3F;
+  --color-arch-continuation-border: #A8B189;
+
+  --color-arch-collapse-50:     #EFDFDD;
+  --color-arch-collapse-700:    #9C4F44;
+  --color-arch-collapse-border: #C69791;
+
+  --color-arch-constraint-50:     #E1E6EC;
+  --color-arch-constraint-700:    #52708C;
+  --color-arch-constraint-border: #9AABBC;
+
+  --color-arch-transformation-50:     #E9DFE6;
+  --color-arch-transformation-700:    #86527D;
+  --color-arch-transformation-border: #B899B2;
+
+  /* ── Spacing (derived from primitive objects in tokens.js) ──────────── */
+  /*
+   * On 4px grid — already in Tailwind defaults, no override needed:
+   *   4px  → spacing-1   (badg: border-radius)
+   *   8px  → spacing-2   (inp, btnP, btnSec: border-radius)
+   *   12px → spacing-3   (btnG: padding-x)
+   *   16px → spacing-4   (btnSm: padding-x)
+   * Also in Tailwind's fractional defaults:
+   *   6px  → spacing-1.5 (fl: gap, fh: margin-bottom, badg: padding-x)
+   *   10px → spacing-2.5 (btnP: padding-y)
+   *
+   * Off-grid values defined below. Note: 5px, 7px, 9px, 11px, 18px, 22px
+   * have no clean 4px-grid fit — named as fractional rem equivalents.
+   */
+  /* v4 encodes the decimal separator as _ in variable names (1.5 class → --spacing-1_5) */
+  --spacing-px:   1px;       /* badg: padding-y */
+  --spacing-1_25: 0.3125rem; /* 5px  — fl: margin-bottom */
+  --spacing-1_75: 0.4375rem; /* 7px  — btnSm/btnG: padding-y, border-radius */
+  --spacing-2_25: 0.5625rem; /* 9px  — inp/btnSec: padding-y */
+  --spacing-2_75: 0.6875rem; /* 11px — inp: padding-x */
+  --spacing-4_5:  1.125rem;  /* 18px — btnSec: padding-x */
+  --spacing-5_5:  1.375rem;  /* 22px — btnP: padding-x */
+
+  /* ── Border radius ───────────────────────────────────────────────────── */
+  /* Two-tier system documented in CLAUDE.md; pill and chip added here. */
+  --radius-container: 8px;   /* containers, inputs, modals, drawers, cards */
+  --radius-btn:       7px;   /* compact interactive elements: toggle buttons, small action pills */
+  --radius-pill:      10px;  /* pill badges: resume pill, scope tags, subtype chips */
+  --radius-chip:      4px;   /* micro chips: AnalysisFillGrid cells, tight inline labels */
+
+  /* ── Shadows ─────────────────────────────────────────────────────────── */
+  --shadow-hover: 0 1px 6px rgba(0,0,0,0.07); /* card hover lift */
+
+  /* ── Typography ──────────────────────────────────────────────────────── */
+  /* Numeric scalars below are not in tokens.js — c{} is color-only; primitive
+   * objects (inp, ta, btnP) hold composite styles and have no natural home
+   * for these. Font-family tokens ARE mirrored in tokens.js (fontHeading /
+   * fontBody, exported alongside c{}) since inline JS styles need them too;
+   * keep both in sync. */
+  --text-ui:      0.8125rem; /* 13px — primary UI text: inp, btnP, btnSec (115 occurrences) */
+  --leading-body: 1.55;      /* body/prose line-height: ta, descriptions, canvas labels (20+ occurrences) */
+  --font-heading: 'Roboto', -apple-system, sans-serif; /* page titles (22px/500), section headings (16px/500) */
+  --font-body:    'Open Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif; /* base default */
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -10,6 +175,7 @@ html, body, #root {
 
 body {
   color-scheme: light;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -17,4 +183,10 @@ body {
 #root {
   display: flex;
   flex-direction: column;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-placeholder);
+  opacity: 1;
 }

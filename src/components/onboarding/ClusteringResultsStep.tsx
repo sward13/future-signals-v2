@@ -139,7 +139,7 @@ function StepDots() {
             ? c.brand
             : i < STEP_DOT
               ? "rgba(59,130,246,0.4)"
-              : "rgba(0,0,0,0.15)",
+              : "#9C9B96",
           transition: "all 0.2s",
         }} />
       ))}
@@ -216,7 +216,7 @@ function ZeroInputsState({ onComplete }: { onComplete: () => void }) {
           Your project is ready
         </h2>
         <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 24px", lineHeight: 1.6 }}>
-          You skipped signal selection for now — you can discover signals from the Scanner tab inside your project.
+          No signals added yet — find them anytime from the Scanner tab inside your project.
         </p>
         <button onClick={onComplete} style={{ ...btnP, fontSize: 13, padding: "10px 24px" }}>
           Open my project
@@ -400,7 +400,7 @@ function ResultsState({
       {/* Card header */}
       <div style={{
         fontSize: 10, fontWeight: 500,
-        textTransform: "uppercase", letterSpacing: "0.07em",
+        letterSpacing: "0.07em",
         color: c.brand, marginBottom: 8,
       }}>
         Your first clusters
@@ -432,7 +432,7 @@ function ResultsState({
         }}>
           <div style={{
             fontSize: 10, fontWeight: 500,
-            textTransform: "uppercase", letterSpacing: "0.07em",
+            letterSpacing: "0.07em",
             color: c.faint, marginBottom: 10,
           }}>
             What these types mean

@@ -12,9 +12,10 @@ import { c, btnP, btnSec, inp } from "../../styles/tokens.js";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
 
-const VALID_SUBTYPES  = new Set(["signal", "issue", "projection", "plan", "obstacle", "source"]);
-const VALID_QUALITIES = new Set(["Emerging", "Established", "Confirmed"]);
-const VALID_HORIZONS  = new Set(["H1", "H2", "H3"]);
+const VALID_SUBTYPES   = new Set(["signal", "issue", "projection", "plan", "obstacle", "source"]);
+const VALID_STRENGTHS  = new Set(["weak", "moderate", "strong"]);
+const VALID_CONFIDENCES = new Set(["low", "moderate", "high"]);
+const VALID_HORIZONS   = new Set(["H1", "H2", "H3"]);
 
 const STEEPLED_MAP = {
   soc: "Social", tech: "Technological", eco: "Economic",  env: "Environmental",
@@ -67,13 +68,22 @@ function parseSubtype(raw) {
   return VALID_SUBTYPES.has(lower) ? lower : null;
 }
 
-function parseQuality(raw) {
+function parseSignalStrength(raw) {
   if (!raw) return null;
-  const trimmed = raw.trim();
-  for (const q of VALID_QUALITIES) {
-    if (q.toLowerCase() === trimmed.toLowerCase()) return q;
-  }
-  return null;
+  const lower = raw.trim().toLowerCase();
+  return VALID_STRENGTHS.has(lower) ? lower.charAt(0).toUpperCase() + lower.slice(1) : null;
+}
+
+function parseSourceConfidence(raw) {
+  if (!raw) return null;
+  const lower = raw.trim().toLowerCase();
+  return VALID_CONFIDENCES.has(lower) ? lower.charAt(0).toUpperCase() + lower.slice(1) : null;
+}
+
+function parseDate(raw) {
+  if (!raw || !raw.trim()) return null;
+  const d = new Date(raw.trim());
+  return isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 function parseHorizon(raw) {
@@ -116,10 +126,10 @@ function parseImportFile(text) {
   }
 
   const headerRow = allRows[0].map((h) => h.trim().toLowerCase());
-  const titleIdx = headerRow.indexOf("title");
+  const nameIdx = headerRow.indexOf("name");
 
-  if (titleIdx === -1) {
-    return { error: "No title column found. Please include a column named \"title\".", rows: [], skipped: 0 };
+  if (nameIdx === -1) {
+    return { error: "No Name column found. Please include a column named \"Name\".", rows: [], skipped: 0 };
   }
 
   const col = (name) => headerRow.indexOf(name);
@@ -133,27 +143,32 @@ function parseImportFile(text) {
   let skipped = 0;
 
   for (const fields of dataRows) {
-    const title = (fields[titleIdx] ?? "").trim();
+    const name = (fields[nameIdx] ?? "").trim();
 
-    // Skip blank titles and example/comment rows (prefixed with #)
-    if (!title || title.startsWith("#")) {
+    // Skip blank names and example/comment rows (prefixed with #)
+    if (!name || name.startsWith("#")) {
       skipped++;
       continue;
     }
 
+    const rawDate = fields[col("date added")] ?? "";
+    const parsedDate = parseDate(rawDate);
+
     rows.push({
-      name:           title,
-      subtype:        parseSubtype(fields[col("type")] ?? ""),
-      description:    (fields[col("description")] ?? "").trim(),
-      source_url:     (fields[col("source_url")]  ?? "").trim(),
-      steepled:       parseSteepled(fields[col("steepled")] ?? ""),
-      signal_quality: parseQuality(fields[col("signal_quality")] ?? ""),
-      horizon:        parseHorizon(fields[col("time_horizon")]   ?? ""),
+      name,
+      subtype:          parseSubtype(fields[col("subtype")] ?? ""),
+      description:      (fields[col("description")] ?? "").trim(),
+      source_url:       (fields[col("source url")]  ?? "").trim(),
+      steepled:         parseSteepled(fields[col("steepled")] ?? ""),
+      signal_strength:  parseSignalStrength(fields[col("signal strength")] ?? ""),
+      source_confidence: parseSourceConfidence(fields[col("source confidence")] ?? ""),
+      horizon:          parseHorizon(fields[col("horizon")] ?? ""),
+      ...(parsedDate ? { created_at: parsedDate } : {}),
     });
   }
 
   if (rows.length === 0) {
-    return { error: "No valid inputs found. Check that your Title column is populated.", rows: [], skipped };
+    return { error: "No valid inputs found. Check that your Name column is populated.", rows: [], skipped };
   }
 
   return { error: null, rows, skipped };
@@ -162,15 +177,17 @@ function parseImportFile(text) {
 // ─── Template download ─────────────────────────────────────────────────────────
 
 function downloadTemplate() {
-  const header  = "title,type,description,source_url,steepled,signal_quality,time_horizon";
+  const header  = "Name,Subtype,Description,Source URL,STEEPLED,Horizon,Signal Strength,Source Confidence,Date Added";
   const example = [
     '"#EXAMPLE - Replace this row with your data"',
     "Signal",
     '"A brief description of what this signal is about"',
     "https://example.com/article",
     '"Soc,Tech"',
-    "Emerging",
     "H1",
+    "",
+    "",
+    "4/14/2026",
   ].join(",");
   const csv  = header + "\n" + example + "\n";
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -301,7 +318,7 @@ export function CsvImportModal({ open, onClose, projectId, addInput, showToast }
             <>
               {/* Step 1 — template */}
               <div style={{ marginBottom: 22 }}>
-                <div style={{ fontSize: 12, fontWeight: 500, color: c.hint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 500, color: c.hint, letterSpacing: "0.06em", marginBottom: 8 }}>
                   Step 1 — Download template
                 </div>
                 <button
@@ -309,7 +326,7 @@ export function CsvImportModal({ open, onClose, projectId, addInput, showToast }
                   style={{
                     display: "flex", alignItems: "center", gap: 7,
                     padding: "9px 14px", borderRadius: 7,
-                    border: `1px solid ${c.borderMid}`,
+                    border: `1px solid ${c.borderStrong}`,
                     background: c.surfaceAlt, color: c.ink,
                     fontSize: 12, fontWeight: 500,
                     cursor: "pointer", fontFamily: "inherit",
@@ -324,14 +341,14 @@ export function CsvImportModal({ open, onClose, projectId, addInput, showToast }
 
               {/* Step 2 — upload */}
               <div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: c.hint, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 500, color: c.hint, letterSpacing: "0.06em", marginBottom: 8 }}>
                   Step 2 — Upload your file
                 </div>
 
                 <label style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
                   padding: "24px 20px",
-                  border: `2px dashed ${fileError ? c.redBorder : c.borderMid}`,
+                  border: `2px dashed ${fileError ? c.redBorder : c.borderStrong}`,
                   borderRadius: 8,
                   background: fileError ? c.red50 : c.surfaceAlt,
                   cursor: "pointer",
@@ -370,7 +387,7 @@ export function CsvImportModal({ open, onClose, projectId, addInput, showToast }
                   {parsedRows.length} input{parsedRows.length !== 1 ? "s" : ""} ready to import
                   {skipped > 0 && (
                     <span style={{ fontWeight: 400, fontSize: 12, color: c.amber700, marginLeft: 10 }}>
-                      · {skipped} row{skipped !== 1 ? "s" : ""} skipped (missing title)
+                      · {skipped} row{skipped !== 1 ? "s" : ""} skipped (missing name)
                     </span>
                   )}
                 </div>
@@ -383,8 +400,8 @@ export function CsvImportModal({ open, onClose, projectId, addInput, showToast }
               <div style={{ border: `1px solid ${c.border}`, borderRadius: 8, overflow: "hidden", marginBottom: 16 }}>
                 {/* Header row */}
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", background: c.surfaceAlt, borderBottom: `1px solid ${c.border}` }}>
-                  {["Title", "Type", "Quality", "Horizon"].map((h) => (
-                    <div key={h} style={{ padding: "7px 10px", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: c.hint }}>
+                  {["Name", "Subtype", "Signal Strength", "Horizon"].map((h) => (
+                    <div key={h} style={{ padding: "7px 10px", fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", color: c.hint }}>
                       {h}
                     </div>
                   ))}
@@ -399,7 +416,7 @@ export function CsvImportModal({ open, onClose, projectId, addInput, showToast }
                       {row.subtype ? row.subtype.charAt(0).toUpperCase() + row.subtype.slice(1) : <span style={{ color: c.hint }}>—</span>}
                     </div>
                     <div style={{ padding: "8px 10px", fontSize: 11, color: c.muted }}>
-                      {row.signal_quality ?? <span style={{ color: c.hint }}>—</span>}
+                      {row.signal_strength ?? <span style={{ color: c.hint }}>—</span>}
                     </div>
                     <div style={{ padding: "8px 10px", fontSize: 11, color: c.muted }}>
                       {row.horizon ?? <span style={{ color: c.hint }}>—</span>}

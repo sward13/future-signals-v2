@@ -5,7 +5,7 @@
  */
 import { useState } from "react";
 import { CirclePlus } from "lucide-react";
-import { c, btnSm, btnSec } from "../../styles/tokens.js";
+import { c, btnSm, btnSec, fontHeading } from "../../styles/tokens.js";
 import { HorizTag } from "../shared/Tag.jsx";
 
 // ─── Feasibility badge ────────────────────────────────────────────────────────
@@ -207,7 +207,7 @@ function PreferredFutureCard({ pf, scenarioName, onClick }) {
           <div key={label}>
             <div style={{
               fontSize: 10, fontWeight: 500, color: c.hint,
-              letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 4,
+              letterSpacing: "0.06em", marginBottom: 4,
             }}>
               {label}
             </div>
@@ -359,12 +359,12 @@ export default function FutureModels({ appState }) {
       {/* ── Page header ─────────────────────────────────────────────── */}
       <div style={{ marginBottom: 20 }}>
         <div style={{
-          fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em",
+          fontSize: 11, letterSpacing: "0.02em",
           color: c.hint, marginBottom: 4,
         }}>
           {project.name}
         </div>
-        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
+        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 6, fontFamily: fontHeading }}>
           Future Models
         </div>
         <div style={{ fontSize: 13, color: c.muted, maxWidth: 520, lineHeight: 1.6 }}>

@@ -1,9 +1,9 @@
 # Future Signals v2 — Design Principles
 
-**Location in repo:** `docs/design-principles.md`  
+**Location in repo:** `design-principles.md`  
 **Referenced by:** `CLAUDE.md`  
 **Audience:** Design and product decisions (Sam, John); implementation decisions (Claude Code)  
-**Last updated:** April 2026
+**Last updated:** June 2026
 
 ---
 
@@ -90,7 +90,9 @@ This is not a simplified mode. A Quick Start project with a sharp key question a
 | Preferred Future | Title, Vision statement |
 | Strategic Option | Title, Description |
 
-**Implementation rule:** Zero required fields on any entity. A practitioner can create any entity with only Quick Start fields and the product must treat it as valid — not flag it as incomplete, not block downstream actions. The word "incomplete" should not appear in the product.
+**Implementation rule:** Every field is optional except the name of the object being created (Input title, Cluster name, Project name). Naming is the one piece of structure the product asks for; everything else can be filled in later or left blank. A practitioner can create any entity with only Quick Start fields and the product must treat it as valid — not flag it as incomplete, not block downstream actions. The word "incomplete" should not appear in the product.
+
+**Deliberate exception — Sources:** The "Add a source" modal (scanner feed subscriptions, `AddSourceModal.jsx`) requires both Name and URL — not just Name. A source with no destination URL isn't actionable, so URL is treated as load-bearing structure here in the same way naming is everywhere else. Domain is optional and scopes the source to matching projects; it can be added later.
 
 ### The Enhanced expand pattern
 
@@ -193,7 +195,8 @@ Use these terms consistently across the product, code, and documentation.
 | Project | Brief, Brief (as a noun for the creation form is fine as UI label only) |
 | Focus | Unit of Analysis |
 | System Map | Relationship Canvas, Map |
-| Signal quality: Emerging / Established / Confirmed | Weak / Strong / Confirmed |
+| Signal Strength: Weak / Moderate / Strong | Emerging / Established / Confirmed (old signal_quality values) |
+| Source Confidence: Low / Medium / High | — |
 | Cluster subtypes: Trend / Driver / Tension | — |
 | Input subtypes: Signal / Issue / Projection / Plan / Obstacle | — |
 | Scenario archetypes: Continuation / Collapse / Constraint / Transformation | — |
@@ -205,7 +208,7 @@ Use these terms consistently across the product, code, and documentation.
 
 When making any implementation decision, check against these rules:
 
-1. **Zero required fields.** No entity creation form should block on an empty field. Every field has a sensible default or can be left blank.
+1. **Every field is optional except the name of the object being created.** Naming is the one piece of structure the product asks for (Input title, Cluster name, Project name); everything else can be filled in later or left blank. No entity creation form should block on any other field being empty.
 
 2. **Quick Start is the default.** Enhanced fields are always behind a toggle. Never open by default on first project creation.
 

@@ -16,10 +16,11 @@ import {
 import { toPng } from "html-to-image";
 import "@xyflow/react/dist/style.css";
 import { CirclePlus, LayoutDashboard, Logs, ChevronDown, ChevronRight, Maximize2, Minimize2, Hand, MousePointer2, Network, Type, SlidersHorizontal } from "lucide-react";
-import { c, ta, btnP, btnSm, btnSec, btnG, fl } from "../../styles/tokens.js";
+import { c, ta, btnP, btnSm, btnSec, btnG, fl, fontHeading } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { ClusterDetailDrawer } from "../clusters/ClusterDetailDrawer.jsx";
+import { Tag, HorizTag, ConfidenceBadge } from "../shared/Tag.jsx";
 
 const NODE_W = 156;
 
@@ -36,9 +37,9 @@ const REL_TYPES = [
 const REL_TYPE_MAP = Object.fromEntries(REL_TYPES.map((rt) => [rt.id, rt]));
 
 const SUBTYPE_STYLE = {
-  Trend: { col: c.violet700, bg: c.violet50, border: c.violetBorder },
-  Driver: { col: c.blue700, bg: c.blue50, border: c.blueBorder },
-  Tension: { col: c.amber700, bg: c.amber50, border: c.amberBorder },
+  Trend: { col: c.dustyViolet700, bg: c.dustyViolet50, border: c.dustyVioletBorder },
+  Driver: { col: c.mutedTeal700, bg: c.mutedTeal50, border: c.mutedTealBorder },
+  Tension: { col: c.dustyRose700, bg: c.dustyRose50, border: c.dustyRoseBorder },
 };
 
 const HORIZON_COLORS = {
@@ -48,10 +49,20 @@ const HORIZON_COLORS = {
 };
 
 const LEFT_BORDER_COLOR = {
-  Trend: c.violetBorder,
-  Driver: c.blueBorder,
-  Tension: c.amberBorder,
+  Trend: c.dustyVioletBorder,
+  Driver: c.mutedTealBorder,
+  Tension: c.dustyRoseBorder,
 };
+
+function LikelihoodTag({ l }) {
+  const map = {
+    Probable:  [c.green700, c.green50,  c.greenBorder],
+    Plausible: [c.blue700,  c.blue50,   c.blueBorder],
+    Possible:  [c.amber700, c.amber50,  c.amberBorder],
+  };
+  const [col, bg, brd] = map[l] || [c.hint, "transparent", c.border];
+  return <Tag label={l} color={col} bg={bg} border={brd} />;
+}
 
 // ─── React Flow node types and edge types ─────────────────────────────────────
 // Must be defined outside any component to keep stable references.
@@ -61,12 +72,17 @@ function ClusterNodeComponent({ id, data }) {
   const [hovered, setHovered] = useState(false);
   const updateNodeInternals = useUpdateNodeInternals();
   const { cluster, onRemove, connectMode, isConnectSource, selected } = data;
+
+  // Must run on every render (before any early return) to satisfy rules-of-hooks.
+  // The guard lives inside the effect body so the hook order stays stable even
+  // when `cluster` is missing (e.g. its node lingers after the cluster is deleted).
+  useEffect(() => {
+    if (!cluster) return;
+    updateNodeInternals(id);
+  }, [id, cluster?.name, cluster?.description, cluster?.input_ids?.length]);
+
   if (!cluster) return null;
   const st = SUBTYPE_STYLE[cluster.subtype] || SUBTYPE_STYLE.Trend;
-
-  useEffect(() => {
-    updateNodeInternals(id);
-  }, [id, cluster.name, cluster.description, cluster.input_ids?.length]);
 
   const handleStyle = {
     width: 8, height: 8, borderRadius: "50%",
@@ -107,8 +123,8 @@ function ClusterNodeComponent({ id, data }) {
           {/* Type + horizon badges */}
           <div style={{ display: "flex", gap: 4, alignItems: "center", marginBottom: 5 }}>
             <span style={{
-              fontSize: 9, padding: "1px 6px", borderRadius: 4, fontWeight: 500,
-              background: st.bg, color: st.col, border: `0.5px solid ${st.border}`,
+              fontSize: 10, padding: "2px 7px", borderRadius: 10,
+              background: st.bg, color: st.col, border: `1px solid ${st.border}`,
             }}>
               {cluster.subtype}
             </span>
@@ -470,7 +486,7 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
       }}>
         {/* Header */}
         <div style={{ padding: "18px 22px 14px", borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint, marginBottom: 4 }}>
+          <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 4 }}>
             Define relationship
           </div>
           <div style={{ fontSize: 15, fontWeight: 500, color: c.ink }}>
@@ -517,7 +533,7 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
                 onClick={() => setRelType("Other")}
                 style={{
                   padding: "9px 12px", borderRadius: 8, textAlign: "left",
-                  border: `1.5px solid ${relType === "Other" ? c.borderMid : c.border}`,
+                  border: `1.5px solid ${relType === "Other" ? c.borderStrong : c.border}`,
                   background: relType === "Other" ? "rgba(0,0,0,0.015)" : c.white,
                   cursor: "pointer", fontFamily: "inherit",
                 }}
@@ -539,7 +555,7 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
                 placeholder="Describe the relationship…"
                 style={{
                   marginTop: 8, width: "100%", padding: "8px 10px",
-                  border: `1px solid ${c.borderMid}`, borderRadius: 6,
+                  border: `1px solid ${c.borderStrong}`, borderRadius: 6,
                   fontSize: 12, fontFamily: "inherit", color: c.ink,
                   background: c.white, outline: "none", boxSizing: "border-box",
                 }}
@@ -551,7 +567,6 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
           <div style={{ marginBottom: 14 }}>
             <div style={{ ...fl, gap: 5 }}>
               Evidence
-              <span style={{ fontSize: 10, fontWeight: 400, color: c.hint }}>optional</span>
             </div>
             <textarea
               style={{ ...ta, minHeight: 68 }}
@@ -574,7 +589,7 @@ function RelModal({ fromCluster, toCluster, initial, onSave, onClose }) {
                     onClick={() => setConfidence(lv)}
                     style={{
                       padding: "6px 20px", borderRadius: 20,
-                      border: `1px solid ${on ? c.borderMid : c.border}`,
+                      border: `1px solid ${on ? c.borderStrong : c.border}`,
                       background: on ? c.ink : c.white,
                       color: on ? c.white : c.muted,
                       fontSize: 12, fontWeight: on ? 500 : 400,
@@ -636,7 +651,7 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
         padding: "13px 14px 10px", borderBottom: `1px solid ${c.border}`, flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: unaddedClusters.length > 0 ? 8 : 0 }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.08em", color: c.hint }}>
             Clusters
           </div>
           <button
@@ -650,7 +665,7 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
             onClick={() => unaddedClusters.forEach((cl) => onAdd(cl))}
             style={{
               width: "100%", padding: "5px 8px", borderRadius: 6,
-              background: "transparent", border: `1px solid ${c.borderMid}`,
+              background: "transparent", border: `1px solid ${c.borderStrong}`,
               color: c.muted, fontSize: 11, cursor: "pointer",
               fontFamily: "inherit", textAlign: "center",
             }}
@@ -680,7 +695,7 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
       <div style={{ flex: 1, overflowY: "auto" }}>
         {clusters.length === 0 ? (
           <div style={{ padding: "16px 14px", fontSize: 11, color: c.hint, lineHeight: 1.5 }}>
-            No clusters in this project yet. Create some in the Clustering screen first.
+            No clusters in this project yet. Create some in the Cluster screen first.
           </div>
         ) : (() => {
           const filteredClusters = clusterSearch.trim()
@@ -725,7 +740,7 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
                   onClick={() => !added && onAdd(cl)}
                   style={{
                     fontSize: 10, padding: "3px 8px", borderRadius: 5, flexShrink: 0, marginTop: 1,
-                    border: `1px solid ${added ? c.border : c.borderMid}`,
+                    border: `1px solid ${added ? c.border : c.borderStrong}`,
                     background: added ? c.surfaceAlt : c.white,
                     color: added ? c.hint : c.muted,
                     cursor: added ? "default" : "pointer",
@@ -741,7 +756,7 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
       {/* Relationship legend */}
       <div style={{ padding: "12px 14px", borderTop: `1px solid ${c.border}`, flexShrink: 0 }}>
         <div style={{
-          fontSize: 9, textTransform: "uppercase", letterSpacing: "0.07em",
+          fontSize: 9, letterSpacing: "0.07em",
           color: c.hint, marginBottom: 8,
         }}>Legend</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -800,7 +815,7 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>Inspector</div>
+          <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint }}>Inspector</div>
           <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "3px 6px", fontSize: 13, color: c.hint }}>›</button>
         </div>
         <div style={{
@@ -823,7 +838,7 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>Cluster</div>
+          <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint }}>Cluster</div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <button onClick={() => onEditCluster(cluster)} style={{ ...btnSec, fontSize: 11, padding: "4px 12px" }}>Edit</button>
             <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "0 5px", color: c.hint, fontSize: 13 }}>›</button>
@@ -831,13 +846,13 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: 5, background: st.bg, border: `1px solid ${st.border}`, marginBottom: 10 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: st.col }}>{cluster.subtype}</span>
+          <div style={{ display: "inline-flex", alignItems: "center", padding: "2px 7px", borderRadius: 10, background: st.bg, border: `1px solid ${st.border}`, marginBottom: 10 }}>
+            <span style={{ fontSize: 10, color: st.col }}>{cluster.subtype}</span>
           </div>
           <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.4, marginBottom: 10 }}>{cluster.name}</div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
             <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 10, background: hbg, color: hcol, fontWeight: 600 }}>{cluster.horizon}</span>
-            <span style={{ fontSize: 10, padding: "2px 9px", borderRadius: 10, background: c.surfaceAlt, color: c.muted }}>{cluster.likelihood}</span>
+            <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>{cluster.likelihood}</span>
           </div>
           {cluster.description && (
             <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.55, marginBottom: 12 }}>{cluster.description}</div>
@@ -859,7 +874,7 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>Relationship</div>
+          <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint }}>Relationship</div>
           <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
             <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "0 5px", color: c.hint, fontSize: 13 }}>›</button>
             <button onClick={onClose} style={{ ...btnG, padding: "0 4px", color: c.hint, fontSize: 15 }}>×</button>
@@ -909,25 +924,25 @@ function Inspector({ selectedItem, clusters, scenarios, relationships, onEditRel
     const scenario = (scenarios || []).find((s) => s.id === selectedItem.scenarioId);
     if (!scenario) return null;
     const ARCHETYPE_COLORS = {
-      Continuation: { col: c.green700, bg: c.green50 },
-      Collapse: { col: c.red800, bg: c.red50 },
-      Constraint: { col: c.amber700, bg: c.amber50 },
-      Transformation: { col: c.violet700, bg: c.violet50 },
+      Continuation: { col: c.archContinuation700, bg: c.archContinuation50 },
+      Collapse: { col: c.archCollapse700, bg: c.archCollapse50 },
+      Constraint: { col: c.archConstraint700, bg: c.archConstraint50 },
+      Transformation: { col: c.archTransformation700, bg: c.archTransformation50 },
     };
     const ac = ARCHETYPE_COLORS[scenario.archetype] || { col: c.muted, bg: c.surfaceAlt };
     const [hcol, hbg] = HINSP_COLORS[scenario.horizon] || [c.muted, c.surfaceAlt];
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
-          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>System</div>
+          <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint }}>System</div>
           <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
             <button onClick={onToggle} title="Collapse panel" style={{ ...btnG, padding: "0 5px", color: c.hint, fontSize: 13 }}>›</button>
             <button onClick={onClose} style={{ ...btnG, padding: "0 4px", color: c.hint, fontSize: 15 }}>×</button>
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: 5, background: ac.bg, marginBottom: 10 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: ac.col }}>{scenario.archetype}</span>
+          <div style={{ display: "inline-flex", alignItems: "center", padding: "2px 7px", borderRadius: 10, background: ac.bg, marginBottom: 10 }}>
+            <span style={{ fontSize: 10, color: ac.col }}>{scenario.archetype}</span>
           </div>
           <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.4, marginBottom: 10 }}>{scenario.name}</div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
@@ -960,12 +975,12 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
   const [clustersCollapsed, setClustersCollapsed] = useState(relationships.length > 0);
 
   const thStyle = {
-    padding: "8px 14px", fontSize: 10, fontWeight: 600,
-    textTransform: "uppercase", letterSpacing: "0.06em", color: c.hint,
+    padding: "8px 14px", fontSize: 11, fontWeight: 600,
+    letterSpacing: "0.02em", color: c.hint,
     background: c.surfaceAlt, borderBottom: `1px solid ${c.border}`,
   };
   const selStyle = {
-    width: "100%", padding: "5px 7px", border: `1px solid ${c.borderMid}`,
+    width: "100%", padding: "5px 7px", border: `1px solid ${c.borderStrong}`,
     borderRadius: 6, background: c.white, color: c.ink, fontSize: 11,
     fontFamily: "inherit", outline: "none", cursor: "pointer",
   };
@@ -1050,13 +1065,15 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
               return (
                 <div key={rel.id} style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 2fr 2.5fr 1fr 90px", borderTop: `1px solid ${c.border}`, alignItems: "center" }}>
                   <div style={{ padding: "10px 14px", fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fromCl?.name}</div>
-                  <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 6 }}>
-                    <div style={{ width: 16, height: 2.5, borderRadius: 2, flexShrink: 0, background: rt.dash ? `repeating-linear-gradient(to right, ${rt.color} 0, ${rt.color} 4px, transparent 4px, transparent 8px)` : rt.color }} />
-                    <span style={{ fontSize: 11, color: rt.color, fontWeight: 500 }}>{rel.type}</span>
+                  <div style={{ padding: "10px 14px" }}>
+                    <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.surfaceAlt, color: rt.color, border: `1px solid ${c.border}`, display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
+                      <span style={{ width: 8, height: 2, borderRadius: 2, flexShrink: 0, background: rt.dash ? `repeating-linear-gradient(to right, ${rt.color} 0, ${rt.color} 2px, transparent 2px, transparent 4px)` : rt.color }} />
+                      {rel.type}
+                    </span>
                   </div>
                   <div style={{ padding: "10px 14px", fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{toCl?.name}</div>
                   <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rel.evidence || "—"}</div>
-                  <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{rel.confidence}</div>
+                  <div style={{ padding: "10px 14px" }}><ConfidenceBadge conf={rel.confidence} /></div>
                   <div style={{ padding: "10px 14px", display: "flex", gap: 5 }}>
                     <button onClick={() => onEditRel(rel.id)} style={{ ...btnG, fontSize: 10, padding: "3px 8px", border: `1px solid ${c.border}` }}>Edit</button>
                     <button onClick={() => onDeleteRel(rel.id)} style={{ ...btnG, fontSize: 10, padding: "3px 8px", border: `1px solid ${c.redBorder}`, color: c.red800 }}>Del</button>
@@ -1106,10 +1123,10 @@ function TableView({ clusters, relationships, canvasNodes, allClusters, onEditRe
                       {onCanvas && <span style={{ fontSize: 9, padding: "1px 5px", background: c.surfaceAlt, border: `1px solid ${c.border}`, borderRadius: 4, color: c.hint }}>on canvas</span>}
                     </div>
                     <div style={{ padding: "10px 14px" }}>
-                      <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: st.bg, color: st.col, display: "inline-block" }}>{cl.subtype}</span>
+                      <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: st.bg, color: st.col, border: `1px solid ${st.border}`, display: "inline-block" }}>{cl.subtype}</span>
                     </div>
-                    <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.horizon}</div>
-                    <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.likelihood}</div>
+                    <div style={{ padding: "10px 14px" }}>{cl.horizon && <HorizTag h={cl.horizon} />}</div>
+                    <div style={{ padding: "10px 14px" }}>{cl.likelihood && <LikelihoodTag l={cl.likelihood} />}</div>
                     <div style={{ padding: "10px 14px", fontSize: 11, color: c.muted }}>{cl.input_ids?.length || 0}</div>
                   </div>
                 );
@@ -1993,13 +2010,13 @@ export default function ScenarioCanvas({ appState }) {
       {/* Top bar */}
       <div style={{ padding: "14px 22px 12px", background: c.white, borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
-          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.09em", color: c.hint }}>
+          <div style={{ fontSize: 9, letterSpacing: "0.09em", color: c.hint }}>
             {project.name}
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 500, color: c.ink }}>System Map</div>
+            <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>System Map</div>
             <div style={{ fontSize: 11, color: c.muted, marginTop: 1 }}>
               {projectNodes.length} cluster{projectNodes.length !== 1 ? "s" : ""} on canvas
               &nbsp;·&nbsp;

@@ -17,7 +17,8 @@
 //   - workspaces with fewer than 3 qualifying categories are skipped
 //
 // Required env vars: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET,
-//                     RESEND_API_KEY (consumed by send-email), UNSUBSCRIBE_SECRET
+//                     RESEND_API_KEY (consumed by send-email), UNSUBSCRIBE_SECRET,
+//                     EMAIL_RELAY_SECRET
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateDigestEmail, generateDigestSubject, type DigestSignal, type DigestMeta } from "./digest-template.ts";
@@ -253,7 +254,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
     const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-email`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        "x-relay-secret": Deno.env.get("EMAIL_RELAY_SECRET") ?? "",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ to, subject, html }),

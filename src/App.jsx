@@ -3,7 +3,7 @@
  * via useAppState, renders the AppShell, active screen, modals, and toast.
  * New users are gated behind OnboardingFlow until workspace_settings.onboarding_complete.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./lib/supabase.js";
 import { useAppState } from "./hooks/useAppState.js";
 import { AuthScreen } from "./components/auth/AuthScreen.jsx";
@@ -17,13 +17,14 @@ import { ClusterDetailDrawer } from "./components/clusters/ClusterDetailDrawer.j
 import Dashboard from "./components/screens/Dashboard.jsx";
 import Inbox from "./components/screens/Inbox.jsx";
 import ProjectDetail from "./components/screens/ProjectDetail.jsx";
-import Clustering from "./components/screens/Clustering.jsx";
 import ScenarioCanvas from "./components/screens/ScenarioCanvas.jsx";
 import NarrativeCanvas from "./components/screens/NarrativeCanvas.jsx";
 import ScenarioNarrativeCanvas from "./components/screens/ScenarioNarrativeCanvas.jsx";
 import SystemAnalysisCanvas from "./components/screens/SystemAnalysisCanvas.jsx";
 import AccountSettings from "./components/screens/AccountSettings.jsx";
 import FutureModels from "./components/screens/FutureModels.jsx";
+import ProjectOverview from "./components/screens/ProjectOverview.jsx";
+import ClusterScreen from "./components/screens/ClusterScreen.jsx";
 import ScenarioForm from "./components/scenarios/ScenarioForm.jsx";
 import ScenarioRead from "./components/scenarios/ScenarioRead.jsx";
 import PreferredFutureForm from "./components/preferred-futures/PreferredFutureForm.jsx";
@@ -36,8 +37,10 @@ function ActiveScreen({ appState, onSignOut }) {
     case "dashboard": return <Dashboard appState={appState} />;
     case "inbox": return <Inbox appState={appState} />;
     case "projects": return <Dashboard appState={appState} />;  // projects list = dashboard
+    case "project-overview": return <ProjectOverview appState={appState} />;
     case "project": return <ProjectDetail appState={appState} />;
-    case "clustering": return <Clustering appState={appState} />;
+    case "cluster": return <ClusterScreen appState={appState} />;
+    case "clustering": return <ClusterScreen appState={appState} />; // legacy redirect
     case "scenarios": return <ScenarioCanvas appState={appState} />;
     case "narrative": return <NarrativeCanvas appState={appState} />;
     case "scenario_canvas": return <ScenarioNarrativeCanvas appState={appState} />;
@@ -209,6 +212,29 @@ export default function App() {
           if (error) console.error("[onboarding] onboarding_completed write failed:", error);
         });
     }
+    // Clone the sample template project into this user's workspace —
+    // fire-and-forget, server-side (RLS blocks a client session from reading
+    // the templates account's data). No synchronous feedback needed; the
+    // clone appears on the dashboard whenever it completes.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      fetch("/api/clone-sample-project", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (!data.success) {
+            console.error("[onboarding] clone-sample-project failed:", data.error);
+            return;
+          }
+          // Redirect already fired above without waiting on this — refresh
+          // projects now so the clone shows up whenever the user actually
+          // looks at the dashboard, instead of requiring a manual reload.
+          appState.refreshProjects();
+        })
+        .catch((err) => console.error("[onboarding] clone-sample-project request failed:", err));
+    });
     setOnboardingComplete(true);
     if (projectId) {
       window.history.pushState({}, "", `/projects/${projectId}`);
@@ -241,11 +267,25 @@ export default function App() {
   }, [session, onboardingComplete]);
 
   // ── Deep-link handler — /projects/[uuid] ──────────────────────────────────
-  // Fires once after projects have loaded. If the URL matches /projects/[id],
-  // opens that project rather than landing at root state.
-  // Handles both post-onboarding redirect and hard-refresh at a project URL.
+  // Runs ONCE, on the initial mount after projects first load. It is only a
+  // fallback for the localStorage last-viewed restore (useAppState) — not the
+  // source of truth. If localStorage already restored a valid project, that
+  // wins and the URL is left for openProject() to re-sync going forward;
+  // otherwise (no restore, or a stale id the guard reset to null) we honour a
+  // /projects/[id] URL. The one-shot ref stops this from re-firing on later
+  // projects changes (e.g. the post-onboarding clone's refreshProjects) and
+  // yanking the user off whatever they've since navigated to.
+  const deepLinkHandledRef = useRef(false);
   useEffect(() => {
     if (!onboardingComplete || projects.length === 0) return;
+    if (deepLinkHandledRef.current) return;
+    deepLinkHandledRef.current = true;
+
+    // localStorage-restored project wins — leave the (possibly stale) URL alone.
+    const hasRestoredProject =
+      activeProjectId && projects.some((p) => p.id === activeProjectId);
+    if (hasRestoredProject) return;
+
     const match = window.location.pathname.match(
       /^\/projects\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
     );
@@ -258,7 +298,7 @@ export default function App() {
       // Project not in workspace — fall back to root and clean the URL
       window.history.replaceState({}, "", "/");
     }
-  }, [onboardingComplete, projects]);
+  }, [onboardingComplete, projects, activeProjectId]);
 
   // ── Deep-link handler — /inbox?candidate=<candidates.id> ──────────────────
   // Fires once after inputs have loaded. Weekly digest emails link to
@@ -318,12 +358,12 @@ export default function App() {
       height: "100vh",
       display: "flex",
       flexDirection: "column",
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
+      fontFamily: "inherit",
       fontSize: 14,
       color: "#111111",
       WebkitFontSmoothing: "antialiased",
     }}>
-      <AppShell appState={appState} onSignOut={handleSignOut} onExport={() => setExportModalOpen(true)} scroll={!["scenarios", "scenario_canvas", "analysis", "project"].includes(appState.activeScreen)}>
+      <AppShell appState={appState} onSignOut={handleSignOut} onExport={() => setExportModalOpen(true)} scroll={!["scenarios", "scenario_canvas", "analysis", "project", "project-overview", "cluster"].includes(appState.activeScreen)}>
         <ActiveScreen appState={appState} onSignOut={handleSignOut} />
       </AppShell>
 
@@ -332,9 +372,10 @@ export default function App() {
         onClose={appState.closeProjectModal}
         onSave={handleCreateProject}
         workspaceScanningEnabled={appState.workspaceScanningEnabled}
+        showToast={appState.showToast}
       />
 
-      <Toast toast={appState.toast} />
+      <Toast toast={appState.toast} liftForBulkBar={appState.bulkBarActive} />
 
       {exportModalOpen && (
         <ExportModal appState={appState} onClose={() => setExportModalOpen(false)} />

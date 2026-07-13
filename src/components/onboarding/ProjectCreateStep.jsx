@@ -36,7 +36,7 @@ function StepDots() {
                 ? c.brand
                 : isDone
                   ? "rgba(59,130,246,0.4)"
-                  : "rgba(0,0,0,0.15)",
+                  : "#9C9B96",
               transition: "all 0.2s",
             }}
           />
@@ -157,10 +157,9 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
           {/* Tag */}
           <div
             style={{
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: 500,
-              textTransform: "uppercase",
-              letterSpacing: "0.07em",
+              letterSpacing: "0.02em",
               color: c.brand,
               marginBottom: 8,
             }}
@@ -183,7 +182,7 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
 
           {/* Sub */}
           <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 22px", lineHeight: 1.6 }}>
-            Three fields to get started. Your scanner starts finding signals as soon as you hit create.
+            Your scanner starts pulling from your domain's sources as soon as you hit create. Add a key question next and it'll rank signals against it too.
           </p>
 
           {/* ── Project name ────────────────────────────── */}
@@ -280,18 +279,6 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
               placeholder="e.g. How might AI reshape diagnostic medicine over the next decade?"
               style={{ ...ta }}
             />
-            <p
-              style={{
-                fontSize: 11,
-                color: "#9CA3AF",
-                fontStyle: "italic",
-                marginTop: 5,
-                marginBottom: 0,
-                lineHeight: 1.5,
-              }}
-            >
-              A starting point — you'll refine this as your project develops.
-            </p>
           </div>
 
           {/* ── Enhanced toggle ──────────────────────────── */}
@@ -403,7 +390,7 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
                 >
                   ►
                 </span>
-                + Add more detail (optional for now)
+                + Add more detail
               </button>
 
               {enhancedOpen && (

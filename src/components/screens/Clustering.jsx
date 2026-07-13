@@ -187,7 +187,7 @@ function TableHead({ cols }) {
     }}>
       {cols.map((col, i) => (
         <div key={i} style={{
-          fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint,
+          fontSize: 10, letterSpacing: "0.07em", color: c.hint,
           textAlign: col.align || "left",
         }}>
           {col.label}
@@ -598,7 +598,7 @@ function AssignmentGroupCard({ group, inputs, fadingOutIds, onAcceptOne, onDismi
           <div style={{
             display: "grid", gridTemplateColumns: "1fr 130px 140px", alignItems: "center", gap: 8,
             padding: "6px 11px", borderBottom: `1px solid ${c.border}`,
-            fontSize: 10, fontWeight: 500, color: c.faint, textTransform: "uppercase", letterSpacing: "0.07em",
+            fontSize: 10, fontWeight: 500, color: c.faint, letterSpacing: "0.07em",
           }}>
             <span>Title</span>
             <span style={{ textAlign: "center" }}>Match confidence</span>
@@ -985,7 +985,7 @@ export default function Clustering({ appState }) {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
           <div>
             <div style={{ marginBottom: 3 }}>
-              <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: c.hint }}>
+              <div style={{ fontSize: 10, letterSpacing: "0.08em", color: c.hint }}>
                 {project.name}
               </div>
             </div>
@@ -1269,7 +1269,7 @@ export default function Clustering({ appState }) {
                   />
                 </div>
                 {["Title", "Strength", "Horizon", "STEEPLED", ""].map((label, i) => (
-                  <div key={i} style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", color: c.hint }}>
+                  <div key={i} style={{ fontSize: 10, letterSpacing: "0.07em", color: c.hint }}>
                     {label}
                   </div>
                 ))}

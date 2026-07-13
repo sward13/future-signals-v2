@@ -55,7 +55,7 @@ export function InputCard({ input, projects = [], onSaveToProject, onDismiss, on
           </span>
         )}
         <span style={{ marginLeft: "auto" }}>
-          <StrengthDot str={input.strength} />
+          <StrengthDot str={input.signal_strength} />
         </span>
       </div>
 

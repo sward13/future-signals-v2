@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
-import { norm, dot, CREDIBILITY_SCORES } from './lib/scoring.js';
+import { norm, dot, CREDIBILITY_SCORES } from '../server-lib/scoring.js';
+import { cronSecretOk, bearerToken } from '../server-lib/cron-auth.js';
 
 export const config = {
   maxDuration: 120,
@@ -41,10 +42,7 @@ async function fetchAllAlreadyScored(projectIds) {
 export default async function handler(req, res) {
   // Accept x-cron-secret (from classify's fire-and-forget) OR Authorization: Bearer
   // (Vercel's cron runner sends the latter automatically when CRON_SECRET is set)
-  const cronOk =
-    req.headers['x-cron-secret'] === process.env.CRON_SECRET ||
-    req.headers['authorization'] === `Bearer ${process.env.CRON_SECRET}`;
-  if (!cronOk) {
+  if (!cronSecretOk(req.headers['x-cron-secret'], bearerToken(req))) {
     return res.status(401).json({ error: 'Unauthorised' });
   }
 
@@ -61,7 +59,7 @@ export default async function handler(req, res) {
     // Fetch active projects — now includes focus, scope_in, scope_out for richer scoring.
     const { data: projects, error: projectsError } = await supabase
       .from('projects')
-      .select('id, workspace_id, name, question, focus, scope_in, scope_out, key_question_embedding, scanning_enabled')
+      .select('id, workspace_id, name, domain, question, focus, scope_in, scope_out, key_question_embedding, scanning_enabled')
       .not('question', 'is', null)
       .neq('question', '');
 
@@ -82,7 +80,7 @@ export default async function handler(req, res) {
     );
 
     const activeProjects = projects.filter(p =>
-      !disabledWorkspaces.has(p.workspace_id) && p.scanning_enabled !== false
+      !disabledWorkspaces.has(p.workspace_id) && p.scanning_enabled !== false && p.domain
     );
 
     if (!activeProjects.length) return res.status(200).json({ success: true, results });

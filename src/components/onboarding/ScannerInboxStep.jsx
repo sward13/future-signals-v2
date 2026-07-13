@@ -33,7 +33,7 @@ function StepDots() {
                 ? c.brand
                 : isDone
                   ? "rgba(59,130,246,0.4)"
-                  : "rgba(0,0,0,0.15)",
+                  : "#9C9B96",
               transition: "all 0.2s",
             }}
           />
@@ -139,11 +139,12 @@ function CandidateCard({ candidate, selected, onToggle }) {
             <span
               key={tag}
               style={{
-                fontSize: 9,
-                padding: "1px 5px",
-                borderRadius: 3,
+                fontSize: 10,
+                padding: "2px 7px",
+                borderRadius: 10,
                 background: "#F3F4F6",
                 color: "#6B7280",
+                border: `1px solid ${c.border}`,
               }}
             >
               {tag}
@@ -334,8 +335,8 @@ export function ScannerInboxStep({
           {/* Tag */}
           <div
             style={{
-              fontSize: 10, fontWeight: 500,
-              textTransform: "uppercase", letterSpacing: "0.07em",
+              fontSize: 11, fontWeight: 500,
+              letterSpacing: "0.02em",
               color: c.brand, marginBottom: 8,
             }}
           >
@@ -372,8 +373,8 @@ export function ScannerInboxStep({
             <div
               style={{
                 fontSize: 9, fontWeight: 500,
-                textTransform: "uppercase", letterSpacing: "0.08em",
-                color: "#3B82F6", marginBottom: 3,
+                letterSpacing: "0.08em",
+                color: c.blue700, marginBottom: 3,
               }}
             >
               Matched to — {projectName}
@@ -570,7 +571,7 @@ function EmptyState({ onComplete, domain }) {
                   ? c.brand
                   : i < STEP_DOT
                     ? "rgba(59,130,246,0.4)"
-                    : "rgba(0,0,0,0.15)",
+                    : "#9C9B96",
                 transition: "all 0.2s",
               }}
             />
@@ -607,10 +608,10 @@ function EmptyState({ onComplete, domain }) {
               margin: "0 0 9px",
             }}
           >
-            We're still building signals for this topic
+            No signals found for {domain} yet
           </h2>
           <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 24px", lineHeight: 1.6 }}>
-            Your scanner will start surfacing relevant signals overnight. In the meantime, you can add your own inputs manually from your project.
+            Your scanner will keep checking as new sources publish — add your first signal manually to get started.
           </p>
           <button
             onClick={() => onComplete([])}

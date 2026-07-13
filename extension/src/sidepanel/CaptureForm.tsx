@@ -2,10 +2,20 @@ import { useEffect, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../../../src/types/database.types";
 import { c, inp, ta, sel, btnP, btnSec, fl } from "../../../src/styles/tokens.js";
-import { DEFAULT_SUBTYPE, SELECTION_CHANGED_MESSAGE_TYPE } from "../constants.js";
-import type { InputSubtypeId } from "../constants.js";
+import {
+  DEFAULT_SUBTYPE,
+  SELECTION_CHANGED_MESSAGE_TYPE,
+  SIGNAL_STRENGTH_OPTIONS,
+  SOURCE_CONFIDENCE_OPTIONS,
+  STEEPLED_OPTIONS,
+  HORIZON_OPTIONS,
+} from "../constants.js";
+import type { InputSubtypeId, SignalStrengthId, SourceConfidenceId, HorizonId } from "../constants.js";
 import { Topbar } from "./Topbar";
 import { SubtypePicker } from "./SubtypePicker";
+import { ThreeCardSelector } from "./ThreeCardSelector";
+import { SteepleSelector } from "./SteepleSelector";
+import { ToggleOptionRow } from "./ToggleOptionRow";
 import { debugLogPageExtraction, fetchActiveTabPage } from "../lib/activeTabPage.js";
 import { resolveBestDescription, resolveMetaDescription } from "../lib/metadata.js";
 import type { ProjectRow } from "../lib/workspace.js";
@@ -52,6 +62,15 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
   const [sourceUrl, setSourceUrl] = useState("");
   const [subtype, setSubtype] = useState<InputSubtypeId>(DEFAULT_SUBTYPE);
   const [projectId, setProjectId] = useState<string>(""); // "" → Inbox (null)
+  const [signalStrength, setSignalStrength] = useState<SignalStrengthId | null>(null);
+  const [sourceConfidence, setSourceConfidence] = useState<SourceConfidenceId | null>(null);
+  const [steepled, setSteepled] = useState<string[]>([]);
+  const [horizon, setHorizon] = useState<HorizonId | null>(null);
+  // Collapsed by default (fast-capture default per the original extension
+  // spec's "Fast capture" vs "Add details" modes). Auto-expands on restore
+  // if the draft already has any of these set, so a returning user doesn't
+  // lose sight of a classification they already made.
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
@@ -225,6 +244,13 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
         setSourceUrl(draft.source_url);
         setSubtype(normalizeSubtypeId(draft.subtype));
         setProjectId(draft.project_id ?? "");
+        setSignalStrength(draft.signal_strength);
+        setSourceConfidence(draft.source_confidence);
+        setSteepled(draft.steepled);
+        setHorizon(draft.horizon);
+        setDetailsExpanded(
+          draft.steepled.length > 0 || Boolean(draft.signal_strength) || Boolean(draft.source_confidence) || Boolean(draft.horizon),
+        );
         setNameDirty(Boolean(draft.name.trim()));
         setDescriptionDirty(Boolean(draft.description.trim()));
         setSourceUrlDirty(Boolean(draft.source_url.trim()));
@@ -249,9 +275,13 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
       source_url: sourceUrl,
       subtype,
       project_id: projectId || null,
+      signal_strength: signalStrength,
+      source_confidence: sourceConfidence,
+      steepled,
+      horizon,
       updatedAt: new Date().toISOString(),
     });
-  }, [hydrated, savedId, name, description, sourceUrl, subtype, projectId]);
+  }, [hydrated, savedId, name, description, sourceUrl, subtype, projectId, signalStrength, sourceConfidence, steepled, horizon]);
 
   // ── Reload from tab ─────────────────────────────────────────────────────────
   // Detects page changes: if the fetched URL differs from the form's current
@@ -288,6 +318,11 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
     setReloadStatus(null);
     setSubtype(DEFAULT_SUBTYPE);
     setProjectId("");
+    setSignalStrength(null);
+    setSourceConfidence(null);
+    setSteepled([]);
+    setHorizon(null);
+    setDetailsExpanded(false);
     setNameDirty(false);
     setDescriptionDirty(false);
     setSourceUrlDirty(false);
@@ -335,6 +370,10 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
       sourceUrlRaw: sourceUrl,
       subtype: normalizeSubtypeId(subtype),
       projectId: effectiveProjectId,
+      signalStrength,
+      sourceConfidence,
+      steepled,
+      horizon,
       metadata,
     });
 
@@ -359,6 +398,11 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
     setReloadStatus(null);
     setSubtype(DEFAULT_SUBTYPE);
     setProjectId("");
+    setSignalStrength(null);
+    setSourceConfidence(null);
+    setSteepled([]);
+    setHorizon(null);
+    setDetailsExpanded(false);
     setNameDirty(false);
     setDescriptionDirty(false);
     setSourceUrlDirty(false);
@@ -500,6 +544,51 @@ export function CaptureForm({ supabase, workspaceId, projects, appOrigin, onSign
             onChange={(id) => setSubtype(normalizeSubtypeId(id))}
           />
         </div>
+
+        <button
+          type="button"
+          onClick={() => setDetailsExpanded((v) => !v)}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "11px 0", border: "none", background: "none", cursor: "pointer", fontFamily: "inherit",
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 500, color: c.ink }}>
+            <span>+ Add details</span>
+          </span>
+          <span style={{ fontSize: 10, color: c.muted, transform: detailsExpanded ? "rotate(180deg)" : "none" }}>▾</span>
+        </button>
+
+        {detailsExpanded && (
+          <>
+            <SteepleSelector
+              options={STEEPLED_OPTIONS}
+              selected={steepled}
+              onToggle={(cat) => setSteepled((prev) => (prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]))}
+            />
+
+            <ThreeCardSelector
+              label="Signal strength"
+              options={SIGNAL_STRENGTH_OPTIONS}
+              value={signalStrength}
+              onChange={(id) => setSignalStrength(id as SignalStrengthId | null)}
+            />
+
+            <ThreeCardSelector
+              label="Source confidence"
+              options={SOURCE_CONFIDENCE_OPTIONS}
+              value={sourceConfidence}
+              onChange={(id) => setSourceConfidence(id as SourceConfidenceId | null)}
+            />
+
+            <ToggleOptionRow
+              label="Time horizon"
+              options={HORIZON_OPTIONS}
+              value={horizon}
+              onChange={(id) => setHorizon(id as HorizonId | null)}
+            />
+          </>
+        )}
 
         <div style={{ marginBottom: 16 }}>
           <div style={fl}>Project</div>

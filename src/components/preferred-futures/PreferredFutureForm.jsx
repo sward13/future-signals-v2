@@ -16,8 +16,8 @@ function ZoneDivider({ label }) {
     <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "28px 0 24px" }}>
       <div style={{ flex: 1, height: 1, background: c.border }} />
       <span style={{
-        fontSize: 10, fontWeight: 500, color: c.hint,
-        letterSpacing: "0.08em", textTransform: "uppercase",
+        fontSize: 11, fontWeight: 500, color: c.hint,
+        letterSpacing: "0.02em",
       }}>
         {label}
       </span>
@@ -39,7 +39,7 @@ function ScenarioMultiSelect({ scenarios, selected, onChange }) {
       <div style={fl}>Informed by scenarios</div>
       <div style={fh}>Which scenarios does this preferred future draw from?</div>
       <div style={{
-        border: `1px solid ${c.borderMid}`, borderRadius: 8,
+        border: `1px solid ${c.borderStrong}`, borderRadius: 8,
         background: c.white, overflow: "hidden",
       }}>
         <div style={{
@@ -205,7 +205,7 @@ export default function PreferredFutureForm({ appState, mode }) {
 
         {/* Eyebrow */}
         <div style={{
-          fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em",
+          fontSize: 11, letterSpacing: "0.02em",
           color: c.hint, marginBottom: 12,
         }}>
           {mode === "new" ? "New preferred future" : "Edit preferred future"}

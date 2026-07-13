@@ -6,7 +6,7 @@
 import { Sidebar } from "./Sidebar.jsx";
 
 export function AppShell({ appState, children, scroll = true, onSignOut, onExport }) {
-  const { activeScreen, setActiveScreen, setActiveProjectId, user, inputs, clusters, scenarios, preferredFutures, strategicOptions, projects, activeProjectId, openProjectModal, analyses, canvasNodes } = appState;
+  const { activeScreen, setActiveScreen, setActiveProjectId, openProject, user, inputs, clusters, scenarios, preferredFutures, strategicOptions, projects, activeProjectId, openProjectModal, analyses, canvasNodes } = appState;
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
   const inboxCount = inputs.filter((i) =>
@@ -60,6 +60,7 @@ export function AppShell({ appState, children, scroll = true, onSignOut, onExpor
         onExport={onExport}
         projects={projects}
         setActiveProjectId={setActiveProjectId}
+        openProject={openProject}
       />
       <div style={{
         flex: 1,

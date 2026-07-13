@@ -1,11 +1,11 @@
 /**
  * Toast — bottom-right success/error notification.
  * Driven by appState.toast. Auto-dismisses after 2s (handled in useAppState).
- * @param {{ toast: { message: string, type: 'success' | 'error' } | null }} props
+ * @param {{ toast: { message: string, type: 'success' | 'error' } | null, liftForBulkBar?: boolean }} props
  */
 import { c } from "../../styles/tokens.js";
 
-export function Toast({ toast }) {
+export function Toast({ toast, liftForBulkBar = false }) {
   if (!toast) return null;
 
   const isError = toast.type === "error";
@@ -17,7 +17,8 @@ export function Toast({ toast }) {
   return (
     <div style={{
       position: "fixed",
-      bottom: 24,
+      // Clear the sticky multi-select bar (~38px tall) when it's visible, plus a gap
+      bottom: liftForBulkBar ? 76 : 24,
       right: 24,
       zIndex: 1000,
       display: "flex",

@@ -130,7 +130,7 @@ export function AuthScreen({ initialMode = "signin" }) {
       alignItems: "center",
       justifyContent: "center",
       background: c.bg,
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
+      fontFamily: "inherit",
       fontSize: 14,
       WebkitFontSmoothing: "antialiased",
     }}>

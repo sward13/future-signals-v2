@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Future Signals — Workspace v5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --gray-50: #F9F9F8; --gray-100: #F2F1EF; --gray-200: #E8E7E4;
+  --gray-300: #D4D3CF; --gray-400: #A8A7A3; --gray-500: #757472;
+  --gray-600: #4A4947; --gray-700: #2C2B2A; --gray-900: #111110;
+  --blue-50: #EEF4FB; --blue-100: #D5E8F7; --blue-400: #378ADD;
+  --blue-600: #185FA5; --blue-800: #0C447C;
+  --green-50: #EAF3DE; --green-100: #C0DD97; --green-700: #3B6D11;
+  --amber-50: #FDF3E3; --amber-100: #FAD898; --amber-700: #7A4A0A;
+  --purple-50: #EEEDFE; --purple-100: #CECBF6; --purple-800: #3C3489;
+  --teal-50: #E1F5EE; --teal-800: #085041;
+  --red-50: #FEE2E2; --red-700: #B91C1C;
+}
+html, body { height: 100%; font-family: var(--font); font-size: 14px; color: var(--gray-900); background: var(--gray-50); -webkit-font-smoothing: antialiased; }
+.app { display: flex; height: 100vh; overflow: hidden; }
+
+/* ── SIDEBAR ── */
+.sidebar { width: 208px; min-width: 208px; background: white; border-right: 1px solid var(--gray-200); display: flex; flex-direction: column; }
+.sidebar-logo { display: flex; align-items: center; gap: 9px; padding: 18px 16px 16px; border-bottom: 1px solid var(--gray-100); }
+.logo-mark { width: 26px; height: 26px; background: #C1382B; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.logo-mark svg { width: 12px; height: 12px; fill: white; }
+.logo-text { font-size: 13px; font-weight: 600; color: var(--gray-900); }
+.nav-section-label { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--gray-400); padding: 14px 16px 4px; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 7px 16px; font-size: 13px; color: var(--gray-500); cursor: pointer; user-select: none; }
+.nav-item:hover { background: var(--gray-50); color: var(--gray-700); }
+.nav-item.active { color: var(--blue-600); background: var(--blue-50); font-weight: 500; }
+.nav-icon { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; }
+.nav-badge { margin-left: auto; font-size: 11px; background: var(--gray-100); color: var(--gray-500); padding: 1px 6px; border-radius: 10px; }
+.nav-badge.accent { background: var(--blue-50); color: var(--blue-600); }
+.nav-spacer { flex: 1; }
+.sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--gray-100); display: flex; align-items: center; gap: 9px; }
+.avatar { width: 24px; height: 24px; background: var(--blue-50); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: var(--blue-600); }
+.footer-name { font-size: 12px; font-weight: 500; color: var(--gray-700); }
+.footer-role { font-size: 11px; color: var(--gray-400); }
+
+/* ── MAIN ── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+/* ── PROJECT HEADER ── */
+.project-header { background: white; border-bottom: 1px solid var(--gray-200); padding: 0 24px; flex-shrink: 0; }
+.breadcrumb { display: flex; align-items: center; gap: 5px; padding: 12px 0 0; font-size: 12px; color: var(--gray-400); }
+.project-title-row { display: flex; align-items: center; gap: 10px; padding: 7px 0 10px; }
+.project-title { font-size: 20px; font-weight: 600; color: var(--gray-900); }
+.header-actions { margin-left: auto; display: flex; gap: 8px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 13px; border-radius: 7px; font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--gray-200); background: white; color: var(--gray-600); white-space: nowrap; }
+.btn:hover { background: var(--gray-50); color: var(--gray-700); }
+.btn-primary { background: var(--blue-600); color: white; border-color: var(--blue-600); }
+.btn-primary:hover { background: var(--blue-800); border-color: var(--blue-800); }
+
+/* key question */
+.key-question { display: flex; align-items: flex-start; gap: 10px; background: var(--blue-50); border: 1px solid var(--blue-100); border-radius: 7px; padding: 9px 14px; margin-bottom: 10px; }
+.kq-label { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--blue-600); white-space: nowrap; padding-top: 1px; flex-shrink: 0; }
+.kq-text { font-size: 13px; color: var(--gray-700); line-height: 1.5; font-style: italic; }
+
+/* project meta strip */
+.project-meta-strip { display: flex; align-items: center; gap: 0; margin-bottom: 10px; }
+.meta-chip { display: flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 5px; font-size: 12px; }
+.meta-chip-label { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--gray-400); margin-right: 2px; }
+.meta-chip-value { font-size: 12px; color: var(--gray-600); font-weight: 500; }
+.meta-chip-value.unset { color: var(--gray-300); font-style: italic; font-weight: 400; }
+.meta-sep { width: 1px; height: 14px; background: var(--gray-200); margin: 0 4px; }
+
+/* horizons */
+.horizons { display: flex; border-radius: 5px; overflow: hidden; border: 1px solid var(--gray-200); margin-bottom: 14px; }
+.horizon-band { flex: 1; padding: 5px 12px; text-align: center; }
+.h-label { font-size: 12px; font-weight: 600; margin-bottom: 1px; }
+.h-range { font-size: 10px; opacity: .7; }
+.h1-band { background: var(--green-50); color: var(--green-700); border-right: 1px solid var(--green-100); }
+.h2-band { background: var(--blue-50); color: var(--blue-600); border-right: 1px solid var(--blue-100); }
+.h3-band { background: var(--amber-50); color: var(--amber-700); }
+
+/* ── WORKSPACE ── */
+.workspace { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+
+/* ── INPUTS PANEL ── */
+.inputs-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; border-right: 1px solid var(--gray-200); }
+.tabs-bar { display: flex; background: white; border-bottom: 1px solid var(--gray-200); padding: 0 20px; flex-shrink: 0; }
+.tab { display: flex; align-items: center; gap: 5px; padding: 10px 14px; font-size: 13px; color: var(--gray-400); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab:hover { color: var(--gray-600); }
+.tab.active { color: var(--blue-600); border-bottom-color: var(--blue-600); font-weight: 500; }
+.tab-count { font-size: 11px; }
+.filters-bar { display: flex; align-items: center; gap: 8px; padding: 9px 20px; background: var(--gray-50); border-bottom: 1px solid var(--gray-200); flex-shrink: 0; }
+.search-box { display: flex; align-items: center; gap: 7px; padding: 5px 10px; border: 1px solid var(--gray-200); border-radius: 5px; background: white; min-width: 180px; }
+.search-box input { border: none; outline: none; font-family: var(--font); font-size: 12px; color: var(--gray-700); background: transparent; width: 140px; }
+.search-box input::placeholder { color: var(--gray-400); }
+.filter-chip { display: flex; align-items: center; gap: 5px; padding: 5px 10px; border: 1px solid var(--gray-200); border-radius: 20px; font-size: 12px; color: var(--gray-500); cursor: pointer; background: white; }
+.filter-chip:hover { border-color: var(--gray-300); color: var(--gray-700); }
+
+/* ── TABLE ── */
+.table-wrap { flex: 1; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead { position: sticky; top: 0; z-index: 2; }
+thead th { background: var(--gray-50); border-bottom: 1px solid var(--gray-200); padding: 8px 0; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--gray-400); text-align: left; }
+thead th:first-child { padding-left: 20px; width: 36px; }
+tbody tr { background: white; border-bottom: 1px solid var(--gray-100); cursor: grab; }
+tbody tr:active { cursor: grabbing; }
+tbody tr.row-selected { background: var(--blue-50); }
+tbody tr.row-selected:hover { background: #E0EDF8; }
+tbody tr.drag-source { opacity: .35; }
+tbody tr:hover { background: var(--blue-50); }
+tbody tr:hover .drag-handle { opacity: 1; }
+tbody tr:hover .row-assign-btn { opacity: 1; }
+tbody td { padding: 10px 0; font-size: 13px; color: var(--gray-700); vertical-align: middle; }
+tbody td:first-child { padding-left: 20px; }
+.td-title { padding-right: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; width: 100%; }
+.drag-handle { opacity: 0; color: var(--gray-300); font-size: 14px; padding-right: 4px; transition: opacity .1s; user-select: none; }
+.strength-pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 10px; }
+.s-confirmed { background: var(--green-50); color: var(--green-700); }
+.s-established { background: var(--blue-50); color: var(--blue-600); }
+.s-emerging { background: var(--amber-50); color: var(--amber-700); }
+.steepled-list { display: flex; gap: 3px; }
+.steepled-tag { font-size: 10px; padding: 1px 5px; border-radius: 3px; background: var(--gray-100); color: var(--gray-500); }
+.cluster-chip { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--purple-50); color: var(--purple-800); border: 1px solid var(--purple-100); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; display: inline-block; }
+.row-assign-btn { opacity: 0; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 5px; border: 1px solid var(--blue-100); background: var(--blue-50); color: var(--blue-600); cursor: pointer; white-space: nowrap; transition: opacity .12s; }
+.row-assign-btn:hover { background: var(--blue-100); }
+
+/* row removal animation */
+@keyframes rowOut { from { opacity:1; transform:translateX(0); } to { opacity:0; transform:translateX(14px); } }
+tbody tr.removing { animation: rowOut .18s ease forwards; pointer-events: none; }
+
+/* ── DRAG GHOST ── */
+#drag-ghost { position: fixed; pointer-events: none; z-index: 9999; background: white; border: 1.5px solid var(--blue-400); border-radius: 8px; padding: 8px 14px; font-family: var(--font); font-size: 13px; color: var(--gray-700); box-shadow: 0 8px 24px rgba(0,0,0,.15); display: none; max-width: 340px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ghost-badge { position: absolute; top: -9px; right: -9px; width: 20px; height: 20px; background: var(--green-700); color: white; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; border: 2px solid white; }
+
+/* ── CLUSTERS PANEL ── */
+.clusters-panel { width: 320px; min-width: 280px; display: flex; flex-direction: column; overflow: hidden; background: var(--gray-50); position: relative; }
+.clusters-header { background: white; border-bottom: 1px solid var(--gray-200); flex-shrink: 0; }
+.clusters-header-top { display: flex; align-items: center; gap: 8px; padding: 11px 14px 8px; }
+.clusters-title { font-size: 13px; font-weight: 600; color: var(--gray-700); }
+.clusters-header-bottom { display: flex; align-items: center; gap: 8px; padding: 0 14px 10px; }
+.new-cluster-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 5px 11px; border-radius: 5px; border: 1px solid var(--blue-100); background: var(--blue-50); color: var(--blue-600); cursor: pointer; white-space: nowrap; }
+.new-cluster-btn:hover { background: var(--blue-100); }
+.inputs-nudge { display: none; align-items: center; gap: 7px; padding: 7px 20px; font-size: 11px; color: var(--gray-400); background: var(--gray-50); border-bottom: 1px solid var(--gray-200); flex-shrink: 0; line-height: 1.5; }
+.inputs-nudge.visible { display: flex; }
+.clusters-scroll { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+/* ── CLUSTER CARD ── */
+.cluster-card { background: white; border: 1.5px solid var(--gray-200); border-radius: 10px; padding: 12px 14px; transition: border-color .12s, box-shadow .12s, background .12s; position: relative; cursor: pointer; }
+.cluster-card:hover { border-color: var(--gray-300); box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.cluster-card.selected { border-color: var(--blue-400); box-shadow: 0 0 0 3px rgba(56,138,221,.12); }
+.cluster-card.drop-move { border-color: var(--blue-400); background: var(--blue-50); box-shadow: 0 0 0 3px rgba(56,138,221,.15); }
+.cluster-card.drop-copy { border-color: var(--green-700); background: var(--green-50); box-shadow: 0 0 0 3px rgba(59,109,17,.12); }
+.drop-pill { position: absolute; top: 9px; right: 9px; font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; display: none; }
+.cluster-card.drop-move .drop-pill { display: block; background: var(--blue-600); color: white; }
+.cluster-card.drop-copy .drop-pill { display: block; background: var(--green-700); color: white; }
+.cluster-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+.cluster-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.cluster-tag { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 10px; }
+.tag-trend { background: var(--purple-50); color: var(--purple-800); }
+.tag-tension { background: var(--amber-50); color: var(--amber-700); }
+.tag-driver { background: var(--teal-50); color: var(--teal-800); }
+.tag-neutral { background: var(--gray-100); color: var(--gray-500); border: 1px solid var(--gray-200); }
+.cluster-count { font-size: 11px; color: var(--gray-400); white-space: nowrap; flex-shrink: 0; }
+.cluster-name { font-size: 13px; font-weight: 600; color: #1A1918; line-height: 1.4; margin-bottom: 5px; }
+.cluster-desc { font-size: 12px; color: var(--gray-500); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.empty-card { border: 1.5px dashed var(--gray-300); border-radius: 10px; padding: 20px; text-align: center; font-size: 12px; color: var(--gray-400); line-height: 1.6; transition: border-color .12s, background .12s, color .12s; cursor: default; }
+.empty-card.drop-move { border-color: var(--blue-400); background: var(--blue-50); color: var(--blue-600); }
+.empty-card svg { display: block; margin: 0 auto 7px; opacity: .4; }
+
+/* ── CLUSTER DETAIL PANEL ── */
+.cluster-detail {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+  transform: translateX(100%);
+  transition: transform .22s cubic-bezier(.4,0,.2,1);
+  border-left: 1px solid var(--gray-200);
+}
+.cluster-detail.open { transform: translateX(0); }
+.detail-header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--gray-200); flex-shrink: 0; }
+.detail-back { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--blue-600); cursor: pointer; padding: 4px 8px; border-radius: 5px; margin-right: 2px; }
+.detail-back:hover { background: var(--blue-50); }
+.detail-edit-btn { margin-left: auto; font-size: 12px; padding: 4px 10px; border-radius: 5px; border: 1px solid var(--gray-200); background: white; color: var(--gray-600); cursor: pointer; font-family: var(--font); }
+.detail-edit-btn:hover { background: var(--gray-50); }
+.detail-scroll { flex: 1; overflow-y: auto; padding: 16px; }
+.detail-tags-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+.detail-name { font-size: 16px; font-weight: 600; color: var(--gray-900); line-height: 1.4; margin-bottom: 8px; }
+.detail-desc { font-size: 13px; color: var(--gray-500); line-height: 1.6; margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--gray-100); }
+.detail-section-label { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--gray-400); margin-bottom: 8px; }
+.detail-inputs-list { display: flex; flex-direction: column; gap: 6px; }
+.detail-input-row { display: flex; align-items: flex-start; gap: 8px; padding: 9px 10px; border: 1px solid var(--gray-100); border-radius: 7px; background: var(--gray-50); font-size: 12px; color: var(--gray-700); line-height: 1.45; }
+.detail-input-row:hover { border-color: var(--gray-200); background: white; }
+.detail-input-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gray-300); flex-shrink: 0; margin-top: 4px; }
+.detail-input-title { flex: 1; }
+.detail-input-remove { font-size: 11px; color: var(--gray-400); cursor: pointer; flex-shrink: 0; padding: 2px 4px; border-radius: 3px; }
+.detail-input-remove:hover { color: var(--red-700); background: var(--red-50); }
+.detail-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-100); }
+.detail-meta-item .dm-label { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--gray-400); margin-bottom: 3px; }
+.detail-meta-item .dm-value { font-size: 13px; color: var(--gray-700); font-weight: 500; }
+.detail-footer { flex-shrink: 0; padding: 12px 16px; border-top: 1px solid var(--gray-100); display: flex; gap: 8px; }
+.detail-delete-btn { font-size: 12px; padding: 5px 10px; border-radius: 5px; border: 1px solid var(--red-50); background: var(--red-50); color: var(--red-700); cursor: pointer; font-family: var(--font); }
+.detail-delete-btn:hover { background: #FECACA; }
+
+/* ── CONTEXT MENU ── */
+.ctx-menu { position: fixed; background: white; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.06); z-index: 8888; min-width: 220px; padding: 4px; display: none; }
+.ctx-menu.open { display: block; }
+.cm-section { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--gray-400); padding: 6px 10px 2px; }
+.cm-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 5px; font-size: 13px; color: var(--gray-700); cursor: pointer; position: relative; }
+.cm-row:hover { background: var(--gray-50); }
+.cm-row.danger { color: var(--red-700); }
+.cm-row.danger:hover { background: var(--red-50); }
+.cm-arrow { margin-left: auto; font-size: 10px; color: var(--gray-400); }
+.cm-sep { height: 1px; background: var(--gray-100); margin: 4px 0; }
+.cm-sub { position: absolute; left: 100%; top: -4px; background: white; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.12); min-width: 210px; padding: 4px; display: none; z-index: 8889; }
+.cm-row:hover .cm-sub { display: block; }
+.cm-sub-item { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 5px; font-size: 13px; color: var(--gray-700); cursor: pointer; }
+.cm-sub-item:hover { background: var(--gray-50); }
+.cm-sub-item.new-cluster { color: var(--blue-600); font-weight: 500; }
+
+/* ── TOAST ── */
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(56px); background: var(--gray-900); color: white; font-size: 13px; padding: 9px 18px; border-radius: 8px; z-index: 9999; transition: transform .22s ease; pointer-events: none; white-space: nowrap; }
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── CLUSTER VIEW TOGGLE ── */
+.view-toggle { display: flex; border: 1px solid var(--gray-200); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+.vt-btn { display: flex; align-items: center; justify-content: center; width: 28px; height: 26px; cursor: pointer; color: var(--gray-400); font-size: 12px; background: white; border: none; transition: background .1s, color .1s; }
+.vt-btn:first-child { border-right: 1px solid var(--gray-200); }
+.vt-btn:hover { background: var(--gray-50); color: var(--gray-600); }
+.vt-btn.active { background: var(--blue-600); color: white; }
+
+/* compact list item */
+.cluster-list-item { display: flex; align-items: center; gap: 0; padding: 7px 10px; background: white; border: 1px solid var(--gray-200); border-radius: 7px; cursor: pointer; transition: border-color .1s, background .1s; }
+.cluster-list-item:hover { border-color: var(--gray-300); background: var(--gray-50); }
+.cluster-list-item.selected { border-color: var(--blue-400); background: var(--blue-50); }
+.cluster-list-item.drop-move { border-color: var(--blue-400); background: var(--blue-50); box-shadow: 0 0 0 3px rgba(56,138,221,.15); }
+.cluster-list-item.drop-copy { border-color: var(--green-700); background: var(--green-50); box-shadow: 0 0 0 3px rgba(59,109,17,.12); }
+/* fixed-width type badge column so all names align */
+.cli-tag-wrap { width: 62px; flex-shrink: 0; display: flex; align-items: center; }
+.cli-tag { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 10px; white-space: nowrap; }
+.cli-name { flex: 1; font-size: 13px; font-weight: 500; color: #1A1918; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px; }
+.cli-count { font-size: 11px; color: var(--gray-400); flex-shrink: 0; white-space: nowrap; min-width: 18px; text-align: right; }
+.cli-drop-pill { font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; display: none; flex-shrink: 0; margin-left: 6px; }
+.cluster-list-item.drop-move .cli-drop-pill { display: block; background: var(--blue-600); color: white; }
+.cluster-list-item.drop-copy .cli-drop-pill { display: block; background: var(--green-700); color: white; }
+
+/* new cluster drop zone — fixed above scroll */
+.new-cluster-drop { display: flex; align-items: center; gap: 7px; margin: 10px 12px 0; padding: 8px 12px; border: 1.5px dashed var(--gray-300); border-radius: 7px; font-size: 12px; color: var(--gray-400); cursor: default; transition: border-color .12s, background .12s, color .12s; flex-shrink: 0; }
+.new-cluster-drop.drop-move { border-color: var(--blue-400); background: var(--blue-50); color: var(--blue-600); }
+.new-cluster-drop svg { flex-shrink: 0; opacity: .5; }
+
+/* ── SUGGESTED MODE ── */
+.mode-toggle { display: flex; border: 1px solid var(--gray-200); border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+.mode-btn { display: flex; align-items: center; justify-content: center; padding: 4px 11px; font-family: var(--font); font-size: 12px; font-weight: 500; cursor: pointer; color: var(--gray-500); background: white; border: none; transition: background .1s, color .1s; white-space: nowrap; }
+.mode-btn:first-child { border-right: 1px solid var(--gray-200); }
+.mode-btn:hover { background: var(--gray-50); color: var(--gray-700); }
+.mode-btn.active { background: var(--blue-600); color: white; }
+
+.suggested-toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--gray-200); background: white; flex-shrink: 0; }
+.sensitivity-toggle { display: flex; border: 1px solid var(--gray-200); border-radius: 5px; overflow: hidden; flex-shrink: 0; }
+.sens-btn { padding: 4px 8px; font-family: var(--font); font-size: 11px; font-weight: 500; cursor: pointer; color: var(--gray-500); background: white; border: none; border-right: 1px solid var(--gray-200); transition: background .1s, color .1s; }
+.sens-btn:last-child { border-right: none; }
+.sens-btn:hover { background: var(--gray-50); }
+.sens-btn.active { background: var(--gray-900); color: white; }
+.suggest-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-family: var(--font); font-size: 11px; font-weight: 500; padding: 4px 9px; border-radius: 5px; border: 1px solid var(--blue-100); background: var(--blue-50); color: var(--blue-600); cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.suggest-btn:hover { background: var(--blue-100); }
+
+.suggested-scroll { flex: 1; overflow-y: auto; padding: 10px 10px; display: flex; flex-direction: column; gap: 8px; }
+
+.suggestion-type-label { font-size: 10px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--gray-400); padding: 0 2px 4px; }
+
+.suggestion-card { background: white; border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden; }
+.suggestion-card-header { padding: 9px 12px 7px; border-bottom: 1px solid var(--gray-100); display: flex; align-items: flex-start; gap: 6px; }
+.suggestion-card-header-text { flex: 1; min-width: 0; }
+.suggestion-card-label { font-size: 11px; color: var(--gray-400); margin-bottom: 2px; }
+.suggestion-card-label a { color: var(--blue-600); text-decoration: none; font-weight: 500; }
+.suggestion-card-label a:hover { text-decoration: underline; }
+.suggestion-card-name { font-size: 12px; font-weight: 600; color: var(--gray-900); line-height: 1.4; }
+.suggestion-card-desc { font-size: 11px; color: var(--gray-500); line-height: 1.5; margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.suggestion-card-why { font-size: 11px; color: var(--blue-600); cursor: pointer; margin-top: 4px; display: inline-block; }
+.suggestion-card-why:hover { text-decoration: underline; }
+.suggestion-type-tag { display: inline-flex; align-items: center; font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 10px; flex-shrink: 0; margin-top: 1px; white-space: nowrap; }
+
+.suggestion-inputs { padding: 0; }
+.suggestion-input-row { display: flex; align-items: flex-start; gap: 6px; padding: 6px 12px; border-bottom: 1px solid var(--gray-100); }
+.suggestion-input-row:last-child { border-bottom: none; }
+.suggestion-input-bullet { width: 4px; height: 4px; border-radius: 50%; background: var(--gray-300); flex-shrink: 0; margin-top: 5px; }
+.suggestion-input-title { flex: 1; font-size: 11px; color: var(--gray-700); line-height: 1.4; min-width: 0; }
+.confidence-badge { font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
+.conf-high     { background: var(--green-50); color: var(--green-700); }
+.conf-moderate { background: var(--amber-50); color: var(--amber-700); }
+.conf-low      { background: var(--gray-100); color: var(--gray-500); }
+.suggestion-remove-btn { font-size: 10px; color: var(--gray-400); cursor: pointer; padding: 1px 5px; border-radius: 3px; border: none; background: transparent; font-family: var(--font); flex-shrink: 0; }
+.suggestion-remove-btn:hover { color: var(--red-700); background: var(--red-50); }
+
+.suggestion-card-footer { display: flex; align-items: center; gap: 6px; padding: 7px 12px; background: var(--gray-50); border-top: 1px solid var(--gray-100); }
+.sug-accept-btn { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font); font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 5px; background: var(--blue-600); color: white; border: none; cursor: pointer; }
+.sug-accept-btn:hover { background: var(--blue-800); }
+.sug-edit-btn { font-family: var(--font); font-size: 11px; padding: 4px 9px; border-radius: 5px; border: 1px solid var(--gray-200); background: white; color: var(--gray-600); cursor: pointer; }
+.sug-edit-btn:hover { background: var(--gray-50); }
+.sug-dismiss-btn { font-family: var(--font); font-size: 11px; color: var(--gray-400); background: none; border: none; cursor: pointer; padding: 4px 2px; }
+.sug-dismiss-btn:hover { color: var(--gray-700); }
+.accept-all-btn { font-size: 11px; color: var(--gray-400); background: none; border: none; cursor: pointer; font-family: var(--font); white-space: nowrap; }
+.accept-all-btn:hover { color: var(--gray-700); text-decoration: underline; }
+
+.suggested-idle { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 32px 20px; gap: 8px; }
+.suggested-idle-icon { font-size: 22px; color: var(--gray-300); }
+.suggested-idle-title { font-size: 13px; font-weight: 500; color: var(--gray-600); }
+.suggested-idle-sub { font-size: 12px; color: var(--gray-400); line-height: 1.6; max-width: 210px; }
+
+/* scrollbars */
+.table-wrap::-webkit-scrollbar, .clusters-scroll::-webkit-scrollbar, .detail-scroll::-webkit-scrollbar, .suggested-scroll::-webkit-scrollbar { width: 5px; }
+.table-wrap::-webkit-scrollbar-thumb, .clusters-scroll::-webkit-scrollbar-thumb, .detail-scroll::-webkit-scrollbar-thumb, .suggested-scroll::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 10px; }
+</style>
+</head>
+<body>
+
+<div id="drag-ghost"><span id="ghost-text"></span><div class="ghost-badge" id="ghost-badge">+</div></div>
+<div class="ctx-menu" id="ctx-menu"></div>
+<div class="toast" id="toast"></div>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark"><svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5"/></svg></div>
+      <span class="logo-text">Future Signals</span>
+    </div>
+    <div style="padding-top:8px">
+      <div class="nav-item"><span class="nav-icon">▣</span>Dashboard</div>
+      <div class="nav-item"><span class="nav-icon">⌁</span>Inbox<span class="nav-badge">18</span></div>
+    </div>
+    <div class="nav-section-label">Current project</div>
+    <div class="nav-item active"><span class="nav-icon">▤</span>Inputs<span class="nav-badge accent" id="sb-count">18</span></div>
+    <div class="nav-item" id="nav-sysmap">
+      <span class="nav-icon">⬡</span>System Map<span class="nav-badge">1</span>
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon">◈</span>System Analysis
+    </div>
+    <div class="nav-item">
+      <span class="nav-icon">✦</span>Future Models
+    </div>
+    <div class="nav-spacer"></div>
+    <div class="nav-item"><span class="nav-icon">↓</span>Export</div>
+    <div class="sidebar-footer">
+      <div class="avatar">S</div>
+      <div><div class="footer-name">sam@aldermanandw...</div><div class="footer-role">Beginner</div></div>
+    </div>
+  </nav>
+
+  <div class="main">
+
+    <!-- PROJECT HEADER -->
+    <div class="project-header">
+      <div class="breadcrumb">
+        <span>Projects</span>
+      </div>
+      <div class="project-title-row">
+        <span class="project-title">Future of data centers</span>
+        <div class="header-actions">
+          <button class="btn">⚙ Project settings</button>
+          <button class="btn">⊕ Add from Inbox</button>
+          <button class="btn btn-primary">+ Add an input</button>
+        </div>
+      </div>
+      <div class="key-question">
+        <span class="kq-label">Key question</span>
+        <span class="kq-text">"What impact will the increasing regulation of data centers have on AI adoption?"</span>
+      </div>
+      <div class="project-meta-strip">
+        <div class="meta-chip">
+          <span class="meta-chip-label">Domain</span>
+          <span class="meta-chip-value">Technology &amp; AI</span>
+        </div>
+        <div class="meta-sep"></div>
+        <div class="meta-chip">
+          <span class="meta-chip-label">Focus</span>
+          <span class="meta-chip-value unset">Not set</span>
+        </div>
+        <div class="meta-sep"></div>
+        <div class="meta-chip">
+          <span class="meta-chip-label">Geography</span>
+          <span class="meta-chip-value unset">Not set</span>
+        </div>
+        <div class="meta-sep"></div>
+        <div class="meta-chip">
+          <span class="meta-chip-label">Stakeholders</span>
+          <span class="meta-chip-value unset">Not set</span>
+        </div>
+      </div>
+      <div class="horizons">
+        <div class="horizon-band h1-band"><div class="h-label">H1</div><div class="h-range">2026–2029</div></div>
+        <div class="horizon-band h2-band"><div class="h-label">H2</div><div class="h-range">2029–2035</div></div>
+        <div class="horizon-band h3-band"><div class="h-label">H3</div><div class="h-range">2035–2041</div></div>
+      </div>
+    </div>
+
+    <!-- WORKSPACE -->
+    <div class="workspace">
+
+      <!-- INPUTS PANEL -->
+      <div class="inputs-panel">
+        <div class="tabs-bar">
+          <div class="tab" data-tab="all">All <span class="tab-count" id="tc-all">18</span></div>
+          <div class="tab active" data-tab="unassigned">Unassigned <span class="tab-count" id="tc-un">14</span></div>
+          <div class="tab" data-tab="incluster">Clustered <span class="tab-count" id="tc-in">4</span></div>
+        </div>
+        <div class="filters-bar">
+          <div class="search-box">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="5" cy="5" r="3.5" stroke="#A8A7A3" stroke-width="1.2"/><line x1="7.8" y1="7.8" x2="10.5" y2="10.5" stroke="#A8A7A3" stroke-width="1.2" stroke-linecap="round"/></svg>
+            <input type="text" placeholder="Search inputs…">
+          </div>
+          <div class="filter-chip">Type ▾</div>
+          <div class="filter-chip">Horizon ▾</div>
+          <div class="filter-chip">STEEPLED ▾</div>
+        </div>
+        <div class="inputs-nudge" id="inputs-nudge">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style="flex-shrink:0"><circle cx="7" cy="7" r="6" stroke="#A8A7A3" stroke-width="1.2"/><line x1="7" y1="5.5" x2="7" y2="9.5" stroke="#A8A7A3" stroke-width="1.2" stroke-linecap="round"/><circle cx="7" cy="4" r=".75" fill="#A8A7A3"/></svg>
+          <span id="nudge-text"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:36px;padding-left:20px"><input type="checkbox" id="thead-check" style="accent-color:var(--blue-600)" onclick="toggleSelectAll(this)"></th>
+                <th style="width:22px"></th>
+                <th>Title</th>
+                <th style="width:70px">Type</th>
+                <th style="width:110px">Strength</th>
+                <th style="width:120px">STEEPLED</th>
+                <th style="width:160px;padding-right:20px">Cluster</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CLUSTERS PANEL -->
+      <div class="clusters-panel">
+        <div class="clusters-header">
+          <div class="clusters-header-top">
+            <span class="clusters-title">Clusters</span>
+            <button class="new-cluster-btn" id="new-cluster-btn" onclick="toast('New cluster flow opens here')" style="margin-left:auto">+ New cluster</button>
+          </div>
+          <div class="clusters-header-bottom" id="manual-header-bottom">
+            <div class="mode-toggle">
+              <div class="mode-btn active" id="mode-manual" onclick="setMode('manual')">Manual</div>
+              <div class="mode-btn" id="mode-suggested" onclick="setMode('suggested')">Suggested</div>
+            </div>
+            <div class="view-toggle" id="view-toggle-wrap" style="margin-left:auto">
+              <div class="vt-btn active" id="vt-list" title="List view" onclick="setClusterView('list')">☰</div>
+              <div class="vt-btn" id="vt-card" title="Card view" onclick="setClusterView('card')">⊞</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MANUAL MODE -->
+        <div id="manual-panel" style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0">
+          <div class="new-cluster-drop" id="empty-card"
+              ondragover="eOver(event)" ondragleave="eLeave(event)" ondrop="eDrop(event)">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#A8A7A3" stroke-width="1.2"/><line x1="7" y1="4" x2="7" y2="10" stroke="#A8A7A3" stroke-width="1.2" stroke-linecap="round"/><line x1="4" y1="7" x2="10" y2="7" stroke="#A8A7A3" stroke-width="1.2" stroke-linecap="round"/></svg>
+            Drop inputs here to create a new cluster
+          </div>
+          <div class="clusters-scroll" id="clusters-scroll"></div>
+        </div>
+
+        <!-- SUGGESTED MODE -->
+        <div id="suggested-panel" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0">
+          <div class="suggested-toolbar">
+            <div class="sensitivity-toggle" id="sensitivity-toggle">
+              <div class="sens-btn" onclick="setSensitivity('tight',this)">Tight</div>
+              <div class="sens-btn active" onclick="setSensitivity('balanced',this)">Balanced</div>
+              <div class="sens-btn" onclick="setSensitivity('exploratory',this)">Exploratory</div>
+            </div>
+            <button class="suggest-btn" id="suggest-run-btn" onclick="runSuggestions()">✦ Suggest clustering</button>
+          </div>
+          <div class="suggested-scroll" id="suggested-scroll">
+            <div class="suggested-idle" id="suggested-idle">
+              <div class="suggested-idle-icon">✦</div>
+              <div class="suggested-idle-title">No suggestions yet</div>
+              <div class="suggested-idle-sub">Choose a sensitivity level and run Suggest clustering to get AI recommendations.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CLUSTER DETAIL PANEL -->
+        <div class="cluster-detail" id="cluster-detail">
+          <div class="detail-header">
+            <div class="detail-back" onclick="closeDetail()">← Clusters</div>
+            <button class="detail-edit-btn" onclick="toast('Edit cluster opens here')">Edit</button>
+          </div>
+          <div class="detail-scroll" id="detail-scroll"></div>
+          <div class="detail-footer">
+            <button class="detail-delete-btn" onclick="toast('Delete cluster — would confirm first')">Delete cluster</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const clusters = [
+  { id:'c1',  name:'Regulatory Fragmentation',                    type:'tension', h:'H1', likelihood:'Plausible',  desc:'Diverging national frameworks create compliance complexity for global data center operators, slowing AI infrastructure buildout in regulated markets.', inputs:[] },
+  { id:'c2',  name:'AI Infrastructure Investment Surge',          type:'trend',   h:'H1', likelihood:'Probable',   desc:'Hyperscaler and sovereign investment in compute capacity is accelerating despite regulatory headwinds, reshaping the global distribution of AI capability.', inputs:[] },
+  { id:'c3',  name:'Energy Demand vs. Grid Capacity',             type:'tension', h:'H1', likelihood:'Probable',   desc:'Explosive growth in data center power draw is colliding with grid infrastructure that was not designed for this scale, creating regional bottlenecks.', inputs:[] },
+  { id:'c4',  name:'Sovereign AI Compute Ambitions',              type:'driver',  h:'H2', likelihood:'Plausible',  desc:'Nations are treating AI compute infrastructure as a strategic asset, driving investment in domestic data center capacity outside US hyperscaler control.', inputs:[] },
+  { id:'c5',  name:'Water Scarcity as a Constraint',              type:'tension', h:'H2', likelihood:'Possible',   desc:'Cooling requirements for large-scale AI compute are coming into conflict with water availability in regions facing increasing drought stress.', inputs:[] },
+  { id:'c6',  name:'Open Source Model Proliferation',             type:'trend',   h:'H1', likelihood:'Probable',   desc:'The rapid release of capable open-weight models is shifting the competitive landscape away from proprietary API access toward deployment infrastructure.', inputs:[] },
+  { id:'c7',  name:'Chip Supply Chain Concentration',             type:'tension', h:'H1', likelihood:'Plausible',  desc:'Dependence on a small number of advanced semiconductor manufacturers creates systemic fragility in AI infrastructure supply chains.', inputs:[] },
+  { id:'c8',  name:'Edge Compute Decentralization',               type:'trend',   h:'H2', likelihood:'Possible',   desc:'Inference workloads are beginning to migrate toward edge infrastructure, driven by latency requirements and data residency regulation.', inputs:[] },
+  { id:'c9',  name:'Carbon Accountability Pressure',              type:'driver',  h:'H1', likelihood:'Plausible',  desc:'Institutional investors and regulators are increasing pressure on hyperscalers to quantify and reduce the carbon footprint of AI workloads.', inputs:[] },
+  { id:'c10', name:'LLM Commoditization',                         type:'trend',   h:'H2', likelihood:'Probable',   desc:'As foundation model capability converges, competitive advantage is shifting from model quality to inference cost, latency, and application integration.', inputs:[] },
+  { id:'c11', name:'Workforce Displacement in Knowledge Work',    type:'tension', h:'H2', likelihood:'Plausible',  desc:'Productivity gains from AI adoption in white-collar roles are beginning to translate into structural reductions in headcount in certain sectors.', inputs:[] },
+  { id:'c12', name:'Data Residency Regulation Tightening',        type:'driver',  h:'H1', likelihood:'Probable',   desc:'Expanding data localization requirements in the EU, India, and Southeast Asia are forcing data center location decisions and architectural choices.', inputs:[] },
+  { id:'c13', name:'AI Liability and Insurance Gaps',             type:'tension', h:'H2', likelihood:'Possible',   desc:'Legal frameworks for assigning liability in AI-assisted decisions remain underdeveloped, creating exposure for enterprise adopters and insurers alike.', inputs:[] },
+  { id:'c14', name:'Inference Cost Deflation',                    type:'trend',   h:'H1', likelihood:'Probable',   desc:'Hardware and software efficiency gains are driving rapid cost-per-token reductions, expanding the economically viable surface area for AI applications.', inputs:[] },
+  { id:'c15', name:'Public Trust and AI Legitimacy',              type:'tension', h:'H3', likelihood:'Possible',   desc:'Accumulating incidents of AI-generated misinformation, bias, and harm are eroding public confidence in AI systems and the institutions deploying them.', inputs:[] },
+];
+
+const inputs = [
+  { id:'i1',  title:"Navigating the EU's AI and health regulation",                       type:'Signal', str:'confirmed',  steepled:['Tech','Pol'],      cid:'c1'  },
+  { id:'i2',  title:"What to Know About AI and Mental Health",                            type:'Signal', str:'established', steepled:['Soc','Tech'],      cid:null  },
+  { id:'i3',  title:"Southeast Asia's AI Dilemma",                                       type:'Signal', str:'established', steepled:['Soc','Eco'],       cid:'c4'  },
+  { id:'i4',  title:"Big Tech Shouldn't Be Writing the Rules for AI",                    type:'Signal', str:'confirmed',  steepled:['Pol','Eth'],       cid:'c1'  },
+  { id:'i5',  title:"White-collar industries bet on a secret weapon",                    type:'Signal', str:'confirmed',  steepled:['Soc','Tech'],      cid:'c11' },
+  { id:'i6',  title:"Gen Z's fading AI hype",                                            type:'Signal', str:'established', steepled:['Soc','Tech','+1'], cid:null  },
+  { id:'i7',  title:"xAI sues Colorado over first state AI anti-discrimination law",     type:'Signal', str:'confirmed',  steepled:['Leg','Pol'],       cid:'c12' },
+  { id:'i8',  title:"Advice for economics graduate students",                            type:'Signal', str:'established', steepled:['Tech','Eco'],      cid:null  },
+  { id:'i9',  title:"Datadog's Expanding Portfolio Drives ARR",                          type:'Signal', str:'established', steepled:['Tech','Eco','+1'], cid:'c2'  },
+  { id:'i10', title:"From Compliance to Coherence: A Global Survey",                     type:'Signal', str:'established', steepled:['Pol','Leg','+1'],  cid:'c12' },
+  { id:'i11', title:"Sam Altman's New Deal for superintelligence",                       type:'Signal', str:'established', steepled:['Soc','Tech'],      cid:null  },
+  { id:'i12', title:"Oracle's 21,000 layoffs help drive its debt-fueled AI investments", type:'Signal', str:'confirmed',  steepled:['Eco','Tech','+1'], cid:'c2'  },
+  { id:'i13', title:"The AI-powered World Cup runs on thousands of data workers",        type:'Signal', str:'emerging',   steepled:['Tech','Eco','+1'], cid:null  },
+  { id:'i14', title:"Chinese universities cutting language majors to make way for AI",   type:'Signal', str:'emerging',   steepled:['Eco','Soc','+1'],  cid:'c11' },
+  { id:'i15', title:"Some Electricians Think Building Data Centers Is for Sellouts",     type:'Signal', str:'established', steepled:['Eco','Soc','+1'],  cid:'c3'  },
+  { id:'i16', title:"AI memory startup Engram raised $98M to cut enterprise AI costs",  type:'Signal', str:'emerging',   steepled:['Tech','Eco'],      cid:'c14' },
+  { id:'i17', title:"OpenAI and Broadcom announce chip for LLM inference at scale",     type:'Signal', str:'confirmed',  steepled:['Tech','Eco'],      cid:'c7'  },
+  { id:'i18', title:"China and the West: opposite paths on EV battery recycling",       type:'Signal', str:'established', steepled:['Eco','Tech','+1'], cid:null  },
+];
+
+clusters.forEach(c => { c.inputs = inputs.filter(i => i.cid === c.id).map(i => i.id); });
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let activeTab = 'unassigned';
+let drag = null;
+let copySeq = 200;
+let openClusterId = null;
+let clusterView = 'list';
+let selected = new Set();
+let panelMode = 'manual'; // 'manual' | 'suggested'
+let sensitivity = 'balanced';
+let suggestions = []; // populated on run
+let suggestionsGenerated = false; // selected input ids
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const strClass = s => s==='confirmed'?'s-confirmed':s==='established'?'s-established':'s-emerging';
+const strLabel = s => s==='confirmed'?'Confirmed':s==='established'?'Established':'Emerging';
+const tagClass  = t => t==='trend'?'tag-trend':t==='tension'?'tag-tension':t==='driver'?'tag-driver':'tag-neutral';
+const tagLabel  = t => ({trend:'Trend',tension:'Tension',driver:'Driver'}[t]||t);
+const cName     = id => { const c=clusters.find(c=>c.id===id); return c?c.name:''; };
+
+// ── RENDER INPUTS ─────────────────────────────────────────────────────────────
+function renderInputs() {
+  const rows = inputs.filter(i =>
+    activeTab==='all' ? true : activeTab==='unassigned' ? !i.cid : !!i.cid
+  );
+  const visibleIds = rows.map(i=>i.id);
+  const allChecked = visibleIds.length > 0 && visibleIds.every(id=>selected.has(id));
+
+  document.getElementById('thead-check').checked = allChecked;
+  document.getElementById('thead-check').indeterminate = !allChecked && visibleIds.some(id=>selected.has(id));
+
+  document.getElementById('tbody').innerHTML = rows.map(inp => {
+    const cn = inp.cid ? cName(inp.cid) : null;
+    const isSelected = selected.has(inp.id);
+    const clusterCell = cn
+      ? `<span class="cluster-chip" title="${cn}">${cn}</span>`
+      : `<button class="row-assign-btn" onclick="rowAssign(event,'${inp.id}')">Assign →</button>`;
+    return `<tr id="row-${inp.id}" draggable="true"
+        class="${isSelected?'row-selected':''}"
+        ondragstart="dStart(event,'${inp.id}')"
+        ondragend="dEnd(event)"
+        oncontextmenu="ctxOpen(event,'${inp.id}')">
+      <td style="padding-left:20px"><input type="checkbox" id="chk-${inp.id}" ${isSelected?'checked':''} style="width:14px;height:14px;accent-color:var(--blue-600)" onclick="toggleSelect(event,'${inp.id}')"></td>
+      <td><span class="drag-handle" title="Drag to assign">⠿</span></td>
+      <td class="td-title">${inp.title}</td>
+      <td style="width:70px;font-size:12px;color:var(--gray-400)">${inp.type}</td>
+      <td style="width:110px"><span class="strength-pill ${strClass(inp.str)}">${strLabel(inp.str)}</span></td>
+      <td style="width:120px"><div class="steepled-list">${inp.steepled.map(s=>`<span class="steepled-tag">${s}</span>`).join('')}</div></td>
+      <td style="width:160px;padding-right:20px">${clusterCell}</td>
+    </tr>`;
+  }).join('');
+  updateCounts();
+}
+
+// ── CLUSTER VIEW TOGGLE ───────────────────────────────────────────────────────
+function setClusterView(v) {
+  clusterView = v;
+  document.getElementById('vt-list').classList.toggle('active', v==='list');
+  document.getElementById('vt-card').classList.toggle('active', v==='card');
+  renderClusters();
+}
+
+// ── RENDER CLUSTERS ───────────────────────────────────────────────────────────
+function renderClusters() {
+  if (clusterView === 'list') {
+    const items = clusters.map(c => `
+      <div class="cluster-list-item${openClusterId===c.id?' selected':''}" id="card-${c.id}"
+          onclick="openDetail('${c.id}')"
+          ondragover="cOver(event,'${c.id}')"
+          ondragleave="cLeave(event,'${c.id}')"
+          ondrop="cDrop(event,'${c.id}')">
+        <span class="cli-name">${c.name}</span>
+        <div class="cli-tag-wrap" style="width:62px;flex-shrink:0;display:flex;justify-content:center"><span class="cli-tag ${tagClass(c.type)}">${tagLabel(c.type)}</span></div>
+        <span class="cli-count" id="cc-${c.id}">${c.inputs.length}</span>
+        <span class="cli-drop-pill" id="dpill-${c.id}">Move</span>
+      </div>`).join('');
+    document.getElementById('clusters-scroll').innerHTML = items;
+  } else {
+    const cards = clusters.map(c => `
+      <div class="cluster-card${openClusterId===c.id?' selected':''}" id="card-${c.id}"
+          onclick="openDetail('${c.id}')"
+          ondragover="cOver(event,'${c.id}')"
+          ondragleave="cLeave(event,'${c.id}')"
+          ondrop="cDrop(event,'${c.id}')">
+        <div class="drop-pill" id="dpill-${c.id}">Move</div>
+        <div class="cluster-card-top">
+          <div class="cluster-tags">
+            <span class="cluster-tag ${tagClass(c.type)}">${tagLabel(c.type)}</span>
+            <span class="cluster-tag tag-neutral">${c.h}</span>
+            <span class="cluster-tag tag-neutral">${c.likelihood}</span>
+          </div>
+          <span class="cluster-count" id="cc-${c.id}">${c.inputs.length} input${c.inputs.length!==1?'s':''}</span>
+        </div>
+        <div class="cluster-name">${c.name}</div>
+        <div class="cluster-desc">${c.desc}</div>
+      </div>`).join('');
+    document.getElementById('clusters-scroll').innerHTML = cards;
+  }
+}
+
+function updateCounts() {
+  const un  = inputs.filter(i=>!i.cid).length;
+  const inc = inputs.filter(i=>!!i.cid).length;
+  document.getElementById('tc-all').textContent = inputs.length;
+  document.getElementById('tc-un').textContent  = un;
+  document.getElementById('tc-in').textContent  = inc;
+  document.getElementById('sb-count').textContent = inputs.length;
+  const nudge = document.getElementById('inputs-nudge');
+  const nudgeText = document.getElementById('nudge-text');
+  if (activeTab === 'unassigned' && un > 0) {
+    nudgeText.textContent = `${un} input${un!==1?'s':''} unassigned. Drag an input to a cluster to add. Hold ⌥ Option to copy instead of move.`;
+    nudge.classList.add('visible');
+  } else {
+    nudge.classList.remove('visible');
+  }
+
+  clusters.forEach(c => {
+    const el = document.getElementById('cc-'+c.id);
+    if (el) el.textContent = `${c.inputs.length} input${c.inputs.length!==1?'s':''}`;
+  });
+}
+
+// ── DETAIL PANEL ──────────────────────────────────────────────────────────────
+function openDetail(cid) {
+  if (drag) return; // don't open on drop
+  openClusterId = cid;
+  const c = clusters.find(c=>c.id===cid);
+  if (!c) return;
+
+  const clusterInputs = inputs.filter(i=>c.inputs.includes(i.id));
+
+  const inputRows = clusterInputs.length > 0
+    ? clusterInputs.map(inp => `
+        <div class="detail-input-row">
+          <div class="detail-input-dot"></div>
+          <div class="detail-input-title">${inp.title}</div>
+          <div class="detail-input-remove" onclick="removeFromCluster('${inp.id}');refreshDetail('${cid}')" title="Remove from cluster">✕</div>
+        </div>`).join('')
+    : `<div style="font-size:12px;color:var(--gray-400);padding:12px 0;text-align:center">No inputs assigned yet.<br>Drag inputs from the left panel onto this cluster.</div>`;
+
+  document.getElementById('detail-scroll').innerHTML = `
+    <div class="detail-tags-row">
+      <span class="cluster-tag ${tagClass(c.type)}" style="font-size:11px;padding:3px 9px">${tagLabel(c.type)}</span>
+      <span class="cluster-tag tag-neutral" style="font-size:11px;padding:3px 9px">${c.h}</span>
+      <span class="cluster-tag tag-neutral" style="font-size:11px;padding:3px 9px">${c.likelihood}</span>
+    </div>
+    <div class="detail-name">${c.name}</div>
+    <div class="detail-desc">${c.desc}</div>
+    <div class="detail-section-label">Linked inputs (${clusterInputs.length})</div>
+    <div class="detail-inputs-list">${inputRows}</div>`;
+
+  document.getElementById('cluster-detail').classList.add('open');
+  renderClusters(); // update selected state
+}
+
+function refreshDetail(cid) {
+  if (openClusterId === cid) openDetail(cid);
+}
+
+function closeDetail() {
+  openClusterId = null;
+  document.getElementById('cluster-detail').classList.remove('open');
+  renderClusters();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeDetail(); ctxClose(); }
+});
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    activeTab = t.dataset.tab;
+    selected.clear();
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    renderInputs();
+  });
+});
+
+// ── SELECTION ─────────────────────────────────────────────────────────────────
+let lastChecked = null;
+
+function toggleSelect(e, id) {
+  e.stopPropagation();
+  const rows = visibleRows();
+
+  if (e.shiftKey && lastChecked && lastChecked !== id) {
+    // range select
+    const ids = rows.map(i=>i.id);
+    const a = ids.indexOf(lastChecked), b = ids.indexOf(id);
+    const [lo, hi] = a < b ? [a,b] : [b,a];
+    ids.slice(lo, hi+1).forEach(rid => selected.add(rid));
+  } else {
+    if (selected.has(id)) selected.delete(id);
+    else selected.add(id);
+  }
+  lastChecked = id;
+  renderInputs();
+}
+
+function toggleSelectAll(cb) {
+  const ids = visibleRows().map(i=>i.id);
+  if (cb.checked) ids.forEach(id=>selected.add(id));
+  else ids.forEach(id=>selected.delete(id));
+  renderInputs();
+}
+
+function visibleRows() {
+  return inputs.filter(i =>
+    activeTab==='all' ? true : activeTab==='unassigned' ? !i.cid : !!i.cid
+  );
+}
+
+// ── DRAG ──────────────────────────────────────────────────────────────────────
+const ghost      = document.getElementById('drag-ghost');
+const ghostText  = document.getElementById('ghost-text');
+const ghostBadge = document.getElementById('ghost-badge');
+const blank      = new Image();
+blank.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+function dStart(e, id) {
+  // if dragged row isn't in selection, start a fresh single-item drag
+  if (!selected.has(id)) {
+    selected.clear();
+    selected.add(id);
+  }
+
+  const ids = [...selected];
+  drag = { ids, isOpt: e.altKey };
+
+  // ghost label
+  if (ids.length === 1) {
+    ghostText.textContent = inputs.find(i=>i.id===ids[0])?.title || '1 input';
+  } else {
+    ghostText.textContent = `${ids.length} inputs`;
+  }
+  ghostBadge.style.display = drag.isOpt ? 'flex' : 'none';
+  ghost.style.display = 'block';
+  ghost.style.left = (e.clientX+14)+'px';
+  ghost.style.top  = (e.clientY-18)+'px';
+  e.dataTransfer.setDragImage(blank, 0, 0);
+  e.dataTransfer.effectAllowed = 'move';
+
+  // dim all dragged rows
+  ids.forEach(rid => document.getElementById('row-'+rid)?.classList.add('drag-source'));
+}
+
+document.addEventListener('dragover', e => {
+  if (!drag) return;
+  ghost.style.left = (e.clientX+14)+'px';
+  ghost.style.top  = (e.clientY-18)+'px';
+  const wasOpt = drag.isOpt;
+  drag.isOpt = e.altKey;
+  if (drag.isOpt !== wasOpt) {
+    ghostBadge.style.display = drag.isOpt ? 'flex' : 'none';
+    refreshDropStates();
+  }
+});
+
+function refreshDropStates() {
+  clusters.forEach(c => {
+    const card = document.getElementById('card-'+c.id);
+    if (!card) return;
+    const pill = document.getElementById('dpill-'+c.id);
+    if (card.classList.contains('drop-move')||card.classList.contains('drop-copy')) {
+      card.classList.toggle('drop-move', !drag.isOpt);
+      card.classList.toggle('drop-copy', drag.isOpt);
+      if (pill) pill.textContent = drag.isOpt ? 'Copy' : 'Move';
+    }
+  });
+}
+
+function dEnd(e) {
+  ghost.style.display = 'none';
+  if (drag) drag.ids.forEach(rid => document.getElementById('row-'+rid)?.classList.remove('drag-source'));
+  drag = null;
+  clusters.forEach(c => {
+    const card = document.getElementById('card-'+c.id);
+    if (card) card.classList.remove('drop-move','drop-copy');
+  });
+  const ec = document.getElementById('empty-card');
+  if (ec) ec.classList.remove('drop-move');
+}
+
+function cOver(e, cid) {
+  if (!drag) return;
+  e.preventDefault();
+  const card = document.getElementById('card-'+cid);
+  const pill = document.getElementById('dpill-'+cid);
+  card.classList.toggle('drop-move', !drag.isOpt);
+  card.classList.toggle('drop-copy', drag.isOpt);
+  if (pill) pill.textContent = drag.isOpt ? 'Copy' : 'Move';
+}
+function cLeave(e, cid) {
+  const card = document.getElementById('card-'+cid);
+  if (!card.contains(e.relatedTarget)) card.classList.remove('drop-move','drop-copy');
+}
+function cDrop(e, cid) {
+  e.preventDefault();
+  if (!drag) return;
+  const isCopy = drag.isOpt || e.altKey;
+  const ids = [...drag.ids];
+  dEnd(e);
+  doAssignMulti(ids, cid, isCopy);
+}
+function eOver(e) {
+  if (!drag) return;
+  e.preventDefault();
+  document.getElementById('empty-card')?.classList.add('drop-move');
+}
+function eLeave(e) {
+  const ec = document.getElementById('empty-card');
+  if (ec && !ec.contains(e.relatedTarget)) ec.classList.remove('drop-move');
+}
+function eDrop(e) {
+  e.preventDefault();
+  document.getElementById('empty-card')?.classList.remove('drop-move');
+  if (!drag) return;
+  const count = drag.ids.length;
+  dEnd(e);
+  toast(`New cluster flow opens here with ${count} input${count!==1?'s':''} pre-selected`);
+}
+
+// ── ASSIGN ────────────────────────────────────────────────────────────────────
+function doAssignMulti(ids, cid, isCopy) {
+  const target = clusters.find(c=>c.id===cid);
+  if (!target) return;
+
+  // animate rows out first (moves only, on unassigned/all tab)
+  const rowsToAnimate = !isCopy && (activeTab==='unassigned'||activeTab==='all')
+    ? ids.map(id=>document.getElementById('row-'+id)).filter(Boolean)
+    : [];
+
+  const commit = () => {
+    ids.forEach(inputId => {
+      const inp = inputs.find(i=>i.id===inputId);
+      if (!inp) return;
+      if (isCopy) {
+        const copy = {...inp, id:'i'+(copySeq++), cid};
+        inputs.push(copy);
+        target.inputs.push(copy.id);
+      } else {
+        if (inp.cid && inp.cid!==cid) {
+          const old = clusters.find(c=>c.id===inp.cid);
+          if (old) old.inputs = old.inputs.filter(id=>id!==inputId);
+        }
+        inp.cid = cid;
+        if (!target.inputs.includes(inputId)) target.inputs.push(inputId);
+      }
+    });
+
+    const n = ids.length;
+    toast(isCopy
+      ? `Copied ${n} input${n!==1?'s':''} to "${target.name}"`
+      : `Moved ${n} input${n!==1?'s':''} to "${target.name}"`);
+
+    selected.clear();
+    renderInputs();
+    renderClusters();
+    if (openClusterId) refreshDetail(openClusterId);
+  };
+
+  if (rowsToAnimate.length > 0) {
+    let done = 0;
+    rowsToAnimate.forEach(row => {
+      row.classList.add('removing');
+      row.addEventListener('animationend', () => {
+        if (++done === rowsToAnimate.length) commit();
+      }, {once:true});
+    });
+  } else {
+    commit();
+  }
+}
+
+// keep single-item path for context menu
+function doAssign(inputId, cid, isCopy) {
+  doAssignMulti([inputId], cid, isCopy);
+}
+
+function removeFromCluster(inputId) {
+  const inp = inputs.find(i=>i.id===inputId);
+  if (!inp||!inp.cid) return;
+  const c = clusters.find(c=>c.id===inp.cid);
+  if (c) c.inputs = c.inputs.filter(id=>id!==inputId);
+  inp.cid = null;
+  selected.delete(inputId);
+  renderInputs();
+  renderClusters();
+  toast('Removed from cluster');
+}
+
+// ── ROW ASSIGN + CONTEXT MENU ─────────────────────────────────────────────────
+function rowAssign(e, id) { e.stopPropagation(); ctxOpen(e, id); }
+
+function ctxOpen(e, inputId) {
+  e.preventDefault();
+  const inp  = inputs.find(i=>i.id===inputId);
+  const menu = document.getElementById('ctx-menu');
+
+  const clusterItems = (action) => clusters.map(c =>
+    `<div class="cm-sub-item" onclick="doAssign('${inputId}','${c.id}',${action==='copy'});ctxClose()">${c.name}</div>`
+  ).join('') +
+  `<div style="height:1px;background:var(--gray-100);margin:4px 0"></div>
+   <div class="cm-sub-item new-cluster" onclick="toast('New cluster flow');ctxClose()">+ New cluster</div>`;
+
+  const removeRow = inp.cid
+    ? `<div class="cm-sep"></div><div class="cm-row danger" onclick="removeFromCluster('${inputId}');ctxClose()">Remove from cluster</div>`
+    : '';
+
+  menu.innerHTML = `
+    <div class="cm-section">${inp.title.substring(0,38)}${inp.title.length>38?'…':''}</div>
+    <div class="cm-row">Move to cluster<span class="cm-arrow">▶</span>
+      <div class="cm-sub">${clusterItems('move')}</div>
+    </div>
+    <div class="cm-row">Duplicate to cluster<span class="cm-arrow">▶</span>
+      <div class="cm-sub">${clusterItems('copy')}</div>
+    </div>
+    ${removeRow}`;
+
+  menu.style.left = Math.min(e.clientX, window.innerWidth-260)+'px';
+  menu.style.top  = Math.min(e.clientY, window.innerHeight-180)+'px';
+  menu.classList.add('open');
+}
+
+function ctxClose() { document.getElementById('ctx-menu').classList.remove('open'); }
+document.addEventListener('click', e => {
+  if (!document.getElementById('ctx-menu').contains(e.target)) ctxClose();
+});
+
+// ── MODE SWITCHING ────────────────────────────────────────────────────────────
+function setMode(mode) {
+  panelMode = mode;
+  document.getElementById('mode-manual').classList.toggle('active', mode==='manual');
+  document.getElementById('mode-suggested').classList.toggle('active', mode==='suggested');
+  document.getElementById('manual-panel').style.display = mode==='manual' ? 'flex' : 'none';
+  document.getElementById('suggested-panel').style.display = mode==='suggested' ? 'flex' : 'none';
+  document.getElementById('view-toggle-wrap').style.display = mode==='manual' ? 'flex' : 'none';
+  closeDetail();
+}
+
+function setSensitivity(s, el) {
+  sensitivity = s;
+  document.querySelectorAll('.sens-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── SUGGESTION DATA ───────────────────────────────────────────────────────────
+function buildSuggestions() {
+  // Two types: assignments to existing clusters, and new cluster proposals
+  return [
+    // Type A: add to existing
+    {
+      type: 'existing',
+      clusterId: 'c1',
+      clusterName: 'Regulatory Fragmentation',
+      inputs: [
+        { id:'s-i1', title:'EU AI Act compliance deadlines slip for key provisions', confidence:'high' },
+        { id:'s-i2', title:'FTC opens inquiry into cloud provider AI bundling practices', confidence:'moderate' },
+      ]
+    },
+    {
+      type: 'existing',
+      clusterId: 'c9',
+      clusterName: 'Carbon Accountability Pressure',
+      inputs: [
+        { id:'s-i3', title:'Microsoft Q3 carbon report reveals data center emissions up 29%', confidence:'high' },
+        { id:'s-i4', title:'SEC climate disclosure rule survives court challenge', confidence:'moderate' },
+        { id:'s-i5', title:'Google DeepMind publishes energy efficiency benchmarks for LLMs', confidence:'moderate' },
+      ]
+    },
+    {
+      type: 'existing',
+      clusterId: 'c14',
+      clusterName: 'Inference Cost Deflation',
+      inputs: [
+        { id:'s-i6', title:'Groq announces 10x price cut on LLaMA inference API', confidence:'high' },
+      ]
+    },
+    // Type B: new cluster proposals
+    {
+      type: 'new',
+      suggestedName: 'Geopolitical AI Trade Restrictions',
+      suggestedType: 'tension',
+      description: 'Export controls, chip embargoes, and bilateral AI agreements are creating a fragmented global landscape for AI hardware and model access.',
+      inputs: [
+        { id:'s-i7', title:'Netherlands joins US in restricting ASML sales to China', confidence:'high' },
+        { id:'s-i8', title:'India launches domestic AI chip initiative citing supply chain risk', confidence:'moderate' },
+        { id:'s-i9', title:'G7 nations draft framework for AI model export classifications', confidence:'moderate' },
+      ]
+    },
+    {
+      type: 'new',
+      suggestedName: 'AI in Scientific Discovery',
+      suggestedType: 'trend',
+      description: 'AI systems are accelerating breakthroughs in drug discovery, materials science, and climate modeling, blurring the boundary between AI tool and research agent.',
+      inputs: [
+        { id:'s-i10', title:'AlphaFold 3 predicts protein-drug interactions with clinical accuracy', confidence:'high' },
+        { id:'s-i11', title:'Microsoft Research publishes AI-designed battery cathode material', confidence:'moderate' },
+      ]
+    },
+  ];
+}
+
+// ── SUGGESTION RENDERING ──────────────────────────────────────────────────────
+function runSuggestions() {
+  const btn = document.getElementById('suggest-run-btn');
+  btn.textContent = '✦ Running…';
+  btn.style.opacity = '.6';
+  btn.style.pointerEvents = 'none';
+
+  setTimeout(() => {
+    btn.textContent = '✦ Suggest clustering';
+    btn.style.opacity = '';
+    btn.style.pointerEvents = '';
+    suggestions = buildSuggestions();
+    suggestionsGenerated = true;
+    renderSuggestions();
+  }, 1200);
+}
+
+function renderSuggestions() {
+  const scroll = document.getElementById('suggested-scroll');
+  if (!suggestionsGenerated || suggestions.length === 0) {
+    scroll.innerHTML = `<div class="suggested-idle">
+      <div class="suggested-idle-icon">✦</div>
+      <div class="suggested-idle-title">${suggestionsGenerated ? 'All suggestions resolved' : 'No suggestions yet'}</div>
+      <div class="suggested-idle-sub">${suggestionsGenerated ? 'Run Suggest clustering again to get fresh recommendations.' : 'Choose a sensitivity level and run Suggest clustering to get AI recommendations.'}</div>
+    </div>`;
+    return;
+  }
+
+  const existing = suggestions.filter(s=>s.type==='existing');
+  const newClusters = suggestions.filter(s=>s.type==='new');
+
+  let html = '';
+
+  if (existing.length > 0) {
+    html += `<div class="suggestion-type-label">Add to existing clusters</div>`;
+    existing.forEach(s => { html += renderExistingSuggestionCard(s); });
+  }
+  if (newClusters.length > 0) {
+    html += `<div class="suggestion-type-label" style="margin-top:${existing.length?'6px':'0'}">New cluster suggestions</div>`;
+    newClusters.forEach(s => { html += renderNewSuggestionCard(s); });
+  }
+
+  scroll.innerHTML = html;
+}
+
+function renderExistingSuggestionCard(s) {
+  const inputRows = s.inputs.map(inp => `
+    <div class="suggestion-input-row" id="sinput-${inp.id}">
+      <div class="suggestion-input-bullet"></div>
+      <div class="suggestion-input-title">${inp.title}</div>
+      <span class="confidence-badge ${inp.confidence==='high'?'conf-high':'conf-moderate'}">${inp.confidence==='high'?'Strong':'Moderate'}</span>
+      <button class="suggestion-remove-btn" onclick="removeSuggestedInput('${s.clusterId||''}','${inp.id}','existing')">Remove</button>
+    </div>`).join('');
+
+  const cname = s.clusterName;
+  return `<div class="suggestion-card" id="scard-${s.clusterId}">
+    <div class="suggestion-card-header">
+      <div class="suggestion-card-header-text">
+        <div class="suggestion-card-label">Add to <a href="#">${cname}</a></div>
+      </div>
+      <button class="accept-all-btn" onclick="acceptExistingSuggestion('${s.clusterId}')">Accept all</button>
+    </div>
+    <div class="suggestion-inputs">${inputRows}</div>
+    <div class="suggestion-card-footer">
+      <button class="sug-accept-btn" onclick="acceptExistingSuggestion('${s.clusterId}')">Accept</button>
+      <button class="sug-dismiss-btn" onclick="dismissSuggestion('${s.clusterId}','existing')">Dismiss</button>
+    </div>
+  </div>`;
+}
+
+function renderNewSuggestionCard(s) {
+  const tagClass = s.suggestedType==='tension'?'tag-tension':s.suggestedType==='driver'?'tag-driver':'tag-trend';
+  const tagLabel = s.suggestedType==='tension'?'Tension':s.suggestedType==='driver'?'Driver':'Trend';
+  const inputRows = s.inputs.map(inp => `
+    <div class="suggestion-input-row" id="sinput-${inp.id}">
+      <div class="suggestion-input-bullet"></div>
+      <div class="suggestion-input-title">${inp.title}</div>
+      <span class="confidence-badge ${inp.confidence==='high'?'conf-high':'conf-moderate'}">${inp.confidence==='high'?'Strong':'Moderate'}</span>
+      <button class="suggestion-remove-btn" onclick="removeSuggestedInput('${s.suggestedName}','${inp.id}','new')">Remove</button>
+    </div>`).join('');
+
+  const key = s.suggestedName.replace(/\s+/g,'-');
+  return `<div class="suggestion-card" id="scard-${key}">
+    <div class="suggestion-card-header">
+      <div class="suggestion-card-header-text">
+        <div class="suggestion-card-name">${s.suggestedName}</div>
+        <div class="suggestion-card-desc">${s.description}</div>
+        <span class="suggestion-card-why">· Why this cluster?</span>
+      </div>
+      <span class="suggestion-type-tag ${tagClass}">${tagLabel}</span>
+    </div>
+    <div class="suggestion-inputs">${inputRows}</div>
+    <div class="suggestion-card-footer">
+      <button class="sug-accept-btn" onclick="acceptNewSuggestion('${key}','${s.suggestedName}')">Create cluster</button>
+      <button class="sug-edit-btn" onclick="toast('Opens cluster creation form pre-filled with this suggestion')">Edit</button>
+      <button class="sug-dismiss-btn" onclick="dismissSuggestion('${key}','new')">Dismiss</button>
+    </div>
+  </div>`;
+}
+
+function removeSuggestedInput(cardKey, inputId, type) {
+  // Remove input from the suggestion's input list
+  const s = type==='existing'
+    ? suggestions.find(s=>s.clusterId===cardKey)
+    : suggestions.find(s=>s.suggestedName.replace(/\s+/g,'-')===cardKey);
+  if (!s) return;
+  s.inputs = s.inputs.filter(i=>i.id!==inputId);
+  // if no inputs left, remove the card entirely
+  if (s.inputs.length === 0) {
+    suggestions = suggestions.filter(x=>x!==s);
+  }
+  renderSuggestions();
+}
+
+function acceptExistingSuggestion(clusterId) {
+  const s = suggestions.find(s=>s.clusterId===clusterId);
+  if (!s) return;
+  const target = clusters.find(c=>c.id===clusterId);
+  if (target) {
+    // just show toast — in real app would assign inputs
+    toast(`Added ${s.inputs.length} input${s.inputs.length!==1?'s':''} to "${target.name}"`);
+  }
+  suggestions = suggestions.filter(x=>x!==s);
+  renderSuggestions();
+}
+
+function acceptNewSuggestion(key, name) {
+  const s = suggestions.find(s=>s.suggestedName.replace(/\s+/g,'-')===key);
+  if (!s) return;
+  toast(`Created cluster "${name}" with ${s.inputs.length} input${s.inputs.length!==1?'s':''}`);
+  suggestions = suggestions.filter(x=>x!==s);
+  renderSuggestions();
+}
+
+function dismissSuggestion(key, type) {
+  if (type==='existing') {
+    suggestions = suggestions.filter(s=>s.clusterId!==key);
+  } else {
+    suggestions = suggestions.filter(s=>s.suggestedName.replace(/\s+/g,'-')!==key);
+  }
+  renderSuggestions();
+  toast('Suggestion dismissed');
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+let toastTmr;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTmr);
+  toastTmr = setTimeout(()=>el.classList.remove('show'), 2400);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+renderInputs();
+renderClusters();
+</script>
+</body>
+</html>
