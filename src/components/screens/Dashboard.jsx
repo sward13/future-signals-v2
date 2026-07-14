@@ -11,6 +11,9 @@ import { InputDrawer } from "../inputs/InputDrawer.jsx";
 const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
 const COL = { type: 80, quality: 120, horizon: 55, steepled: 120 };
 
+// Swap once the extension clears Chrome Web Store review.
+const CHROME_STORE_URL = "PLACEHOLDER_CHROME_STORE_URL";
+
 const STRENGTH_COLORS = {
   weak:     [c.rust700, c.rust50, c.rustBorder],
   moderate: [c.tan700,  c.tan50,  c.tanBorder],
@@ -173,6 +176,52 @@ function ProjectCard({ project, inputCount, clusterCount, systemMapCount, analys
   );
 }
 
+// ─── Chrome extension promo card ──────────────────────────────────────────────
+
+function ChromeExtensionCard() {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <a
+      href={CHROME_STORE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        textDecoration: "none",
+        background: c.white,
+        border: `1px solid ${hovered ? c.borderMid : c.border}`,
+        borderRadius: 10,
+        padding: "16px",
+        cursor: "pointer",
+        boxShadow: hovered ? "0 2px 14px rgba(0,0,0,0.07)" : "none",
+        transition: "border-color 0.15s, box-shadow 0.15s",
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+      }}
+    >
+      {/* Header — matches project name style */}
+      <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.3 }}>
+        Install the Chrome extension
+      </div>
+
+      {/* Body — matches key-question style */}
+      <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.5 }}>
+        Capture signals as you browse. Save a page's title, URL, and description in one click, or select text to use as the description.
+      </div>
+
+      {/* CTA — matches "Open project →" ghost link */}
+      <div style={{ marginTop: "auto", display: "flex", justifyContent: "flex-end" }}>
+        <span style={{ fontSize: 11, color: c.muted, fontWeight: 500 }}>
+          Install extension →
+        </span>
+      </div>
+    </a>
+  );
+}
+
 
 /**
  * @param {{ appState: object }} props
@@ -281,6 +330,7 @@ export default function Dashboard({ appState }) {
                 />
               );
             })}
+            <ChromeExtensionCard />
           </div>
         ) : (
           /* ── Table view ── */
