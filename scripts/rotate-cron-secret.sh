@@ -74,10 +74,18 @@ MANUAL STEPS — do these now, before the next scheduled cron run:
         - "Future Signals signal scanner"   (hits Vercel /api/scan)
         - "Future Signals weekly digest"     (hits Supabase send-weekly-digest)
      (Both must match — the scanner uses this too, not just the digest.)
+  3. REDEPLOY VERCEL — env changes do NOT apply to the running deployment.
+     Supabase Edge Functions pick up new secrets live, but Vercel bakes env
+     vars per-deployment, so /api/scan keeps using the OLD secret until you
+     redeploy. Redeploy the current deployment (same code, re-applies env):
+        vercel redeploy <current-$VERCEL_TARGET-deployment-url>
+     (Get the URL from: vercel ls future-signals-v2 --prod)
+     Do NOT run 'vercel --prod' from a feature branch — that ships that
+     branch's code to production.
 EOF
 
 if [ "$ENV" = "staging" ]; then
-  echo "  3. .env.local → update the CRON_SECRET= line (local dev targets staging)."
+  echo "  4. .env.local → update the CRON_SECRET= line (local dev targets staging)."
 fi
 
 cat <<EOF

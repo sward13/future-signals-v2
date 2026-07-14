@@ -81,8 +81,24 @@ checklist for the manual ones (LastPass canonical + cron-job.org headers +
 When copies have drifted and you cannot establish which one is authoritative,
 **always generate a fresh value and distribute it to every surface at once** —
 do not try to "roll back" to an existing copy, which may be one you deliberately
-retired. Edge Functions pick up new secret values on the next invocation; **no
-redeploy is required.**
+retired.
+
+### Supabase vs Vercel: how new values take effect (asymmetric!)
+
+- **Supabase Edge Functions** pick up new secret values on the **next
+  invocation** — no redeploy needed. (`send-weekly-digest`, `check-scanner-health`.)
+- **Vercel bakes env vars per-deployment.** Changing the env var does **not**
+  affect the currently-running Production deployment — `/api/scan` (and the other
+  `api/*` cron endpoints) keep using the **old** `CRON_SECRET` until you
+  **redeploy Production**. Symptom: the digest starts working immediately after a
+  rotation but the scanner returns 401.
+  - Fix: `vercel redeploy <current-prod-deployment-url>` (get the URL from
+    `vercel ls future-signals-v2 --prod`), or dashboard → Deployments → current
+    Production → ⋯ → Redeploy. This re-runs the **same source commit** with the
+    new env — no code change.
+  - **Never** `vercel --prod` from a feature branch to force this — it ships that
+    branch's code to production. For staging, the new Preview env applies to the
+    next Preview deployment (e.g. the next push to `workspace-refactor`).
 
 There is no downtime risk as long as all surfaces are updated before the next
 scheduled run (scanner ~daily 19:00, digest weekly Monday 00:00) — a brief
