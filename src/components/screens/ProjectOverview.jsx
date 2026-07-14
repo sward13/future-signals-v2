@@ -226,7 +226,7 @@ export default function ProjectOverview({ appState }) {
             <h1 className="text-[22px] font-medium text-ink m-0 font-heading">Overview</h1>
             <button
               onClick={() => setEditDrawerOpen(true)}
-              className="flex items-center gap-1.5 py-1.5 px-3.5 rounded-container bg-transparent text-muted border border-border-strong text-xs cursor-pointer [font-family:inherit]"
+              className="flex items-center gap-1.5 py-2.5 px-5.5 rounded-container bg-transparent text-muted border border-border-strong text-ui cursor-pointer [font-family:inherit]"
             >
               <SquarePen size={13} className="shrink-0" /> Project settings
             </button>
