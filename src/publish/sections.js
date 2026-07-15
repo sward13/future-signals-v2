@@ -265,23 +265,9 @@ export function renderTimeHorizons(project) {
     </div>`;
 }
 
-// ─── 3. System Map — PLACEHOLDER (next prompt fills this in) ──────────────────────
-
-/**
- * ⚠️ PLACEHOLDER — the System Map rendering is a SEPARATE prompt.
- * This returns a clearly-marked stub so page assembly has a slot to fill.
- * Do not build map rendering (rasterized snapshot / relationship table / SVG)
- * here — that is explicitly out of scope for this prompt.
- */
-export function renderSystemMapPlaceholder() {
-  return `<!-- ============================================================= -->
-    <!-- SYSTEM MAP SECTION PLACEHOLDER — filled by the System Map prompt -->
-    <!-- ============================================================= -->
-    <div data-section="system-map-placeholder" style="padding:24px 32px 56px; border-bottom:1px solid ${CH.border};">
-      <p style="font-size:11px; letter-spacing:0.1em; color:${CH.faint}; text-transform:uppercase; text-align:center; margin:0;">System map</p>
-      <!-- TODO(next prompt): render the System Map here -->
-    </div>`;
-}
+// ─── 3. System Map ────────────────────────────────────────────────────────────────
+// renderSystemMap() lives in ./systemMap.js (inline-SVG reconstruction from the
+// persisted canvas rows). It imports esc() from this module.
 
 // ─── 4. System Analysis ──────────────────────────────────────────────────────────
 

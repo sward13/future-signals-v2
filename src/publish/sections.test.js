@@ -11,7 +11,6 @@ import {
   renderHero,
   renderOverview,
   renderTimeHorizons,
-  renderSystemMapPlaceholder,
   renderSystemAnalysis,
   renderScenario,
   renderPreferredFuture,
@@ -156,16 +155,6 @@ test("renderTimeHorizons: widths are proportional to the real date spans", () =>
 test("renderTimeHorizons: returns empty string when horizons are not configured", () => {
   assert.equal(renderTimeHorizons({}), "");
   assert.equal(renderTimeHorizons({ h1_start: "" }), "");
-});
-
-// ─── System Map placeholder ──────────────────────────────────────────────────
-
-test("renderSystemMapPlaceholder: clearly-marked stub, no real map content", () => {
-  const html = renderSystemMapPlaceholder();
-  assertClean(html);
-  assert.match(html, /PLACEHOLDER/);
-  assert.match(html, /system-map-placeholder/);
-  assert.match(html, /System map/);
 });
 
 // ─── System Analysis ─────────────────────────────────────────────────────────
