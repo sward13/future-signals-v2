@@ -80,6 +80,20 @@ export const c = {
   archTransformation50: "#E9DFE6",
   archTransformation700: "#86527D",
   archTransformationBorder: "#B899B2",
+
+  // Cluster Likelihood color scale — warm-neutral monochromatic ramp (added
+  // 2026-07-15 for Web Publish). Deliberately monochromatic so Likelihood reads
+  // as an ordinal weight (Possible → Plausible → Probable = lighter → darker)
+  // rather than colliding with the Horizon green/blue/amber families.
+  likelihoodPossible50: "#EFEDEB",
+  likelihoodPossible700: "#6B6560",
+  likelihoodPossibleBorder: "#C7C0B9",
+  likelihoodPlausible50: "#E3DFDA",
+  likelihoodPlausible700: "#4A443F",
+  likelihoodPlausibleBorder: "#A89F96",
+  likelihoodProbable50: "#D6D0C9",
+  likelihoodProbable700: "#2E2A26",
+  likelihoodProbableBorder: "#8A8177",
 };
 
 // Font-family tokens — not in c{} (color-only). Mirrors --font-heading /

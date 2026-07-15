@@ -118,6 +118,21 @@
   --color-arch-transformation-700:    #86527D;
   --color-arch-transformation-border: #B899B2;
 
+  /* Cluster Likelihood color scale — warm-neutral monochromatic ramp (added
+     2026-07-15 for Web Publish). Ordinal weight, not a hue family, so it never
+     collides with the Horizon green/blue/amber scale. */
+  --color-likelihood-possible-50:      #EFEDEB;
+  --color-likelihood-possible-700:     #6B6560;
+  --color-likelihood-possible-border:  #C7C0B9;
+
+  --color-likelihood-plausible-50:     #E3DFDA;
+  --color-likelihood-plausible-700:    #4A443F;
+  --color-likelihood-plausible-border: #A89F96;
+
+  --color-likelihood-probable-50:      #D6D0C9;
+  --color-likelihood-probable-700:     #2E2A26;
+  --color-likelihood-probable-border:  #8A8177;
+
   /* ── Spacing (derived from primitive objects in tokens.js) ──────────── */
   /*
    * On 4px grid — already in Tailwind defaults, no override needed:
