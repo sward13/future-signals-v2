@@ -1,6 +1,6 @@
 # Future Signals v2 — Handoff
 
-_Last updated: 2026-07-09_
+_Last updated: 2026-07-16_
 
 ---
 
@@ -33,6 +33,14 @@ All core screens are built and functional:
 | Future Models (Scenarios + Strategic Options) | Done |
 
 Note: Scan and Cluster are now separate sidebar items and separate screens. `Clustering.jsx` is dead code (no longer imported). The `"clustering"` case in App.jsx is a legacy redirect to `ClusterScreen` to handle any stored localStorage state.
+
+**2026-07-16 session — Web Publish shipped end-to-end + reset-password fix (on `workspace-refactor` branch):**
+- **Web Publish** (new feature — see CLAUDE.md "Web Publish" and `web-export-spec.md`): publish a project to a public, hosted single-page site at a stable `/p/{slug}` link. Built as a pipeline of pure, unit-tested modules — `server-lib/resolve-references.js` (shared ID→name layer, also now backs Report Export's `buildMarkdown.js`), `src/publish/sections.js` + `src/publish/systemMap.js` (static section HTML + inline-SVG System Map replicating the real canvas incl. `getBezierPath` cubic edges), `server-lib/publish-project.js` (assemble → upload → publish), `server-lib/publish-handler.js` + `api/publish.js` (one endpoint: authed publish/unpublish + public `GET ?view` serving), and `PublishSection.jsx` in the Project Settings drawer.
+- **Two platform gotchas handled**: Supabase serves user-uploaded HTML as `text/plain`, so pages are re-served through the app as `text/html` (hence `/p/{slug}`, not the raw storage URL, via a `vercel.json` rewrite); and the anonymous serving read needs the service-role client to bypass `project_publications` RLS.
+- **Migrations applied to BOTH staging and production** via the Supabase connector, ledgered with the committed file versions `20260715195707` (table + `published-projects` public bucket + storage policies) and `20260715200305` (`status` default → `'unpublished'`). Vercel function count is now 11/12 (`api/publish.js`).
+- **Reset-password redirect bug fixed**: after a reset the user stuck on `/reset-password` (blank) instead of `/`. Cause: the state-driven app's URL-management effect only cleaned `/onboarding`. Fix extracted a pure `src/lib/authRedirect.js` (`postAuthRedirectPath`) that clears leftover auth paths to `/`, plus loading workspace data in the `PASSWORD_RECOVERY` branch. Regression-tested. (Prod Supabase Auth "Redirect URLs" already had the needed `/**` entry.)
+- **Also**: fixed the Dashboard "Install the Chrome extension" card (subtle `c.surfaceAlt` fill + real Web Store URL); added a testing setup (`npm test` → `node:test`, see CLAUDE.md "Testing").
+- **Not yet merged to `master`.** At merge: deploy is automatic from `master`; prod Supabase schema + Auth are already done; just confirm prod Vercel env has `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`/`APP_URL`.
 
 **2026-07-09 session — Sample project cloning shipped end-to-end (on `workspace-refactor` branch):**
 - **Started as a read-only schema audit** (per `Sample_Project_Onboarding_PRD.md`) that surfaced several undocumented direct-to-database changes: `projects.source_template_id` and `projects.is_sample_template` (added with no migration file), `projects.last_visited_at`/`analyses.updated_at` present on staging but missing on production for a week (the consuming `openProject()` write was a bare `.then()` with no error capture — silently failing the whole time), and an undocumented `AFTER INSERT` trigger on `projects`, `trg_auto_populate_project_sources`, that auto-populates `project_sources` with `opted_in: true` on every new project. All four backfilled with proper migrations on both databases; the two silent-failure write sites (`last_visited_at` in `useAppState.js`, `onboarding_completed` in `App.jsx`) now log via `console.error`, still fire-and-forget.

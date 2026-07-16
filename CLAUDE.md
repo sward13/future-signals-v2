@@ -456,6 +456,31 @@ Every new user finishes onboarding with a second project alongside their own: a 
 
 ---
 
+## Web Publish (shipped 2026-07-16 on `workspace-refactor`)
+
+Publish a project to a live, hosted, public single-page site at a stable `/p/{slug}` link (for stakeholder sharing + social promotion). Whole-project only for v1 — no section-picker curation yet. Full spec: `web-export-spec.md`. Pipeline of pure, composable pieces, each unit-tested (see "Testing"):
+
+- **`server-lib/resolve-references.js`** — shared, pure ID→name resolution layer (clusters, relationships, scenario driving forces, `scenario_ids`). Consumed by both Report Export (`src/components/projects/buildMarkdown.js`) and Publish. Dangling references degrade to a fallback, never throw. `resolveRelationship()` phrases edges as sentences.
+- **`src/publish/sections.js`** — per-section static-HTML-string builders (Hero, Overview, System Analysis, Scenario/Preferred Future/Strategic Option, Appendix). Pure, HTML-escaped, `sanitizeUrl` on source links. Reads the live schema, not the prototype.
+- **`src/publish/systemMap.js`** — `renderSystemMap()` reconstructs the System Map as an inline SVG from persisted rows (`canvas_nodes`/`canvas_text_nodes`/`relationships`) — no React Flow, no rasterization. Matches the real canvas: white ClusterNode cards with a subtype-keyed left accent + pill badges; per-relationship-type edge colors (from `REL_TYPES`); and **cubic-bezier edges replicating `@xyflow/system`'s `getBezierPath`** (default curvature 0.25, control points offset along the `source_handle`/`target_handle` side). Takes **DB-shaped (snake_case) rows**, matching `resolveRelationship`.
+- **`server-lib/publish-project.js`** — `publishProject()` / `unpublishProject()`. Service-role (client injectable for tests). Fetches the project graph (note: `cluster_inputs` has no `project_id` — joined by `cluster_id`), assembles one HTML doc (with `<head>` Open Graph tags), uploads to Storage, and only *then* flips `status='published'`. Unpublish deletes the object *before* flipping status (public bucket — the flag alone won't take a page offline). `scripts/publish-project.js` is the CLI runner.
+- **`server-lib/publish-handler.js` + `api/publish.js`** — one endpoint (handler in `server-lib` so its test isn't counted as a function): Bearer-authed `POST { action: 'publish'|'unpublish' }` (ownership via the seed-onboarding pattern, 404 for non-owner), and a **public, unauthenticated `GET ?view={slug}`** branch (also handles HEAD) reached via the `vercel.json` rewrite `/p/:slug → /api/publish?view=:slug`.
+- **`src/components/projects/PublishSection.jsx`** — management surface at the bottom of the Project Settings drawer (status, copy link, Publish/Republish/Unpublish).
+
+**Two non-obvious gotchas baked into the design:**
+- **Supabase Storage serves user-uploaded HTML as `text/plain` + `nosniff`** (anti-abuse on the shared `*.supabase.co` domain) — so a raw storage URL shows source, not a page. Pages are served *through the app* (the `GET ?view` branch re-serves the stored HTML as `text/html` with a moderate revalidating cache), which is why `publicUrl` is `/p/{slug}`, not the storage URL.
+- The `?view` branch **must use the service-role client to bypass `project_publications` RLS** — an anonymous viewer has no workspace, so `workspace_id = get_workspace_id()` returns zero rows otherwise (verified against the DB).
+
+**Schema/storage (applied to staging AND production):** `project_publications` table (`20260715195707`) + `published-projects` public bucket + `storage.objects` policies; `status` defaults to `'unpublished'` (`20260715200305`) so a row is never "live" before its file exists. A new **Likelihood** color token (warm-neutral ramp) was added to `tokens.js` and the `index.css` `@theme` block, first consumed by the Appendix/System Map. Note: Vercel Production env needs `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `APP_URL`; and each environment's Supabase Auth "Redirect URLs" must allow `/**` on its origin.
+
+---
+
+## Testing
+
+There is now a test runner (added with Publish): `npm test` runs Node's built-in `node:test` over `server-lib/**/*.test.js` and `src/**/*.test.js` (no jsdom/RTL — React components aren't unit-tested). The pattern is to **extract pure logic into a testable module** and keep the React/effect wiring thin: e.g. `server-lib/resolve-references.js`, `server-lib/publish-*.js`, `src/publish/*.js`, `src/components/projects/buildMarkdown.js`, and `src/lib/authRedirect.js` (the URL-cleanup decision behind the post-password-reset redirect fix) are all covered this way. Fake Supabase clients are hand-rolled in the test files. `process`-related eslint errors in `server-lib`/`api`/`scripts` files are pre-existing (the flat config only ships browser globals) — not a regression signal.
+
+---
+
 ## App architecture
 
 ### State
@@ -727,6 +752,7 @@ Key decisions already made:
 | `signal-scanner-spec.md` | Any work touching the scanner, candidate ingestion, scoring, or onboarding seeding |
 | `FutureSignals_Onboarding_ProgressiveDisclosure_Spec.md` | Any work touching the onboarding flow, project creation, or first-session experience. Its sample-project section (read-only project + structural-only "promote") is superseded by `Sample_Project_Onboarding_PRD.md`'s clone-based model — that section of this spec has not yet been formally retired/updated, don't treat it as current for sample-project behavior |
 | `Sample_Project_Onboarding_PRD.md` | Any work touching sample-project cloning, `cloneProject()`, `is_sample_template`/`source_template_id`, or the per-user clone triggered at onboarding completion — see also "Sample project cloning" above |
+| `web-export-spec.md` | Any work touching Web Publish — the pipeline, `/p/{slug}` serving, section templates, System Map SVG, or `project_publications` — see also "Web Publish" above |
 
 ---
 
@@ -793,4 +819,4 @@ Two patterns are in use, depending on the table's key column:
 - **`api/scrape.js` SSRF protection**: validates URL is HTTPS, rejects private/loopback/IMDS IP ranges, caps response body at 512 KB.
 
 ### Vercel function-count limit (Hobby plan)
-Vercel's zero-config Node builder treats **every** `.js`/`.ts` file under `api/` as its own serverless function — including helper files with no `handler` export, and files nested in subdirectories like `api/lib/`. The Hobby plan caps a deployment at 12 functions total. This is why shared server-side logic lives in a top-level `server-lib/` directory (outside `api/`) rather than `api/lib/` — files outside `api/` are never counted. Adding a new `api/*.js` endpoint that imports a new shared helper: put the helper in `server-lib/`, not `api/lib/`. Check the count before adding a new top-level `api/*.js` file: `find api -name "*.js" -o -name "*.ts" | wc -l` (currently 10, so there's headroom, but it's not unlimited).
+Vercel's zero-config Node builder treats **every** `.js`/`.ts` file under `api/` as its own serverless function — including helper files with no `handler` export, and files nested in subdirectories like `api/lib/`. The Hobby plan caps a deployment at 12 functions total. This is why shared server-side logic lives in a top-level `server-lib/` directory (outside `api/`) rather than `api/lib/` — files outside `api/` are never counted. Adding a new `api/*.js` endpoint that imports a new shared helper: put the helper in `server-lib/`, not `api/lib/`. Check the count before adding a new top-level `api/*.js` file: `find api -name "*.js" -o -name "*.ts" | wc -l` (currently 11 after `api/publish.js` — one slot of headroom left, so treat the last one carefully; the Publish serving route was folded into `api/publish.js` via a `?view` param + `/p/:slug` rewrite rather than spending a second slot).
