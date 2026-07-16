@@ -1,0 +1,245 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+
+// public URL is derived from SUPABASE_URL — set a dummy so the handler can build it.
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || "https://staging.example.supabase.co";
+
+import { createPublishHandler } from "./publish-handler.js";
+
+// ─── In-memory fake Supabase client (auth + tables + storage) ───────────────────
+//
+// Generic filter engine: select applies every .eq() and any .in() filter; single
+// resolves to the first match. Records inserts/updates/uploads/removals. Storage
+// remove can be forced to fail.
+
+function makeFakeClient(fixtures = {}, opts = {}) {
+  const pubRows = (fixtures.project_publications || []).map((r) => ({ ...r }));
+  const calls = { inserts: [], updates: [], uploads: [], removals: [] };
+
+  const baseRows = (table) => {
+    if (table === "workspaces") return fixtures.workspaces || [];
+    if (table === "projects") return fixtures.projects || [];
+    if (table === "project_publications") return pubRows;
+    return fixtures[table] || [];
+  };
+
+  function resolve(state) {
+    const { table, op, filters, payload } = state;
+    if (op === "insert") {
+      pubRows.push({ ...payload });
+      calls.inserts.push({ table, row: { ...payload } });
+      return { data: null, error: null };
+    }
+    if (op === "update") {
+      calls.updates.push({ table, patch: payload, filters });
+      for (const r of pubRows) {
+        if (Object.entries(filters).every(([k, v]) => k === "__in" || r[k] === v)) Object.assign(r, payload);
+      }
+      return { data: null, error: null };
+    }
+    let rows = baseRows(table);
+    for (const [k, v] of Object.entries(filters)) {
+      if (k === "__in") continue;
+      rows = rows.filter((r) => r[k] === v);
+    }
+    if (filters.__in) rows = rows.filter((r) => filters.__in.arr.includes(r[filters.__in.col]));
+    return { data: rows, error: null };
+  }
+
+  function builder(table) {
+    const state = { table, op: "select", filters: {}, payload: null };
+    const b = {
+      select() { return b; },
+      insert(p) { state.op = "insert"; state.payload = p; return b; },
+      update(p) { state.op = "update"; state.payload = p; return b; },
+      eq(col, val) { state.filters[col] = val; return b; },
+      in(col, arr) { state.filters.__in = { col, arr }; return b; },
+      single() { const r = resolve(state); const row = r.data && r.data[0]; return Promise.resolve({ data: row || null, error: row ? null : { message: "no rows" } }); },
+      maybeSingle() { const r = resolve(state); return Promise.resolve({ data: (r.data && r.data[0]) || null, error: null }); },
+      then(onF, onR) { return Promise.resolve(resolve(state)).then(onF, onR); },
+    };
+    return b;
+  }
+
+  return {
+    auth: {
+      getUser: (token) => Promise.resolve({ data: { user: fixtures.tokens?.[token] || null }, error: fixtures.tokens?.[token] ? null : { message: "bad token" } }),
+    },
+    from: (table) => builder(table),
+    storage: {
+      from: () => ({
+        upload: (path, body, options) => { calls.uploads.push({ path, body, options }); return Promise.resolve({ data: { path }, error: null }); },
+        remove: (paths) => {
+          if (opts.removeShouldFail) return Promise.resolve({ data: null, error: { message: "remove failed" } });
+          calls.removals.push(...paths);
+          return Promise.resolve({ data: paths.map((p) => ({ name: p })), error: null });
+        },
+      }),
+    },
+    __calls: calls,
+    __pubRows: pubRows,
+  };
+}
+
+function mockRes() {
+  const res = { statusCode: 0, body: null };
+  res.status = (c) => { res.statusCode = c; return res; };
+  res.json = (b) => { res.body = b; return res; };
+  return res;
+}
+
+// ─── Fixtures ────────────────────────────────────────────────────────────────
+
+const PID = "proj-1";
+const WID = "ws-1";
+const TOKEN = "good-token";
+
+function baseFixtures(extra = {}) {
+  return {
+    tokens: { [TOKEN]: { id: "user-1" } },
+    workspaces: [{ id: WID, user_id: "user-1" }],
+    projects: [{ id: PID, workspace_id: WID, name: "EV Adoption in the US" }],
+    // content tables empty — publish still assembles a valid page
+    clusters: [], inputs: [], relationships: [], canvas_nodes: [],
+    canvas_text_nodes: [], scenarios: [], preferred_futures: [],
+    strategic_options: [], analyses: [], cluster_inputs: [],
+    ...extra,
+  };
+}
+
+const authHeaders = { authorization: `Bearer ${TOKEN}` };
+
+// ─── Publish ──────────────────────────────────────────────────────────────────
+
+test("POST publish: publishes an owned project and returns slug + public URL", async () => {
+  const client = makeFakeClient(baseFixtures());
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  await handler({ method: "POST", headers: authHeaders, body: { projectId: PID, action: "publish" } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.status, "published");
+  assert.equal(res.body.slug, "ev-adoption-in-the-us");
+  assert.match(res.body.publicUrl, /ev-adoption-in-the-us\/index\.html$/);
+
+  // the file was actually uploaded, and the row finalized to published
+  assert.equal(client.__calls.uploads.length, 1);
+  assert.equal(client.__calls.uploads[0].path, "ev-adoption-in-the-us/index.html");
+  const row = client.__pubRows.find((r) => r.project_id === PID);
+  assert.equal(row.status, "published");
+});
+
+// ─── Unpublish ──────────────────────────────────────────────────────────────
+
+test("POST unpublish: removes the storage object AND flips status, keeping the row/slug", async () => {
+  const client = makeFakeClient(
+    baseFixtures({
+      project_publications: [{ project_id: PID, workspace_id: WID, slug: "stable-slug", status: "published", published_at: "2026-01-01T00:00:00.000Z" }],
+    })
+  );
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  await handler({ method: "POST", headers: authHeaders, body: { projectId: PID, action: "unpublish" } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.status, "unpublished");
+
+  // storage object actually removed (flipping the flag alone wouldn't take it offline)
+  assert.deepEqual(client.__calls.removals, ["stable-slug/index.html"]);
+
+  // row kept, slug preserved for a stable future republish, status flipped
+  const row = client.__pubRows.find((r) => r.project_id === PID);
+  assert.ok(row);
+  assert.equal(row.slug, "stable-slug");
+  assert.equal(row.status, "unpublished");
+  assert.equal(row.published_at, "2026-01-01T00:00:00.000Z"); // preserved
+});
+
+test("POST unpublish: does not flip status if the storage removal fails", async () => {
+  const client = makeFakeClient(
+    baseFixtures({
+      project_publications: [{ project_id: PID, workspace_id: WID, slug: "stable-slug", status: "published" }],
+    }),
+    { removeShouldFail: true }
+  );
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  await handler({ method: "POST", headers: authHeaders, body: { projectId: PID, action: "unpublish" } }, res);
+
+  assert.equal(res.statusCode, 500);
+  const row = client.__pubRows.find((r) => r.project_id === PID);
+  assert.equal(row.status, "published"); // still live — not falsely marked down
+});
+
+// ─── Auth / ownership ──────────────────────────────────────────────────────────
+
+test("rejects a non-owner: a project in another workspace is 404, and nothing is published", async () => {
+  const client = makeFakeClient(
+    baseFixtures({ projects: [{ id: PID, workspace_id: "someone-elses-ws", name: "Not yours" }] })
+  );
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  await handler({ method: "POST", headers: authHeaders, body: { projectId: PID, action: "publish" } }, res);
+
+  assert.equal(res.statusCode, 404);
+  assert.equal(client.__calls.uploads.length, 0);
+  assert.equal(client.__calls.inserts.length, 0);
+});
+
+test("rejects a missing/invalid bearer token with 401", async () => {
+  const client = makeFakeClient(baseFixtures());
+  const handler = createPublishHandler({ supabase: client });
+
+  const noHeader = mockRes();
+  await handler({ method: "POST", headers: {}, body: { projectId: PID, action: "publish" } }, noHeader);
+  assert.equal(noHeader.statusCode, 401);
+
+  const badToken = mockRes();
+  await handler({ method: "POST", headers: { authorization: "Bearer nope" }, body: { projectId: PID, action: "publish" } }, badToken);
+  assert.equal(badToken.statusCode, 401);
+});
+
+// ─── Status (GET) ──────────────────────────────────────────────────────────────
+
+test("GET: reports current publish status for an owned project", async () => {
+  const client = makeFakeClient(
+    baseFixtures({
+      project_publications: [{ project_id: PID, workspace_id: WID, slug: "stable-slug", status: "published", published_at: "2026-01-01T00:00:00.000Z" }],
+    })
+  );
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  await handler({ method: "GET", headers: authHeaders, query: { projectId: PID } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.status, "published");
+  assert.equal(res.body.slug, "stable-slug");
+  assert.match(res.body.publicUrl, /stable-slug\/index\.html$/);
+});
+
+test("GET: reports 'unpublished' with no link when the project was never published", async () => {
+  const client = makeFakeClient(baseFixtures());
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  await handler({ method: "GET", headers: authHeaders, query: { projectId: PID } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.status, "unpublished");
+  assert.equal(res.body.slug, null);
+  assert.equal(res.body.publicUrl, null);
+});
+
+// ─── Method / arg guards ───────────────────────────────────────────────────────
+
+test("rejects an unsupported method and a bad action", async () => {
+  const client = makeFakeClient(baseFixtures());
+  const handler = createPublishHandler({ supabase: client });
+
+  const wrongMethod = mockRes();
+  await handler({ method: "DELETE", headers: authHeaders, body: {} }, wrongMethod);
+  assert.equal(wrongMethod.statusCode, 405);
+
+  const badAction = mockRes();
+  await handler({ method: "POST", headers: authHeaders, body: { projectId: PID, action: "explode" } }, badAction);
+  assert.equal(badAction.statusCode, 400);
+});

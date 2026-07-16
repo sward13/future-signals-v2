@@ -8,6 +8,7 @@ import { c, inp, ta, sel, btnP, btnSec, btnG, fl, fh, legend } from "../../style
 import { DOMAINS } from "../../data/seeds.js";
 import { HorizonSlider, YearInput, ChipInput } from "./NewProjectModal.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
+import { PublishSection } from "./PublishSection.jsx";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -305,6 +306,9 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
               </button>
             </div>
           </div>
+
+          {/* Publish to the web — management surface */}
+          <PublishSection project={project} showToast={showToast} />
         </div>
 
         {/* Footer */}

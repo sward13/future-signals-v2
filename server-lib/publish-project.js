@@ -292,3 +292,42 @@ export async function publishProject(projectId, opts = {}) {
 
   return { slug, storagePath, publicUrl, status: "published", isRepublish };
 }
+
+/**
+ * Take a published project offline.
+ *
+ * The bucket is fully public, so the object is reachable by anyone with the link
+ * regardless of the DB flag — flipping status alone would NOT take the page down.
+ * So this removes the storage object FIRST, then sets status = 'unpublished'. The
+ * row and its slug are kept so a later republish produces the same link.
+ *
+ * @param {string} projectId
+ * @param {{ supabase?: object }} [opts]
+ * @returns {Promise<{ status: 'unpublished', slug: string|null }>}
+ */
+export async function unpublishProject(projectId, opts = {}) {
+  if (!projectId) throw new Error("projectId is required");
+  const supabase = opts.supabase || defaultClient();
+
+  const { data: row, error: rowErr } = await supabase
+    .from("project_publications")
+    .select("*")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (rowErr) throw new Error(`Publication lookup failed: ${rowErr.message}`);
+  if (!row) return { status: "unpublished", slug: null }; // never published — nothing to do
+
+  // Take it offline first: remove the public object before touching the flag.
+  const { error: rmErr } = await supabase.storage
+    .from(BUCKET)
+    .remove([`${row.slug}/index.html`]);
+  if (rmErr) throw new Error(`Failed to remove published file: ${rmErr.message}`);
+
+  const { error: upErr } = await supabase
+    .from("project_publications")
+    .update({ status: "unpublished" })
+    .eq("project_id", projectId);
+  if (upErr) throw new Error(`Failed to update publication status: ${upErr.message}`);
+
+  return { status: "unpublished", slug: row.slug };
+}
