@@ -12,7 +12,7 @@ const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Envir
 const COL = { type: 80, quality: 120, horizon: 55, steepled: 120 };
 
 // Swap once the extension clears Chrome Web Store review.
-const CHROME_STORE_URL = "PLACEHOLDER_CHROME_STORE_URL";
+const CHROME_STORE_URL = "https://chromewebstore.google.com/detail/future-signals-a-workspac/oolmjjnmeonpanfgbbjdfkbjkmpffnko";
 
 const STRENGTH_COLORS = {
   weak:     [c.rust700, c.rust50, c.rustBorder],
@@ -190,7 +190,9 @@ function ChromeExtensionCard() {
       onMouseLeave={() => setHovered(false)}
       style={{
         textDecoration: "none",
-        background: c.white,
+        // Subtle one-step-darker fill (vs the white project cards) to set the
+        // callout apart; border stays a solid hairline, unchanged.
+        background: c.surfaceAlt,
         border: `1px solid ${hovered ? c.borderMid : c.border}`,
         borderRadius: 10,
         padding: "16px",
