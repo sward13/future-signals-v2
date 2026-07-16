@@ -32,7 +32,13 @@ function viewUrl(req, slug) {
 // policy would otherwise return zero rows. Supabase serves the stored HTML as
 // text/plain, so we fetch it server-side and re-serve it as text/html.
 async function serveView(supabase, req, res) {
+  // HEAD returns the same status + headers as GET with no body — link-unfurlers
+  // (Slack/X/LinkedIn/iMessage) often probe with HEAD before or instead of GET.
+  const isHead = req.method === "HEAD";
   const slug = req.query.view;
+  const notFound = () =>
+    isHead ? res.status(404).end() : res.status(404).send("This page isn’t available.");
+
   try {
     const { data: row, error } = await supabase
       .from("project_publications")
@@ -40,30 +46,33 @@ async function serveView(supabase, req, res) {
       .eq("slug", slug)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    if (!row || row.status !== "published") {
-      return res.status(404).send("This page isn’t available.");
-    }
+    if (!row || row.status !== "published") return notFound();
 
     const path = row.storage_path || `${row.slug}/index.html`;
     const { data: file, error: dlError } = await supabase.storage.from(BUCKET).download(path);
-    if (dlError || !file) return res.status(404).send("This page isn’t available.");
+    if (dlError || !file) return notFound();
     const html = typeof file.text === "function" ? await file.text() : String(file);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     // Moderate cache with revalidation — a republish overwrites the same slug,
     // so viewers must not be pinned to a stale copy (no long/immutable cache).
     res.setHeader("Cache-Control", "public, max-age=300, must-revalidate");
+    if (isHead) {
+      res.setHeader("Content-Length", String(new TextEncoder().encode(html).length));
+      return res.status(200).end();
+    }
     return res.status(200).send(html);
   } catch (err) {
     console.error("[publish view]", err);
-    return res.status(500).send("Error loading page.");
+    return isHead ? res.status(500).end() : res.status(500).send("Error loading page.");
   }
 }
 
 export function createPublishHandler({ supabase }) {
   return async function handler(req, res) {
     // Public serving branch — must run BEFORE the auth check (anonymous access).
-    if (req.method === "GET" && req.query?.view) {
+    // Handles GET (full page) and HEAD (headers only) for the /p/{slug} route.
+    if ((req.method === "GET" || req.method === "HEAD") && req.query?.view) {
       return serveView(supabase, req, res);
     }
 

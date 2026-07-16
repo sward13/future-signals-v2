@@ -156,7 +156,12 @@ async function fetchProjectData(supabase, projectId) {
 
 // ─── HTML assembly ──────────────────────────────────────────────────────────────
 
-export function assembleHtml(data, { publishedAt } = {}) {
+function truncate(value, max) {
+  const t = String(value || "").trim();
+  return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
+}
+
+export function assembleHtml(data, { publishedAt, publicUrl } = {}) {
   const {
     project,
     clusters,
@@ -191,12 +196,27 @@ export function assembleHtml(data, { publishedAt } = {}) {
 
   const title = esc(project?.name || "Future Signals project");
 
+  // Open Graph tags so a shared /p/{slug} link renders a preview card on social
+  // platforms (a stated purpose of Publish). No og:image this pass — that would
+  // mean generating/choosing an image; the other tags must not block on it.
+  const ogTitle = esc(project?.name || "Future Signals project");
+  const ogDescription = esc(truncate(project?.question || project?.focus || "", 200));
+  const og = [
+    `<meta property="og:title" content="${ogTitle}">`,
+    ogDescription ? `<meta property="og:description" content="${ogDescription}">` : "",
+    `<meta property="og:type" content="website">`,
+    publicUrl ? `<meta property="og:url" content="${esc(publicUrl)}">` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${title} — Future Signals</title>
+${og}
 </head>
 <body style="margin:0; padding:0; background:#EDEBE6; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#17171A;">
   <div style="border:1px solid #E0DED7; border-radius:12px; overflow:hidden; max-width:900px; margin:24px auto; background:#FFFFFF;">
@@ -244,6 +264,13 @@ export async function publishProject(projectId, opts = {}) {
   const slug = existing?.slug || (await uniqueSlug(supabase, data.project.name));
   const storagePath = `${slug}/index.html`;
 
+  // The public link points at the app's serving route (/p/{slug}), NOT the raw
+  // Supabase Storage URL: Supabase serves user-uploaded HTML as text/plain (an
+  // anti-abuse measure), so the object must be served through the app to render.
+  // Built here so it can also feed the page's og:url meta tag.
+  const appBase = (process.env.APP_URL || "").replace(/\/$/, "");
+  const publicUrl = appBase ? `${appBase}/p/${slug}` : `/p/${slug}`;
+
   if (!existing) {
     const { error: insertErr } = await supabase.from("project_publications").insert({
       workspace_id: data.project.workspace_id,
@@ -257,7 +284,7 @@ export async function publishProject(projectId, opts = {}) {
 
   // Assemble and upload. The public link never changes across republishes because
   // the slug (and therefore the path) is stable; upsert overwrites in place.
-  const html = assembleHtml(data, { publishedAt: now });
+  const html = assembleHtml(data, { publishedAt: now, publicUrl });
   const { error: uploadErr } = await supabase.storage
     .from(BUCKET)
     .upload(storagePath, html, { contentType: "text/html; charset=utf-8", upsert: true });
@@ -285,12 +312,6 @@ export async function publishProject(projectId, opts = {}) {
     .update(patch)
     .eq("project_id", projectId);
   if (updateErr) throw new Error(`Failed to finalize publication: ${updateErr.message}`);
-
-  // The public link points at the app's serving route (/p/{slug}), NOT the raw
-  // Supabase Storage URL: Supabase serves user-uploaded HTML as text/plain (an
-  // anti-abuse measure), so the object must be served through the app to render.
-  const appBase = (process.env.APP_URL || "").replace(/\/$/, "");
-  const publicUrl = appBase ? `${appBase}/p/${slug}` : `/p/${slug}`;
 
   return { slug, storagePath, publicUrl, status: "published", isRepublish };
 }

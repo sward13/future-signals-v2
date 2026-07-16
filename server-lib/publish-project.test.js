@@ -136,6 +136,40 @@ test("assembleHtml produces a complete document with every section in order", ()
   assert.ok(html.indexOf("System analysis") < html.indexOf("Appendix"));
 });
 
+// ─── Open Graph tags ─────────────────────────────────────────────────────────────
+
+function bareData(project, publicUrl) {
+  const html = assembleHtml(
+    { project, clusters: [], inputs: [], relationships: [], canvasNodes: [], canvasTextNodes: [], scenarios: [], preferredFutures: [], strategicOptions: [], analysis: null },
+    { publishedAt: NOW, publicUrl }
+  );
+  return html.slice(0, html.indexOf("</head>")); // the <head> only
+}
+
+test("assembleHtml puts og:title/description/type/url in <head> for a normal project", () => {
+  const head = bareData(baseFixtures().project, "https://app.example.com/p/the-state-of-glp-1s");
+  assert.match(head, /<meta property="og:title" content="The State of GLP-1s">/);
+  assert.match(head, /<meta property="og:description" content="How might access reshape strategy\?">/);
+  assert.match(head, /<meta property="og:type" content="website">/);
+  assert.match(head, /<meta property="og:url" content="https:\/\/app\.example\.com\/p\/the-state-of-glp-1s">/);
+});
+
+test("assembleHtml: og:description falls back to focus, truncates long text, and escapes markup", () => {
+  const longQuestion = "A".repeat(300);
+  const head = bareData({ name: 'A "quoted" & <b>bold</b> project', question: longQuestion });
+  assert.match(head, /<meta property="og:title" content="A &quot;quoted&quot; &amp; &lt;b&gt;bold&lt;\/b&gt; project">/);
+  // truncated to ~200 chars with an ellipsis, not the full 300
+  const desc = head.match(/og:description" content="([^"]*)"/)[1];
+  assert.ok(desc.length <= 201 && desc.endsWith("…"));
+  // og:url omitted when no publicUrl was provided
+  assert.doesNotMatch(head, /og:url/);
+});
+
+test("assembleHtml: og:description uses focus when there is no key question", () => {
+  const head = bareData({ name: "Untitled", focus: "consumer electric vehicles" });
+  assert.match(head, /<meta property="og:description" content="consumer electric vehicles">/);
+});
+
 // ─── First publish ─────────────────────────────────────────────────────────────
 
 test("first publish: inserts a new row, uploads, sets status=published + published_at", async () => {

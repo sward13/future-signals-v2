@@ -94,6 +94,7 @@ function mockRes() {
   res.status = (c) => { res.statusCode = c; return res; };
   res.json = (b) => { res.body = b; return res; };
   res.send = (b) => { res.body = b; return res; };
+  res.end = (b) => { if (b !== undefined) res.body = b; return res; };
   res.setHeader = (k, v) => { res.headers[k.toLowerCase()] = v; return res; };
   return res;
 }
@@ -316,6 +317,33 @@ test("GET ?view: a published row whose file is missing returns 404, not a broken
   const res = mockRes();
   await handler({ method: "GET", headers: {}, query: { view: "orphan" } }, res);
   assert.equal(res.statusCode, 404);
+});
+
+test("HEAD ?view: returns GET's status + headers with an empty body", async () => {
+  const html = "<!DOCTYPE html><html><body>Hi there</body></html>";
+  const client = makeFakeClient(publishedFixtures("head-slug", html));
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  await handler({ method: "HEAD", headers: {}, query: { view: "head-slug" } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.headers["content-type"], "text/html; charset=utf-8");
+  assert.match(res.headers["cache-control"], /max-age=\d+/);
+  assert.match(res.headers["cache-control"], /must-revalidate/);
+  assert.equal(res.headers["content-length"], String(html.length));
+  assert.equal(res.body, null); // HEAD has no body
+});
+
+test("HEAD ?view: an unpublished slug returns 404 with no body", async () => {
+  const client = makeFakeClient(
+    baseFixtures({ project_publications: [{ project_id: PID, workspace_id: WID, slug: "head-down", status: "unpublished", storage_path: "head-down/index.html" }] })
+  );
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  await handler({ method: "HEAD", headers: {}, query: { view: "head-down" } }, res);
+
+  assert.equal(res.statusCode, 404);
+  assert.equal(res.body, null);
 });
 
 test("publish then view: the served page is the freshly published, rendered HTML", async () => {
