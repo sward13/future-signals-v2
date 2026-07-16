@@ -286,9 +286,11 @@ export async function publishProject(projectId, opts = {}) {
     .eq("project_id", projectId);
   if (updateErr) throw new Error(`Failed to finalize publication: ${updateErr.message}`);
 
-  const publicUrl = process.env.SUPABASE_URL
-    ? `${process.env.SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${storagePath}`
-    : null;
+  // The public link points at the app's serving route (/p/{slug}), NOT the raw
+  // Supabase Storage URL: Supabase serves user-uploaded HTML as text/plain (an
+  // anti-abuse measure), so the object must be served through the app to render.
+  const appBase = (process.env.APP_URL || "").replace(/\/$/, "");
+  const publicUrl = appBase ? `${appBase}/p/${slug}` : `/p/${slug}`;
 
   return { slug, storagePath, publicUrl, status: "published", isRepublish };
 }

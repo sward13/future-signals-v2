@@ -14,6 +14,7 @@ import { createPublishHandler } from "./publish-handler.js";
 
 function makeFakeClient(fixtures = {}, opts = {}) {
   const pubRows = (fixtures.project_publications || []).map((r) => ({ ...r }));
+  const files = { ...(fixtures.storageFiles || {}) }; // path -> html string
   const calls = { inserts: [], updates: [], uploads: [], removals: [] };
 
   const baseRows = (table) => {
@@ -68,23 +69,32 @@ function makeFakeClient(fixtures = {}, opts = {}) {
     from: (table) => builder(table),
     storage: {
       from: () => ({
-        upload: (path, body, options) => { calls.uploads.push({ path, body, options }); return Promise.resolve({ data: { path }, error: null }); },
+        upload: (path, body, options) => { calls.uploads.push({ path, body, options }); files[path] = body; return Promise.resolve({ data: { path }, error: null }); },
         remove: (paths) => {
           if (opts.removeShouldFail) return Promise.resolve({ data: null, error: { message: "remove failed" } });
           calls.removals.push(...paths);
+          for (const p of paths) delete files[p];
           return Promise.resolve({ data: paths.map((p) => ({ name: p })), error: null });
+        },
+        download: (path) => {
+          if (!(path in files)) return Promise.resolve({ data: null, error: { message: "not found" } });
+          const body = files[path];
+          return Promise.resolve({ data: { text: async () => body }, error: null });
         },
       }),
     },
     __calls: calls,
     __pubRows: pubRows,
+    __files: files,
   };
 }
 
 function mockRes() {
-  const res = { statusCode: 0, body: null };
+  const res = { statusCode: 0, body: null, headers: {} };
   res.status = (c) => { res.statusCode = c; return res; };
   res.json = (b) => { res.body = b; return res; };
+  res.send = (b) => { res.body = b; return res; };
+  res.setHeader = (k, v) => { res.headers[k.toLowerCase()] = v; return res; };
   return res;
 }
 
@@ -120,7 +130,7 @@ test("POST publish: publishes an owned project and returns slug + public URL", a
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.status, "published");
   assert.equal(res.body.slug, "ev-adoption-in-the-us");
-  assert.match(res.body.publicUrl, /ev-adoption-in-the-us\/index\.html$/);
+  assert.match(res.body.publicUrl, /\/p\/ev-adoption-in-the-us$/);
 
   // the file was actually uploaded, and the row finalized to published
   assert.equal(client.__calls.uploads.length, 1);
@@ -214,7 +224,7 @@ test("GET: reports current publish status for an owned project", async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.status, "published");
   assert.equal(res.body.slug, "stable-slug");
-  assert.match(res.body.publicUrl, /stable-slug\/index\.html$/);
+  assert.match(res.body.publicUrl, /\/p\/stable-slug$/);
 });
 
 test("GET: reports 'unpublished' with no link when the project was never published", async () => {
@@ -242,4 +252,85 @@ test("rejects an unsupported method and a bad action", async () => {
   const badAction = mockRes();
   await handler({ method: "POST", headers: authHeaders, body: { projectId: PID, action: "explode" } }, badAction);
   assert.equal(badAction.statusCode, 400);
+});
+
+// ─── Public page serving (GET ?view={slug}) ─────────────────────────────────────
+
+function publishedFixtures(slug, html) {
+  return baseFixtures({
+    project_publications: [{ project_id: PID, workspace_id: WID, slug, status: "published", storage_path: `${slug}/index.html` }],
+    storageFiles: { [`${slug}/index.html`]: html },
+  });
+}
+
+test("GET ?view: serves a published page as real HTML with a revalidating (non-immutable) cache", async () => {
+  const html = "<!DOCTYPE html><html><body>Hello world</body></html>";
+  const client = makeFakeClient(publishedFixtures("live-slug", html));
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  await handler({ method: "GET", headers: {}, query: { view: "live-slug" } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body, html);
+  assert.equal(res.headers["content-type"], "text/html; charset=utf-8");
+  assert.match(res.headers["cache-control"], /max-age=\d+/);
+  assert.match(res.headers["cache-control"], /must-revalidate/);
+  assert.doesNotMatch(res.headers["cache-control"], /immutable/);
+});
+
+test("GET ?view: an anonymous request (no token) succeeds — RLS bypassed, not silently empty", async () => {
+  const html = "<h1>Public page</h1>";
+  const client = makeFakeClient(publishedFixtures("anon-slug", html));
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  // No Authorization header at all — this is the anonymous viewer path.
+  await handler({ method: "GET", headers: {}, query: { view: "anon-slug" } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body, html); // real content returned, not an empty RLS result
+});
+
+test("GET ?view: an unpublished slug returns 404", async () => {
+  const client = makeFakeClient(
+    baseFixtures({ project_publications: [{ project_id: PID, workspace_id: WID, slug: "down-slug", status: "unpublished", storage_path: "down-slug/index.html" }] })
+  );
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  await handler({ method: "GET", headers: {}, query: { view: "down-slug" } }, res);
+  assert.equal(res.statusCode, 404);
+});
+
+test("GET ?view: an unknown slug returns 404", async () => {
+  const client = makeFakeClient(baseFixtures());
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  await handler({ method: "GET", headers: {}, query: { view: "does-not-exist" } }, res);
+  assert.equal(res.statusCode, 404);
+});
+
+test("GET ?view: a published row whose file is missing returns 404, not a broken 200", async () => {
+  const client = makeFakeClient(
+    baseFixtures({ project_publications: [{ project_id: PID, workspace_id: WID, slug: "orphan", status: "published", storage_path: "orphan/index.html" }] })
+  );
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  await handler({ method: "GET", headers: {}, query: { view: "orphan" } }, res);
+  assert.equal(res.statusCode, 404);
+});
+
+test("publish then view: the served page is the freshly published, rendered HTML", async () => {
+  const client = makeFakeClient(baseFixtures());
+  const handler = createPublishHandler({ supabase: client });
+
+  const pubRes = mockRes();
+  await handler({ method: "POST", headers: authHeaders, body: { projectId: PID, action: "publish" } }, pubRes);
+  assert.equal(pubRes.statusCode, 200);
+  const slug = pubRes.body.slug;
+
+  const viewRes = mockRes();
+  await handler({ method: "GET", headers: {}, query: { view: slug } }, viewRes);
+  assert.equal(viewRes.statusCode, 200);
+  assert.equal(viewRes.headers["content-type"], "text/html; charset=utf-8");
+  assert.match(viewRes.body, /^<!DOCTYPE html>/);
+  assert.match(viewRes.body, /EV Adoption in the US/);
 });

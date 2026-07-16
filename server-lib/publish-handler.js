@@ -16,13 +16,57 @@ import { publishProject, unpublishProject } from "./publish-project.js";
 
 const BUCKET = "published-projects";
 
-function publicUrlFor(slug) {
-  const base = process.env.SUPABASE_URL;
-  return base && slug ? `${base}/storage/v1/object/public/${BUCKET}/${slug}/index.html` : null;
+// Absolute /p/{slug} link, built from the request host so it's correct for the
+// exact deployment the caller is on (preview vs. production).
+function viewUrl(req, slug) {
+  if (!slug) return null;
+  const proto = req.headers["x-forwarded-proto"] || "https";
+  const host = req.headers["x-forwarded-host"] || req.headers.host;
+  return host ? `${proto}://${host}/p/${slug}` : `/p/${slug}`;
+}
+
+// Public, unauthenticated page serving (reached via the /p/:slug rewrite →
+// /api/publish?view={slug}). Uses the injected service-role client to bypass
+// project_publications' RLS (workspace_id = get_workspace_id()): the published
+// page is public by design, and an anonymous viewer has no workspace, so the
+// policy would otherwise return zero rows. Supabase serves the stored HTML as
+// text/plain, so we fetch it server-side and re-serve it as text/html.
+async function serveView(supabase, req, res) {
+  const slug = req.query.view;
+  try {
+    const { data: row, error } = await supabase
+      .from("project_publications")
+      .select("slug, storage_path, status")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row || row.status !== "published") {
+      return res.status(404).send("This page isn’t available.");
+    }
+
+    const path = row.storage_path || `${row.slug}/index.html`;
+    const { data: file, error: dlError } = await supabase.storage.from(BUCKET).download(path);
+    if (dlError || !file) return res.status(404).send("This page isn’t available.");
+    const html = typeof file.text === "function" ? await file.text() : String(file);
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    // Moderate cache with revalidation — a republish overwrites the same slug,
+    // so viewers must not be pinned to a stale copy (no long/immutable cache).
+    res.setHeader("Cache-Control", "public, max-age=300, must-revalidate");
+    return res.status(200).send(html);
+  } catch (err) {
+    console.error("[publish view]", err);
+    return res.status(500).send("Error loading page.");
+  }
 }
 
 export function createPublishHandler({ supabase }) {
   return async function handler(req, res) {
+    // Public serving branch — must run BEFORE the auth check (anonymous access).
+    if (req.method === "GET" && req.query?.view) {
+      return serveView(supabase, req, res);
+    }
+
     if (req.method !== "GET" && req.method !== "POST") {
       return res.status(405).json({ error: "Method not allowed" });
     }
@@ -69,7 +113,7 @@ export function createPublishHandler({ supabase }) {
         return res.status(200).json({
           status,
           slug: row?.slug || null,
-          publicUrl: status === "published" ? publicUrlFor(row?.slug) : null,
+          publicUrl: status === "published" ? viewUrl(req, row?.slug) : null,
           publishedAt: row?.published_at || null,
           republishedAt: row?.republished_at || null,
         });
@@ -81,7 +125,7 @@ export function createPublishHandler({ supabase }) {
         return res.status(200).json({
           status: "published",
           slug: result.slug,
-          publicUrl: result.publicUrl || publicUrlFor(result.slug),
+          publicUrl: viewUrl(req, result.slug),
         });
       }
       if (action === "unpublish") {
