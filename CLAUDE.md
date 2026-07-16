@@ -62,85 +62,24 @@ All other fields on these entities are Enhanced tier — behind the toggle, neve
 
 ## Design system — tokens and primitives
 
-Always use these exact values. Never introduce new colours or spacing scales without explicit instruction.
+**`src/styles/tokens.js` (the `c{}` object + the `inp`/`btnP`/… primitives) is the single source of truth for colour values and shared style primitives.** Do not hardcode hexes from memory or from this doc — import from `tokens.js` for legacy inline-style components, or use the Tailwind classes generated from the `@theme` block in `src/index.css` for migrated ones (the two must stay in sync — see "Styling: Tailwind CSS v4"). Never introduce new colours or spacing scales without explicit instruction.
 
-```js
-const c = {
-  // Surfaces
-  bg:          "#F7F7F5",   // page background, sidebar
-  white:       "#ffffff",   // main content area, cards
-  surfaceAlt:  "#FAFAF8",   // input field backgrounds
-  canvas:      "#F7F6F2",   // canvas backgrounds
+The palette is a warm off-white / ink / muted system. The exact ~80 hexes drift, so they're not duplicated here — read `tokens.js` for values and `src/components/shared/Tag.jsx` for the badge → colour bindings. What's durable is the **semantic map** (which token family encodes which UI concept):
 
-  // Text
-  ink:         "#1A1A1A",   // primary text
-  muted:       "#6B7280",   // secondary text, nav items
-  faint:       "#9CA3AF",   // tertiary text, placeholders, column headers
+**Surfaces & text:** `bg` (page/sidebar), `white` (cards/content), `surfaceAlt`/`fieldBg` (subtle off-white fills), `canvas` (System Map bg); `ink` (primary text), `muted`/`faint`/`hint` (secondary → tertiary); `border`/`borderMid`/`borderStrong` (hairline → interactive); `brand`/`brandBg`/`brandBorder` (primary CTAs, active nav). Each semantic family below has `{name}50` (bg), `{name}700` (text), `{name}Border` (border).
 
-  // Borders
-  border:      "rgba(0,0,0,0.09)",   // cards, dividers, table rows
-  borderMid:   "rgba(0,0,0,0.16)",   // inputs, buttons, interactive borders
+| UI concept | Token family | Notes |
+|---|---|---|
+| Time Horizon (H1/H2/H3) | `green*` / `blue*` / `amber*` | H1 green, H2 blue, H3 amber |
+| Cluster Type (Trend/Driver/Tension) | `dustyViolet*` / `mutedTeal*` / `dustyRose*` | muted, not saturated |
+| Signal Strength (Weak/Mod/Strong) **and** Source Confidence (Low/Med/High) | `rust*` / `tan*` / `sage*` | one shared 3-tier scale: low→rust, mid→tan, high→sage |
+| Cluster Likelihood (Possible/Plausible/Probable) | `likelihood{Possible,Plausible,Probable}*` | warm-neutral monochrome ramp (added 2026-07-16). **Currently consumed only by Web Publish; the in-app `LikelihoodTag` in `ClustersPanel.jsx` still borrows the Horizon green/blue/amber family** — a known inconsistency |
+| Scenario Archetype (Continuation/Collapse/Constraint/Transformation) | `archContinuation*` / `archCollapse*` / `archConstraint*` / `archTransformation*` | one family each |
+| System Map relationship-edge colours (Drives/Enables/Inhibits/…) | `REL_TYPES` in `src/components/screens/ScenarioCanvas.jsx` (**not** `tokens.js`) | mirrored in `src/publish/systemMap.js` |
 
-  // Brand — interactive primary
-  brand:       "#3B82F6",   // primary CTAs, active nav, key question accent
-  brandBg:     "#EFF6FF",   // active nav background, hover states
-  brandDeep:   "#F0F7FF",   // key question block background
-  brandBorder: "#BFDBFE",   // active filter pill border
+These muted badge families are the result of the 2026-07 badge-consolidation audit (an earlier version of this section documented saturated `confirmedBg`/`h1Bg`/`driverBg`-style names that never matched the code — ignore any such names). Prefer the badge components in `Tag.jsx` (`HorizTag`, `SubtypeTag`, `StrengthDot`, `ConfidenceBadge`, `ArchTag`) over re-deriving colours inline.
 
-  // Semantic — Signal Strength / Source Confidence badges
-  // Strong / High
-  confirmedBg:    "#D1FAE5", confirmedText:    "#065F46",
-  // Moderate / Medium
-  establishedBg:  "#DBEAFE", establishedText:  "#1E40AF",
-  // Weak / Low
-  emergingBg:     "#FEF3C7", emergingText:     "#92400E",
-
-  // Semantic — Time horizons (H1/H2/H3)
-  h1Bg: "#DCFCE7", h1Text: "#166534",
-  h2Bg: "#DBEAFE", h2Text: "#1E40AF",
-  h3Bg: "#FEF3C7", h3Text: "#92400E",
-
-  // Semantic — Cluster subtypes
-  driverBg:  "#EDE9FE", driverText:  "#5B21B6",
-  trendBg:   "#EDE9FE", trendText:   "#5B21B6",
-  tensionBg: "#FEF3C7", tensionText: "#92400E",
-
-  // Semantic — System Map relationship edges
-  edgeInhibits:  "#C2813A",
-  edgeDrives:    "#3B82F6",
-  edgeAccelerates:"#0D9488",
-  edgeFeedback:  "#D97706",  // dashed
-
-  // Semantic — status
-  builtBg:    "#DCFCE7", builtText:    "#166534",
-  notBuiltBg: "#FEF3C7", notBuiltText: "#92400E",
-
-  // Alert
-  alertBg:   "#FEE2E2", alertText: "#991B1B",  // Inbox unread badge
-};
-```
-
-**Shared style primitives:**
-```js
-const inp   = { width:"100%", padding:"9px 11px", border:`1px solid ${c.borderMid}`, borderRadius:8, background:c.white, color:c.ink, fontSize:13, fontFamily:"inherit", outline:"none", boxSizing:"border-box" };
-const ta    = { ...inp, resize:"none", lineHeight:1.55 };
-const sel   = { ...inp, appearance:"none" };
-
-// Primary button — brand blue
-const btnP  = { padding:"10px 22px", borderRadius:8, background:c.brand, color:c.white, border:"none", fontSize:13, fontWeight:500, cursor:"pointer", fontFamily:"inherit" };
-const btnSm = { padding:"7px 16px", borderRadius:7, background:c.brand, color:c.white, border:"none", fontSize:12, fontWeight:500, cursor:"pointer", fontFamily:"inherit" };
-
-// Secondary / ghost buttons
-const btnSec= { padding:"9px 18px", borderRadius:8, background:"transparent", color:c.muted, border:`1px solid ${c.borderMid}`, fontSize:13, cursor:"pointer", fontFamily:"inherit" };
-const btnG  = { padding:"7px 12px", borderRadius:7, background:"transparent", color:c.muted, border:"none", fontSize:12, cursor:"pointer", fontFamily:"inherit" };
-
-// Full-width right-panel CTA buttons
-const btnFull = { width:"100%", padding:"7px 12px", borderRadius:6, background:"transparent", color:c.muted, border:`1px solid ${c.borderMid}`, fontSize:11.5, cursor:"pointer", fontFamily:"inherit", textAlign:"center" };
-
-const fl    = { fontSize:12, fontWeight:500, color:c.ink, marginBottom:5, display:"flex", alignItems:"center", gap:6 };
-const fh    = { fontSize:11, color:c.faint, marginBottom:6, fontStyle:"italic", lineHeight:1.45 };
-const badg  = { fontSize:10, padding:"1px 6px", borderRadius:4, background:"#f0f0ee", color:c.faint };
-```
+**Shared style primitives** (all in `tokens.js`, import don't re-hardcode): `inp`/`ta`/`sel` (form fields, `1px solid borderStrong`, radius 8), `btnP`/`btnSm` (primary brand buttons), `btnSec`/`btnG` (secondary/ghost), `btnFull`, `fl`/`fh` (field label/hint), `badg`, `countBadge`/`tabCount`, `legend`.
 
 ---
 
@@ -152,7 +91,7 @@ Tailwind CSS v4 is installed via the `@tailwindcss/vite` plugin. There is **no `
 
 ### Color tokens
 
-All 38 colors from the `c{}` object in `src/styles/tokens.js` are registered as `--color-*` custom properties. Each one generates `bg-{name}`, `text-{name}`, and `border-{name}` utility classes automatically.
+Every colour in the `c{}` object in `src/styles/tokens.js` is registered as a `--color-*` custom property in the `@theme` block of `src/index.css`, and each generates `bg-{name}`, `text-{name}`, and `border-{name}` utility classes automatically. **`src/index.css`'s `@theme` block is the authoritative list — keep it in sync with `tokens.js`.** The table below is a representative sample showing the camelCase→kebab naming convention (`surfaceAlt` → `--color-surface-alt`, `dustyViolet700` → `--color-dusty-violet-700`); it is **not** exhaustive.
 
 | `tokens.js` key | CSS variable | Example classes |
 |---|---|---|
@@ -194,6 +133,8 @@ All 38 colors from the `c{}` object in `src/styles/tokens.js` are registered as 
 | `teal50` | `--color-teal-50` | `bg-teal-50` |
 | `teal700` | `--color-teal-700` | `text-teal-700` |
 | `tealBorder` | `--color-teal-border` | `border-teal-border` |
+
+The muted badge families (from the 2026-07 badge-consolidation audit) and the Likelihood ramp are **also** registered and follow the same `{name}50` / `{name}700` / `{name}Border` → `--color-{kebab-name}-{50\|700\|border}` pattern, but aren't listed above: `rust*`, `tan*`, `sage*` (Strength/Confidence), `dustyViolet*`, `mutedTeal*`, `dustyRose*` (Cluster Type), `archContinuation*` / `archCollapse*` / `archConstraint*` / `archTransformation*` (Archetype), and `likelihoodPossible*` / `likelihoodPlausible*` / `likelihoodProbable*` (Likelihood). See the `@theme` block in `src/index.css` for the complete, authoritative set.
 
 ### Spacing tokens
 
@@ -309,7 +250,7 @@ The sidebar is **196px wide**, `background: c.bg`, with a single `0.5px` border-
 
 **Nav list order:**
 - Dashboard *(global)*
-- Inbox *(global, shows unread count badge in `alertBg/alertText`)*
+- Inbox *(global, shows an unread count badge — neutral grey `countBadge` style: `background: rgba(0,0,0,0.07)`, `color: c.muted`)*
 - `0.5px` divider
 - Overview *(project-scoped, first item — default landing screen when opening a project)*
 - Scan *(project-scoped, shows input count — screen key `"project"`, file `ProjectDetail.jsx`)*
