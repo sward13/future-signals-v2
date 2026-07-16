@@ -84,10 +84,22 @@ test("a feedback-loop edge is dashed", () => {
   assert.match(html, /stroke="#B45309"[^>]*stroke-dasharray="6,4"/);
 });
 
-test("uses handle-based side anchoring when handles are present", () => {
-  // c2 bottom handle → (40 + 156/2, 60 + 56) = (118, 116); path should start there
+/** Parse the first edge path's endpoints + cubic control points. */
+function parsePath(html) {
+  const m = html.match(
+    /d="M([-\d.]+),([-\d.]+) C([-\d.]+),([-\d.]+) ([-\d.]+),([-\d.]+) ([-\d.]+),([-\d.]+)"/
+  );
+  if (!m) return null;
+  const n = m.slice(1).map(Number);
+  return { mx: n[0], my: n[1], c1x: n[2], c1y: n[3], c2x: n[4], c2y: n[5], tx: n[6], ty: n[7] };
+}
+
+test("draws a cubic bezier (C) with directional control points matching getBezierPath, not a quadratic (Q)", () => {
+  // c2(40,60) bottom → c1(300,240) top. Anchors: (118,116) and (378,240).
+  // Control offset (dist 124 ≥ 0) = 62 → controls (118,178) and (378,178).
   const html = renderSystemMap(canvasNodes, [], [relationships[0]], clusterLookup);
-  assert.match(html, /M118,116/);
+  assert.match(html, /d="M118,116 C118,178 378,178 378,240"/);
+  assert.doesNotMatch(html, /\bQ[-\d]/); // no quadratic curve anywhere
 });
 
 test("falls back to node center when handles are null", () => {
@@ -96,6 +108,33 @@ test("falls back to node center when handles are null", () => {
   assertClean(html);
   // c2 center = (40 + 78, 60 + 28) = (118, 88)
   assert.match(html, /M118,88/);
+});
+
+test("control point offsets in the correct direction for each handle side (t/l/b/r)", () => {
+  const clusters2 = [
+    { id: "src", name: "Source", subtype: "Trend" },
+    { id: "dst", name: "Dest", subtype: "Driver" },
+  ];
+  const lookup2 = buildClusterLookup(clusters2);
+  const nodes2 = [
+    { cluster_id: "src", x: 0, y: 0 },       // W156 H56
+    { cluster_id: "dst", x: 400, y: 400 },
+  ];
+  const near = (a, b) => Math.abs(a - b) < 0.01;
+
+  const cases = {
+    r: (p) => p.c1x > p.mx && near(p.c1y, p.my), // offsets further right, y unchanged
+    l: (p) => p.c1x < p.mx && near(p.c1y, p.my), // further left
+    t: (p) => p.c1y < p.my && near(p.c1x, p.mx), // further up
+    b: (p) => p.c1y > p.my && near(p.c1x, p.mx), // further down
+  };
+
+  for (const [handle, ok] of Object.entries(cases)) {
+    const rels = [{ from_cluster_id: "src", to_cluster_id: "dst", type: "Drives", source_handle: handle, target_handle: "l" }];
+    const p = parsePath(renderSystemMap(nodes2, [], rels, lookup2));
+    assert.ok(p, `handle ${handle}: expected a cubic path`);
+    assert.ok(ok(p), `handle ${handle}: control point offset in wrong direction (anchor ${p.mx},${p.my} → control ${p.c1x},${p.c1y})`);
+  }
 });
 
 // ─── Empty map ───────────────────────────────────────────────────────────────

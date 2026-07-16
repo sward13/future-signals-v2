@@ -108,6 +108,30 @@ function anchorPoint(x, y, handle) {
   }
 }
 
+// Cubic-bezier edge geometry, replicating @xyflow/system's getBezierPath so the
+// published edges have the same directional S-curve as the live canvas.
+// RelationshipEdgeComponent calls getBezierPath with no curvature → default 0.25.
+const CURVATURE = 0.25;
+
+function controlOffset(distance) {
+  return distance >= 0 ? 0.5 * distance : CURVATURE * 25 * Math.sqrt(-distance);
+}
+
+/**
+ * A cubic control point, offset outward from an endpoint along its connection
+ * side (t/l/b/r) — React Flow's getControlWithCurvature. (x1,y1) is this
+ * endpoint; (x2,y2) is the opposite one.
+ */
+function bezierControl(handle, x1, y1, x2, y2) {
+  switch (handle) {
+    case "l": return [x1 - controlOffset(x1 - x2), y1];
+    case "r": return [x1 + controlOffset(x2 - x1), y1];
+    case "t": return [x1, y1 - controlOffset(y1 - y2)];
+    case "b": return [x1, y1 + controlOffset(y2 - y1)];
+    default:  return [x1, y1];
+  }
+}
+
 /** Naive word-wrap into at most maxLines lines of ~maxChars, last line ellipsized. */
 function wrapLabel(text, maxChars = 24, maxLines = 2) {
   const words = String(text).split(/\s+/).filter(Boolean);
@@ -190,19 +214,16 @@ function renderEdge(rel, placed, clusterLookup, usedColors) {
   const a = anchorPoint(from.x, from.y, rel.source_handle);
   const b = anchorPoint(to.x, to.y, rel.target_handle);
 
-  // Gentle curve: quadratic control offset perpendicular to the chord.
-  const mx = (a.x + b.x) / 2;
-  const my = (a.y + b.y) / 2;
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const off = Math.min(36, len * 0.12);
-  const cx = mx - (dy / len) * off;
-  const cy = my + (dx / len) * off;
+  // Cubic bezier with two directional control points (React Flow's getBezierPath):
+  // each control point offsets outward along its handle side, producing the same
+  // flowing S-curve as the live canvas. Null handles fall back to Bottom/Top,
+  // React Flow's own source/target defaults.
+  const [c1x, c1y] = bezierControl(rel.source_handle || "b", a.x, a.y, b.x, b.y);
+  const [c2x, c2y] = bezierControl(rel.target_handle || "t", b.x, b.y, a.x, a.y);
 
-  // Label at the bezier midpoint (t = 0.5).
-  const lx = 0.25 * a.x + 0.5 * cx + 0.25 * b.x;
-  const ly = 0.25 * a.y + 0.5 * cy + 0.25 * b.y;
+  // Label at the cubic t=0.5 point (React Flow's getBezierEdgeCenter).
+  const lx = a.x * 0.125 + c1x * 0.375 + c2x * 0.375 + b.x * 0.125;
+  const ly = a.y * 0.125 + c1y * 0.375 + c2y * 0.375 + b.y * 0.125;
 
   const { type, sentence } = resolveRelationship(rel, clusterLookup);
   const color = REL_COLORS[type] || DEFAULT_EDGE_COLOR;
@@ -222,7 +243,7 @@ function renderEdge(rel, placed, clusterLookup, usedColors) {
 
   return `<g>
       <title>${esc(sentence)}</title>
-      <path d="M${round(a.x)},${round(a.y)} Q${round(cx)},${round(cy)} ${round(b.x)},${round(b.y)}" fill="none" stroke="${color}" stroke-width="2"${dash} marker-end="url(#arrow-${colorKey(color)})" />
+      <path d="M${round(a.x)},${round(a.y)} C${round(c1x)},${round(c1y)} ${round(c2x)},${round(c2y)} ${round(b.x)},${round(b.y)}" fill="none" stroke="${color}" stroke-width="2"${dash} marker-end="url(#arrow-${colorKey(color)})" />
       ${label}
     </g>`;
 }
