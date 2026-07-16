@@ -43,11 +43,26 @@ const CH = {
   muted: "#5B5A56",
   faint: "#9A988F",
   border: "#E0DED7",
-  edge: "#8C877F",
+  cardBorder: "rgba(0,0,0,0.09)", // c.border — the neutral ClusterNode card border
+  canvasBg: "#F7F6F2", // c.canvas — the real System Map canvas background
   sans: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
 };
 
 const NEUTRAL = [CH.muted, "#F2F1ED", CH.border];
+
+// Per-relationship-type stroke colors, matching REL_TYPES in ScenarioCanvas.jsx
+// so published edges (and their arrowheads) read the same as the live canvas.
+const REL_COLORS = {
+  Drives: "#185FA5",
+  Enables: "#3B6D11",
+  Accelerates: "#0F766E",
+  Inhibits: "#854F0B",
+  Blocks: "#791F1F",
+  "Feedback Loop": "#B45309",
+  Displaces: "#4B1010",
+};
+const REL_DASH = { "Feedback Loop": true };
+const DEFAULT_EDGE_COLOR = "#185FA5"; // custom/unknown types (matches the canvas default)
 
 /** Cluster Type → confirmed subtype token colors [text, bg, border]. */
 function subtypeColors(subtype) {
@@ -59,8 +74,28 @@ function subtypeColors(subtype) {
   return map[subtype] || NEUTRAL;
 }
 
+/** Horizon → [text, bg, border] token colors, or null. */
+function horizonColors(h) {
+  const map = {
+    H1: [c.green700, c.green50, c.greenBorder],
+    H2: [c.blue700, c.blue50, c.blueBorder],
+    H3: [c.amber700, c.amber50, c.amberBorder],
+  };
+  return map[h] || null;
+}
+
+const colorKey = (hex) => hex.replace("#", "").toLowerCase();
 const num = (v, fallback = 0) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
 const round = (v) => Math.round(v * 10) / 10;
+
+/** A rounded pill badge (rect + centered text). Returns { svg, width }. */
+function svgPill(x, y, text, [txtCol, bgCol, brdCol], { fontSize = 9.5, h = 14 } = {}) {
+  const w = Math.ceil(text.length * fontSize * 0.62) + 12;
+  const svg =
+    `<rect x="${round(x)}" y="${round(y)}" width="${w}" height="${h}" rx="${round(h / 2)}" fill="${bgCol}" stroke="${brdCol}" stroke-width="1" />` +
+    `<text x="${round(x + w / 2)}" y="${round(y + h / 2 + fontSize * 0.34)}" text-anchor="middle" font-family="${CH.sans}" font-size="${fontSize}" font-weight="500" fill="${txtCol}">${esc(text)}</text>`;
+  return { svg, width: w };
+}
 
 /** Anchor point on a node box for a given React Flow handle id. */
 function anchorPoint(x, y, handle) {
@@ -103,26 +138,34 @@ function renderNode(node, clusterLookup) {
   const x = num(node.x);
   const y = num(node.y);
   const cluster = clusterLookup instanceof Map ? clusterLookup.get(node.cluster_id) : undefined;
-  const [text, bg, border] = subtypeColors(cluster?.subtype);
-  const name = resolveClusterName(node.cluster_id, clusterLookup);
   const subtype = cluster?.subtype;
+  const [subText, subBg, subBorder] = subtypeColors(subtype);
+  const name = resolveClusterName(node.cluster_id, clusterLookup);
 
-  const label = subtype
-    ? `<text x="${round(x + 11)}" y="${round(y + 16)}" font-family="${CH.sans}" font-size="8.5" font-weight="600" letter-spacing="0.06em" fill="${text}">${esc(subtype.toUpperCase())}</text>`
-    : "";
+  // Badge row: pill Type badge + optional Horizon pill — mirrors ClusterNode.
+  let badges = "";
+  let bx = x + 12;
+  if (subtype) {
+    const pill = svgPill(bx, y + 8, subtype, [subText, subBg, subBorder]);
+    badges += pill.svg;
+    bx += pill.width + 4;
+  }
+  const hz = horizonColors(cluster?.horizon);
+  if (hz) badges += svgPill(bx, y + 8, cluster.horizon, hz, { fontSize: 8.5, h: 13 }).svg;
 
   const lines = wrapLabel(name);
   const nameSpans = lines
     .map(
       (ln, i) =>
-        `<tspan x="${round(x + 11)}" ${i === 0 ? `y="${round(y + 33)}"` : `dy="13"`}>${esc(ln)}</tspan>`
+        `<tspan x="${round(x + 12)}" ${i === 0 ? `y="${round(y + 37)}"` : `dy="13"`}>${esc(ln)}</tspan>`
     )
     .join("");
 
+  // White card + neutral border + subtype-keyed left accent bar (ClusterNode).
   return `<g>
-      <rect x="${round(x)}" y="${round(y)}" width="${NODE_W}" height="${NODE_H}" rx="10" fill="${bg}" stroke="${border}" stroke-width="1.5" />
-      <rect x="${round(x)}" y="${round(y + 8)}" width="3" height="${NODE_H - 16}" rx="1.5" fill="${text}" />
-      ${label}
+      <rect x="${round(x)}" y="${round(y)}" width="${NODE_W}" height="${NODE_H}" rx="10" fill="#FFFFFF" stroke="${CH.cardBorder}" stroke-width="1.5" />
+      <rect x="${round(x + 1.5)}" y="${round(y + 2)}" width="3" height="${NODE_H - 4}" rx="1.5" fill="${subBorder}" />
+      ${badges}
       <text font-family="${CH.sans}" font-size="11" font-weight="500" fill="${CH.ink}">${nameSpans}</text>
     </g>`;
 }
@@ -139,7 +182,7 @@ function renderTextNode(tn) {
   return `<text x="${round(x)}" y="${round(y)}" font-family="${family}" font-size="${size}" font-weight="${weight}" font-style="${style}" fill="${fill}">${esc(tn.text)}</text>`;
 }
 
-function renderEdge(rel, placed, clusterLookup) {
+function renderEdge(rel, placed, clusterLookup, usedColors) {
   const from = placed.get(rel.from_cluster_id);
   const to = placed.get(rel.to_cluster_id);
   if (!from || !to) return ""; // unplaced cluster → skip gracefully
@@ -162,14 +205,24 @@ function renderEdge(rel, placed, clusterLookup) {
   const ly = 0.25 * a.y + 0.5 * cy + 0.25 * b.y;
 
   const { type, sentence } = resolveRelationship(rel, clusterLookup);
-  const labelText = type ? esc(type) : "";
-  const label = labelText
-    ? `<text x="${round(lx)}" y="${round(ly)}" text-anchor="middle" font-family="${CH.sans}" font-size="10" font-weight="600" fill="${CH.muted}" style="paint-order:stroke; stroke:#FFFFFF; stroke-width:3px; stroke-linejoin:round;">${labelText}</text>`
-    : "";
+  const color = REL_COLORS[type] || DEFAULT_EDGE_COLOR;
+  const dash = REL_DASH[type] ? ` stroke-dasharray="6,4"` : "";
+  if (usedColors) usedColors.add(color);
+
+  // Type label on a white rounded pill (bare text is illegible over a line),
+  // matching the live canvas edge label; text in the edge's own color.
+  let label = "";
+  if (type) {
+    const w = Math.ceil(type.length * 6) + 12;
+    const h = 16;
+    label =
+      `<rect x="${round(lx - w / 2)}" y="${round(ly - h / 2)}" width="${w}" height="${h}" rx="3" fill="#FFFFFF" stroke="rgba(0,0,0,0.09)" stroke-width="0.5" />` +
+      `<text x="${round(lx)}" y="${round(ly + 3.5)}" text-anchor="middle" font-family="${CH.sans}" font-size="10" font-weight="500" fill="${color}">${esc(type)}</text>`;
+  }
 
   return `<g>
       <title>${esc(sentence)}</title>
-      <path d="M${round(a.x)},${round(a.y)} Q${round(cx)},${round(cy)} ${round(b.x)},${round(b.y)}" fill="none" stroke="${CH.edge}" stroke-width="1.5" marker-end="url(#fs-map-arrow)" />
+      <path d="M${round(a.x)},${round(a.y)} Q${round(cx)},${round(cy)} ${round(b.x)},${round(b.y)}" fill="none" stroke="${color}" stroke-width="2"${dash} marker-end="url(#arrow-${colorKey(color)})" />
       ${label}
     </g>`;
 }
@@ -189,7 +242,8 @@ export function renderSystemMap(canvasNodes, canvasTextNodes, relationships, clu
   const placed = new Map();
   for (const n of nodes) placed.set(n.cluster_id, { x: num(n.x), y: num(n.y) });
 
-  const edgeSvg = rels.map((r) => renderEdge(r, placed, clusterLookup)).join("");
+  const usedColors = new Set();
+  const edgeSvg = rels.map((r) => renderEdge(r, placed, clusterLookup, usedColors)).join("");
   const nodeSvg = nodes.map((n) => renderNode(n, clusterLookup)).join("");
   const textSvg = textNodes.map(renderTextNode).join("");
 
@@ -212,18 +266,24 @@ export function renderSystemMap(canvasNodes, canvasTextNodes, relationships, clu
   const vbW = round(maxX - minX + PAD * 2);
   const vbH = round(maxY - minY + PAD * 2);
 
+  // One arrowhead marker per edge color actually used.
+  const markers = [...usedColors]
+    .map(
+      (color) =>
+        `<marker id="arrow-${colorKey(color)}" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3 L0,6 Z" fill="${color}" /></marker>`
+    )
+    .join("");
+
   const svg = `<svg viewBox="${vbX} ${vbY} ${vbW} ${vbH}" style="width:100%; max-width:${vbW}px; height:auto; display:block; margin:0 auto;" role="img" aria-label="System map of ${nodes.length} clusters and their relationships">
-      <defs>
-        <marker id="fs-map-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="userSpaceOnUse">
-          <path d="M0,0 L7,3 L0,6 Z" fill="${CH.edge}" />
-        </marker>
-      </defs>
+      <defs>${markers}</defs>
       ${edgeSvg}
       ${nodeSvg}
       ${textSvg}
     </svg>`;
 
-  return `<div style="padding:24px 32px 56px; border-bottom:1px solid ${CH.border};">
+  // Section sits on the canvas background (#F7F6F2) so the white node cards and
+  // white edge-label pills read as distinct surfaces instead of vanishing.
+  return `<div style="padding:24px 32px 56px; border-bottom:1px solid ${CH.border}; background:${CH.canvasBg};">
       <p style="font-size:11px; letter-spacing:0.1em; color:${CH.faint}; text-transform:uppercase; text-align:center; margin:0 0 28px;">System map</p>
       ${svg}
     </div>`;

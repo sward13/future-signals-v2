@@ -204,13 +204,18 @@ export function renderOverview(project) {
 
   const cells = OVERVIEW_FIELDS
     .filter(([, key]) => hasText(p[key]))
-    .map(
-      ([label, key]) =>
-        `<div style="flex:0 0 33.33%; max-width:33.33%; box-sizing:border-box; padding:0 18px 24px 0;">
+    .map(([label, key], i) => {
+      // Column dividers: 2nd and 3rd column in each row of three get a
+      // border-left (the 1st does not), matching the prototype's meta grid.
+      const col = i % 3;
+      const divider = col === 0
+        ? "padding:0 18px 24px 0;"
+        : `border-left:1px solid ${CH.border}; padding:0 18px 24px 18px;`;
+      return `<div style="flex:0 0 33.33%; max-width:33.33%; box-sizing:border-box; ${divider}">
           <p style="${LABEL}">${esc(label)}</p>
           <p style="font-size:13px; color:${CH.ink}; margin:0;">${esc(p[key])}</p>
-        </div>`
-    )
+        </div>`;
+    })
     .join("");
   const grid = cells
     ? `<div style="display:flex; flex-wrap:wrap; max-width:760px; margin:0 auto;">${cells}</div>`
@@ -432,10 +437,12 @@ function renderClusterDisclosure(cluster, inputs) {
   const ids = Array.isArray(cl.input_ids) ? cl.input_ids : [];
   const linked = inputs.filter((i) => ids.includes(i.id));
   const description = hasText(cl.description)
-    ? `<p style="font-size:12px; color:${CH.muted}; line-height:1.5; margin:12px 0 10px;">${esc(cl.description.trim())}</p>`
+    ? `<p style="font-size:12px; color:${CH.muted}; line-height:1.5; margin:12px 0 0;">${esc(cl.description.trim())}</p>`
     : "";
+  // Generous space above and below the divider so the tag pills on the summary
+  // row above don't clash with it — reads as a clear separation.
   const inputsBlock = linked.length
-    ? `<div style="border-top:1px solid ${CH.border}; padding-top:10px; display:flex; flex-direction:column; gap:10px;">${linked
+    ? `<div style="margin-top:18px; border-top:1px solid ${CH.border}; padding-top:16px; display:flex; flex-direction:column; gap:10px;">${linked
         .map(renderInput)
         .join("")}</div>`
     : "";

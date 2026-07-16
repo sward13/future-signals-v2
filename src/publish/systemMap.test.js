@@ -43,26 +43,45 @@ test("renders a node per cluster, an edge per relationship, and resolved labels"
 
   assert.match(html, /<svg/);
   assert.match(html, /System map/);
-  assert.match(html, /id="fs-map-arrow"/); // arrowhead marker defined once
+  // per-edge-color arrowhead markers (Drives #185FA5, Inhibits #854F0B)
+  assert.match(html, /id="arrow-185fa5"/);
+  assert.match(html, /id="arrow-854f0b"/);
   assert.equal(count(html, "marker-end="), 2); // one per relationship
 
   // node names present (wrapping splits long names across tspans, so match a fragment)
   assert.match(html, /Societal values/);
   assert.match(html, /Pharma competition/);
 
-  // subtype coloring uses confirmed tokens (labels + Trend/Driver/Tension fills)
-  assert.match(html, /TREND/);
-  assert.match(html, /DRIVER/);
-  assert.match(html, /TENSION/);
-  assert.match(html, new RegExp(c.dustyViolet50.replace("#", ""))); // Trend fill
-  assert.match(html, new RegExp(c.mutedTeal50.replace("#", ""))); // Driver fill
-  assert.match(html, new RegExp(c.dustyRose50.replace("#", ""))); // Tension fill
+  // nodes are white cards with a subtype-keyed Type pill (not a tinted-box fill)
+  assert.match(html, /fill="#FFFFFF"/); // white card
+  assert.match(html, />Trend</);
+  assert.match(html, />Driver</);
+  assert.match(html, />Tension</);
+  assert.match(html, new RegExp(c.dustyViolet50.replace("#", ""))); // Trend pill bg
+  assert.match(html, new RegExp(c.dustyVioletBorder.replace("#", ""))); // Trend accent bar
 
-  // edge label text comes from resolveRelationship().type
-  assert.match(html, />Drives</);
-  assert.match(html, />Inhibits</);
+  // edges are colored per relationship type, stroke + label text alike
+  assert.match(html, /stroke="#185FA5"/); // Drives
+  assert.match(html, /stroke="#854F0B"/); // Inhibits
+  assert.match(html, /fill="#185FA5">Drives</); // label text in the edge color
+  assert.match(html, /fill="#854F0B">Inhibits</);
   // full sentence used as the accessible <title>
   assert.match(html, /<title>Societal values shift toward longevity drives Pharmaceutical innovation is expanding treatment horizons<\/title>/);
+
+  // section sits on the canvas background so white cards/labels contrast
+  assert.match(html, /background:#F7F6F2/);
+});
+
+test("edge labels sit on a white pill so they stay legible over lines", () => {
+  const html = renderSystemMap(canvasNodes, [], relationships, clusterLookup);
+  // a white rounded rect precedes each label's text
+  assert.match(html, /<rect[^>]*fill="#FFFFFF"[^>]*\/>\s*<text[^>]*>Drives</);
+});
+
+test("a feedback-loop edge is dashed", () => {
+  const rels = [{ from_cluster_id: "c2", to_cluster_id: "c1", type: "Feedback Loop", source_handle: "b", target_handle: "t" }];
+  const html = renderSystemMap(canvasNodes, [], rels, clusterLookup);
+  assert.match(html, /stroke="#B45309"[^>]*stroke-dasharray="6,4"/);
 });
 
 test("uses handle-based side anchoring when handles are present", () => {
