@@ -12,9 +12,16 @@
 // Bearer token → auth.getUser → derive the caller's workspace → confirm the
 // project belongs to it (existence + ownership in one query; 404 otherwise).
 
+import { createHash } from "node:crypto";
+
 import { publishProject, unpublishProject } from "./publish-project.js";
 
 const BUCKET = "published-projects";
+
+// Weak content validator for conditional requests on the served page.
+function weakEtag(html) {
+  return `W/"${createHash("sha1").update(html).digest("base64url").slice(0, 24)}"`;
+}
 
 // Absolute /p/{slug} link, built from the request host so it's correct for the
 // exact deployment the caller is on (preview vs. production).
@@ -53,10 +60,15 @@ async function serveView(supabase, req, res) {
     if (dlError || !file) return notFound();
     const html = typeof file.text === "function" ? await file.text() : String(file);
 
+    const etag = weakEtag(html);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
-    // Moderate cache with revalidation — a republish overwrites the same slug,
-    // so viewers must not be pinned to a stale copy (no long/immutable cache).
-    res.setHeader("Cache-Control", "public, max-age=300, must-revalidate");
+    // ALWAYS revalidate. A republish overwrites the object in place under the same
+    // stable slug, so any edge/browser cache with a max-age would keep serving the
+    // old page until it expired (the reported "republish doesn't show up" bug).
+    // The ETag keeps unchanged repeat views cheap (a 304, no body).
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("ETag", etag);
+    if (req.headers["if-none-match"] === etag) return res.status(304).end();
     if (isHead) {
       res.setHeader("Content-Length", String(new TextEncoder().encode(html).length));
       return res.status(200).end();

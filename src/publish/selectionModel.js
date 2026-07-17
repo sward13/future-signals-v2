@@ -32,7 +32,10 @@ function normalizeSubType(x) {
  * Idempotent, so the stored value round-trips unchanged.
  */
 export function normalizeSelection(selection) {
-  if (selection == null) return structuredClone(ALL_SELECTION);
+  // null/undefined, or the pre-picker legacy shape { mode: 'all', sections: [...] }
+  // (published before the section picker existed) → everything. Without this,
+  // republishing an old publication would read no v1 keys and drop every section.
+  if (selection == null || selection.mode === "all") return structuredClone(ALL_SELECTION);
   const fm = selection.futureModels || {};
   return {
     version: 1,

@@ -320,7 +320,7 @@ function publishedFixtures(slug, html) {
   });
 }
 
-test("GET ?view: serves a published page as real HTML with a revalidating (non-immutable) cache", async () => {
+test("GET ?view: serves real HTML with a no-cache (always-revalidate) header + ETag", async () => {
   const html = "<!DOCTYPE html><html><body>Hello world</body></html>";
   const client = makeFakeClient(publishedFixtures("live-slug", html));
   const handler = createPublishHandler({ supabase: client });
@@ -330,9 +330,40 @@ test("GET ?view: serves a published page as real HTML with a revalidating (non-i
   assert.equal(res.statusCode, 200);
   assert.equal(res.body, html);
   assert.equal(res.headers["content-type"], "text/html; charset=utf-8");
-  assert.match(res.headers["cache-control"], /max-age=\d+/);
-  assert.match(res.headers["cache-control"], /must-revalidate/);
-  assert.doesNotMatch(res.headers["cache-control"], /immutable/);
+  // must always revalidate so a republish shows up immediately — no max-age/immutable
+  assert.equal(res.headers["cache-control"], "no-cache");
+  assert.doesNotMatch(res.headers["cache-control"], /max-age|immutable/);
+  assert.ok(res.headers["etag"], "an ETag is set for conditional requests");
+});
+
+test("GET ?view: a matching If-None-Match returns 304 with no body (cheap repeat view)", async () => {
+  const html = "<!DOCTYPE html><html><body>Same content</body></html>";
+  const client = makeFakeClient(publishedFixtures("etag-slug", html));
+  const handler = createPublishHandler({ supabase: client });
+
+  // first request to learn the ETag
+  const first = mockRes();
+  await handler({ method: "GET", headers: {}, query: { view: "etag-slug" } }, first);
+  const etag = first.headers["etag"];
+  assert.ok(etag);
+
+  // conditional request with that ETag → 304, no body
+  const second = mockRes();
+  await handler({ method: "GET", headers: { "if-none-match": etag }, query: { view: "etag-slug" } }, second);
+  assert.equal(second.statusCode, 304);
+  assert.equal(second.body, null);
+});
+
+test("GET ?view: the ETag changes when the published content changes (republish is visible)", async () => {
+  const a = mockRes();
+  await createPublishHandler({ supabase: makeFakeClient(publishedFixtures("s", "<html>v1</html>")) })(
+    { method: "GET", headers: {}, query: { view: "s" } }, a
+  );
+  const b = mockRes();
+  await createPublishHandler({ supabase: makeFakeClient(publishedFixtures("s", "<html>v2</html>")) })(
+    { method: "GET", headers: {}, query: { view: "s" } }, b
+  );
+  assert.notEqual(a.headers["etag"], b.headers["etag"]);
 });
 
 test("GET ?view: an anonymous request (no token) succeeds — RLS bypassed, not silently empty", async () => {
@@ -384,8 +415,7 @@ test("HEAD ?view: returns GET's status + headers with an empty body", async () =
 
   assert.equal(res.statusCode, 200);
   assert.equal(res.headers["content-type"], "text/html; charset=utf-8");
-  assert.match(res.headers["cache-control"], /max-age=\d+/);
-  assert.match(res.headers["cache-control"], /must-revalidate/);
+  assert.equal(res.headers["cache-control"], "no-cache");
   assert.equal(res.headers["content-length"], String(html.length));
   assert.equal(res.body, null); // HEAD has no body
 });

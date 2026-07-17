@@ -14,6 +14,11 @@ const available = {
   strategicOptions: [], // zero items
 };
 
+test("normalizeSelection treats the legacy { mode: 'all' } shape as everything", () => {
+  const legacy = { mode: "all", sections: ["hero", "overview", "system_map", "appendix"] };
+  assert.deepEqual(normalizeSelection(legacy), normalizeSelection(null));
+});
+
 // ─── Pre-populating the picker ──────────────────────────────────────────────────
 
 test("pickerStateFromSelection(null) pre-populates everything checked", () => {
