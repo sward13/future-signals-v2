@@ -5,6 +5,7 @@
  */
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./lib/supabase.js";
+import { postAuthRedirectPath } from "./lib/authRedirect.js";
 import { useAppState } from "./hooks/useAppState.js";
 import { AuthScreen } from "./components/auth/AuthScreen.jsx";
 import { OnboardingShell } from "./components/onboarding/OnboardingShell.tsx";
@@ -140,6 +141,9 @@ export default function App() {
       if (event === "PASSWORD_RECOVERY") {
         setPasswordRecovery(true);
         setSession(session ?? null);
+        // Load workspace/onboarding now (same as every other branch) so the
+        // dashboard has its data the moment the reset completes and it mounts.
+        if (session) fetchWorkspaceId(session.user.id);
         return;
       }
       if (event === "USER_UPDATED") {
@@ -252,19 +256,22 @@ export default function App() {
   // ── URL management — pushState side-effects, not routing logic ────────────
   // Updates the browser address bar without installing a router.
   // The app remains state-driven; this is purely cosmetic / for browser history.
+  // Also clears leftover auth paths (the /onboarding gate URL, and the
+  // /reset-password redirect target) so a completed reset lands on a clean root
+  // rather than sticking on /reset-password.
   useEffect(() => {
-    if (session === undefined || onboardingComplete === undefined) return;
-    if (!session) return;
-    if (onboardingComplete === false) {
-      // New user entering the onboarding flow
-      if (window.location.pathname !== "/onboarding") {
-        window.history.pushState({}, "", "/onboarding");
-      }
-    } else if (window.location.pathname === "/onboarding") {
-      // Already completed but URL still shows /onboarding — replace with root
-      window.history.replaceState({}, "", "/");
-    }
-  }, [session, onboardingComplete]);
+    const target = postAuthRedirectPath({
+      pathname: window.location.pathname,
+      session,
+      onboardingComplete,
+      passwordRecovery,
+    });
+    if (!target) return;
+    // Entering onboarding is a forward navigation (pushState); clearing a stale
+    // path is a correction (replaceState, no extra history entry).
+    if (target === "/onboarding") window.history.pushState({}, "", target);
+    else window.history.replaceState({}, "", target);
+  }, [session, onboardingComplete, passwordRecovery]);
 
   // ── Deep-link handler — /projects/[uuid] ──────────────────────────────────
   // Runs ONCE, on the initial mount after projects first load. It is only a

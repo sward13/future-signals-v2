@@ -19,6 +19,10 @@
   ],
   "rewrites": [
     {
+      "source": "/p/:slug",
+      "destination": "/api/publish?view=:slug"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

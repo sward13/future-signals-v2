@@ -62,85 +62,24 @@ All other fields on these entities are Enhanced tier — behind the toggle, neve
 
 ## Design system — tokens and primitives
 
-Always use these exact values. Never introduce new colours or spacing scales without explicit instruction.
+**`src/styles/tokens.js` (the `c{}` object + the `inp`/`btnP`/… primitives) is the single source of truth for colour values and shared style primitives.** Do not hardcode hexes from memory or from this doc — import from `tokens.js` for legacy inline-style components, or use the Tailwind classes generated from the `@theme` block in `src/index.css` for migrated ones (the two must stay in sync — see "Styling: Tailwind CSS v4"). Never introduce new colours or spacing scales without explicit instruction.
 
-```js
-const c = {
-  // Surfaces
-  bg:          "#F7F7F5",   // page background, sidebar
-  white:       "#ffffff",   // main content area, cards
-  surfaceAlt:  "#FAFAF8",   // input field backgrounds
-  canvas:      "#F7F6F2",   // canvas backgrounds
+The palette is a warm off-white / ink / muted system. The exact ~80 hexes drift, so they're not duplicated here — read `tokens.js` for values and `src/components/shared/Tag.jsx` for the badge → colour bindings. What's durable is the **semantic map** (which token family encodes which UI concept):
 
-  // Text
-  ink:         "#1A1A1A",   // primary text
-  muted:       "#6B7280",   // secondary text, nav items
-  faint:       "#9CA3AF",   // tertiary text, placeholders, column headers
+**Surfaces & text:** `bg` (page/sidebar), `white` (cards/content), `surfaceAlt`/`fieldBg` (subtle off-white fills), `canvas` (System Map bg); `ink` (primary text), `muted`/`faint`/`hint` (secondary → tertiary); `border`/`borderMid`/`borderStrong` (hairline → interactive); `brand`/`brandBg`/`brandBorder` (primary CTAs, active nav). Each semantic family below has `{name}50` (bg), `{name}700` (text), `{name}Border` (border).
 
-  // Borders
-  border:      "rgba(0,0,0,0.09)",   // cards, dividers, table rows
-  borderMid:   "rgba(0,0,0,0.16)",   // inputs, buttons, interactive borders
+| UI concept | Token family | Notes |
+|---|---|---|
+| Time Horizon (H1/H2/H3) | `green*` / `blue*` / `amber*` | H1 green, H2 blue, H3 amber |
+| Cluster Type (Trend/Driver/Tension) | `dustyViolet*` / `mutedTeal*` / `dustyRose*` | muted, not saturated |
+| Signal Strength (Weak/Mod/Strong) **and** Source Confidence (Low/Med/High) | `rust*` / `tan*` / `sage*` | one shared 3-tier scale: low→rust, mid→tan, high→sage |
+| Cluster Likelihood (Possible/Plausible/Probable) | `likelihood{Possible,Plausible,Probable}*` | warm-neutral monochrome ramp (added 2026-07-16). **Currently consumed only by Web Publish; the in-app `LikelihoodTag` in `ClustersPanel.jsx` still borrows the Horizon green/blue/amber family** — a known inconsistency |
+| Scenario Archetype (Continuation/Collapse/Constraint/Transformation) | `archContinuation*` / `archCollapse*` / `archConstraint*` / `archTransformation*` | one family each |
+| System Map relationship-edge colours (Drives/Enables/Inhibits/…) | `REL_TYPES` in `src/components/screens/ScenarioCanvas.jsx` (**not** `tokens.js`) | mirrored in `src/publish/systemMap.js` |
 
-  // Brand — interactive primary
-  brand:       "#3B82F6",   // primary CTAs, active nav, key question accent
-  brandBg:     "#EFF6FF",   // active nav background, hover states
-  brandDeep:   "#F0F7FF",   // key question block background
-  brandBorder: "#BFDBFE",   // active filter pill border
+These muted badge families are the result of the 2026-07 badge-consolidation audit (an earlier version of this section documented saturated `confirmedBg`/`h1Bg`/`driverBg`-style names that never matched the code — ignore any such names). Prefer the badge components in `Tag.jsx` (`HorizTag`, `SubtypeTag`, `StrengthDot`, `ConfidenceBadge`, `ArchTag`) over re-deriving colours inline.
 
-  // Semantic — Signal Strength / Source Confidence badges
-  // Strong / High
-  confirmedBg:    "#D1FAE5", confirmedText:    "#065F46",
-  // Moderate / Medium
-  establishedBg:  "#DBEAFE", establishedText:  "#1E40AF",
-  // Weak / Low
-  emergingBg:     "#FEF3C7", emergingText:     "#92400E",
-
-  // Semantic — Time horizons (H1/H2/H3)
-  h1Bg: "#DCFCE7", h1Text: "#166534",
-  h2Bg: "#DBEAFE", h2Text: "#1E40AF",
-  h3Bg: "#FEF3C7", h3Text: "#92400E",
-
-  // Semantic — Cluster subtypes
-  driverBg:  "#EDE9FE", driverText:  "#5B21B6",
-  trendBg:   "#EDE9FE", trendText:   "#5B21B6",
-  tensionBg: "#FEF3C7", tensionText: "#92400E",
-
-  // Semantic — System Map relationship edges
-  edgeInhibits:  "#C2813A",
-  edgeDrives:    "#3B82F6",
-  edgeAccelerates:"#0D9488",
-  edgeFeedback:  "#D97706",  // dashed
-
-  // Semantic — status
-  builtBg:    "#DCFCE7", builtText:    "#166534",
-  notBuiltBg: "#FEF3C7", notBuiltText: "#92400E",
-
-  // Alert
-  alertBg:   "#FEE2E2", alertText: "#991B1B",  // Inbox unread badge
-};
-```
-
-**Shared style primitives:**
-```js
-const inp   = { width:"100%", padding:"9px 11px", border:`1px solid ${c.borderMid}`, borderRadius:8, background:c.white, color:c.ink, fontSize:13, fontFamily:"inherit", outline:"none", boxSizing:"border-box" };
-const ta    = { ...inp, resize:"none", lineHeight:1.55 };
-const sel   = { ...inp, appearance:"none" };
-
-// Primary button — brand blue
-const btnP  = { padding:"10px 22px", borderRadius:8, background:c.brand, color:c.white, border:"none", fontSize:13, fontWeight:500, cursor:"pointer", fontFamily:"inherit" };
-const btnSm = { padding:"7px 16px", borderRadius:7, background:c.brand, color:c.white, border:"none", fontSize:12, fontWeight:500, cursor:"pointer", fontFamily:"inherit" };
-
-// Secondary / ghost buttons
-const btnSec= { padding:"9px 18px", borderRadius:8, background:"transparent", color:c.muted, border:`1px solid ${c.borderMid}`, fontSize:13, cursor:"pointer", fontFamily:"inherit" };
-const btnG  = { padding:"7px 12px", borderRadius:7, background:"transparent", color:c.muted, border:"none", fontSize:12, cursor:"pointer", fontFamily:"inherit" };
-
-// Full-width right-panel CTA buttons
-const btnFull = { width:"100%", padding:"7px 12px", borderRadius:6, background:"transparent", color:c.muted, border:`1px solid ${c.borderMid}`, fontSize:11.5, cursor:"pointer", fontFamily:"inherit", textAlign:"center" };
-
-const fl    = { fontSize:12, fontWeight:500, color:c.ink, marginBottom:5, display:"flex", alignItems:"center", gap:6 };
-const fh    = { fontSize:11, color:c.faint, marginBottom:6, fontStyle:"italic", lineHeight:1.45 };
-const badg  = { fontSize:10, padding:"1px 6px", borderRadius:4, background:"#f0f0ee", color:c.faint };
-```
+**Shared style primitives** (all in `tokens.js`, import don't re-hardcode): `inp`/`ta`/`sel` (form fields, `1px solid borderStrong`, radius 8), `btnP`/`btnSm` (primary brand buttons), `btnSec`/`btnG` (secondary/ghost), `btnFull`, `fl`/`fh` (field label/hint), `badg`, `countBadge`/`tabCount`, `legend`.
 
 ---
 
@@ -152,7 +91,7 @@ Tailwind CSS v4 is installed via the `@tailwindcss/vite` plugin. There is **no `
 
 ### Color tokens
 
-All 38 colors from the `c{}` object in `src/styles/tokens.js` are registered as `--color-*` custom properties. Each one generates `bg-{name}`, `text-{name}`, and `border-{name}` utility classes automatically.
+Every colour in the `c{}` object in `src/styles/tokens.js` is registered as a `--color-*` custom property in the `@theme` block of `src/index.css`, and each generates `bg-{name}`, `text-{name}`, and `border-{name}` utility classes automatically. **`src/index.css`'s `@theme` block is the authoritative list — keep it in sync with `tokens.js`.** The table below is a representative sample showing the camelCase→kebab naming convention (`surfaceAlt` → `--color-surface-alt`, `dustyViolet700` → `--color-dusty-violet-700`); it is **not** exhaustive.
 
 | `tokens.js` key | CSS variable | Example classes |
 |---|---|---|
@@ -194,6 +133,8 @@ All 38 colors from the `c{}` object in `src/styles/tokens.js` are registered as 
 | `teal50` | `--color-teal-50` | `bg-teal-50` |
 | `teal700` | `--color-teal-700` | `text-teal-700` |
 | `tealBorder` | `--color-teal-border` | `border-teal-border` |
+
+The muted badge families (from the 2026-07 badge-consolidation audit) and the Likelihood ramp are **also** registered and follow the same `{name}50` / `{name}700` / `{name}Border` → `--color-{kebab-name}-{50\|700\|border}` pattern, but aren't listed above: `rust*`, `tan*`, `sage*` (Strength/Confidence), `dustyViolet*`, `mutedTeal*`, `dustyRose*` (Cluster Type), `archContinuation*` / `archCollapse*` / `archConstraint*` / `archTransformation*` (Archetype), and `likelihoodPossible*` / `likelihoodPlausible*` / `likelihoodProbable*` (Likelihood). See the `@theme` block in `src/index.css` for the complete, authoritative set.
 
 ### Spacing tokens
 
@@ -309,7 +250,7 @@ The sidebar is **196px wide**, `background: c.bg`, with a single `0.5px` border-
 
 **Nav list order:**
 - Dashboard *(global)*
-- Inbox *(global, shows unread count badge in `alertBg/alertText`)*
+- Inbox *(global, shows an unread count badge — neutral grey `countBadge` style: `background: rgba(0,0,0,0.07)`, `color: c.muted`)*
 - `0.5px` divider
 - Overview *(project-scoped, first item — default landing screen when opening a project)*
 - Scan *(project-scoped, shows input count — screen key `"project"`, file `ProjectDetail.jsx`)*
@@ -456,6 +397,31 @@ Every new user finishes onboarding with a second project alongside their own: a 
 
 ---
 
+## Web Publish (shipped 2026-07-16 on `workspace-refactor`)
+
+Publish a project to a live, hosted, public single-page site at a stable `/p/{slug}` link (for stakeholder sharing + social promotion). Whole-project only for v1 — no section-picker curation yet. Full spec: `web-export-spec.md`. Pipeline of pure, composable pieces, each unit-tested (see "Testing"):
+
+- **`server-lib/resolve-references.js`** — shared, pure ID→name resolution layer (clusters, relationships, scenario driving forces, `scenario_ids`). Consumed by both Report Export (`src/components/projects/buildMarkdown.js`) and Publish. Dangling references degrade to a fallback, never throw. `resolveRelationship()` phrases edges as sentences.
+- **`src/publish/sections.js`** — per-section static-HTML-string builders (Hero, Overview, System Analysis, Scenario/Preferred Future/Strategic Option, Appendix). Pure, HTML-escaped, `sanitizeUrl` on source links. Reads the live schema, not the prototype.
+- **`src/publish/systemMap.js`** — `renderSystemMap()` reconstructs the System Map as an inline SVG from persisted rows (`canvas_nodes`/`canvas_text_nodes`/`relationships`) — no React Flow, no rasterization. Matches the real canvas: white ClusterNode cards with a subtype-keyed left accent + pill badges; per-relationship-type edge colors (from `REL_TYPES`); and **cubic-bezier edges replicating `@xyflow/system`'s `getBezierPath`** (default curvature 0.25, control points offset along the `source_handle`/`target_handle` side). Takes **DB-shaped (snake_case) rows**, matching `resolveRelationship`.
+- **`server-lib/publish-project.js`** — `publishProject()` / `unpublishProject()`. Service-role (client injectable for tests). Fetches the project graph (note: `cluster_inputs` has no `project_id` — joined by `cluster_id`), assembles one HTML doc (with `<head>` Open Graph tags), uploads to Storage, and only *then* flips `status='published'`. Unpublish deletes the object *before* flipping status (public bucket — the flag alone won't take a page offline). `scripts/publish-project.js` is the CLI runner.
+- **`server-lib/publish-handler.js` + `api/publish.js`** — one endpoint (handler in `server-lib` so its test isn't counted as a function): Bearer-authed `POST { action: 'publish'|'unpublish' }` (ownership via the seed-onboarding pattern, 404 for non-owner), and a **public, unauthenticated `GET ?view={slug}`** branch (also handles HEAD) reached via the `vercel.json` rewrite `/p/:slug → /api/publish?view=:slug`.
+- **`src/components/projects/PublishSection.jsx`** — management surface at the bottom of the Project Settings drawer (status, copy link, Publish/Republish/Unpublish).
+
+**Two non-obvious gotchas baked into the design:**
+- **Supabase Storage serves user-uploaded HTML as `text/plain` + `nosniff`** (anti-abuse on the shared `*.supabase.co` domain) — so a raw storage URL shows source, not a page. Pages are served *through the app* (the `GET ?view` branch re-serves the stored HTML as `text/html` with a moderate revalidating cache), which is why `publicUrl` is `/p/{slug}`, not the storage URL.
+- The `?view` branch **must use the service-role client to bypass `project_publications` RLS** — an anonymous viewer has no workspace, so `workspace_id = get_workspace_id()` returns zero rows otherwise (verified against the DB).
+
+**Schema/storage (applied to staging AND production):** `project_publications` table (`20260715195707`) + `published-projects` public bucket + `storage.objects` policies; `status` defaults to `'unpublished'` (`20260715200305`) so a row is never "live" before its file exists. A new **Likelihood** color token (warm-neutral ramp) was added to `tokens.js` and the `index.css` `@theme` block, first consumed by the Appendix/System Map. Note: Vercel Production env needs `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `APP_URL`; and each environment's Supabase Auth "Redirect URLs" must allow `/**` on its origin.
+
+---
+
+## Testing
+
+There is now a test runner (added with Publish): `npm test` runs Node's built-in `node:test` over `server-lib/**/*.test.js` and `src/**/*.test.js` (no jsdom/RTL — React components aren't unit-tested). The pattern is to **extract pure logic into a testable module** and keep the React/effect wiring thin: e.g. `server-lib/resolve-references.js`, `server-lib/publish-*.js`, `src/publish/*.js`, `src/components/projects/buildMarkdown.js`, and `src/lib/authRedirect.js` (the URL-cleanup decision behind the post-password-reset redirect fix) are all covered this way. Fake Supabase clients are hand-rolled in the test files. `process`-related eslint errors in `server-lib`/`api`/`scripts` files are pre-existing (the flat config only ships browser globals) — not a regression signal.
+
+---
+
 ## App architecture
 
 ### State
@@ -547,6 +513,7 @@ server-lib/                 ← shared server-side logic imported by api/*.js. D
   clone-project.js           ← cloneProject() / rollback() — see "Sample project cloning" below
 scripts/
   clone-project.js           ← standalone CLI runner for cloneProject(), not wired into the app. Usage: `node --env-file=.env.local scripts/clone-project.js --source <id> --dest-workspace <id> [--include-sources] [--sample-template] [--source-template-id <id>]`
+  rotate-cron-secret.sh      ← rotate CRON_SECRET for one env, pushing to Supabase + Vercel with a manual checklist for cron-job.org + LastPass. Usage: `scripts/rotate-cron-secret.sh <prod|staging>`. See docs/cron-secret.md
 ```
 
 ---
@@ -726,6 +693,7 @@ Key decisions already made:
 | `signal-scanner-spec.md` | Any work touching the scanner, candidate ingestion, scoring, or onboarding seeding |
 | `FutureSignals_Onboarding_ProgressiveDisclosure_Spec.md` | Any work touching the onboarding flow, project creation, or first-session experience. Its sample-project section (read-only project + structural-only "promote") is superseded by `Sample_Project_Onboarding_PRD.md`'s clone-based model — that section of this spec has not yet been formally retired/updated, don't treat it as current for sample-project behavior |
 | `Sample_Project_Onboarding_PRD.md` | Any work touching sample-project cloning, `cloneProject()`, `is_sample_template`/`source_template_id`, or the per-user clone triggered at onboarding completion — see also "Sample project cloning" above |
+| `web-export-spec.md` | Any work touching Web Publish — the pipeline, `/p/{slug}` serving, section templates, System Map SVG, or `project_publications` — see also "Web Publish" above |
 
 ---
 
@@ -773,10 +741,13 @@ Two patterns are in use, depending on the table's key column:
 
 ### Environment variable conventions
 - **Frontend (`src/`)**: only `VITE_`-prefixed vars are available to the client bundle — `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_ENABLE_QA_TOOLS`.
-- **Server-side (`api/*.js`, Supabase Edge Functions)**: bare names, never `VITE_`-prefixed — `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `CRON_SECRET`, `APP_URL`, `ADMIN_EMAIL`, `RESEND_API_KEY`, `UNSUBSCRIBE_SECRET`, `SAMPLE_TEMPLATE_PROJECT_ID` (added 2026-07-09 — the templates-account project id `cloneProject()` reads for the per-user clone; not a secret, set via `vercel env add ... --no-sensitive` so it stays readable, but still only ever read server-side, never client-supplied. Production: `566911c6-65b4-4648-962f-f0e662033cb8`. Preview/`workspace-refactor`: `44b699ff-0fb1-44fb-9eb6-17a077cc7c9d`).
+- **Server-side (`api/*.js`, Supabase Edge Functions)**: bare names, never `VITE_`-prefixed — `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `CRON_SECRET`, `APP_URL`, `ADMIN_EMAIL`, `RESEND_API_KEY`, `EMAIL_RELAY_SECRET`, `UNSUBSCRIBE_SECRET`, `SAMPLE_TEMPLATE_PROJECT_ID` (added 2026-07-09 — the templates-account project id `cloneProject()` reads for the per-user clone; not a secret, set via `vercel env add ... --no-sensitive` so it stays readable, but still only ever read server-side, never client-supplied. Production: `566911c6-65b4-4648-962f-f0e662033cb8`. Preview/`workspace-refactor`: `44b699ff-0fb1-44fb-9eb6-17a077cc7c9d`).
 
 ### Cron-triggered endpoints
 - Both Vercel functions (`api/scan.js`, `api/score.js`) and Supabase Edge Functions (`check-scanner-health`, `send-weekly-digest`) that run on a schedule check an `x-cron-secret` header against `CRON_SECRET` (`process.env.CRON_SECRET` / `Deno.env.get("CRON_SECRET")`) and return 401 on mismatch. Use this pattern for any new cron-triggered endpoint.
+- **`CRON_SECRET` is a symmetric shared secret with non-obvious coupling** — the Vercel copy is *forwarded* to the Supabase `check-scanner-health` function, so the Vercel and Supabase copies must be equal within an environment, and cron-job.org (external scheduler for the scanner + weekly digest) must send the same value. A partial rotation silently breaks a subset of jobs. Source of truth is LastPass (one entry per env; prod ≠ staging), never a deployment (Vercel sensitive = write-only, Supabase masked). Full topology, sync inventory, and the rotation procedure live in **`docs/cron-secret.md`**; rotate with `scripts/rotate-cron-secret.sh <prod|staging>`.
+- **Scheduled Supabase Edge Functions must be deployed `--no-verify-jwt`** (like `check-scanner-health`, `send-email`, `unsubscribe-digest`, `send-weekly-digest`). Otherwise the API gateway requires a project API key *before* the handler runs, and an `x-cron-secret`-only caller is rejected with `401 UNAUTHORIZED_UNREGISTERED_API_KEY` (a gateway error, not the handler's `{"error":"Unauthorised"}`) — which also then breaks on any project API-key rotation.
+- **`send-email` and its callers are a deploy-pair via `EMAIL_RELAY_SECRET`.** `send-email` gates on an `x-relay-secret` header; `send-weekly-digest` sends it. A 2026-07-05 security change added the gate and the header-sending together (commits `642e25f` + `20f6c82`). If you redeploy one of the two functions without the other, you split the pair — one enforces a header the other doesn't send (or vice versa). Deploy both together, or neither. (As of this writing production still runs pre-2026-07-05 copies of both — mutually consistent — so email works; the fix is deployed-consistent, not deployed.)
 
 ### Edge Function deploy flags
 - Functions called from contexts with no Supabase Authorization header (e.g. links clicked from emails) must be deployed with JWT verification disabled: `supabase functions deploy <name> --no-verify-jwt`. Currently applies to `unsubscribe-digest`.
@@ -789,4 +760,4 @@ Two patterns are in use, depending on the table's key column:
 - **`api/scrape.js` SSRF protection**: validates URL is HTTPS, rejects private/loopback/IMDS IP ranges, caps response body at 512 KB.
 
 ### Vercel function-count limit (Hobby plan)
-Vercel's zero-config Node builder treats **every** `.js`/`.ts` file under `api/` as its own serverless function — including helper files with no `handler` export, and files nested in subdirectories like `api/lib/`. The Hobby plan caps a deployment at 12 functions total. This is why shared server-side logic lives in a top-level `server-lib/` directory (outside `api/`) rather than `api/lib/` — files outside `api/` are never counted. Adding a new `api/*.js` endpoint that imports a new shared helper: put the helper in `server-lib/`, not `api/lib/`. Check the count before adding a new top-level `api/*.js` file: `find api -name "*.js" -o -name "*.ts" | wc -l` (currently 10, so there's headroom, but it's not unlimited).
+Vercel's zero-config Node builder treats **every** `.js`/`.ts` file under `api/` as its own serverless function — including helper files with no `handler` export, and files nested in subdirectories like `api/lib/`. The Hobby plan caps a deployment at 12 functions total. This is why shared server-side logic lives in a top-level `server-lib/` directory (outside `api/`) rather than `api/lib/` — files outside `api/` are never counted. Adding a new `api/*.js` endpoint that imports a new shared helper: put the helper in `server-lib/`, not `api/lib/`. Check the count before adding a new top-level `api/*.js` file: `find api -name "*.js" -o -name "*.ts" | wc -l` (currently 11 after `api/publish.js` — one slot of headroom left, so treat the last one carefully; the Publish serving route was folded into `api/publish.js` via a `?view` param + `/p/:slug` rewrite rather than spending a second slot).

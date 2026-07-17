@@ -324,9 +324,6 @@ export default function ClusterScreen({ appState }) {
               style={{
                 ...btnSm,
                 display: "inline-flex", alignItems: "center", gap: 5,
-                border: `1px solid ${c.brandBorder}`,
-                background: c.brandBg,
-                color: c.brand,
               }}
             >
               <CirclePlus size={13} style={{ flexShrink: 0 }} /> New cluster

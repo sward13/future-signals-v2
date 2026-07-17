@@ -6,128 +6,13 @@
  *   4. System Map (PNG) → raster canvas export
  *
  * Text exports are generated client-side via Blob + URL.createObjectURL.
- * Canvas exports delegate to capture functions registered by CanvasArea
- * via appState.systemMapExportRef.
+ * The Markdown builder lives in ./buildMarkdown.js (pure, testable). Canvas
+ * exports delegate to capture functions registered by CanvasArea via
+ * appState.systemMapExportRef.
  */
 import { useState } from "react";
 import { c, btnSec, btnG } from "../../styles/tokens.js";
-
-// ─── Markdown builder ─────────────────────────────────────────────────────────
-
-function buildMarkdown(project, clusters, inputs, scenarios, preferredFutures, strategicOptions) {
-  const lines = [];
-  const nl = () => lines.push("");
-
-  const projectClusters  = clusters.filter((cl) => cl.project_id === project.id);
-  const projectScenarios = scenarios.filter((s)  => s.project_id  === project.id);
-  const projectPFs       = (preferredFutures  || []).filter((pf) => pf.project_id === project.id);
-  const projectOptions   = (strategicOptions  || []).filter((o)  => o.project_id  === project.id);
-
-  const clusterName = (id) => projectClusters.find((cl) => cl.id === id)?.name || null;
-
-  // Title
-  lines.push(`# ${project.name}`);
-  if (project.question?.trim()) lines.push(project.question.trim());
-  nl();
-
-  // ── Clusters ────────────────────────────────────────────────────────────────
-  if (projectClusters.length > 0) {
-    lines.push("## Clusters");
-    nl();
-    for (const cl of projectClusters) {
-      lines.push(`### ${cl.name}`);
-      const meta = [
-        cl.subtype  ? `**Type:** ${cl.subtype}`   : null,
-        cl.horizon  ? `**Horizon:** ${cl.horizon}` : null,
-      ].filter(Boolean);
-      if (meta.length) lines.push(meta.join(" | "));
-      if (cl.description?.trim()) lines.push(cl.description.trim());
-      const clusterInputs = inputs.filter(
-        (i) => Array.isArray(cl.input_ids) && cl.input_ids.includes(i.id)
-      );
-      if (clusterInputs.length > 0) {
-        lines.push(`**Inputs:** ${clusterInputs.map((i) => i.name).join(", ")}`);
-      }
-      nl();
-    }
-  }
-
-  // ── Scenarios ────────────────────────────────────────────────────────────────
-  if (projectScenarios.length > 0) {
-    lines.push("## Scenarios");
-    nl();
-    for (const sc of projectScenarios) {
-      lines.push(`### ${sc.name}`);
-      const meta = [
-        sc.horizon   ? `**Horizon:** ${sc.horizon}`     : null,
-        sc.archetype ? `**Archetype:** ${sc.archetype}` : null,
-      ].filter(Boolean);
-      if (meta.length) lines.push(meta.join(" | "));
-      if (sc.description?.trim()) lines.push(sc.description.trim());
-      const diffs = (Array.isArray(sc.key_differences) ? sc.key_differences : []).filter(Boolean);
-      if (diffs.length > 0) {
-        lines.push("**Key differences:**");
-        diffs.forEach((d) => lines.push(`- ${d}`));
-      }
-      if (sc.narrative?.trim()) lines.push(sc.narrative.trim());
-      const drivingNames = (Array.isArray(sc.driving_forces) ? sc.driving_forces : [])
-        .map(clusterName).filter(Boolean);
-      if (drivingNames.length > 0) {
-        lines.push(`**Driving forces:** ${drivingNames.join(", ")}`);
-      }
-      nl();
-    }
-  }
-
-  // ── Preferred Future ─────────────────────────────────────────────────────────
-  if (projectPFs.length > 0) {
-    lines.push("## Preferred Future");
-    nl();
-    for (const pf of projectPFs) {
-      lines.push(`### ${pf.name}`);
-      if (pf.horizon) lines.push(`**Horizon:** ${pf.horizon}`);
-      if (pf.description?.trim()) lines.push(pf.description.trim());
-      if (pf.desired_outcomes?.trim()) lines.push(`**Desired outcomes:** ${pf.desired_outcomes.trim()}`);
-      const principles = (Array.isArray(pf.guiding_principles) ? pf.guiding_principles : []).filter(Boolean);
-      if (principles.length > 0) {
-        lines.push("**Guiding principles:**");
-        principles.forEach((p) => lines.push(`- ${p}`));
-      }
-      const priorities = (Array.isArray(pf.strategic_priorities) ? pf.strategic_priorities : []).filter(Boolean);
-      if (priorities.length > 0) {
-        lines.push("**Strategic priorities:**");
-        priorities.forEach((p) => lines.push(`- ${p}`));
-      }
-      const inds = (Array.isArray(pf.indicators) ? pf.indicators : []).filter(Boolean);
-      if (inds.length > 0) {
-        lines.push("**Indicators of progress:**");
-        inds.forEach((ind) => lines.push(`- ${ind}`));
-      }
-      nl();
-    }
-  }
-
-  // ── Strategic Options ─────────────────────────────────────────────────────────
-  if (projectOptions.length > 0) {
-    lines.push("## Strategic Options");
-    nl();
-    for (const opt of projectOptions) {
-      lines.push(`### ${opt.name}`);
-      const meta = [
-        opt.horizon     ? `**Horizon:** ${opt.horizon}`         : null,
-        opt.feasibility ? `**Feasibility:** ${opt.feasibility}` : null,
-      ].filter(Boolean);
-      if (meta.length) lines.push(meta.join(" | "));
-      if (opt.description?.trim())      lines.push(opt.description.trim());
-      if (opt.intended_outcome?.trim()) lines.push(`**Intended outcome:** ${opt.intended_outcome.trim()}`);
-      if (opt.actions?.trim())          lines.push(`**What this involves:** ${opt.actions.trim()}`);
-      if (opt.implications?.trim())     lines.push(`**Implications:** ${opt.implications.trim()}`);
-      nl();
-    }
-  }
-
-  return lines.join("\n");
-}
+import { buildMarkdown } from "./buildMarkdown.js";
 
 // ─── CSV builder ─────────────────────────────────────────────────────────────
 
@@ -228,7 +113,7 @@ function OptionCard({ title, subtitle, checked, disabled, onClick }) {
 // ─── Modal ────────────────────────────────────────────────────────────────────
 
 export function ExportModal({ appState, onClose }) {
-  const { projects, activeProjectId, activeScreen, inputs, clusters, scenarios, preferredFutures, strategicOptions, systemMapExportRef } = appState;
+  const { projects, activeProjectId, activeScreen, inputs, clusters, scenarios, preferredFutures, strategicOptions, relationships, systemMapExportRef } = appState;
   const [checked, setChecked] = useState({ md: true, csv: false, png: false });
   const [exporting, setExporting] = useState(false);
 
@@ -244,7 +129,7 @@ export function ExportModal({ appState, onClose }) {
 
     try {
       if (checked.md) {
-        const content  = buildMarkdown(project, clusters, inputs, scenarios, preferredFutures, strategicOptions);
+        const content  = buildMarkdown(project, clusters, inputs, scenarios, preferredFutures, strategicOptions, relationships);
         const filename = `${project.name.replace(/[^a-z0-9]/gi, "_")}.md`;
         downloadBlob(content, filename, "text/markdown;charset=utf-8");
       }
