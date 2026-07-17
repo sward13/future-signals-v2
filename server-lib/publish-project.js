@@ -33,19 +33,63 @@ import { renderSystemMap } from "../src/publish/systemMap.js";
 
 const BUCKET = "published-projects";
 
-// The fixed "everything" selection stored on the publication row. Shape is
-// self-describing so a future section-picker can diff against it.
-export const ALL_SECTIONS = [
-  "hero",
-  "overview",
-  "system_map",
-  "system_analysis",
-  "scenarios",
-  "preferred_futures",
-  "strategic_options",
-  "appendix",
-];
-const SECTIONS_INCLUDED = { mode: "all", sections: ALL_SECTIONS };
+// ─── Section selection ────────────────────────────────────────────────────────
+// Canonical shape persisted to `sections_included`, consumed by the pipeline on
+// republish, and read back by the UI to pre-populate a picker. Overview + Appendix
+// are never optional (always assembled). For each Future Models sub-type,
+// `ids: null` means "all of that type"; an array means exactly those items.
+const ALL_SELECTION = {
+  version: 1,
+  overview: true,
+  systemMap: true,
+  systemAnalysis: true,
+  futureModels: {
+    enabled: true,
+    scenarios: { enabled: true, ids: null },
+    preferredFutures: { enabled: true, ids: null },
+    strategicOptions: { enabled: true, ids: null },
+  },
+  appendix: true,
+};
+
+function normalizeSubType(x) {
+  const s = x || {};
+  return { enabled: !!s.enabled, ids: Array.isArray(s.ids) ? [...s.ids] : null };
+}
+
+/**
+ * Normalize a caller-supplied selection into the canonical stored shape.
+ * `null`/`undefined` → include everything (the one-click whole-project path;
+ * keeps `scripts/publish-project.js` a full publish). Idempotent, so the stored
+ * value round-trips through GET → picker → republish unchanged.
+ * @param {object|null|undefined} selection
+ * @returns {object}
+ */
+export function normalizeSelection(selection) {
+  if (selection == null) return structuredClone(ALL_SELECTION);
+  const fm = selection.futureModels || {};
+  return {
+    version: 1,
+    overview: true,
+    systemMap: !!selection.systemMap,
+    systemAnalysis: !!selection.systemAnalysis,
+    futureModels: {
+      enabled: !!fm.enabled,
+      scenarios: normalizeSubType(fm.scenarios),
+      preferredFutures: normalizeSubType(fm.preferredFutures),
+      strategicOptions: normalizeSubType(fm.strategicOptions),
+    },
+    appendix: true,
+  };
+}
+
+// Scenarios must be fetched whenever the Scenarios section is on OR a Preferred
+// Future / Strategic Option is on (their driving-force / "responds to" refs
+// resolve against the scenario lookup).
+function needsScenarios(sel) {
+  const fm = sel.futureModels;
+  return fm.enabled && (fm.scenarios.enabled || fm.preferredFutures.enabled || fm.strategicOptions.enabled);
+}
 
 // ─── Slug ───────────────────────────────────────────────────────────────────────
 
@@ -86,7 +130,7 @@ async function selectByProject(supabase, table, projectId) {
   return data || [];
 }
 
-async function fetchProjectData(supabase, projectId) {
+async function fetchProjectData(supabase, projectId, sel) {
   const { data: project, error: projectErr } = await supabase
     .from("projects")
     .select("*")
@@ -96,6 +140,12 @@ async function fetchProjectData(supabase, projectId) {
     throw new Error(`Project ${projectId} not found${projectErr ? `: ${projectErr.message}` : ""}`);
   }
 
+  const fm = sel.futureModels;
+  const wantScenarios = needsScenarios(sel);
+
+  // Only fetch what's selected — excluded sections do no fetching or resolution.
+  // clusters/inputs are always fetched: they power the always-on Appendix and the
+  // clusterLookup that System Map + Scenarios reuse. Overview needs only `project`.
   const [
     clusters,
     inputs,
@@ -109,13 +159,13 @@ async function fetchProjectData(supabase, projectId) {
   ] = await Promise.all([
     selectByProject(supabase, "clusters", projectId),
     selectByProject(supabase, "inputs", projectId),
-    selectByProject(supabase, "relationships", projectId),
-    selectByProject(supabase, "canvas_nodes", projectId),
-    selectByProject(supabase, "canvas_text_nodes", projectId),
-    selectByProject(supabase, "scenarios", projectId),
-    selectByProject(supabase, "preferred_futures", projectId),
-    selectByProject(supabase, "strategic_options", projectId),
-    selectByProject(supabase, "analyses", projectId),
+    sel.systemMap ? selectByProject(supabase, "relationships", projectId) : [],
+    sel.systemMap ? selectByProject(supabase, "canvas_nodes", projectId) : [],
+    sel.systemMap ? selectByProject(supabase, "canvas_text_nodes", projectId) : [],
+    wantScenarios ? selectByProject(supabase, "scenarios", projectId) : [],
+    fm.enabled && fm.preferredFutures.enabled ? selectByProject(supabase, "preferred_futures", projectId) : [],
+    fm.enabled && fm.strategicOptions.enabled ? selectByProject(supabase, "strategic_options", projectId) : [],
+    sel.systemAnalysis ? selectByProject(supabase, "analyses", projectId) : [],
   ]);
 
   // cluster_inputs is NOT project-scoped (columns: cluster_id, input_id,
@@ -161,7 +211,23 @@ function truncate(value, max) {
   return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
 }
 
-export function assembleHtml(data, { publishedAt, publicUrl } = {}) {
+const FUTURE_MODELS_HEADING = `<div style="padding:48px 32px 16px; text-align:center;">
+      <p style="font-size:11px; letter-spacing:0.14em; color:#9A988F; text-transform:uppercase; margin:0;">Future Models</p>
+    </div>`;
+const FOOTER = `<div style="padding:24px 32px 48px; text-align:center; border-top:1px solid #E0DED7;">
+      <span style="font-size:12px; color:#9A988F;">Powered by Future Signals</span>
+    </div>`;
+
+// ids null → all items; array → only those (by id).
+function pickByIds(items, ids) {
+  if (!Array.isArray(items)) return [];
+  if (ids == null) return items;
+  const set = new Set(ids);
+  return items.filter((i) => set.has(i.id));
+}
+
+export function assembleHtml(data, { publishedAt, publicUrl, selection } = {}) {
+  const sel = normalizeSelection(selection); // undefined → everything
   const {
     project,
     clusters,
@@ -176,23 +242,36 @@ export function assembleHtml(data, { publishedAt, publicUrl } = {}) {
   } = data;
 
   const clusterLookup = buildClusterLookup(clusters);
-  const scenarioLookup = buildScenarioLookup(scenarios);
+  const scenarioLookup = buildScenarioLookup(scenarios); // scenarios may be [] when not selected
 
-  const body = [
+  // Hero + Overview always; then the optional sections in reading order.
+  const parts = [
     renderHero(project, { publishedAt }),
     renderOverview(project),
-    renderSystemMap(canvasNodes, canvasTextNodes, relationships, clusterLookup),
-    renderSystemAnalysis(analysis),
-    ...scenarios.map((s) => renderScenario(s, clusterLookup)),
-    ...preferredFutures.map((pf) => renderPreferredFuture(pf, scenarioLookup)),
-    ...strategicOptions.map((o) => renderStrategicOption(o, scenarioLookup)),
-    renderAppendix(clusters, inputs),
-    `<div style="padding:24px 32px 48px; text-align:center; border-top:1px solid #E0DED7;">
-      <span style="font-size:12px; color:#9A988F;">Powered by Future Signals</span>
-    </div>`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+    sel.systemMap ? renderSystemMap(canvasNodes, canvasTextNodes, relationships, clusterLookup) : "",
+    sel.systemAnalysis ? renderSystemAnalysis(analysis) : "",
+  ];
+
+  // Future Models group: heading whenever the group is on (even if its
+  // sub-sections end up empty — a valid state), then each selected sub-type.
+  const fm = sel.futureModels;
+  if (fm.enabled) {
+    parts.push(FUTURE_MODELS_HEADING);
+    if (fm.scenarios.enabled) {
+      for (const s of pickByIds(scenarios, fm.scenarios.ids)) parts.push(renderScenario(s, clusterLookup));
+    }
+    if (fm.preferredFutures.enabled) {
+      for (const pf of pickByIds(preferredFutures, fm.preferredFutures.ids)) parts.push(renderPreferredFuture(pf, scenarioLookup));
+    }
+    if (fm.strategicOptions.enabled) {
+      for (const o of pickByIds(strategicOptions, fm.strategicOptions.ids)) parts.push(renderStrategicOption(o, scenarioLookup));
+    }
+  }
+
+  parts.push(renderAppendix(clusters, inputs)); // always
+  parts.push(FOOTER);
+
+  const body = parts.filter(Boolean).join("\n");
 
   const title = esc(project?.name || "Future Signals project");
 
@@ -241,15 +320,18 @@ function defaultClient() {
  * Publish (or republish) a project to a hosted static page.
  *
  * @param {string} projectId
- * @param {{ supabase?: object, now?: string }} [opts]
- * @returns {Promise<{ slug, storagePath, publicUrl, status, isRepublish }>}
+ * @param {{ supabase?: object, now?: string, selection?: object|null }} [opts]
+ *   selection: which sections to include (see normalizeSelection). Omitted/null
+ *   publishes the whole project.
+ * @returns {Promise<{ slug, storagePath, publicUrl, status, isRepublish, sectionsIncluded }>}
  */
 export async function publishProject(projectId, opts = {}) {
   if (!projectId) throw new Error("projectId is required");
   const supabase = opts.supabase || defaultClient();
   const now = opts.now || new Date().toISOString();
+  const sel = normalizeSelection(opts.selection);
 
-  const data = await fetchProjectData(supabase, projectId);
+  const data = await fetchProjectData(supabase, projectId, sel);
 
   // Reuse the existing publication row's slug (stable link across republishes),
   // or mint a new unique one and insert an unpublished row.
@@ -276,7 +358,7 @@ export async function publishProject(projectId, opts = {}) {
       workspace_id: data.project.workspace_id,
       project_id: projectId,
       slug,
-      sections_included: SECTIONS_INCLUDED,
+      sections_included: sel,
       status: "unpublished", // stays unpublished until the file actually exists
     });
     if (insertErr) throw new Error(`Failed to create publication row: ${insertErr.message}`);
@@ -284,7 +366,7 @@ export async function publishProject(projectId, opts = {}) {
 
   // Assemble and upload. The public link never changes across republishes because
   // the slug (and therefore the path) is stable; upsert overwrites in place.
-  const html = assembleHtml(data, { publishedAt: now, publicUrl });
+  const html = assembleHtml(data, { publishedAt: now, publicUrl, selection: sel });
   const { error: uploadErr } = await supabase.storage
     .from(BUCKET)
     .upload(storagePath, html, { contentType: "text/html; charset=utf-8", upsert: true });
@@ -302,7 +384,7 @@ export async function publishProject(projectId, opts = {}) {
   const patch = {
     status: "published",
     storage_path: storagePath,
-    sections_included: SECTIONS_INCLUDED,
+    sections_included: sel,
   };
   if (existing?.published_at) patch.republished_at = now;
   else patch.published_at = now;
@@ -313,7 +395,7 @@ export async function publishProject(projectId, opts = {}) {
     .eq("project_id", projectId);
   if (updateErr) throw new Error(`Failed to finalize publication: ${updateErr.message}`);
 
-  return { slug, storagePath, publicUrl, status: "published", isRepublish };
+  return { slug, storagePath, publicUrl, status: "published", isRepublish, sectionsIncluded: sel };
 }
 
 /**

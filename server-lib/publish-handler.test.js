@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || "https://staging.example.supabase.co";
 
 import { createPublishHandler } from "./publish-handler.js";
+import { normalizeSelection } from "./publish-project.js";
 
 // ─── In-memory fake Supabase client (auth + tables + storage) ───────────────────
 //
@@ -138,6 +139,61 @@ test("POST publish: publishes an owned project and returns slug + public URL", a
   assert.equal(client.__calls.uploads[0].path, "ev-adoption-in-the-us/index.html");
   const row = client.__pubRows.find((r) => r.project_id === PID);
   assert.equal(row.status, "published");
+});
+
+// ─── Section selection (POST body → publishProject → sections_included) ──────────
+
+const PARTIAL_SELECTION = {
+  systemMap: true,
+  systemAnalysis: false,
+  futureModels: {
+    enabled: true,
+    scenarios: { enabled: true, ids: ["s1", "s2"] },
+    preferredFutures: { enabled: true, ids: null },
+    strategicOptions: { enabled: false },
+  },
+};
+
+test("POST publish: passes the request-body selection through and persists it", async () => {
+  const client = makeFakeClient(baseFixtures());
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  await handler(
+    { method: "POST", headers: authHeaders, body: { projectId: PID, action: "publish", selection: PARTIAL_SELECTION } },
+    res
+  );
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body.sectionsIncluded, normalizeSelection(PARTIAL_SELECTION));
+  const row = client.__pubRows.find((r) => r.project_id === PID);
+  assert.deepEqual(row.sections_included, normalizeSelection(PARTIAL_SELECTION));
+});
+
+test("sections_included round-trips: publish a selection, read it back via GET status", async () => {
+  const client = makeFakeClient(baseFixtures());
+  const handler = createPublishHandler({ supabase: client });
+
+  const pubRes = mockRes();
+  await handler(
+    { method: "POST", headers: authHeaders, body: { projectId: PID, action: "publish", selection: PARTIAL_SELECTION } },
+    pubRes
+  );
+
+  const getRes = mockRes();
+  await handler({ method: "GET", headers: authHeaders, query: { projectId: PID } }, getRes);
+
+  assert.equal(getRes.statusCode, 200);
+  assert.deepEqual(getRes.body.sectionsIncluded, normalizeSelection(PARTIAL_SELECTION));
+  assert.deepEqual(getRes.body.sectionsIncluded, pubRes.body.sectionsIncluded); // same shape both ways
+});
+
+test("GET status: sectionsIncluded is null before the first publish", async () => {
+  const client = makeFakeClient(baseFixtures());
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  await handler({ method: "GET", headers: authHeaders, query: { projectId: PID } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.sectionsIncluded, null);
 });
 
 // ─── Unpublish ──────────────────────────────────────────────────────────────

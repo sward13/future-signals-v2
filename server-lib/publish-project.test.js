@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { publishProject, assembleHtml, ALL_SECTIONS } from "./publish-project.js";
+import { publishProject, assembleHtml, normalizeSelection } from "./publish-project.js";
 
 // ─── Minimal in-memory fake of the subset of the Supabase client used here ──────
 //
@@ -11,10 +11,12 @@ import { publishProject, assembleHtml, ALL_SECTIONS } from "./publish-project.js
 
 function makeFakeClient(fixtures = {}, opts = {}) {
   const pubRows = (fixtures.project_publications || []).map((r) => ({ ...r }));
-  const calls = { inserts: [], updates: [], uploads: [] };
+  const calls = { inserts: [], updates: [], uploads: [], reads: [] };
 
   function resolve(state) {
     const { table, op, filters, payload } = state;
+
+    if (op === "select") calls.reads.push(table); // track which tables get fetched
 
     if (op === "insert") {
       const row = { ...payload };
@@ -136,6 +138,138 @@ test("assembleHtml produces a complete document with every section in order", ()
   assert.ok(html.indexOf("System analysis") < html.indexOf("Appendix"));
 });
 
+// ─── Section selection (assembleHtml) ───────────────────────────────────────────
+
+function fullData(f) {
+  return {
+    project: f.project, clusters: f.clusters.map((c) => ({ ...c, input_ids: ["i1"] })),
+    inputs: f.inputs, relationships: f.relationships, canvasNodes: f.canvas_nodes,
+    canvasTextNodes: f.canvas_text_nodes, scenarios: f.scenarios,
+    preferredFutures: f.preferred_futures, strategicOptions: f.strategic_options, analysis: f.analyses[0],
+  };
+}
+
+test("assembleHtml honours a partial selection (Overview + Appendix + one scenario only)", () => {
+  const html = assembleHtml(fullData(baseFixtures()), {
+    publishedAt: NOW,
+    selection: {
+      systemMap: false,
+      systemAnalysis: false,
+      futureModels: {
+        enabled: true,
+        scenarios: { enabled: true, ids: ["s1"] },
+        preferredFutures: { enabled: false },
+        strategicOptions: { enabled: false },
+      },
+    },
+  });
+  // always-on
+  assert.match(html, /Overview/);
+  assert.match(html, /Appendix/);
+  // selected
+  assert.match(html, /Future Models/); // group heading
+  assert.match(html, /A scenario/);
+  // excluded
+  assert.doesNotMatch(html, /<svg/); // no System Map
+  assert.doesNotMatch(html, /System analysis/);
+  assert.doesNotMatch(html, /A future/); // no Preferred Future
+  assert.doesNotMatch(html, /An option/); // no Strategic Option
+  assert.doesNotMatch(html, /undefined/);
+});
+
+test("assembleHtml renders the Future Models heading even when its sub-sections are empty", () => {
+  // FM on, scenarios on, but the project has zero scenarios — heading, no items, no throw.
+  const f = baseFixtures();
+  const html = assembleHtml(
+    { ...fullData(f), scenarios: [] },
+    {
+      publishedAt: NOW,
+      selection: {
+        futureModels: {
+          enabled: true,
+          scenarios: { enabled: true, ids: null },
+          preferredFutures: { enabled: false },
+          strategicOptions: { enabled: false },
+        },
+      },
+    }
+  );
+  assert.match(html, /Future Models/);
+  assert.doesNotMatch(html, /A scenario/);
+  assert.doesNotMatch(html, /undefined/);
+});
+
+test("normalizeSelection is total and idempotent, and null → everything", () => {
+  const all = normalizeSelection(null);
+  assert.equal(all.systemMap, true);
+  assert.equal(all.futureModels.enabled, true);
+  assert.equal(all.futureModels.scenarios.ids, null);
+  assert.deepEqual(normalizeSelection(all), all); // idempotent
+  // a partial input fills defaults (missing = off)
+  const partial = normalizeSelection({ systemMap: true, futureModels: { enabled: true, scenarios: { enabled: true } } });
+  assert.equal(partial.systemMap, true);
+  assert.equal(partial.systemAnalysis, false);
+  assert.equal(partial.futureModels.preferredFutures.enabled, false);
+  assert.equal(partial.futureModels.scenarios.ids, null);
+});
+
+// ─── Section selection (publishProject: skip fetch + persist) ────────────────────
+
+test("publishProject with a partial selection skips fetching + rendering excluded sections", async () => {
+  const client = makeFakeClient(baseFixtures());
+  const selection = {
+    systemMap: false,
+    systemAnalysis: false,
+    futureModels: {
+      enabled: true,
+      scenarios: { enabled: true, ids: ["s1"] },
+      preferredFutures: { enabled: false },
+      strategicOptions: { enabled: false },
+    },
+  };
+  const result = await publishProject(PID, { supabase: client, now: NOW, selection });
+
+  // excluded tables were never fetched (not just hidden in output)
+  const reads = client.__calls.reads;
+  for (const excluded of ["relationships", "canvas_nodes", "canvas_text_nodes", "analyses", "preferred_futures", "strategic_options"]) {
+    assert.ok(!reads.includes(excluded), `${excluded} should not have been fetched`);
+  }
+  // always-fetched + the one selected type
+  assert.ok(reads.includes("clusters"));
+  assert.ok(reads.includes("inputs"));
+  assert.ok(reads.includes("scenarios"));
+
+  // output reflects the selection
+  const body = client.__calls.uploads[0].body;
+  assert.match(body, /A scenario/);
+  assert.doesNotMatch(body, /<svg/);
+  assert.doesNotMatch(body, /System analysis/);
+  assert.doesNotMatch(body, /An option/);
+
+  // the exact selection is persisted (and returned)
+  assert.deepEqual(result.sectionsIncluded, normalizeSelection(selection));
+  assert.deepEqual(client.__calls.updates[0].patch.sections_included, normalizeSelection(selection));
+});
+
+test("publishProject: a Future Models sub-type with zero items never errors", async () => {
+  const f = baseFixtures();
+  f.scenarios = []; // project has no scenarios at all
+  const client = makeFakeClient(f);
+  let result;
+  try {
+    result = await publishProject(PID, {
+      supabase: client,
+      now: NOW,
+      selection: { futureModels: { enabled: true, scenarios: { enabled: true }, preferredFutures: { enabled: false }, strategicOptions: { enabled: false } } },
+    });
+  } catch (e) {
+    assert.fail(`should not throw: ${e.message}`);
+  }
+  assert.equal(result.status, "published");
+  assert.doesNotMatch(client.__calls.uploads[0].body, /A scenario/);
+  assert.match(client.__calls.uploads[0].body, /Future Models/);
+});
+
 // ─── Open Graph tags ─────────────────────────────────────────────────────────────
 
 function bareData(project, publicUrl) {
@@ -180,11 +314,12 @@ test("first publish: inserts a new row, uploads, sets status=published + publish
   assert.equal(result.slug, "the-state-of-glp-1s");
   assert.equal(result.storagePath, "the-state-of-glp-1s/index.html");
 
-  // a new row was inserted, initially unpublished
+  // a new row was inserted, initially unpublished, with the whole-project selection
   assert.equal(client.__calls.inserts.length, 1);
   assert.equal(client.__calls.inserts[0].row.status, "unpublished");
   assert.equal(client.__calls.inserts[0].row.workspace_id, WID);
-  assert.deepEqual(client.__calls.inserts[0].row.sections_included.sections, ALL_SECTIONS);
+  assert.deepEqual(client.__calls.inserts[0].row.sections_included, normalizeSelection(null));
+  assert.deepEqual(result.sectionsIncluded, normalizeSelection(null));
 
   // uploaded to {slug}/index.html with upsert
   assert.equal(client.__calls.uploads.length, 1);

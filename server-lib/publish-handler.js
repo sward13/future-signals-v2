@@ -125,16 +125,21 @@ export function createPublishHandler({ supabase }) {
           publicUrl: status === "published" ? viewUrl(req, row?.slug) : null,
           publishedAt: row?.published_at || null,
           republishedAt: row?.republished_at || null,
+          // The selection persisted at last publish, so a picker can pre-populate
+          // without a second round-trip. null before the first publish.
+          sectionsIncluded: row?.sections_included ?? null,
         });
       }
 
       const action = req.body?.action;
       if (action === "publish") {
-        const result = await publishProject(projectId, { supabase });
+        // `selection` is optional — omitted publishes the whole project.
+        const result = await publishProject(projectId, { supabase, selection: req.body?.selection });
         return res.status(200).json({
           status: "published",
           slug: result.slug,
           publicUrl: viewUrl(req, result.slug),
+          sectionsIncluded: result.sectionsIncluded,
         });
       }
       if (action === "unpublish") {
