@@ -177,8 +177,9 @@ test("assembleHtml honours a partial selection (Overview + Appendix + one scenar
   assert.doesNotMatch(html, /undefined/);
 });
 
-test("assembleHtml renders the Future Models heading even when its sub-sections are empty", () => {
-  // FM on, scenarios on, but the project has zero scenarios — heading, no items, no throw.
+test("assembleHtml suppresses the Future Models heading when the group resolves to no content", () => {
+  // FM on, scenarios on, but the project has zero scenarios (PF/SO off) — no
+  // content, so no empty heading; no throw.
   const f = baseFixtures();
   const html = assembleHtml(
     { ...fullData(f), scenarios: [] },
@@ -194,7 +195,7 @@ test("assembleHtml renders the Future Models heading even when its sub-sections 
       },
     }
   );
-  assert.match(html, /Future Models/);
+  assert.doesNotMatch(html, /Future Models/);
   assert.doesNotMatch(html, /A scenario/);
   assert.doesNotMatch(html, /undefined/);
 });
@@ -267,7 +268,8 @@ test("publishProject: a Future Models sub-type with zero items never errors", as
   }
   assert.equal(result.status, "published");
   assert.doesNotMatch(client.__calls.uploads[0].body, /A scenario/);
-  assert.match(client.__calls.uploads[0].body, /Future Models/);
+  // no content under Future Models → no empty heading
+  assert.doesNotMatch(client.__calls.uploads[0].body, /Future Models/);
 });
 
 // ─── Open Graph tags ─────────────────────────────────────────────────────────────

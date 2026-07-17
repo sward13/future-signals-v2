@@ -477,6 +477,7 @@ export default function ProjectOverview({ appState }) {
           onDelete={() => deleteProject(project.id)}
           workspaceScanningEnabled={workspaceScanningEnabled}
           showToast={showToast}
+          appState={appState}
         />
       )}
     </div>

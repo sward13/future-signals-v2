@@ -33,55 +33,11 @@ import { renderSystemMap } from "../src/publish/systemMap.js";
 
 const BUCKET = "published-projects";
 
-// ─── Section selection ────────────────────────────────────────────────────────
-// Canonical shape persisted to `sections_included`, consumed by the pipeline on
-// republish, and read back by the UI to pre-populate a picker. Overview + Appendix
-// are never optional (always assembled). For each Future Models sub-type,
-// `ids: null` means "all of that type"; an array means exactly those items.
-const ALL_SELECTION = {
-  version: 1,
-  overview: true,
-  systemMap: true,
-  systemAnalysis: true,
-  futureModels: {
-    enabled: true,
-    scenarios: { enabled: true, ids: null },
-    preferredFutures: { enabled: true, ids: null },
-    strategicOptions: { enabled: true, ids: null },
-  },
-  appendix: true,
-};
-
-function normalizeSubType(x) {
-  const s = x || {};
-  return { enabled: !!s.enabled, ids: Array.isArray(s.ids) ? [...s.ids] : null };
-}
-
-/**
- * Normalize a caller-supplied selection into the canonical stored shape.
- * `null`/`undefined` → include everything (the one-click whole-project path;
- * keeps `scripts/publish-project.js` a full publish). Idempotent, so the stored
- * value round-trips through GET → picker → republish unchanged.
- * @param {object|null|undefined} selection
- * @returns {object}
- */
-export function normalizeSelection(selection) {
-  if (selection == null) return structuredClone(ALL_SELECTION);
-  const fm = selection.futureModels || {};
-  return {
-    version: 1,
-    overview: true,
-    systemMap: !!selection.systemMap,
-    systemAnalysis: !!selection.systemAnalysis,
-    futureModels: {
-      enabled: !!fm.enabled,
-      scenarios: normalizeSubType(fm.scenarios),
-      preferredFutures: normalizeSubType(fm.preferredFutures),
-      strategicOptions: normalizeSubType(fm.strategicOptions),
-    },
-    appendix: true,
-  };
-}
+// The canonical selection shape + normalizeSelection live in the shared
+// selectionModel (imported by the UI too). Re-exported so existing callers of
+// `publishProject`'s module keep working.
+export { normalizeSelection } from "../src/publish/selectionModel.js";
+import { normalizeSelection } from "../src/publish/selectionModel.js";
 
 // Scenarios must be fetched whenever the Scenarios section is on OR a Preferred
 // Future / Strategic Option is on (their driving-force / "responds to" refs
@@ -252,20 +208,22 @@ export function assembleHtml(data, { publishedAt, publicUrl, selection } = {}) {
     sel.systemAnalysis ? renderSystemAnalysis(analysis) : "",
   ];
 
-  // Future Models group: heading whenever the group is on (even if its
-  // sub-sections end up empty — a valid state), then each selected sub-type.
+  // Future Models group: build the sub-sections first, and only emit the group
+  // heading if the group actually resolves to content — no empty "Future Models"
+  // heading when every sub-type is off or has zero items.
   const fm = sel.futureModels;
   if (fm.enabled) {
-    parts.push(FUTURE_MODELS_HEADING);
+    const fmParts = [];
     if (fm.scenarios.enabled) {
-      for (const s of pickByIds(scenarios, fm.scenarios.ids)) parts.push(renderScenario(s, clusterLookup));
+      for (const s of pickByIds(scenarios, fm.scenarios.ids)) fmParts.push(renderScenario(s, clusterLookup));
     }
     if (fm.preferredFutures.enabled) {
-      for (const pf of pickByIds(preferredFutures, fm.preferredFutures.ids)) parts.push(renderPreferredFuture(pf, scenarioLookup));
+      for (const pf of pickByIds(preferredFutures, fm.preferredFutures.ids)) fmParts.push(renderPreferredFuture(pf, scenarioLookup));
     }
     if (fm.strategicOptions.enabled) {
-      for (const o of pickByIds(strategicOptions, fm.strategicOptions.ids)) parts.push(renderStrategicOption(o, scenarioLookup));
+      for (const o of pickByIds(strategicOptions, fm.strategicOptions.ids)) fmParts.push(renderStrategicOption(o, scenarioLookup));
     }
+    if (fmParts.length > 0) parts.push(FUTURE_MODELS_HEADING, ...fmParts);
   }
 
   parts.push(renderAppendix(clusters, inputs)); // always

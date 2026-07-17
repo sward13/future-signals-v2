@@ -1026,6 +1026,7 @@ export default function ProjectDetail({ appState }) {
           scrollTo={editScrollTo}
           workspaceScanningEnabled={workspaceScanningEnabled}
           showToast={showToast}
+          appState={appState}
         />
       )}
 

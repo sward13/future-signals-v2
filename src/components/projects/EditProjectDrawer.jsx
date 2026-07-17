@@ -27,7 +27,7 @@ function parseHorizonState(project) {
   };
 }
 
-export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo, workspaceScanningEnabled = true, showToast }) {
+export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo, workspaceScanningEnabled = true, showToast, appState }) {
   const initial = parseHorizonState(project);
 
   const [name, setName] = useState(project.name || "");
@@ -308,7 +308,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
           </div>
 
           {/* Publish to the web — management surface */}
-          <PublishSection project={project} showToast={showToast} />
+          <PublishSection project={project} appState={appState} showToast={showToast} />
         </div>
 
         {/* Footer */}
