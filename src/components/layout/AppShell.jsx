@@ -37,6 +37,11 @@ export function AppShell({ appState, children, scroll = true, onSignOut, onExpor
   const handleNavigation = (screen) => {
     if (screen === "dashboard" || screen === "inbox" || screen === "projects" || screen === "settings") {
       setActiveProjectId(null);
+      // Sync the URL too. openProject() is the only other place that writes the
+      // URL (/projects/:id), so without this the address bar stays stale on the
+      // last project — and on reload the App deep-link handler matches that stale
+      // /projects/:id and redirects back into the project, hijacking the reload.
+      window.history.replaceState(null, "", "/");
     }
     setActiveScreen(screen);
   };
