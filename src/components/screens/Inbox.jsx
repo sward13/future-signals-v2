@@ -1,6 +1,6 @@
 /**
  * Inbox screen — shows unassigned inputs (project_id === null).
- * Two tables: My Inputs (manual) and AI Suggested (scanner).
+ * Two tables: My Inputs (manual) and Scanner Suggestions (scanner).
  * Three view densities (List / Compact / Card), full-text search,
  * inline filter panel (STEEPLED / Quality / Horizon), and multi-select
  * bulk actions (add to project, dismiss).
@@ -522,7 +522,7 @@ export default function Inbox({ appState }) {
   const [manualFilterSteepled,    setManualFilterSteepled]    = useState(null);
   const [manualOpenFilterDropdown,setManualOpenFilterDropdown]= useState(null);
 
-  // AI Suggested — search + filters
+  // Scanner Suggestions — search + filters
   const [aiSearch,            setAiSearch]            = useState("");
   const [aiFilterType,        setAiFilterType]        = useState(null);
   const [aiFilterHorizon,     setAiFilterHorizon]     = useState(null);
@@ -566,7 +566,7 @@ export default function Inbox({ appState }) {
     [allInboxInputs]
   );
 
-  // Project filter dropdown options for AI Suggested — "All projects" plus
+  // Project filter dropdown options for Scanner Suggestions — "All projects" plus
   // one entry per project (name + domain subtitle).
   const aiProjectFilterOptions = useMemo(() => [
     { value: "", label: "All projects" },
@@ -700,7 +700,7 @@ export default function Inbox({ appState }) {
     }
   };
 
-  // Select-all for the AI Suggested header checkbox — applies to the rows
+  // Select-all for the Scanner Suggestions header checkbox — applies to the rows
   // currently rendered (respecting the collapsed preview + active filters).
   const allAiSelected  = visibleAI.length > 0 && visibleAI.every((i) => selectedAiIds.includes(i.id));
   const someAiSelected = visibleAI.some((i) => selectedAiIds.includes(i.id));
@@ -979,10 +979,10 @@ export default function Inbox({ appState }) {
           </div>
         </div>
 
-        {/* ── AI Suggested table ───────────────────────────────── */}
+        {/* ── Scanner Suggestions table ───────────────────────────── */}
         {aiInputs.length > 0 && (
           <>
-            <SectionHeader title="AI Suggested" count={aiInputs.length} icon={<Sparkles size={16} />} />
+            <SectionHeader title="Scanner Suggestions" count={aiInputs.length} icon={<Sparkles size={16} />} />
 
             <SearchFilterBar
               search={aiSearch}
@@ -1005,7 +1005,7 @@ export default function Inbox({ appState }) {
               Showing {filteredAI.length} of {aiInputs.length}
             </div>
 
-            {/* AI Suggested inline action bar */}
+            {/* Scanner Suggestions inline action bar */}
             {selectedAiIds.length > 0 && (
               <div style={{
                 display: "flex", alignItems: "center", gap: 8,
