@@ -84,14 +84,18 @@ function ChipsPanel({ value = [], onChange, onFocus }) {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
           {value.map((item) => (
             <span key={item} style={{
-              display: "inline-flex", alignItems: "center", gap: 4,
-              fontSize: 10, padding: "2px 8px", borderRadius: 12,
+              // flex-start so the × pins to the top-right corner instead of the
+              // vertical middle when a long entry wraps onto multiple lines.
+              display: "inline-flex", alignItems: "flex-start", gap: 4,
+              fontSize: 10, padding: "3px 8px",
+              // pill radius reads oddly on a tall multi-line block — keep it modest
+              borderRadius: 8, maxWidth: "100%",
               background: c.surfaceAlt, border: `0.5px solid ${c.borderMid}`, color: c.ink,
             }}>
-              {item}
+              <span style={{ minWidth: 0, overflowWrap: "anywhere", lineHeight: 1.45 }}>{item}</span>
               <button
                 onClick={(e) => { e.stopPropagation(); onChange(value.filter((v) => v !== item)); }}
-                style={{ background: "none", border: "none", cursor: "pointer", color: c.hint, fontSize: 12, padding: 0, lineHeight: 1 }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: c.hint, fontSize: 12, padding: 0, lineHeight: 1, flexShrink: 0, marginTop: 1 }}
               >×</button>
             </span>
           ))}
