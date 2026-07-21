@@ -9,13 +9,17 @@ async function queryActiveTabId(): Promise<number | undefined> {
 }
 
 /**
- * There's no static content_scripts entry in the manifest anymore (that
- * required broad host_permissions across all URLs — see manifest.json).
- * Instead, content.js is injected here on demand via chrome.scripting,
- * relying on the activeTab grant from the user opening the side panel.
- * content.js guards its own top-level setup so a repeat injection into a
- * page that already has it (e.g. a second call in the same session) is a
- * harmless no-op rather than double-registering its listeners.
+ * content.js is injected here on demand via chrome.scripting rather than
+ * declared as a static content_scripts entry, so it only runs on the tab the
+ * user is actively capturing from — not on every page load. Injection is
+ * backed by the broad host_permissions in the manifest (http/https), NOT
+ * activeTab: an earlier activeTab-only model broke when the side panel stayed
+ * open across a tab switch — the switched-to tab had no grant, so this call
+ * threw and the capture failed with "Could not read this page". host_permissions
+ * gives access to whatever active tab the user reloads from. content.js guards
+ * its own top-level setup so a repeat injection into a page that already has it
+ * (e.g. a second call in the same session) is a harmless no-op rather than
+ * double-registering its listeners.
  *
  * This can't succeed on pages Chrome doesn't allow injection into
  * (chrome://, the Chrome Web Store, etc.) — that's expected and handled by

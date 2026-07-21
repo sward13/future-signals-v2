@@ -4,12 +4,14 @@ import type { PageExtractionPayload } from "./pageDataTypes";
 import { extractPageData } from "./content/extract-page-data";
 import { PAGE_QUERY_MESSAGE_TYPE, SELECTION_CHANGED_MESSAGE_TYPE } from "./constants";
 
-// Now injected on demand via chrome.scripting.executeScript (see
-// lib/activeTabPage.ts) instead of a static manifest content_scripts entry,
-// so it can run without the extension holding broad host_permissions. That
-// means it can be injected more than once into the same page — e.g. the side
-// panel re-requests page data and re-injects defensively — so everything
-// below is guarded to only run once per page.
+// Injected on demand via chrome.scripting.executeScript (see
+// lib/activeTabPage.ts) instead of a static manifest content_scripts entry, so
+// it only runs on the tab the user is actively capturing from rather than on
+// every page load. Injection is backed by the manifest's broad host_permissions
+// (http/https). Because it's injected on demand, it can be injected more than
+// once into the same page — e.g. the side panel re-requests page data and
+// re-injects defensively — so everything below is guarded to only run once per
+// page.
 if (!(window as unknown as { __fsContentScriptLoaded?: boolean }).__fsContentScriptLoaded) {
   (window as unknown as { __fsContentScriptLoaded?: boolean }).__fsContentScriptLoaded = true;
 
