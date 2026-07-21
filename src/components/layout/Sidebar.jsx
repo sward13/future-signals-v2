@@ -16,6 +16,7 @@
  *   analysisCount: number,
  * }} props
  */
+import { useState } from "react";
 import logoLight from "../../assets/logo_light.svg";
 import { c, countBadge } from "../../styles/tokens.js";
 import {
@@ -63,8 +64,12 @@ export function Sidebar({
   projects = [],
   setActiveProjectId,
   openProject,
+  dragActive = false,
+  onDropInputsToProject,
 }) {
   const inProject = !!activeProject;
+  // id of the project row currently being hovered during an Inbox-input drag
+  const [dropTargetId, setDropTargetId] = useState(null);
 
   const navCounts = {
     inbox: inboxCount || null,
@@ -165,19 +170,28 @@ export function Sidebar({
                 {projects.length}
               </span>
             </div>
-            {projects.slice(0, 8).map((p) => (
+            {projects.slice(0, 8).map((p) => {
+              const isDropTarget = dragActive && dropTargetId === p.id;
+              return (
               <button
                 key={p.id}
                 onClick={() => openProject(p.id)}
+                onDragOver={dragActive ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDropTargetId(p.id); } : undefined}
+                onDragLeave={dragActive ? () => setDropTargetId((cur) => (cur === p.id ? null : cur)) : undefined}
+                onDrop={dragActive ? (e) => { e.preventDefault(); setDropTargetId(null); onDropInputsToProject?.(p); } : undefined}
                 style={{
                   display: "block", width: "100%", padding: "5px 14px",
-                  textAlign: "left", background: "transparent", border: "none",
-                  borderLeft: "2px solid transparent",
+                  textAlign: "left",
+                  background: isDropTarget ? c.brandBg : "transparent",
+                  border: "none",
+                  borderLeft: `2px solid ${isDropTarget ? c.brand : "transparent"}`,
+                  outline: isDropTarget ? `2px solid ${c.brand}` : "none",
+                  outlineOffset: -2,
                   cursor: "pointer", fontFamily: "inherit",
                   transition: "background 0.1s",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.03)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                onMouseEnter={(e) => { if (!isDropTarget) e.currentTarget.style.background = "rgba(0,0,0,0.03)"; }}
+                onMouseLeave={(e) => { if (!isDropTarget) e.currentTarget.style.background = "transparent"; }}
               >
                 <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {p.name}
@@ -188,7 +202,8 @@ export function Sidebar({
                   </div>
                 )}
               </button>
-            ))}
+              );
+            })}
             {projects.length > 8 && (
               <button
                 onClick={() => setActiveScreen("dashboard")}

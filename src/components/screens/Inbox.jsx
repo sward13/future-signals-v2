@@ -1,21 +1,35 @@
 /**
  * Inbox screen — shows unassigned inputs (project_id === null).
- * Two tables: My Inputs (manual) and AI Suggested (scanner).
+ * Two tables: My Inputs (manual) and Scanner Suggestions (scanner).
  * Three view densities (List / Compact / Card), full-text search,
  * inline filter panel (STEEPLED / Quality / Horizon), and multi-select
  * bulk actions (add to project, dismiss).
  * @param {{ appState: object }} props
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { c, inp, btnP, btnSm, btnSec, btnG, fontHeading, countBadge } from "../../styles/tokens.js";
 import { CirclePlus, Sparkles } from "lucide-react";
+import { DragGhost } from "../clusters/DragGhost.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { HorizTag } from "../shared/Tag.jsx";
 import { AddToProjectButton } from "../shared/AddToProjectButton.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { STEEPLED } from "../../data/seeds.js";
+
+// Lazily-created 1×1 transparent image so the browser's default drag preview is
+// invisible — the DragGhost label follows the cursor instead. Module-level so it's
+// created once and never touched during render (keeps it clear of ref hooks).
+let _blankDragImg = null;
+function blankDragImage() {
+  if (typeof Image === "undefined") return null;
+  if (!_blankDragImg) {
+    _blankDragImg = new Image();
+    _blankDragImg.src = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+  }
+  return _blankDragImg;
+}
 
 const STEEPLED_ABB  = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
 const INPUT_TYPE_OPTS = ["Signal", "Issue", "Projection", "Plan", "Obstacle"];
@@ -162,7 +176,7 @@ function ListHeader({ checked, indeterminate, onToggleAll }) {
 
 // ─── List row (flat single-row) ────────────────────────────────────────────────
 
-function ListRow({ input, isScannerSuggested, suggestedProjects, recommendedProjectId, projects, onAddToProject, onDismissSuggested, onOpen, selected, onToggle, anySelected }) {
+function ListRow({ input, isScannerSuggested, suggestedProjects, recommendedProjectId, projects, onAddToProject, onDismissSuggested, onOpen, selected, onToggle, anySelected, draggable, dragging, onRowClick, onSelect, onDragStart, onDragEnd }) {
   const [hovered, setHovered] = useState(false);
   const steepled = input.steepled || [];
   const vis2     = steepled.slice(0, 2);
@@ -170,19 +184,23 @@ function ListRow({ input, isScannerSuggested, suggestedProjects, recommendedProj
 
   return (
     <div
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onClick={onOpen}
+      onClick={onRowClick || onOpen}
       style={{
         display: "flex", alignItems: "center", gap: 10,
         padding: "0 14px", minHeight: 38,
         background: selected ? c.surfaceAlt : hovered ? "rgba(0,0,0,0.02)" : c.white,
         borderBottom: `1px solid ${c.border}`,
-        cursor: "pointer",
+        cursor: draggable ? "grab" : "pointer",
+        opacity: dragging ? 0.4 : 1,
         transition: "background 0.08s",
       }}
     >
-      <div onClick={(e) => { e.stopPropagation(); onToggle(input.id); }} style={{ cursor: "pointer", flexShrink: 0 }}>
+      <div onClick={(e) => { e.stopPropagation(); onSelect ? onSelect(e) : onToggle(input.id); }} style={{ cursor: "pointer", flexShrink: 0 }}>
         <RowCheckbox checked={selected} visible={anySelected || hovered} />
       </div>
 
@@ -266,12 +284,15 @@ function ListRow({ input, isScannerSuggested, suggestedProjects, recommendedProj
 
 // ─── Full card (Card view) ────────────────────────────────────────────────────
 
-function FullCard({ input, isScannerSuggested, suggestedProjects, recommendedProjectId, projects, savedProjectId, onAddToProject, onDismissSuggested, onDismiss, onOpen, selected, onToggle, anySelected }) {
+function FullCard({ input, isScannerSuggested, suggestedProjects, recommendedProjectId, projects, savedProjectId, onAddToProject, onDismissSuggested, onDismiss, onOpen, selected, onToggle, anySelected, draggable, dragging, onSelect, onDragStart, onDragEnd }) {
   const [hovered, setHovered] = useState(false);
   const project = savedProjectId ? projects.find((p) => p.id === savedProjectId) : null;
 
   return (
     <div
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -280,9 +301,11 @@ function FullCard({ input, isScannerSuggested, suggestedProjects, recommendedPro
         borderRadius: 10, padding: "14px 16px",
         transition: "border-color 0.15s",
         display: "flex", alignItems: "flex-start", gap: 10,
+        cursor: draggable ? "grab" : "default",
+        opacity: dragging ? 0.4 : 1,
       }}
     >
-      <div onClick={(e) => { e.stopPropagation(); onToggle(input.id); }} style={{ paddingTop: 2, flexShrink: 0, cursor: "pointer" }}>
+      <div onClick={(e) => { e.stopPropagation(); onSelect ? onSelect(e) : onToggle(input.id); }} style={{ paddingTop: 2, flexShrink: 0, cursor: "pointer" }}>
         <RowCheckbox checked={selected} visible={anySelected || hovered} />
       </div>
 
@@ -487,6 +510,7 @@ export default function Inbox({ appState }) {
     saveInputToProject, saveInputsToProject,
     showToast, openInputDetail, openProjectModal,
     inboxProjectFilter, setInboxProjectFilter,
+    dragInputIds, setDragInputIds,
   } = appState;
 
   const [drawerOpen,        setDrawerOpen]        = useState(false);
@@ -498,7 +522,7 @@ export default function Inbox({ appState }) {
   const [manualFilterSteepled,    setManualFilterSteepled]    = useState(null);
   const [manualOpenFilterDropdown,setManualOpenFilterDropdown]= useState(null);
 
-  // AI Suggested — search + filters
+  // Scanner Suggestions — search + filters
   const [aiSearch,            setAiSearch]            = useState("");
   const [aiFilterType,        setAiFilterType]        = useState(null);
   const [aiFilterHorizon,     setAiFilterHorizon]     = useState(null);
@@ -542,7 +566,7 @@ export default function Inbox({ appState }) {
     [allInboxInputs]
   );
 
-  // Project filter dropdown options for AI Suggested — "All projects" plus
+  // Project filter dropdown options for Scanner Suggestions — "All projects" plus
   // one entry per project (name + domain subtitle).
   const aiProjectFilterOptions = useMemo(() => [
     { value: "", label: "All projects" },
@@ -597,6 +621,72 @@ export default function Inbox({ appState }) {
     setSelectedAiIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
 
+  // ── Drag inputs onto Sidebar projects ─────────────────────────────────────
+  // Native HTML5 drag mirroring ClusterScreen. `dragInputIds` lives in
+  // useAppState (shared with the Sidebar drop target); everything else here is
+  // local (the floating label portals to <body>, the dragover listener is global).
+
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
+  useEffect(() => {
+    if (!dragInputIds) return;
+    const onOver = (e) => setDragPos({ x: e.clientX, y: e.clientY });
+    document.addEventListener("dragover", onOver);
+    return () => document.removeEventListener("dragover", onOver);
+  }, [dragInputIds]);
+
+  // Anchor for shift-range selection, tracked per table.
+  const [manualLastChecked, setManualLastChecked] = useState(null);
+  const [aiLastChecked,     setAiLastChecked]     = useState(null);
+
+  const makeTableHandlers = (visibleItems, selectedIds, setSelectedIds, lastChecked, setLastChecked) => {
+    const selectRange = (id) => {
+      const a = visibleItems.findIndex((i) => i.id === lastChecked);
+      const b = visibleItems.findIndex((i) => i.id === id);
+      if (a === -1 || b === -1) {
+        setSelectedIds((prev) => prev.includes(id) ? prev : [...prev, id]);
+        return;
+      }
+      const [lo, hi] = a < b ? [a, b] : [b, a];
+      const rangeIds = visibleItems.slice(lo, hi + 1).map((i) => i.id);
+      setSelectedIds((prev) => [...new Set([...prev, ...rangeIds])]);
+    };
+    const handleSelect = (id, e) => {
+      if (e.shiftKey && lastChecked && lastChecked !== id) {
+        selectRange(id);
+      } else {
+        setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+      }
+      setLastChecked(id);
+    };
+    // Plain row click opens the drawer; Shift / Option(Alt) / Cmd(Meta) selects instead.
+    const handleRowClick = (id, e) => {
+      if (e.shiftKey || e.altKey || e.metaKey) handleSelect(id, e);
+      else openInputDetail(id);
+    };
+    const handleDragStart = (id, e) => {
+      // Don't hijack a drag that started on a row's button/checkbox/link.
+      if (e.target.closest("button") || e.target.closest("input") || e.target.closest("a")) {
+        e.preventDefault();
+        return;
+      }
+      // Drag the whole selection if the grabbed row is part of it, else just this row.
+      const ids = selectedIds.includes(id) ? [...selectedIds] : [id];
+      setDragInputIds(ids);
+      const blank = blankDragImage();
+      if (blank) e.dataTransfer.setDragImage(blank, 0, 0);
+      e.dataTransfer.effectAllowed = "move";
+      try { e.dataTransfer.setData("text/plain", ids.join(",")); } catch { /* some browsers throw */ }
+    };
+    const handleDragEnd = (e) => {
+      const moved = e.dataTransfer.dropEffect !== "none";
+      setDragInputIds(null);
+      // Only clear the selection on a successful drop — dropping outside a target
+      // must leave everything untouched.
+      if (moved) { setSelectedIds([]); setLastChecked(null); }
+    };
+    return { handleSelect, handleRowClick, handleDragStart, handleDragEnd };
+  };
+
   // Select-all for the My Inputs header checkbox — applies to all rows
   // currently visible under the active search/filters.
   const allManualSelected  = filteredManual.length > 0 && filteredManual.every((i) => selectedManualIds.includes(i.id));
@@ -610,7 +700,7 @@ export default function Inbox({ appState }) {
     }
   };
 
-  // Select-all for the AI Suggested header checkbox — applies to the rows
+  // Select-all for the Scanner Suggestions header checkbox — applies to the rows
   // currently rendered (respecting the collapsed preview + active filters).
   const allAiSelected  = visibleAI.length > 0 && visibleAI.every((i) => selectedAiIds.includes(i.id));
   const someAiSelected = visibleAI.some((i) => selectedAiIds.includes(i.id));
@@ -693,7 +783,7 @@ export default function Inbox({ appState }) {
   };
 
   // Item props builder — selection context passed per-table
-  const itemProps = (inp, selectedIds, onToggle, anyTableSelected) => {
+  const itemProps = (inp, selectedIds, onToggle, anyTableSelected, handlers) => {
     // Cross-reference against currently-active projects — `projects` only
     // contains live (non-deleted) rows, so this drops references to
     // projects the user has since deleted.
@@ -719,6 +809,13 @@ export default function Inbox({ appState }) {
       selected: selectedIds.includes(inp.id),
       onToggle,
       anySelected: anyTableSelected,
+      // Drag + shift/option selection wiring
+      draggable: true,
+      dragging: !!dragInputIds && dragInputIds.includes(inp.id),
+      onRowClick: (e) => handlers.handleRowClick(inp.id, e),
+      onSelect: (e) => handlers.handleSelect(inp.id, e),
+      onDragStart: (e) => handlers.handleDragStart(inp.id, e),
+      onDragEnd: (e) => handlers.handleDragEnd(e),
     };
   };
 
@@ -739,8 +836,11 @@ export default function Inbox({ appState }) {
 
   const renderItems = (items, getProps, headerProps) => renderList(items, getProps, headerProps);
 
-  const manualGetProps = (inp) => itemProps(inp, selectedManualIds, toggleSelectManual, selectedManualIds.length > 0);
-  const aiGetProps     = (inp) => itemProps(inp, selectedAiIds,     toggleSelectAi,     selectedAiIds.length > 0);
+  const manualHandlers = makeTableHandlers(filteredManual, selectedManualIds, setSelectedManualIds, manualLastChecked, setManualLastChecked);
+  const aiHandlers     = makeTableHandlers(visibleAI,      selectedAiIds,     setSelectedAiIds,     aiLastChecked,     setAiLastChecked);
+
+  const manualGetProps = (inp) => itemProps(inp, selectedManualIds, toggleSelectManual, selectedManualIds.length > 0, manualHandlers);
+  const aiGetProps     = (inp) => itemProps(inp, selectedAiIds,     toggleSelectAi,     selectedAiIds.length > 0,     aiHandlers);
 
   // Empty state content for the My Inputs section — rendered inside the table body
   const manualEmptyContent = manualInputs.length === 0 && hasAnyManualInputs ? (
@@ -763,8 +863,15 @@ export default function Inbox({ appState }) {
     </div>
   );
 
+  const dragLabel = dragInputIds
+    ? (dragInputIds.length === 1
+        ? (inputs.find((i) => i.id === dragInputIds[0])?.name || "1 input")
+        : `${dragInputIds.length} inputs`)
+    : "";
+
   return (
     <>
+      <DragGhost active={!!dragInputIds} label={dragLabel} x={dragPos.x} y={dragPos.y} />
       <div style={{ padding: "24px 32px", background: c.bg, minHeight: "100%" }}>
 
         {/* ── Header ───────────────────────────────────────────── */}
@@ -872,10 +979,10 @@ export default function Inbox({ appState }) {
           </div>
         </div>
 
-        {/* ── AI Suggested table ───────────────────────────────── */}
+        {/* ── Scanner Suggestions table ───────────────────────────── */}
         {aiInputs.length > 0 && (
           <>
-            <SectionHeader title="AI Suggested" count={aiInputs.length} icon={<Sparkles size={16} />} />
+            <SectionHeader title="Scanner Suggestions" count={aiInputs.length} icon={<Sparkles size={16} />} />
 
             <SearchFilterBar
               search={aiSearch}
@@ -898,7 +1005,7 @@ export default function Inbox({ appState }) {
               Showing {filteredAI.length} of {aiInputs.length}
             </div>
 
-            {/* AI Suggested inline action bar */}
+            {/* Scanner Suggestions inline action bar */}
             {selectedAiIds.length > 0 && (
               <div style={{
                 display: "flex", alignItems: "center", gap: 8,

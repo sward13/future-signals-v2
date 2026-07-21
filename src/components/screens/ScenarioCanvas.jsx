@@ -714,12 +714,18 @@ function LeftSidebar({ clusters, canvasNodes, onAdd, collapsed, onToggle }) {
             return (
               <div
                 key={cl.id}
+                draggable={!added}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("application/cluster-id", cl.id);
+                  e.dataTransfer.effectAllowed = "move";
+                }}
                 style={{
                   padding: "9px 12px 9px 14px",
                   borderBottom: `1px solid ${c.border}`,
                   borderLeft: `3px solid ${lb}`,
                   display: "flex", alignItems: "flex-start", gap: 8,
                   background: added ? "rgba(0,0,0,0.015)" : c.white,
+                  cursor: added ? "default" : "grab",
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -1148,7 +1154,7 @@ function CanvasArea({
   connectMode, setConnectMode,
   selectedItem, setSelectedItem,
   onConnect, onNodeDragStop,
-  onRemoveNode, isPanning,
+  onRemoveNode, onDropCluster, isPanning,
   panelsHidden, onTogglePanels,
   isFullscreen, onToggleFullscreen,
   systemMapExportRef,
@@ -1548,8 +1554,28 @@ function CanvasArea({
     ? rfNodes.find((n) => n.id === selectedTextNodeId) ?? null
     : null;
 
+  // Drop a cluster from the library onto the canvas at the drop position. HTML5
+  // DnD is a separate event stream from React Flow's pointer-based pan/select, so
+  // no tool gating is needed; onDragOver must preventDefault to accept the drop.
+  const handleCanvasDragOver = useCallback((event) => {
+    if (event.dataTransfer.types.includes("application/cluster-id")) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+    }
+  }, []);
+  const handleCanvasDrop = useCallback((event) => {
+    const id = event.dataTransfer.getData("application/cluster-id");
+    if (!id) return;
+    event.preventDefault();
+    onDropCluster(id, screenToFlowPosition({ x: event.clientX, y: event.clientY }));
+  }, [onDropCluster, screenToFlowPosition]);
+
   return (
-    <div style={{ flex: 1, position: "relative", width: "100%", height: "100%", cursor: activeTool === "text" ? "crosshair" : activeTool === "hand" ? "grab" : undefined }}>
+    <div
+      onDragOver={handleCanvasDragOver}
+      onDrop={handleCanvasDrop}
+      style={{ flex: 1, position: "relative", width: "100%", height: "100%", cursor: activeTool === "text" ? "crosshair" : activeTool === "hand" ? "grab" : undefined }}
+    >
       {/* Global SVG marker definitions — one per relationship type, always in DOM */}
       <svg ref={markerSvgRef} style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
         <defs>
@@ -1912,6 +1938,18 @@ export default function ScenarioCanvas({ appState }) {
     });
   }, [projectNodes, addCanvasNode, activeProjectId]);
 
+  // Drop path: same persistence as handleAddToCanvas, but at the drop position
+  // (flow coords from screenToFlowPosition) instead of the grid auto-layout.
+  const handleDropCluster = useCallback((clusterId, position) => {
+    if (projectNodes.find((n) => n.clusterId === clusterId)) return;
+    addCanvasNode({
+      projectId: activeProjectId,
+      clusterId,
+      x: position.x,
+      y: position.y,
+    });
+  }, [projectNodes, addCanvasNode, activeProjectId]);
+
   const handleRemoveFromCanvas = useCallback((nodeId) => {
     const node = projectNodes.find((n) => n.id === nodeId);
     removeCanvasNode(nodeId);
@@ -2101,6 +2139,7 @@ export default function ScenarioCanvas({ appState }) {
               onConnect={onConnect}
               onNodeDragStop={onNodeDragStop}
               onRemoveNode={handleRemoveFromCanvas}
+              onDropCluster={handleDropCluster}
               isPanning={isPanning}
               panelsHidden={panelsHidden}
               onTogglePanels={() => setPanelsHidden((h) => !h)}

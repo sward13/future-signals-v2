@@ -84,7 +84,7 @@ function InputTypeBadge({ subtype }) {
   );
 }
 
-// ─── AI Suggested row ─────────────────────────────────────────────────────────
+// ─── Scanner Suggestions row ───────────────────────────────────────────────────
 
 const CLASSIF_STYLE = {
   emerging:    { bg: "#FEF3C7", text: "#92400E", label: "Emerging" },
@@ -259,7 +259,7 @@ export default function ProjectDetail({ appState }) {
   // Row context menu + cluster picker for "Duplicate to cluster"
   const [rowMenu,    setRowMenu]    = useState(null); // null | { inputId, rect }
   const [dupePicker, setDupePicker] = useState(null); // null | { inputId, rect }
-  // AI Suggested tab state
+  // Scanner Suggestions tab state
   const [aiSearchQuery,        setAiSearchQuery]        = useState("");
   const [aiFilterType,         setAiFilterType]         = useState(null);
   const [aiFilterSteepled,     setAiFilterSteepled]     = useState(null);
@@ -362,7 +362,7 @@ export default function ProjectDetail({ appState }) {
     setLastCheckedId(id);
   };
 
-  // ── AI Suggested derived values ──────────────────────────────────────────────
+  // ── Scanner Suggestions derived values ───────────────────────────────────────
   const aiSuggestedInputs = inputs
     .filter((i) =>
       i.project_id === null &&
@@ -591,7 +591,7 @@ export default function ProjectDetail({ appState }) {
               <FilterTab label="All"          count={projectInputs.length}       active={inputTab === "all"}         onClick={() => { setInputTab("all");         setSelectedIds(new Set()); setLastCheckedId(null); setAiSelectedIds(new Set()); setAiLastCheckedId(null); }} />
               <FilterTab label="Unassigned"   count={unassigned.length}           active={inputTab === "unassigned"}  onClick={() => { setInputTab("unassigned");  setSelectedIds(new Set()); setLastCheckedId(null); setAiSelectedIds(new Set()); setAiLastCheckedId(null); }} />
               <FilterTab label="Clustered"    count={inCluster.length}            active={inputTab === "incluster"}   onClick={() => { setInputTab("incluster");   setSelectedIds(new Set()); setLastCheckedId(null); setAiSelectedIds(new Set()); setAiLastCheckedId(null); }} />
-              <FilterTab label="AI Suggested" count={aiSuggestedInputs.length}    active={inputTab === "aisuggested"} onClick={() => { setInputTab("aisuggested"); setSelectedIds(new Set()); setLastCheckedId(null); }} />
+              <FilterTab label="Scanner Suggestions" count={aiSuggestedInputs.length}    active={inputTab === "aisuggested"} onClick={() => { setInputTab("aisuggested"); setSelectedIds(new Set()); setLastCheckedId(null); }} />
             </div>
             <button
               onClick={() => setCsvImportOpen(true)}
@@ -602,7 +602,7 @@ export default function ProjectDetail({ appState }) {
           </div>
 
           {inputTab === "aisuggested" ? (
-            /* ── AI Suggested tab ──────────────────────────────── */
+            /* ── Scanner Suggestions tab ───────────────────────── */
             aiSuggestedInputs.length === 0 ? (
               <div style={{
                 background: c.white, border: `1px dashed ${c.border}`,
