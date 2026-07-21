@@ -93,6 +93,10 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [activePFId, setActivePFId] = useState(null);
   // undefined = first visit (apply default); null = user explicitly cleared; "uuid" = deep-link/selected
   const [inboxProjectFilter, setInboxProjectFilter] = useState(undefined);
+  // Shared drag state for dragging Inbox inputs onto Sidebar projects.
+  // null = no drag in progress; string[] = ids being dragged. Lifted here because
+  // the drag source (Inbox) and drop target (Sidebar) are sibling screens.
+  const [dragInputIds, setDragInputIds] = useState(null);
   // Cross-screen signal: Overview "Manage sources" sets this true; ProjectDetail reads and clears it
   const [openScanningPrefs, setOpenScanningPrefs] = useState(false);
   // Cross-screen signal: ClusterScreen's InputRail sets this true while its sticky
@@ -1822,6 +1826,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     showToast,
     inboxProjectFilter,
     setInboxProjectFilter,
+    dragInputIds,
+    setDragInputIds,
     openScanningPrefs,
     setOpenScanningPrefs,
     systemMapExportRef,

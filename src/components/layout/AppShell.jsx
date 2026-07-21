@@ -6,7 +6,17 @@
 import { Sidebar } from "./Sidebar.jsx";
 
 export function AppShell({ appState, children, scroll = true, onSignOut, onExport }) {
-  const { activeScreen, setActiveScreen, setActiveProjectId, openProject, user, inputs, clusters, scenarios, preferredFutures, strategicOptions, projects, activeProjectId, openProjectModal, analyses, canvasNodes } = appState;
+  const { activeScreen, setActiveScreen, setActiveProjectId, openProject, user, inputs, clusters, scenarios, preferredFutures, strategicOptions, projects, activeProjectId, openProjectModal, analyses, canvasNodes, dragInputIds, setDragInputIds, saveInputsToProject, showToast } = appState;
+
+  // Drop handler for inputs dragged from the Inbox onto a Sidebar project.
+  const handleDropInputsToProject = (project) => {
+    const ids = dragInputIds;
+    setDragInputIds(null);
+    if (!ids || ids.length === 0 || !project) return;
+    saveInputsToProject(ids, project.id);
+    const n = ids.length;
+    showToast(`${n} input${n === 1 ? "" : "s"} moved to “${project.name}”`);
+  };
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || null;
   const inboxCount = inputs.filter((i) =>
@@ -66,6 +76,8 @@ export function AppShell({ appState, children, scroll = true, onSignOut, onExpor
         projects={projects}
         setActiveProjectId={setActiveProjectId}
         openProject={openProject}
+        dragActive={!!dragInputIds}
+        onDropInputsToProject={handleDropInputsToProject}
       />
       <div style={{
         flex: 1,
