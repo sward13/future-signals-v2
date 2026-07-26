@@ -24,6 +24,7 @@ Future Signals v2 is a strategic foresight SPA built with React + Vite. It guide
 - **Regenerate types against staging:** `supabase gen types typescript --project-id kptatqipjwihkdxdxlvh > src/types/database.types.ts`
 - **Migration workflow:** run new migrations on staging first via `supabase db push --db-url <staging-db-url>`, then on production when merging to master
 - **Vercel preview deployments** on the `workspace-refactor` branch automatically use staging credentials (`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` pointed at staging)
+- **Vercel production** deploys from the `master` branch (Project Settings → Git → Production Branch) and is served at `https://app.futuresignals.io` (Vercel aliases: `future-signals-v2.vercel.app`, `future-signals-v2-git-master-*`). Merging a PR into `master` triggers an automatic production deploy — confirm the deployed commit via `vercel inspect <url> --logs` (the clone line names the branch + commit).
 - **DB passwords** are not stored here — retrieve from Supabase Dashboard → Project Settings → Database
 
 ---
@@ -246,7 +247,7 @@ The sidebar is **196px wide**, `background: c.bg`, with a single `0.5px` border-
 **Structure (top to bottom):**
 1. Logo mark + "Future Signals" wordmark — no project name subtitle
 2. Nav list — flat, no section labels
-3. Account footer — user avatar, name, plan
+3. Account footer — user avatar + email only (click opens Settings). No experience-level/plan label — the level line (`Beginner`/`Intermediate`/`Advanced`) was intentionally removed from this card; don't re-add it. Note `user.level` still exists in app state and `experience_level` still exists on `workspaces` — only the sidebar *display* was removed.
 
 **Nav list order:**
 - Dashboard *(global)*
