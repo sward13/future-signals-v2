@@ -284,17 +284,13 @@ export function Sidebar({
           }}>
             {getInitials(user)}
           </div>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{
-              fontSize: 11, color: activeScreen === "settings" ? c.ink : c.faint,
-              fontWeight: activeScreen === "settings" ? 500 : 400,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
-              {user?.email || "user@example.com"}
-            </div>
-            <div style={{ fontSize: 10, color: c.hint, marginTop: 1 }}>
-              {user?.level === "advanced" ? "Advanced" : user?.level === "intermediate" ? "Intermediate" : "Beginner"}
-            </div>
+          <div style={{
+            minWidth: 0, flex: 1,
+            fontSize: 11, color: activeScreen === "settings" ? c.ink : c.faint,
+            fontWeight: activeScreen === "settings" ? 500 : 400,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {user?.email || "user@example.com"}
           </div>
         </button>
       </div>
