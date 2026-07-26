@@ -4,12 +4,13 @@
  * Open the side panel when the user clicks the toolbar action.
  *
  * Deliberately not chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }):
- * Chrome docs state activeTab is not supported in conjunction with
- * openPanelOnActionClick, because that path opens the panel at the platform
- * level without ever firing chrome.action.onClicked — and activeTab is only
- * granted in response to that event actually firing. Since content.js
- * injection (lib/activeTabPage.ts) relies on activeTab, the panel has to be
- * opened from inside a real onClicked listener instead.
+ * this was originally required because the old activeTab model only granted
+ * host access in response to chrome.action.onClicked firing, and
+ * openPanelOnActionClick opens the panel at the platform level without ever
+ * firing it. That coupling is gone now that content.js injection
+ * (lib/activeTabPage.ts) is backed by host_permissions instead of activeTab,
+ * but the explicit-listener approach is kept on purpose: chrome.sidePanel.open()
+ * must be called from a user gesture, and this onClicked listener is that gesture.
  *
  * openPanelOnActionClick is persisted by Chrome per-extension, not derived
  * from whether this code calls it — an earlier build called it with `true`

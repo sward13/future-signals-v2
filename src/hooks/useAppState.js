@@ -502,6 +502,16 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     }
   }, [workspaceId, showToast]);
 
+  // Optimistically bump a project's updated_at in local state so the dashboard
+  // "Updated" date moves without waiting for a refetch. The DB is the source of
+  // truth — a trigger on every project-scoped content table keeps it correct on
+  // reload regardless — this just mirrors the most common activity in-session.
+  const touchProjectLocal = useCallback((projectId) => {
+    if (!projectId) return;
+    const now = new Date().toISOString();
+    setProjects((prev) => prev.map((p) => p.id === projectId ? { ...p, updated_at: now } : p));
+  }, []);
+
   const updateProjectSource = useCallback((id, fields) => {
     setProjectSources((prev) => prev.map((ps) => ps.id === id ? { ...ps, ...fields } : ps));
     supabase
@@ -570,6 +580,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
 
     // Optimistic local update
     setInputs((prev) => [newInput, ...prev]);
+    touchProjectLocal(newInput.project_id);
 
     // Persist to Supabase
     if (workspaceId) {
@@ -587,7 +598,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     }
 
     return newInput;
-  }, [workspaceId, showToast]);
+  }, [workspaceId, showToast, touchProjectLocal]);
 
   const updateInput = useCallback((id, fields) => {
     let prevSnapshot;
@@ -621,6 +632,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     setInputs((prev) =>
       prev.map((inp) => inp.id === id ? { ...inp, project_id: projectId } : inp)
     );
+    touchProjectLocal(projectId);
     if (workspaceId) {
       (async () => {
         try {
@@ -642,13 +654,14 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
         }
       })();
     }
-  }, [workspaceId, showToast]);
+  }, [workspaceId, showToast, touchProjectLocal]);
 
   const saveInputsToProject = useCallback((ids, projectId) => {
     const idSet = new Set(ids);
     setInputs((prev) =>
       prev.map((inp) => idSet.has(inp.id) ? { ...inp, project_id: projectId } : inp)
     );
+    touchProjectLocal(projectId);
     if (workspaceId) {
       (async () => {
         try {
@@ -663,7 +676,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
         }
       })();
     }
-  }, [workspaceId, showToast]);
+  }, [workspaceId, showToast, touchProjectLocal]);
 
   const dismissInput = useCallback((id) => {
     setInputs((prev) => prev.filter((inp) => inp.id !== id));
@@ -777,6 +790,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
 
     // Optimistic local update
     setClusters((prev) => [newCluster, ...prev]);
+    touchProjectLocal(newCluster.project_id);
 
     if (workspaceId) {
       (async () => {
@@ -814,7 +828,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     }
 
     return newCluster;
-  }, [workspaceId, showToast]);
+  }, [workspaceId, showToast, touchProjectLocal]);
 
   const updateCluster = useCallback((id, fields) => {
     // Strip input_ids from the Supabase update — membership lives in junction table

@@ -65,12 +65,14 @@ function ProjectCard({ project, inputCount, clusterCount, systemMapCount, analys
     clusterCount > 0   ? "clusters"  :
                          "inputs";
 
+  // Labels mirror the sidebar and Overview Workflow stages exactly. The `key`
+  // values stay as-is (they drive activeStage + bar fills, not display).
   const STAGES = [
-    { key: "inputs",    label: "Inputs",     filled: inputCount > 0,    display: String(inputCount) },
-    { key: "clusters",  label: "Clusters",   filled: clusterCount > 0,  display: String(clusterCount) },
-    { key: "systemmap", label: "System Map", filled: systemMapCount > 0, display: systemMapCount > 0 ? "✓" : "—" },
-    { key: "analysis",  label: "Analysis",   filled: analysisCount > 0,  display: analysisCount > 0 ? "✓" : "—" },
-    { key: "futures",   label: "Futures",    filled: futuresTotal > 0,   display: futuresTotal > 0 ? "✓" : "—" },
+    { key: "inputs",    label: "Scan",            filled: inputCount > 0,    display: String(inputCount) },
+    { key: "clusters",  label: "Cluster",         filled: clusterCount > 0,  display: String(clusterCount) },
+    { key: "systemmap", label: "System Map",      filled: systemMapCount > 0, display: systemMapCount > 0 ? "✓" : "—" },
+    { key: "analysis",  label: "System Analysis", filled: analysisCount > 0,  display: analysisCount > 0 ? "✓" : "—" },
+    { key: "futures",   label: "Future Models",   filled: futuresTotal > 0,   display: futuresTotal > 0 ? "✓" : "—" },
   ];
 
   return (
@@ -141,7 +143,10 @@ function ProjectCard({ project, inputCount, clusterCount, systemMapCount, analys
               <div style={{
                 fontSize: 10, color: isActive ? "#6366F1" : stage.filled ? c.muted : c.hint,
                 fontWeight: isActive ? 500 : 400,
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                // Two-line wrap: "System Analysis" / "Future Models" don't fit on
+                // one line in the ~52px per-stage column. Fixed 2-line height keeps
+                // the count/arrow row below aligned across all five stages.
+                lineHeight: 1.2, height: 24, overflow: "hidden",
                 marginBottom: 2,
               }}>
                 {stage.label}
@@ -344,11 +349,11 @@ export default function Dashboard({ appState }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", height: 30, borderBottom: "0.5px solid rgba(0,0,0,0.09)" }}>
                   <div style={{ flex: 1, minWidth: 0, ...cell }}>Name</div>
                   <div style={{ width: 160, ...cell }}>Domain</div>
-                  <div style={{ width: 80, textAlign: "right", ...cell }}>Inputs</div>
-                  <div style={{ width: 80, textAlign: "right", ...cell }}>Clusters</div>
+                  <div style={{ width: 80, textAlign: "right", ...cell }}>Scan</div>
+                  <div style={{ width: 80, textAlign: "right", ...cell }}>Cluster</div>
                   <div style={{ width: 80, textAlign: "right", ...cell }}>System Map</div>
-                  <div style={{ width: 80, textAlign: "right", ...cell }}>Analysis</div>
-                  <div style={{ width: 80, textAlign: "right", ...cell }}>Futures</div>
+                  <div style={{ width: 80, textAlign: "right", ...cell }}>System Analysis</div>
+                  <div style={{ width: 80, textAlign: "right", ...cell }}>Future Models</div>
                   <div style={{ width: 32, ...cell }} />
                 </div>
               );
