@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { RadioOff } from "lucide-react";
 import { supabase } from "../../lib/supabase.js";
 import { c, btnP } from "../../styles/tokens.js";
 import logoLight from "../../assets/logo_light.svg";
@@ -51,8 +52,8 @@ function CredibilityBadge({ credibility }) {
         fontSize: 9,
         padding: "1px 5px",
         borderRadius: 3,
-        background: isInstitutional ? "#D1FAE5" : "#FEF3C7",
-        color:      isInstitutional ? "#065F46" : "#92400E",
+        background: isInstitutional ? c.green50 : c.amber50,
+        color:      isInstitutional ? c.green700 : c.amber700,
         fontWeight: 500,
       }}
     >
@@ -66,8 +67,8 @@ function CandidateCard({ candidate, selected, onToggle }) {
     <div
       onClick={onToggle}
       style={{
-        background: selected ? "#F8FBFF" : c.white,
-        border: `1px solid ${selected ? c.brand : "#E5E7EB"}`,
+        background: selected ? c.brandBg : c.white,
+        border: `1px solid ${selected ? c.brand : c.border}`,
         borderRadius: 8,
         padding: "11px 12px",
         cursor: "pointer",
@@ -85,7 +86,7 @@ function CandidateCard({ candidate, selected, onToggle }) {
           borderRadius: 4,
           border: selected
             ? `1.5px solid ${c.brand}`
-            : "1.5px solid rgba(0,0,0,0.18)",
+            : `1.5px solid ${c.borderMid}`,
           background: selected ? c.brand : "transparent",
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 9,
@@ -100,7 +101,7 @@ function CandidateCard({ candidate, selected, onToggle }) {
       {/* Source + credibility */}
       <div
         style={{
-          fontSize: 10, color: "#9CA3AF",
+          fontSize: 10, color: c.hint,
           marginBottom: 3,
           display: "flex", alignItems: "center", gap: 5,
         }}
@@ -124,7 +125,7 @@ function CandidateCard({ candidate, selected, onToggle }) {
       {/* Summary */}
       <div
         style={{
-          fontSize: 11, color: "#6B7280",
+          fontSize: 11, color: c.muted,
           lineHeight: 1.5,
           marginBottom: 6,
         }}
@@ -142,8 +143,8 @@ function CandidateCard({ candidate, selected, onToggle }) {
                 fontSize: 10,
                 padding: "2px 7px",
                 borderRadius: 10,
-                background: "#F3F4F6",
-                color: "#6B7280",
+                background: c.surfaceAlt,
+                color: c.muted,
                 border: `1px solid ${c.border}`,
               }}
             >
@@ -265,7 +266,7 @@ export function ScannerInboxStep({
     if (n === 0) return "Select signals to add to your project";
     if (belowThreshold) return "Select all signals that look relevant";
     if (n >= CLUSTER_THRESHOLD)
-      return <span style={{ color: "#065F46" }}><strong>{n} selected — ready to cluster</strong></span>;
+      return <span style={{ color: c.green700 }}><strong>{n} selected — ready to cluster</strong></span>;
     return <span><strong>{n}</strong> selected — add <strong>{CLUSTER_THRESHOLD - n}</strong> more to unlock AI clustering</span>;
   };
 
@@ -292,7 +293,7 @@ export function ScannerInboxStep({
       <div
         style={{
           background: c.white,
-          borderBottom: "0.5px solid rgba(0,0,0,0.09)",
+          borderBottom: `0.5px solid ${c.border}`,
           padding: "0 32px",
           height: 52,
           display: "flex",
@@ -323,7 +324,7 @@ export function ScannerInboxStep({
         <div
           style={{
             background: c.white,
-            border: "0.5px solid rgba(0,0,0,0.09)",
+            border: `0.5px solid ${c.border}`,
             borderRadius: 12,
             padding: "32px 36px",
             width: "100%",
@@ -355,7 +356,7 @@ export function ScannerInboxStep({
           </h2>
 
           {/* Sub */}
-          <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 14px", lineHeight: 1.6 }}>
+          <p style={{ fontSize: 13, color: c.muted, margin: "0 0 14px", lineHeight: 1.6 }}>
             We scanned <strong>{domain}</strong> sources for signals matching your key question.
             Select the ones that look relevant — you can review the rest from the Scanner tab any time.
           </p>
@@ -364,8 +365,8 @@ export function ScannerInboxStep({
           <div
             style={{
               padding: "9px 14px",
-              borderLeft: "2px solid #3B82F6",
-              background: "#F0F7FF",
+              borderLeft: `2px solid ${c.brand}`,
+              background: c.brandBg,
               borderRadius: "0 7px 7px 0",
               marginBottom: 14,
             }}
@@ -405,7 +406,7 @@ export function ScannerInboxStep({
             <div
               style={{
                 flex: 1, height: 5,
-                background: "#E5E7EB",
+                background: c.border,
                 borderRadius: 3, overflow: "hidden",
               }}
             >
@@ -421,7 +422,7 @@ export function ScannerInboxStep({
             </div>
             <div
               style={{
-                fontSize: 11, color: "#6B7280",
+                fontSize: 11, color: c.muted,
                 whiteSpace: "nowrap",
                 minWidth: 200,
                 textAlign: "right",
@@ -483,7 +484,7 @@ export function ScannerInboxStep({
                   disabled={promoting}
                   style={{
                     background: "none", border: "none",
-                    color: "#6B7280", fontSize: 12,
+                    color: c.muted, fontSize: 12,
                     cursor: "pointer", fontFamily: "inherit",
                     padding: "4px 0",
                   }}
@@ -496,7 +497,7 @@ export function ScannerInboxStep({
                 disabled={promoting}
                 style={{
                   background: "none", border: "none",
-                  color: "#6B7280", fontSize: 12,
+                  color: c.muted, fontSize: 12,
                   cursor: "pointer", fontFamily: "inherit",
                   padding: "4px 0",
                 }}
@@ -545,7 +546,7 @@ function EmptyState({ onComplete, domain }) {
       <div
         style={{
           background: c.white,
-          borderBottom: "0.5px solid rgba(0,0,0,0.09)",
+          borderBottom: `0.5px solid ${c.border}`,
           padding: "0 32px",
           height: 52,
           display: "flex",
@@ -591,7 +592,7 @@ function EmptyState({ onComplete, domain }) {
         <div
           style={{
             background: c.white,
-            border: "0.5px solid rgba(0,0,0,0.09)",
+            border: `0.5px solid ${c.border}`,
             borderRadius: 12,
             padding: "40px 36px",
             maxWidth: 480,
@@ -600,7 +601,9 @@ function EmptyState({ onComplete, domain }) {
             boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
           }}
         >
-          <div style={{ fontSize: 28, marginBottom: 16 }}>◎</div>
+          <div style={{ marginBottom: 16, color: c.hint, display: "flex", justifyContent: "center" }}>
+            <RadioOff size={30} strokeWidth={1.5} aria-hidden="true" />
+          </div>
           <h2
             style={{
               fontFamily: "'Roboto', -apple-system, sans-serif",
@@ -610,7 +613,7 @@ function EmptyState({ onComplete, domain }) {
           >
             No signals found for {domain} yet
           </h2>
-          <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 24px", lineHeight: 1.6 }}>
+          <p style={{ fontSize: 13, color: c.muted, margin: "0 0 24px", lineHeight: 1.6 }}>
             Your scanner will keep checking as new sources publish — add your first signal manually to get started.
           </p>
           <button

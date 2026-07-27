@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Circle, CircleCheck, Target } from "lucide-react";
 import { c } from "../../styles/tokens.js";
 import logoLight from "../../assets/logo_light.svg";
 
@@ -43,37 +44,31 @@ function StepDots() {
 
 type StepStatus = "pending" | "active" | "done";
 
-function StepIcon({ status }: { status: StepStatus }) {
+function StepIcon({ status, isFinal }: { status: StepStatus; isFinal: boolean }) {
+  const size = 17;
+  // The terminal "Signals ready" step is marked with a target, in every state.
+  if (isFinal) {
+    return (
+      <Target
+        size={size}
+        color={status === "pending" ? c.hint : c.brand}
+        strokeWidth={2}
+        style={{ flexShrink: 0 }}
+        aria-hidden="true"
+      />
+    );
+  }
+  if (status === "done") {
+    return <CircleCheck size={size} color={c.green700} strokeWidth={2} style={{ flexShrink: 0 }} aria-hidden="true" />;
+  }
   return (
-    <div
-      style={{
-        width: 18, height: 18,
-        borderRadius: "50%",
-        flexShrink: 0,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 9,
-        background:
-          status === "done"    ? "#D1FAE5" :
-          status === "active"  ? "#DBEAFE" :
-          "#E5E7EB",
-        border: status === "active" ? "1.5px solid #3B82F6" : "none",
-      }}
-    >
-      {status === "done" && (
-        <span style={{ color: "#065F46", fontSize: 9, fontWeight: 600 }}>✓</span>
-      )}
-      {status === "active" && (
-        <div
-          style={{
-            width: 10, height: 10,
-            borderRadius: "50%",
-            border: "1.5px solid #BFDBFE",
-            borderTopColor: "#3B82F6",
-            animation: "ct-spin 0.7s linear infinite",
-          }}
-        />
-      )}
-    </div>
+    <Circle
+      size={size}
+      color={status === "active" ? c.brand : c.hint}
+      strokeWidth={2}
+      style={{ flexShrink: 0 }}
+      aria-hidden="true"
+    />
   );
 }
 
@@ -107,12 +102,18 @@ export function CreatingTransition({ onNext, projectDomain }: Props) {
   return (
     <>
       <style>{`
-        @keyframes ct-pulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50%       { transform: scale(1.06); opacity: 0.85; }
-        }
         @keyframes ct-spin {
           to { transform: rotate(360deg); }
+        }
+        .ct-spinner {
+          width: 48px; height: 48px;
+          border-radius: 50%;
+          border: 3px solid ${c.border};
+          border-top-color: ${c.brand};
+          animation: ct-spin 0.8s linear infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ct-spinner { animation: none; }
         }
       `}</style>
 
@@ -132,7 +133,7 @@ export function CreatingTransition({ onNext, projectDomain }: Props) {
         <div
           style={{
             background: c.white,
-            borderBottom: "0.5px solid rgba(0,0,0,0.09)",
+            borderBottom: `0.5px solid ${c.border}`,
             padding: "0 32px",
             height: 52,
             display: "flex",
@@ -161,27 +162,8 @@ export function CreatingTransition({ onNext, projectDomain }: Props) {
           }}
         >
           <div style={{ textAlign: "center", maxWidth: 400, width: "100%" }}>
-            {/* Pulsing ring */}
-            <div
-              style={{
-                width: 60, height: 60,
-                borderRadius: "50%",
-                background: "#EFF6FF",
-                border: "2px solid #BFDBFE",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                margin: "0 auto 20px",
-                animation: "ct-pulse 1.5s ease-in-out infinite",
-              }}
-            >
-              <div
-                style={{
-                  width: 30, height: 30,
-                  borderRadius: "50%",
-                  background: "#3B82F6",
-                  border: "2px solid #93C5FD",
-                }}
-              />
-            </div>
+            {/* CSS loader (cssloaders.github.io style) — respects reduced motion */}
+            <div className="ct-spinner" style={{ margin: "0 auto 20px" }} aria-hidden="true" />
 
             {/* Title */}
             <h2
@@ -198,7 +180,7 @@ export function CreatingTransition({ onNext, projectDomain }: Props) {
             {/* Sub */}
             <p
               style={{
-                fontSize: 13, color: "#6B7280",
+                fontSize: 13, color: c.muted,
                 lineHeight: 1.6,
                 margin: "0 0 22px",
               }}
@@ -227,14 +209,14 @@ export function CreatingTransition({ onNext, projectDomain }: Props) {
                       display: "flex", alignItems: "center", gap: 10,
                       fontSize: 12,
                       color:
-                        status === "done"   ? "#065F46" :
+                        status === "done"   ? c.green700 :
                         status === "active" ? c.ink :
-                        "#9CA3AF",
+                        c.hint,
                       fontWeight: status === "active" ? 500 : 400,
                       transition: "color 0.3s",
                     }}
                   >
-                    <StepIcon status={status} />
+                    <StepIcon status={status} isFinal={i === steps.length - 1} />
                     {label}
                   </div>
                 );

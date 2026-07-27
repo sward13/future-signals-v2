@@ -101,6 +101,12 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
     <div
       style={{
         minHeight: "100vh",
+        // flexShrink:0 — this screen is a flex child of #root (height:100%). An
+        // explicit minHeight overrides flex's default min-height:auto, letting the
+        // fixed-height parent shrink us to 100vh while taller content overflows onto
+        // the (unpainted) body below. flexShrink:0 keeps us at max(content,100vh) so
+        // the background always covers the full content height.
+        flexShrink: 0,
         display: "flex",
         flexDirection: "column",
         background: c.bg,
@@ -114,7 +120,7 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
       <div
         style={{
           background: c.white,
-          borderBottom: "0.5px solid rgba(0,0,0,0.09)",
+          borderBottom: `0.5px solid ${c.border}`,
           padding: "0 32px",
           height: 52,
           display: "flex",
@@ -145,7 +151,7 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
         <div
           style={{
             background: c.white,
-            border: "0.5px solid rgba(0,0,0,0.09)",
+            border: `0.5px solid ${c.border}`,
             borderRadius: 12,
             padding: "32px 36px",
             width: "100%",
@@ -181,7 +187,7 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
           </h2>
 
           {/* Sub */}
-          <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 22px", lineHeight: 1.6 }}>
+          <p style={{ fontSize: 13, color: c.muted, margin: "0 0 22px", lineHeight: 1.6 }}>
             Your scanner starts pulling from your domain's sources as soon as you hit create. Add a key question next and it'll rank signals against it too.
           </p>
 
@@ -238,12 +244,12 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
                     style={{
                       padding: "10px 13px",
                       borderRadius: 8,
-                      border: `1px solid ${isActive ? c.brand : "rgba(0,0,0,0.16)"}`,
-                      background: isActive ? "#EFF6FF" : c.white,
+                      border: `1px solid ${isActive ? c.brand : c.borderMid}`,
+                      background: isActive ? c.brandBg : c.white,
                       fontFamily: "inherit",
                       fontSize: 12,
                       fontWeight: isActive ? 500 : 400,
-                      color: isActive ? "#1E40AF" : c.ink,
+                      color: isActive ? c.blue700 : c.ink,
                       textAlign: "left",
                       display: "flex",
                       alignItems: "center",
@@ -287,8 +293,8 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
             <div
               style={{
                 marginTop: 16,
-                background: "#F0F7FF",
-                border: "1px solid #BFDBFE",
+                background: c.brandBg,
+                border: `1px solid ${c.brandBorder}`,
                 borderRadius: 8,
                 overflow: "hidden",
               }}
@@ -342,7 +348,7 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
                 <div
                   style={{
                     padding: "0 14px 14px",
-                    borderTop: "0.5px solid rgba(59,130,246,0.2)",
+                    borderTop: `0.5px solid ${c.brandBorder}`,
                     display: "flex",
                     flexDirection: "column",
                     gap: 12,
@@ -398,7 +404,7 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
                   style={{
                     marginTop: 12,
                     paddingTop: 12,
-                    borderTop: "0.5px solid rgba(0,0,0,0.09)",
+                    borderTop: `0.5px solid ${c.border}`,
                     display: "flex",
                     flexDirection: "column",
                     gap: 12,
