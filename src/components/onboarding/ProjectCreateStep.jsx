@@ -101,6 +101,12 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
     <div
       style={{
         minHeight: "100vh",
+        // flexShrink:0 — this screen is a flex child of #root (height:100%). An
+        // explicit minHeight overrides flex's default min-height:auto, letting the
+        // fixed-height parent shrink us to 100vh while taller content overflows onto
+        // the (unpainted) body below. flexShrink:0 keeps us at max(content,100vh) so
+        // the background always covers the full content height.
+        flexShrink: 0,
         display: "flex",
         flexDirection: "column",
         background: c.bg,
