@@ -133,7 +133,7 @@ export function CreatingTransition({ onNext, projectDomain }: Props) {
         <div
           style={{
             background: c.white,
-            borderBottom: "0.5px solid rgba(0,0,0,0.09)",
+            borderBottom: `0.5px solid ${c.border}`,
             padding: "0 32px",
             height: 52,
             display: "flex",
@@ -180,7 +180,7 @@ export function CreatingTransition({ onNext, projectDomain }: Props) {
             {/* Sub */}
             <p
               style={{
-                fontSize: 13, color: "#6B7280",
+                fontSize: 13, color: c.muted,
                 lineHeight: 1.6,
                 margin: "0 0 22px",
               }}
@@ -209,9 +209,9 @@ export function CreatingTransition({ onNext, projectDomain }: Props) {
                       display: "flex", alignItems: "center", gap: 10,
                       fontSize: 12,
                       color:
-                        status === "done"   ? "#065F46" :
+                        status === "done"   ? c.green700 :
                         status === "active" ? c.ink :
-                        "#9CA3AF",
+                        c.hint,
                       fontWeight: status === "active" ? 500 : 400,
                       transition: "color 0.3s",
                     }}
