@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { RadioOff } from "lucide-react";
 import { supabase } from "../../lib/supabase.js";
 import { c, btnP } from "../../styles/tokens.js";
 import logoLight from "../../assets/logo_light.svg";
@@ -600,7 +601,9 @@ function EmptyState({ onComplete, domain }) {
             boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
           }}
         >
-          <div style={{ fontSize: 28, marginBottom: 16 }}>◎</div>
+          <div style={{ marginBottom: 16, color: c.hint, display: "flex", justifyContent: "center" }}>
+            <RadioOff size={30} strokeWidth={1.5} aria-hidden="true" />
+          </div>
           <h2
             style={{
               fontFamily: "'Roboto', -apple-system, sans-serif",
