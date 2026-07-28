@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { c, btnP } from "../../styles/tokens.js";
+import { SubtypeTag } from "../shared/Tag.jsx";
 import logoLight from "../../assets/logo_light.svg";
 
 interface Props {
@@ -27,26 +28,12 @@ const TOTAL_DOTS = 5;
 const MIN_LOADING_MS  = 2000;
 const EMBED_TIMEOUT_MS = 20_000;
 
-const TYPE_CONFIG: Record<string, {
-  cardBg: string; cardBorder: string;
-  pillBg: string; pillColor: string;
-  def: string;
-}> = {
-  Trend: {
-    cardBg: "#FAF8FF", cardBorder: "#DDD6FE",
-    pillBg: "#EDE9FE", pillColor: "#5B21B6",
-    def: "A pattern of change visible across multiple signals.",
-  },
-  Driver: {
-    cardBg: "#EFF8FF", cardBorder: "#BFDBFE",
-    pillBg: "#DBEAFE", pillColor: "#1E40AF",
-    def: "An underlying force shaping how the trend plays out.",
-  },
-  Tension: {
-    cardBg: "#FFFBEB", cardBorder: "#FDE68A",
-    pillBg: "#FEF3C7", pillColor: "#92400E",
-    def: "A contradiction or pressure point between competing forces.",
-  },
+// Cards are neutral (white); the SubtypeTag badge carries the subtype color.
+// def = the legend copy for each type.
+const TYPE_CONFIG: Record<string, { def: string }> = {
+  Trend:   { def: "A pattern of change visible across multiple signals." },
+  Driver:  { def: "An underlying force shaping how the trend plays out." },
+  Tension: { def: "A contradiction or pressure point between competing forces." },
 };
 
 const capitalize = (s: string) =>
@@ -308,30 +295,23 @@ function ClusterCard({
   inputNameMap: Record<string, string>;
 }) {
   const typeKey = capitalize(cluster.subtype ?? "");
-  const config  = TYPE_CONFIG[typeKey] ?? TYPE_CONFIG.Trend;
 
   return (
     <div style={{
       borderRadius: 10,
       padding: "16px 18px",
       marginBottom: 10,
-      border: `1px solid ${config.cardBorder}`,
-      background: config.cardBg,
+      // Neutral card (white + hairline border), matching the Clusters table's
+      // row treatment — the SubtypeTag badge carries the subtype color, not the card.
+      border: `1px solid ${c.border}`,
+      background: c.white,
     }}>
       {/* Pill + signal count */}
       <div style={{
         display: "flex", alignItems: "center",
         justifyContent: "space-between", gap: 12, marginBottom: 8,
       }}>
-        <span style={{
-          fontSize: 9, fontWeight: 500,
-          textTransform: "uppercase", letterSpacing: "0.06em",
-          padding: "2px 7px", borderRadius: 4,
-          background: config.pillBg, color: config.pillColor,
-          display: "inline-block",
-        }}>
-          {typeKey || cluster.subtype}
-        </span>
+        <SubtypeTag sub={typeKey} />
         <span style={{ fontSize: 10, color: "#9CA3AF", whiteSpace: "nowrap" }}>
           {cluster.input_ids.length} {cluster.input_ids.length === 1 ? "signal" : "signals"}
         </span>
@@ -448,14 +428,8 @@ function ResultsState({
             if (!config) return null;
             return (
               <div key={type} style={{ display: "flex", gap: 10, marginBottom: 7 }}>
-                <span style={{
-                  fontSize: 9, fontWeight: 500,
-                  textTransform: "uppercase", letterSpacing: "0.05em",
-                  padding: "2px 6px", borderRadius: 3,
-                  background: config.pillBg, color: config.pillColor,
-                  flexShrink: 0, alignSelf: "flex-start", marginTop: 1,
-                }}>
-                  {type}
+                <span style={{ flexShrink: 0, alignSelf: "flex-start", marginTop: 1 }}>
+                  <SubtypeTag sub={type} />
                 </span>
                 <span style={{ fontSize: 12, color: "#374151", lineHeight: 1.5 }}>
                   {config.def}
