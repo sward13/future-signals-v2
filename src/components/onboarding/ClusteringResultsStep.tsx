@@ -399,7 +399,7 @@ function ResultsState({
         Here are the patterns in your signals
       </h2>
       <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 18px", lineHeight: 1.6 }}>
-        Each cluster is named and typed by AI. Review them here — once you open your project you can rename, merge, or reassign signals.
+        Our pattern recognition algorithm found these potential clusters in your signals. Edit them when you open your project.
       </p>
 
       {/* Cluster cards */}
