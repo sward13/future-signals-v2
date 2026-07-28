@@ -290,11 +290,16 @@ function NoClustersState({ onComplete, onBack }: { onComplete: () => void; onBac
 function ClusterCard({
   cluster,
   inputNameMap,
+  onDismiss,
+  isDismissing,
 }: {
   cluster: ClusterSuggestion;
   inputNameMap: Record<string, string>;
+  onDismiss: (id: string) => void;
+  isDismissing: boolean;
 }) {
   const typeKey = capitalize(cluster.subtype ?? "");
+  const [xHover, setXHover] = useState(false);
 
   return (
     <div style={{
@@ -305,16 +310,38 @@ function ClusterCard({
       // row treatment — the SubtypeTag badge carries the subtype color, not the card.
       border: `1px solid ${c.border}`,
       background: c.white,
+      // Fade out on dismiss before the row is removed from state (mirrors the
+      // in-app ClusterSuggestions dismiss).
+      opacity: isDismissing ? 0 : 1,
+      transition: "opacity 0.2s ease",
     }}>
-      {/* Pill + signal count */}
+      {/* Pill + signal count + dismiss */}
       <div style={{
         display: "flex", alignItems: "center",
         justifyContent: "space-between", gap: 12, marginBottom: 8,
       }}>
         <SubtypeTag sub={typeKey} />
-        <span style={{ fontSize: 10, color: "#9CA3AF", whiteSpace: "nowrap" }}>
-          {cluster.input_ids.length} {cluster.input_ids.length === 1 ? "signal" : "signals"}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 10, color: "#9CA3AF", whiteSpace: "nowrap" }}>
+            {cluster.input_ids.length} {cluster.input_ids.length === 1 ? "signal" : "signals"}
+          </span>
+          <button
+            type="button"
+            onClick={() => onDismiss(cluster.id)}
+            onMouseEnter={() => setXHover(true)}
+            onMouseLeave={() => setXHover(false)}
+            title="Dismiss this cluster"
+            aria-label={`Dismiss cluster ${cluster.name}`}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              padding: 2, lineHeight: 1, fontSize: 13, fontFamily: "inherit",
+              color: xHover ? c.ink : "#9CA3AF",
+              transition: "color 0.15s",
+            }}
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Cluster name */}
@@ -354,6 +381,8 @@ function ResultsState({
   projectName,
   onConfirm,
   confirming,
+  onDismiss,
+  dismissingIds,
   onBack,
 }: {
   clusters: ClusterSuggestion[];
@@ -361,6 +390,8 @@ function ResultsState({
   projectName: string;
   onConfirm: () => void;
   confirming: boolean;
+  onDismiss: (id: string) => void;
+  dismissingIds: Set<string>;
   onBack?: () => void;
 }) {
   // Only show type explainers for types that actually appear in results
@@ -368,44 +399,75 @@ function ResultsState({
     clusters.map((cl) => capitalize(cl.subtype ?? "")).filter(Boolean)
   )];
 
+  // The user dismissed every suggested cluster. Clustering DID produce results
+  // (otherwise the root renders NoClustersState), so this is a distinct state:
+  // the signals are already saved as project inputs and carry forward as
+  // unclustered inputs — the user just proceeds with zero clusters.
+  const allDismissed = clusters.length === 0;
+
   return (
     <Shell wide>
-      {/* Success banner */}
-      <div style={{
-        background: "#F0FDF4",
-        border: "1px solid #BBF7D0",
-        borderRadius: 8,
-        padding: "11px 15px",
-        marginBottom: 20,
-        fontSize: 12, color: "#065F46",
-        display: "flex", alignItems: "center", gap: 8,
-      }}>
-        ✓&nbsp;&nbsp;{clusters.length} {clusters.length === 1 ? "cluster" : "clusters"} found in {projectName}
-      </div>
+      {allDismissed ? (
+        <>
+          <h2 style={{
+            fontFamily: "'Roboto', -apple-system, sans-serif",
+            fontSize: 20, fontWeight: 500, color: c.ink,
+            margin: "0 0 6px",
+          }}>
+            No clusters to add
+          </h2>
+          <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 4px", lineHeight: 1.6 }}>
+            You've dismissed every suggested cluster. Your signals are still saved
+            to {projectName} — open your project to group them yourself whenever
+            you're ready.
+          </p>
+        </>
+      ) : (
+        <>
+          {/* Success banner */}
+          <div style={{
+            background: "#F0FDF4",
+            border: "1px solid #BBF7D0",
+            borderRadius: 8,
+            padding: "11px 15px",
+            marginBottom: 20,
+            fontSize: 12, color: "#065F46",
+            display: "flex", alignItems: "center", gap: 8,
+          }}>
+            ✓&nbsp;&nbsp;{clusters.length} {clusters.length === 1 ? "cluster" : "clusters"} found in {projectName}
+          </div>
 
-      {/* Card header */}
-      <div style={{
-        fontSize: 10, fontWeight: 500,
-        letterSpacing: "0.07em",
-        color: c.brand, marginBottom: 8,
-      }}>
-        Your first clusters
-      </div>
-      <h2 style={{
-        fontFamily: "'Roboto', -apple-system, sans-serif",
-        fontSize: 20, fontWeight: 500, color: c.ink,
-        margin: "0 0 6px",
-      }}>
-        Here are the patterns in your signals
-      </h2>
-      <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 18px", lineHeight: 1.6 }}>
-        Our pattern recognition algorithm found these potential clusters in your signals. Edit them when you open your project.
-      </p>
+          {/* Card header */}
+          <div style={{
+            fontSize: 10, fontWeight: 500,
+            letterSpacing: "0.07em",
+            color: c.brand, marginBottom: 8,
+          }}>
+            Your first clusters
+          </div>
+          <h2 style={{
+            fontFamily: "'Roboto', -apple-system, sans-serif",
+            fontSize: 20, fontWeight: 500, color: c.ink,
+            margin: "0 0 6px",
+          }}>
+            Here are the patterns in your signals
+          </h2>
+          <p style={{ fontSize: 13, color: "#6B7280", margin: "0 0 18px", lineHeight: 1.6 }}>
+            Our pattern recognition algorithm found these potential clusters in your signals. Dismiss any you don't want, or edit them when you open your project.
+          </p>
 
-      {/* Cluster cards */}
-      {clusters.map((cl) => (
-        <ClusterCard key={cl.id} cluster={cl} inputNameMap={inputNameMap} />
-      ))}
+          {/* Cluster cards */}
+          {clusters.map((cl) => (
+            <ClusterCard
+              key={cl.id}
+              cluster={cl}
+              inputNameMap={inputNameMap}
+              onDismiss={onDismiss}
+              isDismissing={dismissingIds.has(cl.id)}
+            />
+          ))}
+        </>
+      )}
 
       {/* Cluster type explainer — shown for each type that appears */}
       {presentTypes.length > 0 && (
@@ -480,6 +542,13 @@ export function ClusteringResultsStep({
   const [clusters,     setClusters]     = useState<ClusterSuggestion[]>([]);
   const [inputNameMap, setInputNameMap] = useState<Record<string, string>>({});
   const [confirming,   setConfirming]   = useState(false);
+  // Whether clustering produced any suggestions at all. Distinguishes "AI
+  // returned nothing" (→ NoClustersState) from "user dismissed them all"
+  // (→ ResultsState empty state, still proceedable). Set once when results load.
+  const [hadResults,   setHadResults]   = useState(false);
+  // Cluster ids mid-dismiss — fade the card out for ~200ms before removing it
+  // from `clusters` (mirrors ClusterSuggestions' dismiss animation).
+  const [dismissingIds, setDismissingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (promotedInputIds.length === 0) return;
@@ -543,12 +612,37 @@ export function ClusteringResultsStep({
       ]);
 
       setClusters(c);
+      setHadResults(c.length > 0);
       setInputNameMap(m);
       setPhase("done");
     };
 
     run();
   }, []); // Intentionally empty — runs once on mount
+
+  // Dismiss a single suggested cluster. Persists status="dismissed" so the row
+  // doesn't resurface as `pending` in the in-app Suggested panel later (see
+  // docs/onboarding-cluster-review-audit.md), then removes it from local state
+  // so it isn't rendered OR promoted by handleConfirm. The cluster's input_ids
+  // are intentionally left untouched — those signals remain project inputs and
+  // carry forward as unclustered inputs. One-time only: no negative-pool or
+  // other suppression, so re-running clustering can propose it again.
+  const handleDismiss = (id: string) => {
+    supabase
+      .from("cluster_suggestions")
+      .update({ status: "dismissed", acted_on_at: new Date().toISOString() })
+      .eq("id", id)
+      .then();
+    setDismissingIds((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      setClusters((prev) => prev.filter((cl) => cl.id !== id));
+      setDismissingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 200);
+  };
 
   // Promote pending suggestions to real clusters then hand off.
   const handleConfirm = async () => {
@@ -573,12 +667,13 @@ export function ClusteringResultsStep({
     return <LoadingState />;
   }
 
-  // State C — 0 clusters returned
-  if (clusters.length === 0) {
+  // State C — clustering returned nothing at all (distinct from the user
+  // dismissing every card, which stays in ResultsState below).
+  if (!hadResults) {
     return <NoClustersState onComplete={onComplete} onBack={onBack} />;
   }
 
-  // State C — results
+  // State C — results (including the all-dismissed empty state)
   return (
     <ResultsState
       clusters={clusters}
@@ -586,6 +681,8 @@ export function ClusteringResultsStep({
       projectName={projectName}
       onConfirm={handleConfirm}
       confirming={confirming}
+      onDismiss={handleDismiss}
+      dismissingIds={dismissingIds}
       onBack={onBack}
     />
   );
