@@ -3,7 +3,7 @@
  */
 import { useState } from "react";
 import { c, btnP, btnSec, btnG, fontHeading } from "../../styles/tokens.js";
-import { LayoutGrid, List, CirclePlus } from "lucide-react";
+import { LayoutGrid, List, CirclePlus, Loader2 } from "lucide-react";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { ViewToggle } from "../ViewToggle.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
@@ -181,6 +181,62 @@ function ProjectCard({ project, inputCount, clusterCount, systemMapCount, analys
   );
 }
 
+// ─── Sample-project clone placeholder ────────────────────────────────────────
+// Optimistic card shown while the onboarding sample-project clone is in flight
+// (appState.sampleCloneInProgress). The clone appears as a real project once
+// refreshAll() lands; until then this stands in so the ~1–3s server-side clone
+// reads as intentional setup rather than a blank gap or an empty 0/0 card.
+
+function SampleClonePlaceholderCard() {
+  return (
+    <div
+      style={{
+        background: c.white,
+        border: `1px solid ${c.border}`,
+        borderRadius: 10,
+        padding: "16px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        // Roughly matches a populated ProjectCard's height so the grid doesn't
+        // reflow when the real card replaces this one.
+        minHeight: 168,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Loader2 size={14} style={{ color: c.brand, animation: "sample-clone-spin 0.7s linear infinite" }} />
+        <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.3 }}>
+          Setting up your sample project…
+        </div>
+      </div>
+      <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.5 }}>
+        We're building a complete example project so you can see a finished pass
+        through the methodology. This only takes a moment.
+      </div>
+      <div style={{ marginTop: "auto", display: "flex", gap: 6 }}>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: "rgba(0,0,0,0.06)" }} />
+        ))}
+      </div>
+      <style>{`@keyframes sample-clone-spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+function SampleClonePlaceholderRow() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 14px", height: 42, borderBottom: `1px solid ${c.border}` }}>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+        <Loader2 size={13} style={{ color: c.brand, animation: "sample-clone-spin 0.7s linear infinite", flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 500, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          Setting up your sample project…
+        </span>
+      </div>
+      <style>{`@keyframes sample-clone-spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 // ─── Chrome extension promo card ──────────────────────────────────────────────
 
 function ChromeExtensionCard() {
@@ -238,7 +294,7 @@ export default function Dashboard({ appState }) {
     inputs, clusters, scenarios, preferredFutures, strategicOptions,
     projects, analyses, canvasNodes,
     setActiveScreen, openProjectModal, openProject,
-    addInput, showToast,
+    addInput, showToast, sampleCloneInProgress,
   } = appState;
 
   const [inputDrawerOpen, setInputDrawerOpen] = useState(false);
@@ -300,7 +356,7 @@ export default function Dashboard({ appState }) {
           )}
         </div>
 
-        {projects.length === 0 ? (
+        {projects.length === 0 && !sampleCloneInProgress ? (
           <EmptyState
             icon="◻"
             title="No projects yet"
@@ -337,6 +393,7 @@ export default function Dashboard({ appState }) {
                 />
               );
             })}
+            {sampleCloneInProgress && <SampleClonePlaceholderCard />}
             <ChromeExtensionCard />
           </div>
         ) : (
@@ -401,6 +458,7 @@ export default function Dashboard({ appState }) {
                 </div>
               );
             })}
+            {sampleCloneInProgress && <SampleClonePlaceholderRow />}
           </div>
         )}
 

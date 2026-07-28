@@ -102,11 +102,24 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   // Cross-screen signal: ClusterScreen's InputRail sets this true while its sticky
   // multi-select bar is visible, so the global Toast can lift above it and avoid overlap.
   const [bulkBarActive, setBulkBarActive] = useState(false);
+  // True while the onboarding sample-project clone is in flight. Drives an
+  // optimistic "Setting up your sample project…" placeholder card on the
+  // Dashboard so the ~1–3s server-side clone doesn't read as a blank gap
+  // followed by an empty card. Set/cleared by handleOnboardingComplete.
+  const [sampleCloneInProgress, setSampleCloneInProgress] = useState(false);
 
   const toastTimer = useRef(null);
   const refreshProjectsRef = useRef(null);
   const refreshInputsRef  = useRef(null);
   const refreshClustersRef = useRef(null);
+  // Refreshes every workspace-scoped entity array in one call. Used after any
+  // out-of-band server write that creates rows the client didn't add
+  // optimistically — today the onboarding sample-project clone, and any future
+  // clone/duplicate path (see server-lib/clone-project.js). Re-running only
+  // refreshProjects() there left the project row visible but its inputs/
+  // clusters/etc. arrays stale, so the dashboard card showed 0/0 until a full
+  // reload.
+  const refreshAllRef = useRef(null);
   const systemMapExportRef = useRef(null);
 
   // ── Toast ─────────────────────────────────────────────────────────────────
@@ -367,6 +380,23 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
         // non-fatal — default stays true
       }
     };
+
+    // Single entry point to reload every workspace-scoped entity array. Runs
+    // the fetchers in parallel and resolves when all have settled, so callers
+    // can await it (e.g. to clear a pending placeholder once the data lands).
+    refreshAllRef.current = () =>
+      Promise.all([
+        fetchProjects(),
+        fetchInputs(),
+        fetchClusters(),
+        fetchScenarios(),
+        fetchPreferredFutures(),
+        fetchStrategicOptions(),
+        fetchCanvasNodes(),
+        fetchCanvasTextNodes(),
+        fetchRelationships(),
+        fetchAnalyses(),
+      ]);
 
     fetchProjects();
     fetchInputs();
@@ -1755,6 +1785,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     toast,
     bulkBarActive,
     setBulkBarActive,
+    sampleCloneInProgress,
+    setSampleCloneInProgress,
     projectModalOpen,
     setActiveScreen,
     setActiveProjectId,
@@ -1785,6 +1817,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     refreshProjects: () => refreshProjectsRef.current?.(),
     refreshInputs:   () => refreshInputsRef.current?.(),
     refreshClusters: () => refreshClustersRef.current?.(),
+    refreshAll:      () => refreshAllRef.current?.() ?? Promise.resolve(),
     saveInputToProject,
     saveInputsToProject,
     analyses,

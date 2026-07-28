@@ -219,9 +219,15 @@ export default function App() {
     // Clone the sample template project into this user's workspace —
     // fire-and-forget, server-side (RLS blocks a client session from reading
     // the templates account's data). No synchronous feedback needed; the
-    // clone appears on the dashboard whenever it completes.
+    // clone appears on the dashboard whenever it completes. A pending flag
+    // drives an optimistic placeholder card on the Dashboard for the ~1–3s the
+    // clone takes, so the user never sees a blank gap or an empty card.
+    appState.setSampleCloneInProgress(true);
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) return;
+      if (!session) {
+        appState.setSampleCloneInProgress(false);
+        return;
+      }
       fetch("/api/clone-sample-project", {
         method: "POST",
         headers: { Authorization: `Bearer ${session.access_token}` },
@@ -230,14 +236,22 @@ export default function App() {
         .then((data) => {
           if (!data.success) {
             console.error("[onboarding] clone-sample-project failed:", data.error);
+            appState.setSampleCloneInProgress(false);
             return;
           }
-          // Redirect already fired above without waiting on this — refresh
-          // projects now so the clone shows up whenever the user actually
-          // looks at the dashboard, instead of requiring a manual reload.
-          appState.refreshProjects();
+          // Redirect already fired above without waiting on this. Refresh EVERY
+          // workspace-scoped entity — not just projects — so the clone's
+          // inputs/clusters/scenarios land in local state too; refreshing only
+          // projects left the card showing 0/0 until a full reload. Clear the
+          // placeholder once the data is in.
+          Promise.resolve(appState.refreshAll()).finally(() =>
+            appState.setSampleCloneInProgress(false)
+          );
         })
-        .catch((err) => console.error("[onboarding] clone-sample-project request failed:", err));
+        .catch((err) => {
+          console.error("[onboarding] clone-sample-project request failed:", err);
+          appState.setSampleCloneInProgress(false);
+        });
     });
     setOnboardingComplete(true);
     if (projectId) {
