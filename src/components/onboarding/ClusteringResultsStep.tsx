@@ -168,6 +168,12 @@ function Shell({ children, wide = false }: { children: React.ReactNode; wide?: b
   return (
     <div style={{
       minHeight: "100vh",
+      // flexShrink:0 — as a flex child of #root (height:100%), an explicit
+      // minHeight overrides flex's default min-height:auto, letting the
+      // fixed-height parent shrink us to 100vh while taller content overflows
+      // onto the unpainted body below. Keep us at max(content,100vh) so c.bg
+      // covers the full content height. Matches ProjectCreateStep (ea469fe).
+      flexShrink: 0,
       display: "flex",
       flexDirection: "column",
       background: c.bg,
