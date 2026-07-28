@@ -1,7 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { postAuthRedirectPath, RESET_PATHS } from "./authRedirect.js";
+import {
+  postAuthRedirectPath,
+  authModeFromPath,
+  RESET_PATHS,
+  AUTH_PATHS,
+  SIGNUP_PATHS,
+  LOGIN_PATHS,
+} from "./authRedirect.js";
 
 const SESSION = { user: { id: "u1" } };
 
@@ -72,6 +79,39 @@ test("an ordinary in-app path is left untouched (no yanking to root)", () => {
   assert.equal(
     postAuthRedirectPath({ pathname: "/projects/abc", session: SESSION, onboardingComplete: true, passwordRecovery: false }),
     null
+  );
+});
+
+// ─── /sign-up direct URL support ────────────────────────────────────────────────
+
+test("authModeFromPath opens sign-up on the sign-up URLs", () => {
+  for (const path of SIGNUP_PATHS) {
+    assert.equal(authModeFromPath(path), "signup", `expected ${path} → signup`);
+  }
+});
+
+test("authModeFromPath opens sign-in on the log-in URLs, root, and anything else", () => {
+  for (const path of [...LOGIN_PATHS, "/", "/anything", "/reset-password"]) {
+    assert.equal(authModeFromPath(path), "signin", `expected ${path} → signin`);
+  }
+});
+
+test("a signed-in, onboarded user is cleared off the auth entry URLs", () => {
+  // Landing on /log-in or /sign-up (e.g. from marketing) then signing in must
+  // not leave the user parked on an auth URL — same treatment as /reset-password.
+  for (const path of AUTH_PATHS) {
+    assert.equal(
+      postAuthRedirectPath({ pathname: path, session: SESSION, onboardingComplete: true, passwordRecovery: false }),
+      "/",
+      `expected ${path} to redirect to /`
+    );
+  }
+});
+
+test("a new user landing on /sign-up is still routed into onboarding", () => {
+  assert.equal(
+    postAuthRedirectPath({ pathname: "/sign-up", session: SESSION, onboardingComplete: false, passwordRecovery: false }),
+    "/onboarding"
   );
 });
 

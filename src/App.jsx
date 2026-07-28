@@ -5,7 +5,7 @@
  */
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./lib/supabase.js";
-import { postAuthRedirectPath } from "./lib/authRedirect.js";
+import { postAuthRedirectPath, authModeFromPath } from "./lib/authRedirect.js";
 import { useAppState } from "./hooks/useAppState.js";
 import { AuthScreen } from "./components/auth/AuthScreen.jsx";
 import { OnboardingShell } from "./components/onboarding/OnboardingShell.tsx";
@@ -352,7 +352,7 @@ export default function App() {
   // ── Auth gates ─────────────────────────────────────────────────────────────
   if (session === undefined) return <AppLoader />;  // resolving (or exchanging token)
   if (passwordRecovery) return <AuthScreen initialMode="reset" />;  // password reset flow
-  if (!session) return <AuthScreen />;  // not signed in
+  if (!session) return <AuthScreen initialMode={authModeFromPath(window.location.pathname)} />;  // not signed in — /sign-up opens signup, else signin
 
   // ── Onboarding gate ────────────────────────────────────────────────────────
   // Wait until workspace state is loaded before deciding

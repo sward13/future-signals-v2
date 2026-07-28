@@ -6,6 +6,7 @@
  */
 import { useState } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { SIGNUP_URL, LOGIN_URL } from "../../lib/authRedirect.js";
 import { c, inp, btnP } from "../../styles/tokens.js";
 import logoLight from "../../assets/logo_light.svg";
 import { Eye, EyeOff } from "lucide-react";
@@ -40,6 +41,18 @@ export function AuthScreen({ initialMode = "signin" }) {
     setMode(next);
     setError(null);
     setInfo(null);
+  };
+
+  // Toggle between the two URL-addressable modes and keep the address bar in
+  // sync, so /log-in and /sign-up stay correct, bookmarkable mirrors of the
+  // form on screen. replaceState (not push) — swapping the form is a correction
+  // to the current view, not a new history entry, and there's no popstate
+  // listener to react to a Back press. Signed out, postAuthRedirectPath leaves
+  // the URL alone, so nothing fights this.
+  const toggleAuthMode = () => {
+    const next = mode === "signin" ? "signup" : "signin";
+    switchMode(next);
+    window.history.replaceState({}, "", next === "signup" ? SIGNUP_URL : LOGIN_URL);
   };
 
   // ── Sign in / Sign up ─────────────────────────────────────────────────────
@@ -392,7 +405,7 @@ export function AuthScreen({ initialMode = "signin" }) {
           <div style={{ marginTop: 20, textAlign: "center", fontSize: 12, color: c.muted }}>
             {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
             <button
-              onClick={() => switchMode(mode === "signin" ? "signup" : "signin")}
+              onClick={toggleAuthMode}
               style={linkBtn}
             >
               {mode === "signin" ? "Sign up" : "Sign in"}
