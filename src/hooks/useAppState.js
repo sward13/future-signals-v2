@@ -980,6 +980,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       horizon: fields.horizon || null,
       description: fields.description || null,
       narrative: fields.narrative || null,
+      narrative_doc: fields.narrative_doc ?? null,   // rich-text JSON (PoC)
       key_differences: fields.key_differences || [],
       driving_forces: fields.driving_forces || [],
       suppressed_forces: fields.suppressed_forces || [],
@@ -1005,6 +1006,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
               horizon: fields.horizon || null,
               description: fields.description || null,
               narrative: fields.narrative || null,
+              narrative_doc: fields.narrative_doc ?? null,   // rich-text JSON (PoC)
               key_differences: fields.key_differences || [],
               driving_forces: fields.driving_forces || [],
               suppressed_forces: fields.suppressed_forces || [],

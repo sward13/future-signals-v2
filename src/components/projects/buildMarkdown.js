@@ -18,6 +18,7 @@ import {
   resolveRelationship,
   resolveDrivingForces,
 } from "../../../server-lib/resolve-references.js";
+import { docToMarkdown, docIsEmpty } from "../../lib/richtextDoc.js";
 
 export function buildMarkdown(
   project,
@@ -103,7 +104,9 @@ export function buildMarkdown(
         lines.push("**Key differences:**");
         diffs.forEach((d) => lines.push(`- ${d}`));
       }
-      if (sc.narrative?.trim()) lines.push(sc.narrative.trim());
+      // Narrative is the rich-text PoC field: JSON doc → Markdown, else legacy text.
+      if (!docIsEmpty(sc.narrative_doc)) lines.push(docToMarkdown(sc.narrative_doc));
+      else if (sc.narrative?.trim()) lines.push(sc.narrative.trim());
       const drivingNames = resolveDrivingForces(sc, clusterLookup);
       if (drivingNames.length > 0) {
         lines.push(`**Driving forces:** ${drivingNames.join(", ")}`);

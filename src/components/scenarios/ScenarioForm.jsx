@@ -5,6 +5,9 @@
  */
 import { useState } from "react";
 import { c, ta, sel, btnP, btnG, fl, fh, legend } from "../../styles/tokens.js";
+import { RichTextField } from "../shared/RichTextField.jsx";
+import { textToDoc, docToText } from "../../lib/richtextDoc.js";
+import { serializeRichText } from "../shared/richtext/normalize.js";
 
 // ─── Zone divider ────────────────────────────────────────────────────────────
 
@@ -202,7 +205,11 @@ export default function ScenarioForm({ appState, mode }) {
       ? scenario.key_differences
       : ["", "", ""]
   );
-  const [narrative,       setNarrative]       = useState(scenario?.narrative       || "");
+  // Narrative is the rich-text PoC field: hold a Tiptap JSON doc. Seed from the
+  // stored doc, or wrap the legacy plain-text value on first edit.
+  const [narrativeDoc,    setNarrativeDoc]    = useState(
+    scenario?.narrative_doc ?? textToDoc(scenario?.narrative || "")
+  );
   const [saving,          setSaving]          = useState(false);
 
   const goBack = () => setActiveScreen("future-models");
@@ -211,12 +218,18 @@ export default function ScenarioForm({ appState, mode }) {
     if (!name.trim()) { showToast("Scenario name is required", "error"); return; }
     setSaving(true);
     try {
+      const narrativeNorm = serializeRichText(narrativeDoc);
       const fields = {
         name: name.trim(),
         horizon:          horizon || null,
         archetype:        archetype || null,
         description:      description.trim() || null,
-        narrative:        narrative.trim() || null,
+        // Normalize to the allowed schema before persisting (strips anything a
+        // hand-crafted/tampered doc might carry). Dual-write: the JSON doc is
+        // the source of truth; the legacy `narrative` text column holds a plain
+        // flattening for export/rollback/fallback.
+        narrative_doc:    narrativeNorm,
+        narrative:        narrativeNorm ? docToText(narrativeNorm) : null,
         key_differences:  keyDiffs.map((d) => d.trim()).filter(Boolean),
         driving_forces:   drivingForces,
         suppressed_forces:suppressedForces,
@@ -364,16 +377,15 @@ export default function ScenarioForm({ appState, mode }) {
         {/* Key differences */}
         <KeyDiffsList diffs={keyDiffs} onChange={setKeyDiffs} />
 
-        {/* Narrative */}
+        {/* Narrative — rich-text proof-of-concept field */}
         <div style={{ marginBottom: 20 }}>
           <div style={fl}>Narrative</div>
           <div style={fh}>How does this world come to be? Write as much or as little as is useful.</div>
-          <textarea
-            value={narrative}
-            onChange={(e) => setNarrative(e.target.value)}
-            rows={5}
-            style={ta}
+          <RichTextField
+            value={narrativeDoc}
+            onChange={setNarrativeDoc}
             placeholder="Write a narrative description of this scenario…"
+            minHeight={120}
           />
         </div>
 

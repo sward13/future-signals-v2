@@ -62,6 +62,21 @@ async function serveView(supabase, req, res) {
 
     const etag = weakEtag(html);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
+    // Content-Security-Policy: the published page executes NO script and loads
+    // NO external resources (audited: no <script>, no analytics/embeds, no
+    // external CSS/fonts/img — system font stack, inline SVG, and inline style
+    // attributes only). So default-src 'none' denies everything by default and
+    // script can never run — a hard backstop behind docToHtml's render-time
+    // filtering. The one deliberately-loose directive is style-src
+    // 'unsafe-inline', required because the page styles entirely via inline
+    // style="…" attributes; it does not weaken script/XSS protection. If images
+    // or any script (e.g. analytics) are ever added to the published page, this
+    // policy must be revisited rather than silently widened.
+    res.setHeader(
+      "Content-Security-Policy",
+      "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    );
+    res.setHeader("X-Content-Type-Options", "nosniff");
     // ALWAYS revalidate. A republish overwrites the object in place under the same
     // stable slug, so any edge/browser cache with a max-age would keep serving the
     // old page until it expired (the reported "republish doesn't show up" bug).

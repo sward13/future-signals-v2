@@ -6,6 +6,8 @@ import { useState } from "react";
 import { c, btnSec, btnG } from "../../styles/tokens.js";
 import { HorizTag, ArchTag } from "../shared/Tag.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
+import { RichTextField } from "../shared/RichTextField.jsx";
+import { textToDoc } from "../../lib/richtextDoc.js";
 
 export default function ScenarioRead({ appState }) {
   const {
@@ -166,8 +168,11 @@ export default function ScenarioRead({ appState }) {
                 }}>
                   Narrative
                 </div>
-                <div style={{ fontSize: 13, color: c.muted, lineHeight: 1.75, whiteSpace: "pre-wrap" }}>
-                  {scenario.narrative}
+                <div style={{ fontSize: 13, color: c.muted, lineHeight: 1.75 }}>
+                  <RichTextField
+                    value={scenario.narrative_doc ?? textToDoc(scenario.narrative)}
+                    editable={false}
+                  />
                 </div>
               </div>
             )}

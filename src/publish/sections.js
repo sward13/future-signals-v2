@@ -32,6 +32,7 @@
 import { c } from "../styles/tokens.js";
 import { sanitizeUrl } from "../utils/sanitizeUrl.js";
 import { projectDomainLabel } from "../lib/projectDomains.js";
+import { docToHtml, docIsEmpty } from "../lib/richtextDoc.js";
 import {
   resolveDrivingForces,
   resolveScenarioRefs,
@@ -130,6 +131,24 @@ const EYEBROW = `font-size:11px; letter-spacing:0.1em; color:${CH.faint}; text-t
 const LABEL = `font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:${CH.faint}; margin:0 0 4px;`;
 const BODY = `font-size:14px; line-height:1.7; color:${CH.ink}; margin:0 0 16px;`;
 const REF = `font-size:12px; color:${CH.faint}; margin:0;`;
+
+// Inline styles for rich-text (Tiptap JSON) content on the published page,
+// matching the page's inline-styled typography. Passed to docToHtml().
+const RICH_STYLES = {
+  p: BODY,
+  h2: `font-family:${CH.serif}; font-weight:600; font-size:20px; line-height:1.3; margin:24px 0 10px; color:${CH.ink};`,
+  h3: `font-weight:600; font-size:16px; line-height:1.35; margin:20px 0 8px; color:${CH.ink};`,
+  ul: `${BODY} padding-left:22px;`,
+  ol: `${BODY} padding-left:22px;`,
+  li: `margin:0 0 6px;`,
+  a: `color:${CH.ink}; text-decoration:underline;`,
+};
+
+/** Render a rich-text field (Tiptap JSON doc) or fall back to escaped legacy text. */
+function richOrText(doc, legacyText) {
+  if (!docIsEmpty(doc)) return docToHtml(doc, { styles: RICH_STYLES });
+  return hasText(legacyText) ? `<p style="${BODY}">${esc(legacyText.trim())}</p>` : "";
+}
 
 function eyebrow(text) {
   return `<p style="${EYEBROW}">${esc(text)}</p>`;
@@ -331,9 +350,9 @@ export function renderScenario(scenario, clusterLookup) {
   const description = hasText(s.description)
     ? `<p style="${BODY}">${esc(s.description.trim())}</p>`
     : "";
-  const narrative = hasText(s.narrative)
-    ? `<p style="${BODY}">${esc(s.narrative.trim())}</p>`
-    : "";
+  // Narrative is the rich-text PoC field: prefer the Tiptap JSON doc, fall back
+  // to the legacy plain-text column.
+  const narrative = richOrText(s.narrative_doc, s.narrative);
   const informedBy = refLine("Informed by", resolveDrivingForces(s, clusterLookup));
 
   return section(
