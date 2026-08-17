@@ -4,9 +4,10 @@
  * @param {{ project: object, onClose: () => void, onSave: (fields: object) => void, scrollTo?: string }} props
  */
 import { useState, useRef, useEffect, useCallback } from "react";
-import { c, inp, ta, sel, btnP, btnSec, btnG, fl, fh, legend } from "../../styles/tokens.js";
-import { DOMAINS } from "../../data/seeds.js";
+import { c, inp, ta, btnP, btnSec, btnG, fl, fh, legend } from "../../styles/tokens.js";
 import { HorizonSlider, YearInput, ChipInput } from "./NewProjectModal.jsx";
+import { DomainMultiSelect } from "../shared/DomainMultiSelect.jsx";
+import { projectDomains, projectCustomDomain, legacyDomainValue } from "../../lib/projectDomains.js";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { PublishSection } from "./PublishSection.jsx";
 
@@ -31,8 +32,12 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
   const initial = parseHorizonState(project);
 
   const [name, setName] = useState(project.name || "");
-  const [domain, setDomain] = useState(project.domain || "");
-  const hasDomain = !!domain.trim();
+  const [domains, setDomains] = useState(() => projectDomains(project));
+  const [customDomain, setCustomDomain] = useState(() => projectCustomDomain(project));
+  const [customSelected, setCustomSelected] = useState(() => !!projectCustomDomain(project));
+  const [customError, setCustomError] = useState(false);
+  const trimmedCustom = customDomain.trim();
+  const hasDomain = domains.length > 0 || (customSelected && !!trimmedCustom);
   const [question, setQuestion] = useState(project.question || "");
   const [focus, setFocus] = useState(project.focus || "");
   const [scopeIn, setScopeIn] = useState(project.scope_in || []);
@@ -71,12 +76,16 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
 
   const handleSave = () => {
     if (!name.trim()) { setNameError(true); return; }
+    if (customSelected && !trimmedCustom) { setCustomError(true); return; }
     const span = endYear - startYear;
     const h1End = String(Math.round(startYear + h1Pct * span));
     const h2End = String(Math.round(startYear + h2Pct * span));
+    const finalCustom = customSelected ? trimmedCustom : "";
     onSave({
       name: name.trim(),
-      domain,
+      domains,
+      custom_domain: finalCustom || null,
+      domain: legacyDomainValue(domains, finalCustom), // legacy column, rollback safety
       question,
       focus: focus,  // was: unit
       scope_in: scopeIn,
@@ -144,18 +153,17 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
 
           {/* Domain */}
           <div style={{ marginBottom: 16 }} data-field="domain">
-            <div style={fl}>Domain</div>
-            <div style={{ position: "relative" }}>
-              <select
-                style={sel}
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
-              >
-                <option value="">Select a domain…</option>
-                {DOMAINS.map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
-              <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: c.hint, pointerEvents: "none" }}>▾</span>
-            </div>
+            <div style={fl}>Domain <span style={{ color: c.hint, fontWeight: 400 }}>— select one or more</span></div>
+            <DomainMultiSelect
+              domains={domains}
+              customDomain={customDomain}
+              customSelected={customSelected}
+              onDomainsChange={setDomains}
+              onCustomSelectedChange={(v) => { setCustomSelected(v); if (!v) setCustomError(false); }}
+              onCustomDomainChange={(v) => { setCustomDomain(v); if (v.trim()) setCustomError(false); }}
+              allowCustom
+            />
+            {customError && <div style={{ fontSize: 11, color: c.red800, marginTop: 4 }}>Name your custom domain, or deselect it.</div>}
           </div>
 
           {/* Key question */}

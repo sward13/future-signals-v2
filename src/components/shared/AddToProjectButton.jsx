@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { c } from "../../styles/tokens.js";
+import { projectDomainLabel } from "../../lib/projectDomains.js";
 import { ChevronDown } from "lucide-react";
 
 const sectionHeader = {
@@ -76,7 +77,7 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
                     <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {recommendedProject.name}
                     </div>
-                    <div style={{ fontSize: 10, color: c.hint }}>{recommendedProject.domain}</div>
+                    <div style={{ fontSize: 10, color: c.hint }}>{projectDomainLabel(recommendedProject)}</div>
                   </div>
                   <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: c.blue50, color: c.blue700, border: `1px solid ${c.blueBorder}`, fontWeight: 500, flexShrink: 0 }}>
                     AI pick
@@ -94,7 +95,7 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
               otherProjects.map((p) => (
                 <button key={p.id} onClick={() => handleSelect(p.id)} style={item}>
                   <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                  <div style={{ fontSize: 10, color: c.hint }}>{p.domain}</div>
+                  <div style={{ fontSize: 10, color: c.hint }}>{projectDomainLabel(p)}</div>
                 </button>
               ))
             )}

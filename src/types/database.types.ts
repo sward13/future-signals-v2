@@ -727,7 +727,9 @@ export type Database = {
           assumptions: string | null
           audience: string | null
           created_at: string
+          custom_domain: string | null
           domain: string | null
+          domains: string[]
           focus: string | null
           geo: string | null
           h1_end: string | null
@@ -754,7 +756,9 @@ export type Database = {
           assumptions?: string | null
           audience?: string | null
           created_at?: string
+          custom_domain?: string | null
           domain?: string | null
+          domains?: string[]
           focus?: string | null
           geo?: string | null
           h1_end?: string | null
@@ -781,7 +785,9 @@ export type Database = {
           assumptions?: string | null
           audience?: string | null
           created_at?: string
+          custom_domain?: string | null
           domain?: string | null
+          domains?: string[]
           focus?: string | null
           geo?: string | null
           h1_end?: string | null
@@ -1308,7 +1314,7 @@ export type Database = {
         }[]
       }
       get_seeding_candidates: {
-        Args: { p_domain: string }
+        Args: { p_domains: string[] }
         Returns: {
           embedding: string
           id: string

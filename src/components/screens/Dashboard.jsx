@@ -7,6 +7,7 @@ import { LayoutGrid, List, CirclePlus, Loader2 } from "lucide-react";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { ViewToggle } from "../ViewToggle.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
+import { projectDomainLabel } from "../../lib/projectDomains.js";
 
 const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
 const COL = { type: 80, quality: 120, horizon: 55, steepled: 120 };
@@ -99,9 +100,9 @@ function ProjectCard({ project, inputCount, clusterCount, systemMapCount, analys
           <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {project.source_template_id ? `[Sample] ${project.name}` : project.name}
           </div>
-          {project.domain && (
+          {projectDomainLabel(project) && (
             <div style={{ fontSize: 11, color: c.muted, marginTop: 2 }}>
-              {project.domain}
+              {projectDomainLabel(project)}
             </div>
           )}
         </div>
@@ -437,7 +438,7 @@ export default function Dashboard({ appState }) {
                     {p.source_template_id ? `[Sample] ${p.name}` : p.name}
                   </div>
                   <div style={{ width: 160, flexShrink: 0, fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {p.domain || <span style={{ color: c.hint }}>—</span>}
+                    {projectDomainLabel(p) || <span style={{ color: c.hint }}>—</span>}
                   </div>
                   <div style={{ width: 80, flexShrink: 0, textAlign: "right", fontSize: 11, color: c.muted }}>
                     {pInputs.length}

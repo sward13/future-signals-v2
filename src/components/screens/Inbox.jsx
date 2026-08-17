@@ -10,6 +10,7 @@ import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { c, inp, btnP, btnSm, btnSec, btnG, fontHeading, countBadge } from "../../styles/tokens.js";
 import { CirclePlus, Sparkles } from "lucide-react";
+import { projectDomainLabel } from "../../lib/projectDomains.js";
 import { DragGhost } from "../clusters/DragGhost.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
@@ -114,7 +115,7 @@ function ProjectPickerPopover({ projects, onSelect, onClose, onCreateProject }) 
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                  <div style={{ fontSize: 10, color: c.hint }}>{p.domain}</div>
+                  <div style={{ fontSize: 10, color: c.hint }}>{projectDomainLabel(p)}</div>
                 </div>
               </button>
             ))}
@@ -570,7 +571,7 @@ export default function Inbox({ appState }) {
   // one entry per project (name + domain subtitle).
   const aiProjectFilterOptions = useMemo(() => [
     { value: "", label: "All projects" },
-    ...projects.map((p) => ({ value: p.id, label: p.name, sublabel: p.domain })),
+    ...projects.map((p) => ({ value: p.id, label: p.name, sublabel: projectDomainLabel(p) })),
   ], [projects]);
 
   // Apply search + filters independently per section

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { c } from "../../styles/tokens.js";
+import { projectDomainLabel } from "../../lib/projectDomains.js";
 
 export function ProjectPickerModal({ projects, onSelect, onClose, onCreateProject }) {
   const [hovered, setHovered] = useState(null);
@@ -39,7 +40,7 @@ export function ProjectPickerModal({ projects, onSelect, onClose, onCreateProjec
                 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>{p.name}</div>
-                  <div style={{ fontSize: 11, color: c.muted }}>{p.domain}</div>
+                  <div style={{ fontSize: 11, color: c.muted }}>{projectDomainLabel(p)}</div>
                 </div>
               </div>
             ))}

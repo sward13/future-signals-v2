@@ -31,6 +31,7 @@
 
 import { c } from "../styles/tokens.js";
 import { sanitizeUrl } from "../utils/sanitizeUrl.js";
+import { projectDomainLabel } from "../lib/projectDomains.js";
 import {
   resolveDrivingForces,
   resolveScenarioRefs,
@@ -202,8 +203,12 @@ export function renderOverview(project) {
       </div>`
     : "";
 
+  // Domain renders the full multi-domain label; all other fields read the raw
+  // project value.
+  const fieldValue = (key) => (key === "domain" ? projectDomainLabel(p) : p[key]);
+
   const cells = OVERVIEW_FIELDS
-    .filter(([, key]) => hasText(p[key]))
+    .filter(([, key]) => hasText(fieldValue(key)))
     .map(([label, key], i) => {
       // Column dividers: 2nd and 3rd column in each row of three get a
       // border-left (the 1st does not), matching the prototype's meta grid.
@@ -213,7 +218,7 @@ export function renderOverview(project) {
         : `border-left:1px solid ${CH.border}; padding:0 18px 24px 18px;`;
       return `<div style="flex:0 0 33.33%; max-width:33.33%; box-sizing:border-box; ${divider}">
           <p style="${LABEL}">${esc(label)}</p>
-          <p style="font-size:13px; color:${CH.ink}; margin:0;">${esc(p[key])}</p>
+          <p style="font-size:13px; color:${CH.ink}; margin:0;">${esc(fieldValue(key))}</p>
         </div>`;
     })
     .join("");

@@ -446,7 +446,9 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       id,
       workspace_id: workspaceId,
       name: fields.name,
-      domain: fields.domain || "",
+      domain: fields.domain || "",           // legacy single-value column (rollback safety)
+      domains: fields.domains || [],
+      custom_domain: fields.custom_domain ?? null,
       question: fields.question || "",
       geo: fields.geo || "",
       focus: fields.focus || "",

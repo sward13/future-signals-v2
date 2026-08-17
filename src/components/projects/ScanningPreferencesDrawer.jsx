@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Drawer } from "../layout/Drawer.jsx";
 import { AddSourceModal } from "../shared/AddSourceModal.jsx";
 import { c } from "../../styles/tokens.js";
+import { projectDomains, projectHasDomain } from "../../lib/projectDomains.js";
 
 const lbl = {
   fontSize: 11,
@@ -105,7 +106,7 @@ export function ScanningPreferencesDrawer({
   if (!project) return null;
 
   const scanningEnabled = project.scanning_enabled !== false;
-  const hasDomain = !!project.domain?.trim();
+  const hasDomain = projectHasDomain(project);
 
   const hasSources = (projectSources || []).length > 0;
 
@@ -259,7 +260,7 @@ export function ScanningPreferencesDrawer({
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onAdded={handleAdded}
-        defaultDomain={project.domain ?? null}
+        defaultDomain={projectDomains(project)[0] ?? null}
       />
     </Drawer>
   );

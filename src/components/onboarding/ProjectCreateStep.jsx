@@ -2,18 +2,8 @@ import { useState } from "react";
 import { c, inp, ta, btnP, btnSec } from "../../styles/tokens.js";
 import logoLight from "../../assets/logo_light.svg";
 import { HorizonSlider, YearInput } from "../projects/NewProjectModal.jsx";
-
-// 8 domains — "Custom / Other" intentionally excluded from onboarding
-const DOMAINS = [
-  { label: "Technology & AI" },
-  { label: "Climate & Energy" },
-  { label: "Health & Life Sciences" },
-  { label: "Government & Policy" },
-  { label: "Economy & Finance" },
-  { label: "Education & Learning" },
-  { label: "Media & Culture" },
-  { label: "Defence & Security" },
-];
+import { DomainMultiSelect } from "../shared/DomainMultiSelect.jsx";
+import { legacyDomainValue } from "../../lib/projectDomains.js";
 
 // 5 dots total; this step is dot index 2
 const STEP_DOT = 2;
@@ -55,7 +45,7 @@ function StepDots() {
  *   onBack: () => void,
  * }} props
  *
- * onSubmit receives: { name, domain, question, focus, geo, stakeholders, fromYear, toYear }
+ * onSubmit receives: { name, domains, custom_domain, domain, question, focus, geo, stakeholders, fromYear, toYear }
  * Stage 3 will wire the actual Supabase insert and onNext(projectId) call inside onSubmit.
  */
 export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialValues }) {
@@ -63,7 +53,7 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
 
   // Quick Start fields
   const [name,     setName]     = useState(iv.name     ?? "");
-  const [domain,   setDomain]   = useState(iv.domain   ?? "");
+  const [domains,  setDomains]  = useState(iv.domains  ?? []);
   const [question, setQuestion] = useState(iv.question ?? "");
 
   // Enhanced fields
@@ -79,7 +69,7 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
   const [enhancedOpen, setEnhancedOpen] = useState(experienceLevel === "expert");
 
   const isExpert  = experienceLevel === "expert";
-  const canSubmit = name.trim() !== "" && domain !== "" && question.trim() !== "";
+  const canSubmit = name.trim() !== "" && domains.length > 0 && question.trim() !== "";
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -87,7 +77,11 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
     const h1End  = String(Math.round(fromYear + h1Pct * span));
     const h2End  = String(Math.round(fromYear + h2Pct * span));
     onSubmit({
-      name: name.trim(), domain, question: question.trim(),
+      name: name.trim(),
+      domains,
+      custom_domain: null,             // onboarding never offers Custom / Other
+      domain: legacyDomainValue(domains, ""), // legacy column, rollback safety
+      question: question.trim(),
       focus, geo, stakeholders,
       fromYear: String(fromYear), toYear: String(toYear),
       h1Pct, h2Pct,
@@ -225,44 +219,13 @@ export function ProjectCreateStep({ experienceLevel, onSubmit, onBack, initialVa
                 marginBottom: 8,
               }}
             >
-              Domain
+              Domain <span style={{ color: c.hint, fontWeight: 400 }}>— select one or more</span>
             </label>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 8,
-              }}
-            >
-              {DOMAINS.map((d) => {
-                const isActive = domain === d.label;
-                return (
-                  <button
-                    key={d.label}
-                    type="button"
-                    onClick={() => setDomain(isActive ? "" : d.label)}
-                    style={{
-                      padding: "10px 13px",
-                      borderRadius: 8,
-                      border: `1px solid ${isActive ? c.brand : c.borderMid}`,
-                      background: isActive ? c.brandBg : c.white,
-                      fontFamily: "inherit",
-                      fontSize: 12,
-                      fontWeight: isActive ? 500 : 400,
-                      color: isActive ? c.blue700 : c.ink,
-                      textAlign: "left",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 7,
-                      cursor: "pointer",
-                      transition: "border-color 0.15s, background 0.15s, color 0.15s",
-                    }}
-                  >
-                    {d.label}
-                  </button>
-                );
-              })}
-            </div>
+            <DomainMultiSelect
+              domains={domains}
+              onDomainsChange={setDomains}
+              allowCustom={false}
+            />
           </div>
 
           {/* ── Key question ────────────────────────────── */}

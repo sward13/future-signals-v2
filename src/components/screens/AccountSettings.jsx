@@ -3,6 +3,7 @@ import { supabase } from "../../lib/supabase.js";
 import { c, inp, btnSm, btnSec, btnG, fl, fh, fontHeading } from "../../styles/tokens.js";
 import { ConfirmModal } from "../shared/ConfirmModal.jsx";
 import { AddSourceModal } from "../shared/AddSourceModal.jsx";
+import { projectDomainLabel, projectHasDomain } from "../../lib/projectDomains.js";
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -691,7 +692,8 @@ export default function AccountSettings({ appState, onSignOut }) {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                 {projects.map((p, i) => {
-                  const hasDomain = !!p.domain?.trim();
+                  const hasDomain = projectHasDomain(p);
+                  const domainLabel = projectDomainLabel(p);
                   const isOn = p.scanning_enabled !== false;
                   return (
                     <div
@@ -704,8 +706,8 @@ export default function AccountSettings({ appState, onSignOut }) {
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                        {p.domain
-                          ? <div style={{ fontSize: 10, color: c.hint, marginTop: 1 }}>{p.domain}</div>
+                        {domainLabel
+                          ? <div style={{ fontSize: 10, color: c.hint, marginTop: 1 }}>{domainLabel}</div>
                           : <div style={{ fontSize: 10, color: c.amber700, marginTop: 1 }}>No domain set — scanning unavailable</div>}
                       </div>
                       <button

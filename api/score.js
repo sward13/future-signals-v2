@@ -59,7 +59,7 @@ export default async function handler(req, res) {
     // Fetch active projects — now includes focus, scope_in, scope_out for richer scoring.
     const { data: projects, error: projectsError } = await supabase
       .from('projects')
-      .select('id, workspace_id, name, domain, question, focus, scope_in, scope_out, key_question_embedding, scanning_enabled')
+      .select('id, workspace_id, name, domains, custom_domain, question, focus, scope_in, scope_out, key_question_embedding, scanning_enabled')
       .not('question', 'is', null)
       .neq('question', '');
 
@@ -79,8 +79,12 @@ export default async function handler(req, res) {
         .map(ws => ws.workspace_id)
     );
 
+    // A project is scoring-active if it has at least one domain — predefined or
+    // custom. Scoring is semantic (key-question embedding), not domain-filtered,
+    // so a custom-only project still scores against user-added-source candidates.
     const activeProjects = projects.filter(p =>
-      !disabledWorkspaces.has(p.workspace_id) && p.scanning_enabled !== false && p.domain
+      !disabledWorkspaces.has(p.workspace_id) && p.scanning_enabled !== false &&
+      ((p.domains?.length ?? 0) > 0 || p.custom_domain)
     );
 
     if (!activeProjects.length) return res.status(200).json({ success: true, results });

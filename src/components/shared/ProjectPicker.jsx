@@ -4,6 +4,7 @@
  * @param {{ heading: string, description: string, projects: object[], inputs: object[], clusters: object[], scenarios: object[], onSelect: (id: string) => void, onNewProject: () => void }} props
  */
 import { c, btnSm, btnG, fontHeading } from "../../styles/tokens.js";
+import { projectDomainLabel } from "../../lib/projectDomains.js";
 
 export function ProjectPicker({ heading, description, projects, inputs, clusters, scenarios, onSelect, onNewProject }) {
   if (projects.length === 0) {
@@ -48,8 +49,8 @@ export function ProjectPicker({ heading, description, projects, inputs, clusters
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 4 }}>{p.name}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    {p.domain && (
-                      <span style={{ fontSize: 10, color: c.muted }}>{p.domain}</span>
+                    {projectDomainLabel(p) && (
+                      <span style={{ fontSize: 10, color: c.muted }}>{projectDomainLabel(p)}</span>
                     )}
                     <span style={{ fontSize: 10, color: c.hint }}>·</span>
                     <span style={{ fontSize: 10, color: c.hint }}>
