@@ -150,14 +150,15 @@ function richOrText(doc, legacyText) {
   return hasText(legacyText) ? `<p style="${BODY}">${esc(legacyText.trim())}</p>` : "";
 }
 
-function eyebrow(text) {
-  return `<p style="${EYEBROW}">${esc(text)}</p>`;
+/** A labelled rich-text block: LABEL heading + rich body (or legacy fallback). */
+function labeledRich(label, doc, legacyText) {
+  const body = richOrText(doc, legacyText);
+  if (!body) return "";
+  return `<p style="${LABEL}">${esc(label)}</p>${body}`;
 }
 
-/** A labeled free-text paragraph, or "" when the value is blank. */
-function labeledText(label, value) {
-  if (!hasText(value)) return "";
-  return `<p style="${LABEL}">${esc(label)}</p><p style="${BODY}">${esc(value)}</p>`;
+function eyebrow(text) {
+  return `<p style="${EYEBROW}">${esc(text)}</p>`;
 }
 
 /** A labeled bullet list from an array, or "" when empty. */
@@ -310,9 +311,10 @@ export function renderSystemAnalysis(analysis) {
     hasText(a.confidence);
   if (!hasContent) return "";
 
-  const description = hasText(a.description)
-    ? `<p style="${BODY} margin-bottom:24px;">${esc(a.description.trim())}</p>`
-    : "";
+  // Rich-text fields: prefer the Tiptap JSON doc, fall back to escaped legacy
+  // text. Same docToHtml whitelist/escaping as the Scenario path — see the
+  // red-team harness's renderSystemAnalysis coverage.
+  const description = richOrText(a.description_doc, a.description);
   const confidence = hasText(a.confidence)
     ? badge(`Confidence: ${a.confidence}`, tierColors(a.confidence))
     : "";
@@ -320,9 +322,9 @@ export function renderSystemAnalysis(analysis) {
   return `${section(
     `${eyebrow("System analysis")}
       ${description}
-      ${labeledText("Key dynamics", a.key_dynamics)}
+      ${labeledRich("Key dynamics", a.key_dynamics_doc, a.key_dynamics)}
       ${labeledList("Critical uncertainties", a.critical_uncertainties)}
-      ${labeledText("Implications", a.implications)}
+      ${labeledRich("Implications", a.implications_doc, a.implications)}
       ${confidence}`
   )}`;
 }
@@ -347,11 +349,7 @@ export function renderScenario(scenario, clusterLookup) {
     .filter(Boolean)
     .join("");
 
-  const description = hasText(s.description)
-    ? `<p style="${BODY}">${esc(s.description.trim())}</p>`
-    : "";
-  // Narrative is the rich-text PoC field: prefer the Tiptap JSON doc, fall back
-  // to the legacy plain-text column.
+  const description = richOrText(s.description_doc, s.description);
   const narrative = richOrText(s.narrative_doc, s.narrative);
   const informedBy = refLine("Informed by", resolveDrivingForces(s, clusterLookup));
 
@@ -365,15 +363,13 @@ export function renderScenario(scenario, clusterLookup) {
 
 export function renderPreferredFuture(pf, scenarioLookup) {
   const p = pf || {};
-  const description = hasText(p.description)
-    ? `<p style="${BODY}">${esc(p.description.trim())}</p>`
-    : "";
+  const description = richOrText(p.description_doc, p.description);
   const basedOn = refLine("Based on", resolveScenarioRefs(p.scenario_ids, scenarioLookup));
 
   return section(
     `${narrativeHead("Preferred future", p.name, "")}
       ${description}
-      ${labeledText("Desired outcomes", p.desired_outcomes)}
+      ${labeledRich("Desired outcomes", p.desired_outcomes_doc, p.desired_outcomes)}
       ${labeledList("Guiding principles", p.guiding_principles)}
       ${basedOn}`,
     { border: false }
@@ -392,17 +388,15 @@ export function renderStrategicOption(option, scenarioLookup) {
     .filter(Boolean)
     .join("");
 
-  const description = hasText(o.description)
-    ? `<p style="${BODY}">${esc(o.description.trim())}</p>`
-    : "";
+  const description = richOrText(o.description_doc, o.description);
   const respondsTo = refLine("Responds to", resolveScenarioRefs(o.scenario_ids, scenarioLookup));
 
   return section(
     `${narrativeHead("Strategic option", o.name, badges)}
       ${description}
-      ${labeledText("Intended outcome", o.intended_outcome)}
-      ${labeledText("What this involves", o.actions)}
-      ${labeledText("Implications", o.implications)}
+      ${labeledRich("Intended outcome", o.intended_outcome_doc, o.intended_outcome)}
+      ${labeledRich("What this involves", o.actions_doc, o.actions)}
+      ${labeledRich("Implications", o.implications_doc, o.implications)}
       ${respondsTo}`,
     { border: false }
   );

@@ -7,7 +7,7 @@ import { c, btnSec, btnG } from "../../styles/tokens.js";
 import { HorizTag, ArchTag } from "../shared/Tag.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { RichTextField } from "../shared/RichTextField.jsx";
-import { textToDoc } from "../../lib/richtextDoc.js";
+import { textToDoc, docIsEmpty } from "../../lib/richtextDoc.js";
 
 export default function ScenarioRead({ appState }) {
   const {
@@ -119,12 +119,12 @@ export default function ScenarioRead({ appState }) {
             </div>
 
             {/* Description */}
-            {scenario.description && (
+            {(!docIsEmpty(scenario.description_doc) || scenario.description) && (
               <div style={{
                 fontSize: 14, color: c.muted, lineHeight: 1.7,
                 marginBottom: 28, maxWidth: 560,
               }}>
-                {scenario.description}
+                <RichTextField value={scenario.description_doc ?? textToDoc(scenario.description)} editable={false} />
               </div>
             )}
 

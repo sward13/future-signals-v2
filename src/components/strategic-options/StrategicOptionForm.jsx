@@ -4,7 +4,10 @@
  * mode='edit' → edits appState.activeSOId
  */
 import { useState } from "react";
-import { c, ta, sel, btnP, btnG, fl, fh } from "../../styles/tokens.js";
+import { c, sel, btnP, btnG, fl, fh } from "../../styles/tokens.js";
+import { RichTextField } from "../shared/RichTextField.jsx";
+import { textToDoc, docToText } from "../../lib/richtextDoc.js";
+import { serializeRichText } from "../shared/richtext/serialize.js";
 
 // ─── Zone divider ─────────────────────────────────────────────────────────────
 
@@ -128,17 +131,17 @@ export default function StrategicOptionForm({ appState, mode }) {
   const projectScenarios = scenarios.filter((s) => s.project_id === activeProjectId);
 
   const [name,            setName]            = useState(opt?.name             || "");
-  const [description,     setDescription]     = useState(opt?.description      || "");
-  const [intendedOutcome, setIntendedOutcome] = useState(opt?.intended_outcome || "");
-  const [actions,         setActions]         = useState(opt?.actions          || "");
-  const [implications,    setImplications]    = useState(opt?.implications     || "");
+  const [descriptionDoc,     setDescriptionDoc]     = useState(opt?.description_doc      ?? textToDoc(opt?.description      || ""));
+  const [intendedOutcomeDoc, setIntendedOutcomeDoc] = useState(opt?.intended_outcome_doc ?? textToDoc(opt?.intended_outcome || ""));
+  const [actionsDoc,         setActionsDoc]         = useState(opt?.actions_doc          ?? textToDoc(opt?.actions          || ""));
+  const [implicationsDoc,    setImplicationsDoc]    = useState(opt?.implications_doc     ?? textToDoc(opt?.implications     || ""));
   const [horizon,         setHorizon]         = useState(opt?.horizon          || "");
   const [feasibility,     setFeasibility]     = useState(opt?.feasibility      || "");
   const [scenarioIds,     setScenarioIds]     = useState(
     Array.isArray(opt?.scenario_ids) ? opt.scenario_ids : []
   );
-  const [dependencies,       setDependencies]       = useState(opt?.dependencies       || "");
-  const [risks,              setRisks]              = useState(opt?.risks              || "");
+  const [dependenciesDoc,    setDependenciesDoc]    = useState(opt?.dependencies_doc     ?? textToDoc(opt?.dependencies     || ""));
+  const [risksDoc,           setRisksDoc]           = useState(opt?.risks_doc            ?? textToDoc(opt?.risks            || ""));
   const [reversibility,      setReversibility]      = useState(opt?.reversibility      || "");
   const [resourceIntensity,  setResourceIntensity]  = useState(opt?.resource_intensity || "");
   const [saving,             setSaving]             = useState(false);
@@ -149,17 +152,34 @@ export default function StrategicOptionForm({ appState, mode }) {
     if (!name.trim()) { showToast("Name is required", "error"); return; }
     setSaving(true);
     try {
+      // All six narrative fields dual-write: normalized JSON doc is the source
+      // of truth; the legacy text column keeps a plain flattening for
+      // export/rollback/fallback.
+      const [descN, outN, actN, implN, depN, riskN] = await Promise.all([
+        serializeRichText(descriptionDoc),
+        serializeRichText(intendedOutcomeDoc),
+        serializeRichText(actionsDoc),
+        serializeRichText(implicationsDoc),
+        serializeRichText(dependenciesDoc),
+        serializeRichText(risksDoc),
+      ]);
       const fields = {
         name:             name.trim(),
-        description:      description.trim()     || null,
-        intended_outcome: intendedOutcome.trim()  || null,
-        actions:          actions.trim()          || null,
-        implications:     implications.trim()     || null,
+        description:          descN ? docToText(descN) : null,
+        description_doc:      descN,
+        intended_outcome:     outN ? docToText(outN) : null,
+        intended_outcome_doc: outN,
+        actions:              actN ? docToText(actN) : null,
+        actions_doc:          actN,
+        implications:         implN ? docToText(implN) : null,
+        implications_doc:     implN,
         horizon:          horizon                 || null,
         feasibility:      feasibility             || null,
         scenario_ids:     scenarioIds,
-        dependencies:       dependencies.trim()     || null,
-        risks:              risks.trim()            || null,
+        dependencies:        depN ? docToText(depN) : null,
+        dependencies_doc:    depN,
+        risks:               riskN ? docToText(riskN) : null,
+        risks_doc:           riskN,
         reversibility:      reversibility           || null,
         resource_intensity: resourceIntensity       || null,
       };
@@ -232,11 +252,9 @@ export default function StrategicOptionForm({ appState, mode }) {
         <div style={{ marginBottom: 20 }}>
           <div style={fl}>Description</div>
           <div style={fh}>What this option is. Enough to identify it clearly.</div>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            style={ta}
+          <RichTextField
+            value={descriptionDoc}
+            onChange={setDescriptionDoc}
             placeholder="A brief description of this option…"
           />
         </div>
@@ -245,12 +263,11 @@ export default function StrategicOptionForm({ appState, mode }) {
         <div style={{ marginBottom: 20 }}>
           <div style={fl}>Intended outcome</div>
           <div style={fh}>What are you trying to achieve? A direction to orient around.</div>
-          <textarea
-            value={intendedOutcome}
-            onChange={(e) => setIntendedOutcome(e.target.value)}
-            rows={3}
-            style={ta}
+          <RichTextField
+            value={intendedOutcomeDoc}
+            onChange={setIntendedOutcomeDoc}
             placeholder="Describe the outcome this option is aimed at…"
+            minHeight={120}
           />
         </div>
 
@@ -261,12 +278,11 @@ export default function StrategicOptionForm({ appState, mode }) {
         <div style={{ marginBottom: 20 }}>
           <div style={fl}>What this involves</div>
           <div style={fh}>What would this option entail? Orientation, not a project plan.</div>
-          <textarea
-            value={actions}
-            onChange={(e) => setActions(e.target.value)}
-            rows={4}
-            style={ta}
+          <RichTextField
+            value={actionsDoc}
+            onChange={setActionsDoc}
             placeholder="Describe what pursuing this option would look like…"
+            minHeight={140}
           />
         </div>
 
@@ -274,12 +290,11 @@ export default function StrategicOptionForm({ appState, mode }) {
         <div style={{ marginBottom: 20 }}>
           <div style={fl}>Implications</div>
           <div style={fh}>What does choosing this foreclose or make harder?</div>
-          <textarea
-            value={implications}
-            onChange={(e) => setImplications(e.target.value)}
-            rows={3}
-            style={ta}
+          <RichTextField
+            value={implicationsDoc}
+            onChange={setImplicationsDoc}
             placeholder="What trade-offs or opportunity costs does this carry?…"
+            minHeight={120}
           />
         </div>
 
@@ -314,11 +329,9 @@ export default function StrategicOptionForm({ appState, mode }) {
         {/* Dependencies */}
         <div style={{ marginBottom: 20 }}>
           <div style={fl}>Dependencies</div>
-          <textarea
-            value={dependencies}
-            onChange={(e) => setDependencies(e.target.value)}
-            rows={2}
-            style={ta}
+          <RichTextField
+            value={dependenciesDoc}
+            onChange={setDependenciesDoc}
             placeholder="What capabilities, decisions, or conditions does this depend on?…"
           />
         </div>
@@ -326,11 +339,9 @@ export default function StrategicOptionForm({ appState, mode }) {
         {/* Risks */}
         <div style={{ marginBottom: 20 }}>
           <div style={fl}>Risks</div>
-          <textarea
-            value={risks}
-            onChange={(e) => setRisks(e.target.value)}
-            rows={2}
-            style={ta}
+          <RichTextField
+            value={risksDoc}
+            onChange={setRisksDoc}
             placeholder="What could go wrong or undermine this option?…"
           />
         </div>

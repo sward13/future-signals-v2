@@ -6,6 +6,12 @@ import { useState } from "react";
 import { c, btnSec, btnG, fontHeading } from "../../styles/tokens.js";
 import { HorizTag } from "../shared/Tag.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
+import { RichTextField } from "../shared/RichTextField.jsx";
+import { textToDoc, docIsEmpty } from "../../lib/richtextDoc.js";
+
+/** Show a rich-text field if it has a doc or legacy text; render read-only. */
+function hasField(o, key) { return !docIsEmpty(o[`${key}_doc`]) || o[key]; }
+function fieldDoc(o, key) { return o[`${key}_doc`] ?? textToDoc(o[key]); }
 
 // ─── Feasibility badge ────────────────────────────────────────────────────────
 
@@ -174,33 +180,33 @@ export default function StrategicOptionRead({ appState }) {
             </div>
 
             {/* Description */}
-            {opt.description && (
+            {hasField(opt, "description") && (
               <div style={{
                 fontSize: 14, color: c.muted, lineHeight: 1.7,
                 marginBottom: 28, maxWidth: 560,
               }}>
-                {opt.description}
+                <RichTextField value={fieldDoc(opt, "description")} editable={false} />
               </div>
             )}
 
             {/* What this involves */}
-            {opt.actions && (
+            {hasField(opt, "actions") && (
               <div style={{ marginBottom: 28 }}>
                 <div style={sectionHeading}>What this involves</div>
-                <div style={prose}>{opt.actions}</div>
+                <div style={prose}><RichTextField value={fieldDoc(opt, "actions")} editable={false} /></div>
               </div>
             )}
 
             {/* Intended outcome */}
-            {opt.intended_outcome && (
+            {hasField(opt, "intended_outcome") && (
               <div style={{ marginBottom: 28 }}>
                 <div style={sectionHeading}>Intended outcome</div>
-                <div style={prose}>{opt.intended_outcome}</div>
+                <div style={prose}><RichTextField value={fieldDoc(opt, "intended_outcome")} editable={false} /></div>
               </div>
             )}
 
             {/* Implications — amber left border to signal trade-off */}
-            {opt.implications && (
+            {hasField(opt, "implications") && (
               <div style={{ marginBottom: 28 }}>
                 <div style={sectionHeading}>Implications</div>
                 <div style={{
@@ -208,24 +214,24 @@ export default function StrategicOptionRead({ appState }) {
                   paddingLeft: 14,
                   borderLeft: `3px solid ${c.amberBorder}`,
                 }}>
-                  {opt.implications}
+                  <RichTextField value={fieldDoc(opt, "implications")} editable={false} />
                 </div>
               </div>
             )}
 
             {/* Dependencies */}
-            {opt.dependencies && (
+            {hasField(opt, "dependencies") && (
               <div style={{ marginBottom: 28 }}>
                 <div style={sectionHeading}>Dependencies</div>
-                <div style={prose}>{opt.dependencies}</div>
+                <div style={prose}><RichTextField value={fieldDoc(opt, "dependencies")} editable={false} /></div>
               </div>
             )}
 
             {/* Risks */}
-            {opt.risks && (
+            {hasField(opt, "risks") && (
               <div style={{ marginBottom: 28 }}>
                 <div style={sectionHeading}>Risks</div>
-                <div style={prose}>{opt.risks}</div>
+                <div style={prose}><RichTextField value={fieldDoc(opt, "risks")} editable={false} /></div>
               </div>
             )}
           </div>

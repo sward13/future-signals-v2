@@ -4,10 +4,10 @@
  * mode='edit' → edits appState.activeScenarioId
  */
 import { useState } from "react";
-import { c, ta, sel, btnP, btnG, fl, fh, legend } from "../../styles/tokens.js";
+import { c, sel, btnP, btnG, fl, fh, legend } from "../../styles/tokens.js";
 import { RichTextField } from "../shared/RichTextField.jsx";
 import { textToDoc, docToText } from "../../lib/richtextDoc.js";
-import { serializeRichText } from "../shared/richtext/normalize.js";
+import { serializeRichText } from "../shared/richtext/serialize.js";
 
 // ─── Zone divider ────────────────────────────────────────────────────────────
 
@@ -199,7 +199,7 @@ export default function ScenarioForm({ appState, mode }) {
   const [suppressedForces,setSuppressedForces]= useState(
     Array.isArray(scenario?.suppressed_forces) ? scenario.suppressed_forces : []
   );
-  const [description,     setDescription]     = useState(scenario?.description     || "");
+  const [descriptionDoc,  setDescriptionDoc]  = useState(scenario?.description_doc ?? textToDoc(scenario?.description || ""));
   const [keyDiffs,        setKeyDiffs]        = useState(
     Array.isArray(scenario?.key_differences) && scenario.key_differences.length > 0
       ? scenario.key_differences
@@ -218,12 +218,14 @@ export default function ScenarioForm({ appState, mode }) {
     if (!name.trim()) { showToast("Scenario name is required", "error"); return; }
     setSaving(true);
     try {
-      const narrativeNorm = serializeRichText(narrativeDoc);
+      const narrativeNorm = await serializeRichText(narrativeDoc);
+      const descNorm = await serializeRichText(descriptionDoc);
       const fields = {
         name: name.trim(),
         horizon:          horizon || null,
         archetype:        archetype || null,
-        description:      description.trim() || null,
+        description:      descNorm ? docToText(descNorm) : null,
+        description_doc:  descNorm,
         // Normalize to the allowed schema before persisting (strips anything a
         // hand-crafted/tampered doc might carry). Dual-write: the JSON doc is
         // the source of truth; the legacy `narrative` text column holds a plain
@@ -365,11 +367,9 @@ export default function ScenarioForm({ appState, mode }) {
         <div style={{ marginBottom: 20 }}>
           <div style={fl}>Description</div>
           <div style={fh}>A brief summary — what is this scenario and what makes it distinct?</div>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            style={ta}
+          <RichTextField
+            value={descriptionDoc}
+            onChange={setDescriptionDoc}
             placeholder="Describe this scenario in 1–2 sentences…"
           />
         </div>

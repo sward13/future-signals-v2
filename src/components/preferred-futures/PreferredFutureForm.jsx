@@ -8,6 +8,9 @@
  */
 import { useState } from "react";
 import { c, ta, sel, btnP, btnG, fl, fh } from "../../styles/tokens.js";
+import { RichTextField } from "../shared/RichTextField.jsx";
+import { textToDoc, docToText } from "../../lib/richtextDoc.js";
+import { serializeRichText } from "../shared/richtext/serialize.js";
 
 // ─── Zone divider ─────────────────────────────────────────────────────────────
 
@@ -133,8 +136,8 @@ export default function PreferredFutureForm({ appState, mode }) {
   const projectScenarios = scenarios.filter((s) => s.project_id === activeProjectId);
 
   const [name,               setName]               = useState(pf?.name               || "");
-  const [description,        setDescription]        = useState(pf?.description        || "");
-  const [desiredOutcomes,    setDesiredOutcomes]    = useState(pf?.desired_outcomes   || "");
+  const [descriptionDoc,     setDescriptionDoc]     = useState(pf?.description_doc      ?? textToDoc(pf?.description      || ""));
+  const [desiredOutcomesDoc, setDesiredOutcomesDoc] = useState(pf?.desired_outcomes_doc ?? textToDoc(pf?.desired_outcomes || ""));
   const [guidingPrinciples,  setGuidingPrinciples]  = useState(arrToText(pf?.guiding_principles));
   const [strategicPriorities,setStrategicPriorities]= useState(arrToText(pf?.strategic_priorities));
   const [indicators,         setIndicators]         = useState(arrToText(pf?.indicators));
@@ -150,10 +153,16 @@ export default function PreferredFutureForm({ appState, mode }) {
     if (!name.trim()) { showToast("Name is required", "error"); return; }
     setSaving(true);
     try {
+      // Rich-text fields dual-write: normalized JSON doc is source of truth; the
+      // legacy text column keeps a plain flattening for export/rollback/fallback.
+      const descNorm = await serializeRichText(descriptionDoc);
+      const outNorm  = await serializeRichText(desiredOutcomesDoc);
       const fields = {
         name:                 name.trim(),
-        description:          description.trim() || null,
-        desired_outcomes:     desiredOutcomes.trim() || null,
+        description:          descNorm ? docToText(descNorm) : null,
+        description_doc:      descNorm,
+        desired_outcomes:     outNorm ? docToText(outNorm) : null,
+        desired_outcomes_doc: outNorm,
         guiding_principles:   textToArr(guidingPrinciples),
         strategic_priorities: textToArr(strategicPriorities),
         indicators:           textToArr(indicators),
@@ -228,11 +237,9 @@ export default function PreferredFutureForm({ appState, mode }) {
         {/* Description */}
         <div style={{ marginBottom: 20 }}>
           <div style={fl}>Description</div>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            style={ta}
+          <RichTextField
+            value={descriptionDoc}
+            onChange={setDescriptionDoc}
             placeholder="A brief summary of this preferred future…"
           />
         </div>
@@ -241,12 +248,11 @@ export default function PreferredFutureForm({ appState, mode }) {
         <div style={{ marginBottom: 20 }}>
           <div style={fl}>Desired outcomes</div>
           <div style={fh}>What conditions or results define this future?</div>
-          <textarea
-            value={desiredOutcomes}
-            onChange={(e) => setDesiredOutcomes(e.target.value)}
-            rows={3}
-            style={ta}
+          <RichTextField
+            value={desiredOutcomesDoc}
+            onChange={setDesiredOutcomesDoc}
             placeholder="Describe the outcomes that would define this future as achieved…"
+            minHeight={120}
           />
         </div>
 

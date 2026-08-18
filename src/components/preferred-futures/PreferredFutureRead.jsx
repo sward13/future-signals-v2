@@ -6,6 +6,8 @@ import { useState } from "react";
 import { c, btnSec, btnG } from "../../styles/tokens.js";
 import { HorizTag } from "../shared/Tag.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
+import { RichTextField } from "../shared/RichTextField.jsx";
+import { textToDoc, docIsEmpty } from "../../lib/richtextDoc.js";
 
 export default function PreferredFutureRead({ appState }) {
   const {
@@ -129,21 +131,21 @@ export default function PreferredFutureRead({ appState }) {
             </div>
 
             {/* Description */}
-            {pf.description && (
+            {(!docIsEmpty(pf.description_doc) || pf.description) && (
               <div style={{
                 fontSize: 14, color: c.muted, lineHeight: 1.7,
                 marginBottom: 28, maxWidth: 560,
               }}>
-                {pf.description}
+                <RichTextField value={pf.description_doc ?? textToDoc(pf.description)} editable={false} />
               </div>
             )}
 
             {/* Desired outcomes */}
-            {pf.desired_outcomes && (
+            {(!docIsEmpty(pf.desired_outcomes_doc) || pf.desired_outcomes) && (
               <div style={{ marginBottom: 28 }}>
                 <div style={sectionHeading}>Desired outcomes</div>
-                <div style={{ fontSize: 13, color: c.muted, lineHeight: 1.75, whiteSpace: "pre-wrap" }}>
-                  {pf.desired_outcomes}
+                <div style={{ fontSize: 13, color: c.muted, lineHeight: 1.75 }}>
+                  <RichTextField value={pf.desired_outcomes_doc ?? textToDoc(pf.desired_outcomes)} editable={false} />
                 </div>
               </div>
             )}
