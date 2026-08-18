@@ -260,29 +260,52 @@ export default function ScenarioForm({ appState, mode }) {
           </div>
         </div>
 
-        {/* Driving forces */}
-        <ClusterForcePicker
-          role="driving"
-          label="Driving forces"
-          hint="Which clusters are active and influential in this scenario?"
-          clusters={projectClusters}
-          selected={drivingForces}
-          otherSelected={suppressedForces}
-          onChange={setDrivingForces}
-          onGoToClusters={() => setActiveScreen("cluster")}
-        />
-
-        {/* Suppressed forces */}
-        <ClusterForcePicker
-          role="suppressed"
-          label="Suppressed forces"
-          hint="Which clusters are weakened, absent, or reversed in this scenario?"
-          clusters={projectClusters}
-          selected={suppressedForces}
-          otherSelected={drivingForces}
-          onChange={setSuppressedForces}
-          onGoToClusters={() => setActiveScreen("cluster")}
-        />
+        {/* Driving forces / Suppressed forces — side by side with a hairline
+            divider, stacking to one column below ~700px. The Horizon/Archetype
+            grid above has no responsive behavior to mirror (it's a bare
+            gridTemplateColumns: "1fr 1fr" with no breakpoint), so this is new
+            behavior, not a copy of an existing one — a plain inline `style`
+            can't express a media query, hence the scoped <style> block below
+            rather than a third-party layout dependency. */}
+        <style>{`
+          .scenario-forces-row {
+            display: grid;
+            grid-template-columns: 1fr 1px 1fr;
+            gap: 16px;
+          }
+          .scenario-forces-divider { background: ${c.border}; }
+          @media (max-width: 700px) {
+            .scenario-forces-row { grid-template-columns: 1fr; gap: 20px; }
+            .scenario-forces-divider { display: none; }
+          }
+        `}</style>
+        <div className="scenario-forces-row">
+          <div>
+            <ClusterForcePicker
+              role="driving"
+              label="Driving forces"
+              hint="Which clusters are active and influential in this scenario?"
+              clusters={projectClusters}
+              selected={drivingForces}
+              otherSelected={suppressedForces}
+              onChange={setDrivingForces}
+              onGoToClusters={() => setActiveScreen("cluster")}
+            />
+          </div>
+          <div className="scenario-forces-divider" />
+          <div>
+            <ClusterForcePicker
+              role="suppressed"
+              label="Suppressed forces"
+              hint="Which clusters are weakened, absent, or reversed in this scenario?"
+              clusters={projectClusters}
+              selected={suppressedForces}
+              otherSelected={drivingForces}
+              onChange={setSuppressedForces}
+              onGoToClusters={() => setActiveScreen("cluster")}
+            />
+          </div>
+        </div>
 
         {/* Zone 2: Story */}
         <ZoneDivider label="Story" />
