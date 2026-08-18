@@ -297,7 +297,7 @@ export default function ScenarioForm({ appState, mode }) {
             <ClusterForcePicker
               role="suppressed"
               label="Suppressed forces"
-              hint="Which clusters are weakened, absent, or reversed in this scenario?"
+              hint="Which clusters are weakened or absent in this scenario?"
               clusters={projectClusters}
               selected={suppressedForces}
               otherSelected={drivingForces}
