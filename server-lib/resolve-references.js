@@ -13,7 +13,9 @@
 // Confirmed DB column names used here:
 //   clusters.id, clusters.name
 //   relationships.from_cluster_id, relationships.to_cluster_id, relationships.type
-//   scenarios.id, scenarios.name, scenarios.driving_forces (jsonb array of cluster ids)
+//   scenarios.id, scenarios.name, scenarios.driving_forces / scenarios.suppressed_forces
+//     (each a jsonb array of cluster ids; independent, unconstrained arrays — a cluster
+//     id may legitimately appear in both, per the Scenario builder's cross-role picker)
 //   preferred_futures.scenario_ids / strategic_options.scenario_ids (jsonb arrays)
 
 export const DELETED_CLUSTER = "[deleted cluster]";
@@ -88,7 +90,19 @@ export function resolveRelationship(relationshipRow, clusterLookup) {
   return { fromName, toName, type, sentence };
 }
 
-// ─── Scenario driving forces (cluster ids) ──────────────────────────────────────
+// ─── Scenario driving / suppressed forces (cluster ids) ─────────────────────────
+
+/** Shared by resolveDrivingForces/resolveSuppressedForces — both read the same shape. */
+function resolveClusterIdArray(idArray, clusterLookup) {
+  if (!Array.isArray(idArray)) return [];
+  const names = [];
+  for (const ref of idArray) {
+    const id = typeof ref === "string" ? ref : ref?.id;
+    const row = clusterLookup instanceof Map ? clusterLookup.get(id) : undefined;
+    if (row && row.name) names.push(row.name);
+  }
+  return names;
+}
 
 /**
  * Resolve a scenario's driving_forces (jsonb array of cluster ids) to cluster
@@ -98,15 +112,20 @@ export function resolveRelationship(relationshipRow, clusterLookup) {
  * @returns {string[]}
  */
 export function resolveDrivingForces(scenario, clusterLookup) {
-  const forces = scenario?.driving_forces;
-  if (!Array.isArray(forces)) return [];
-  const names = [];
-  for (const force of forces) {
-    const id = typeof force === "string" ? force : force?.id;
-    const row = clusterLookup instanceof Map ? clusterLookup.get(id) : undefined;
-    if (row && row.name) names.push(row.name);
-  }
-  return names;
+  return resolveClusterIdArray(scenario?.driving_forces, clusterLookup);
+}
+
+/**
+ * Resolve a scenario's suppressed_forces (jsonb array of cluster ids) to
+ * cluster names, skipping any that don't resolve. Never throws. A cluster id
+ * may also appear in driving_forces — the two arrays are independent and a
+ * cluster can hold both roles on the same scenario.
+ * @param {{suppressed_forces?: Array<string|{id: string}>}} scenario
+ * @param {Map<string, object>} clusterLookup
+ * @returns {string[]}
+ */
+export function resolveSuppressedForces(scenario, clusterLookup) {
+  return resolveClusterIdArray(scenario?.suppressed_forces, clusterLookup);
 }
 
 // ─── Scenario lookups ──────────────────────────────────────────────────────────

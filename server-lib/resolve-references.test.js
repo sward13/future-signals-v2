@@ -7,6 +7,7 @@ import {
   resolveClusterName,
   resolveRelationship,
   resolveDrivingForces,
+  resolveSuppressedForces,
   buildScenarioLookup,
   resolveScenarioRefs,
 } from "./resolve-references.js";
@@ -129,6 +130,31 @@ test("resolveDrivingForces returns [] for an empty or absent array", () => {
   assert.deepEqual(resolveDrivingForces({ driving_forces: [] }, lookup), []);
   assert.deepEqual(resolveDrivingForces({}, lookup), []);
   assert.deepEqual(resolveDrivingForces(undefined, lookup), []);
+});
+
+// resolveSuppressedForces -------------------------------------------------------
+
+test("resolveSuppressedForces resolves ids and skips dangling ones", () => {
+  const lookup = buildClusterLookup(clusters);
+  const names = resolveSuppressedForces(
+    { suppressed_forces: ["c2", "missing", "c1"] },
+    lookup,
+  );
+  assert.deepEqual(names, ["Insurance pricing models", "AI regulation"]);
+});
+
+test("resolveSuppressedForces returns [] for an empty or absent array", () => {
+  const lookup = buildClusterLookup(clusters);
+  assert.deepEqual(resolveSuppressedForces({ suppressed_forces: [] }, lookup), []);
+  assert.deepEqual(resolveSuppressedForces({}, lookup), []);
+  assert.deepEqual(resolveSuppressedForces(undefined, lookup), []);
+});
+
+test("resolveDrivingForces and resolveSuppressedForces resolve independently — a cluster id can appear in both", () => {
+  const lookup = buildClusterLookup(clusters);
+  const scenario = { driving_forces: ["c1"], suppressed_forces: ["c1"] };
+  assert.deepEqual(resolveDrivingForces(scenario, lookup), ["AI regulation"]);
+  assert.deepEqual(resolveSuppressedForces(scenario, lookup), ["AI regulation"]);
 });
 
 // buildScenarioLookup / resolveScenarioRefs -----------------------------------

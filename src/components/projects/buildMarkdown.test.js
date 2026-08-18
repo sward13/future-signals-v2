@@ -54,6 +54,33 @@ test("driving forces skip a dangling cluster id without emitting undefined or th
   assert.doesNotMatch(md, /ghost/);
 });
 
+// Suppressed forces --------------------------------------------------------------
+
+test("suppressed forces resolve to cluster names through the shared module", () => {
+  const scenarios = [
+    { id: "s1", project_id: "p1", name: "Scenario A", suppressed_forces: ["c2"] },
+  ];
+  const md = buildMarkdown(project, clusters, inputs, scenarios, preferredFutures, strategicOptions, []);
+  assert.match(md, /\*\*Suppressed forces:\*\* Insurance pricing models/);
+});
+
+test("driving and suppressed forces both render when a cluster is assigned to both roles", () => {
+  const scenarios = [
+    { id: "s1", project_id: "p1", name: "Scenario A", driving_forces: ["c1"], suppressed_forces: ["c1"] },
+  ];
+  const md = buildMarkdown(project, clusters, inputs, scenarios, preferredFutures, strategicOptions, []);
+  assert.match(md, /\*\*Driving forces:\*\* AI regulation/);
+  assert.match(md, /\*\*Suppressed forces:\*\* AI regulation/);
+});
+
+test("no Suppressed forces line is emitted when the array is empty or absent", () => {
+  const scenarios = [
+    { id: "s1", project_id: "p1", name: "Scenario A", driving_forces: ["c1"] },
+  ];
+  const md = buildMarkdown(project, clusters, inputs, scenarios, preferredFutures, strategicOptions, []);
+  assert.doesNotMatch(md, /Suppressed forces/);
+});
+
 // Relationships section --------------------------------------------------------
 
 test("relationships render as resolved sentences under a Relationships heading, after Clusters and before Scenarios", () => {

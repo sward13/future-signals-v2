@@ -8,7 +8,8 @@
  *
  * ID → name resolution is delegated to server-lib/resolve-references.js — this
  * module never re-implements lookup logic. Cluster/scenario references in the
- * narrative sections go through resolveDrivingForces() / resolveScenarioRefs().
+ * narrative sections go through resolveDrivingForces() / resolveSuppressedForces()
+ * / resolveScenarioRefs().
  *
  * Reading order (per web-export-spec.md), NOT build order:
  *   Hero → Overview → System Map → System Analysis → Scenarios →
@@ -19,7 +20,8 @@
  *             assumptions, h1_start/h1_end/h2_start/h2_end/h3_start/h3_end
  *   analyses: description, key_dynamics, critical_uncertainties (text[]),
  *             implications, confidence
- *   scenarios: name, archetype, horizon, description, narrative, driving_forces
+ *   scenarios: name, archetype, horizon, description, narrative, driving_forces,
+ *             suppressed_forces
  *   preferred_futures: name, description, desired_outcomes,
  *             guiding_principles (jsonb[]), scenario_ids (jsonb[])
  *   strategic_options: name, description, intended_outcome, actions,
@@ -35,6 +37,7 @@ import { projectDomainLabel } from "../lib/projectDomains.js";
 import { docToHtml, docIsEmpty } from "../lib/richtextDoc.js";
 import {
   resolveDrivingForces,
+  resolveSuppressedForces,
   resolveScenarioRefs,
 } from "../../server-lib/resolve-references.js";
 
@@ -352,9 +355,10 @@ export function renderScenario(scenario, clusterLookup) {
   const description = richOrText(s.description_doc, s.description);
   const narrative = richOrText(s.narrative_doc, s.narrative);
   const informedBy = refLine("Informed by", resolveDrivingForces(s, clusterLookup));
+  const suppressedBy = refLine("Suppressed by", resolveSuppressedForces(s, clusterLookup));
 
   return section(
-    `${narrativeHead("Scenario", s.name, badges)}${description}${narrative}${informedBy}`,
+    `${narrativeHead("Scenario", s.name, badges)}${description}${narrative}${informedBy}${suppressedBy}`,
     { border: false }
   );
 }

@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { c, sel, btnP, btnG, fl, fh, legend } from "../../styles/tokens.js";
 import { RichTextField } from "../shared/RichTextField.jsx";
+import { ClusterForcePicker } from "../shared/ClusterForcePicker.jsx";
 import { textToDoc, docToText } from "../../lib/richtextDoc.js";
 import { serializeRichText } from "../shared/richtext/serialize.js";
 
@@ -22,89 +23,6 @@ function ZoneDivider({ label }) {
         {label}
       </span>
       <div style={{ flex: 1, height: 1, background: c.border }} />
-    </div>
-  );
-}
-
-// ─── Chip multi-select ───────────────────────────────────────────────────────
-
-function ChipMultiSelect({ label, hint, clusters, selected, onChange }) {
-  const selectedSet = new Set(selected);
-  const toggle = (id) => {
-    onChange(selectedSet.has(id) ? selected.filter((x) => x !== id) : [...selected, id]);
-  };
-
-  return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={fl}>{label}</div>
-      {hint && <div style={fh}>{hint}</div>}
-      <div style={{
-        border: `1px solid ${c.borderStrong}`, borderRadius: 8,
-        background: c.white, overflow: "hidden",
-      }}>
-        {/* Selected chips */}
-        <div style={{
-          display: "flex", flexWrap: "wrap", gap: 5,
-          padding: "8px 10px", minHeight: 40,
-        }}>
-          {selected.length === 0 && (
-            <span style={{ fontSize: 12, color: c.hint, lineHeight: "24px" }}>None selected</span>
-          )}
-          {selected.map((id) => {
-            const cl = clusters.find((c) => c.id === id);
-            return (
-              <span key={id} style={{
-                display: "inline-flex", alignItems: "center", gap: 5,
-                fontSize: 11, background: c.surfaceAlt, color: c.ink,
-                border: `1px solid ${c.border}`, borderRadius: 5, padding: "3px 8px",
-              }}>
-                {cl?.name || id}
-                <button
-                  type="button"
-                  onClick={() => toggle(id)}
-                  style={{
-                    background: "none", border: "none", cursor: "pointer",
-                    color: c.hint, fontSize: 13, lineHeight: 1, padding: 0,
-                  }}
-                >
-                  ×
-                </button>
-              </span>
-            );
-          })}
-        </div>
-
-        {/* Available options */}
-        {clusters.length > 0 && (
-          <div style={{ borderTop: `1px solid ${c.border}`, background: c.fieldBg }}>
-            {clusters.map((cl) => (
-              <div
-                key={cl.id}
-                onClick={() => toggle(cl.id)}
-                style={{
-                  padding: "7px 12px", fontSize: 11,
-                  color: selectedSet.has(cl.id) ? c.ink : c.muted,
-                  fontWeight: selectedSet.has(cl.id) ? 500 : 400,
-                  background: selectedSet.has(cl.id) ? "#f0eafa" : "transparent",
-                  borderBottom: `1px solid ${c.border}`,
-                  cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                }}
-              >
-                <span>{cl.name}</span>
-                {selectedSet.has(cl.id) && (
-                  <span style={{ fontSize: 10, color: c.hint }}>✓</span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-        {clusters.length === 0 && (
-          <div style={{ padding: "10px 12px", fontSize: 11, color: c.hint, borderTop: `1px solid ${c.border}`, background: c.fieldBg }}>
-            No clusters in this project yet
-          </div>
-        )}
-      </div>
     </div>
   );
 }
@@ -343,21 +261,27 @@ export default function ScenarioForm({ appState, mode }) {
         </div>
 
         {/* Driving forces */}
-        <ChipMultiSelect
+        <ClusterForcePicker
+          role="driving"
           label="Driving forces"
           hint="Which clusters are active and influential in this scenario?"
           clusters={projectClusters}
           selected={drivingForces}
+          otherSelected={suppressedForces}
           onChange={setDrivingForces}
+          onGoToClusters={() => setActiveScreen("cluster")}
         />
 
         {/* Suppressed forces */}
-        <ChipMultiSelect
+        <ClusterForcePicker
+          role="suppressed"
           label="Suppressed forces"
           hint="Which clusters are weakened, absent, or reversed in this scenario?"
           clusters={projectClusters}
           selected={suppressedForces}
+          otherSelected={drivingForces}
           onChange={setSuppressedForces}
+          onGoToClusters={() => setActiveScreen("cluster")}
         />
 
         {/* Zone 2: Story */}

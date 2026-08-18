@@ -17,6 +17,7 @@ import {
   buildClusterLookup,
   resolveRelationship,
   resolveDrivingForces,
+  resolveSuppressedForces,
 } from "../../../server-lib/resolve-references.js";
 import { docToMarkdown, docIsEmpty } from "../../lib/richtextDoc.js";
 
@@ -113,6 +114,10 @@ export function buildMarkdown(
       const drivingNames = resolveDrivingForces(sc, clusterLookup);
       if (drivingNames.length > 0) {
         lines.push(`**Driving forces:** ${drivingNames.join(", ")}`);
+      }
+      const suppressedNames = resolveSuppressedForces(sc, clusterLookup);
+      if (suppressedNames.length > 0) {
+        lines.push(`**Suppressed forces:** ${suppressedNames.join(", ")}`);
       }
       nl();
     }
