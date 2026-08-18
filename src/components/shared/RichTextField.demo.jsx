@@ -37,6 +37,7 @@ function Output({ label, text }) {
 export default function RichTextFieldDemo() {
   const [standardDoc, setStandardDoc] = useState(SEED);
   const [compactDoc, setCompactDoc] = useState(null);
+  const [compactDoc2, setCompactDoc2] = useState(null);
 
   return (
     <div style={{
@@ -67,17 +68,30 @@ export default function RichTextFieldDemo() {
         <Panel title="Compact variant (System Analysis canvas — borderless, bubble-menu toolbar)">
           <div style={{
             background: c.white, border: `1px solid ${c.border}`, borderRadius: 8,
-            padding: "10px 12px", minHeight: 90,
+            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12,
           }}>
-            <div style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em", color: c.faint, marginBottom: 6 }}>Key Dynamics</div>
-            <RichTextField
-              value={compactDoc}
-              onChange={setCompactDoc}
-              variant="compact"
-              placeholder="The most significant pattern is a reinforcing loop between…"
-            />
+            {/* Two compact editors side by side — mirrors the System Analysis
+                canvas so click-away bubble-menu behavior can be tested. */}
+            <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 8, padding: "10px 12px", minHeight: 90 }}>
+              <div style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em", color: c.faint, marginBottom: 6 }}>Key Dynamics</div>
+              <RichTextField
+                value={compactDoc}
+                onChange={setCompactDoc}
+                variant="compact"
+                placeholder="The most significant pattern is a reinforcing loop between…"
+              />
+            </div>
+            <div style={{ background: c.white, border: `1px solid ${c.border}`, borderRadius: 8, padding: "10px 12px", minHeight: 90 }}>
+              <div style={{ fontSize: 10, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em", color: c.faint, marginBottom: 6 }}>Description</div>
+              <RichTextField
+                value={compactDoc2}
+                onChange={setCompactDoc2}
+                variant="compact"
+                placeholder="Summarise what this system is…"
+              />
+            </div>
           </div>
-          <Output label="Stored JSON" text={JSON.stringify(compactDoc, null, 2)} />
+          <Output label="Stored JSON (Key Dynamics)" text={JSON.stringify(compactDoc, null, 2)} />
         </Panel>
 
         {/* Read-only */}

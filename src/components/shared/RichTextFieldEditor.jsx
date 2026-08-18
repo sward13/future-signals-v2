@@ -20,7 +20,7 @@
  * the exact same constrained schema, so the in-app read view never touches
  * dangerouslySetInnerHTML.
  */
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { Bold, Italic, Heading2, Heading3, List, ListOrdered, Link2 } from "lucide-react";
@@ -141,6 +141,18 @@ export default function RichTextFieldEditor({
   const [linkOpen, setLinkOpen] = useState(false);
   const emitting = useRef(false);
 
+  // Only show the compact bubble menu when THIS editor is focused and has a
+  // selection — otherwise, with several editors on the System Analysis canvas,
+  // the menu sticks over a field after focus moves elsewhere (ProseMirror keeps
+  // the selection on blur). Stay open while the link input is active, since
+  // typing in it blurs the editor.
+  const linkOpenRef = useRef(false);
+  useEffect(() => { linkOpenRef.current = linkOpen; }, [linkOpen]);
+  const bubbleShouldShow = useCallback(({ editor: ed, state }) => {
+    if (linkOpenRef.current) return true;
+    return ed.isEditable && ed.isFocused && !state.selection.empty;
+  }, []);
+
   const editor = useEditor({
     extensions: richTextExtensions(placeholder),
     // Normalize incoming content to the allowed schema — a doc tampered via the
@@ -162,9 +174,11 @@ export default function RichTextFieldEditor({
   });
 
   // Reflect external value changes (e.g. switching records) into the editor,
-  // without clobbering the user's own in-flight edits.
+  // without clobbering the user's own in-flight edits. The isDestroyed guard
+  // matters under React StrictMode / the lazy boundary, where a passive effect
+  // can re-run against an editor that was already torn down.
   useEffect(() => {
-    if (!editor || emitting.current) return;
+    if (!editor || editor.isDestroyed || emitting.current) return;
     const current = editor.getJSON();
     const incoming = normalizeDoc(value) ?? EMPTY_DOC;
     if (JSON.stringify(current) !== JSON.stringify(incoming)) {
@@ -173,7 +187,7 @@ export default function RichTextFieldEditor({
   }, [value, editor]);
 
   useEffect(() => {
-    if (editor && editor.isEditable !== editable) editor.setEditable(editable);
+    if (editor && !editor.isDestroyed && editor.isEditable !== editable) editor.setEditable(editable);
   }, [editable, editor]);
 
   const openLink = () => {
@@ -208,7 +222,7 @@ export default function RichTextFieldEditor({
     return (
       <div className="rtf rtf-compact" style={{ width: "100%" }}>
         {editor && (
-          <BubbleMenu editor={editor} options={{ placement: "top" }}>
+          <BubbleMenu editor={editor} options={{ placement: "top" }} shouldShow={bubbleShouldShow}>
             <div style={{
               display: "flex", flexDirection: "column",
               background: c.white, border: `1px solid ${c.border}`, borderRadius: 8,
