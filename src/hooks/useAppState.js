@@ -59,6 +59,10 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [preferredFutures, setPreferredFutures] = useState([]);
   const [strategicOptions, setStrategicOptions] = useState([]);
   const [analyses, setAnalyses] = useState([]);
+  // Curated + (future) user-uploaded System Map background templates — a global
+  // pool, not workspace-scoped (owner_id is null for curated rows); RLS handles
+  // visibility. See docs/system-map-background-templates-spec.md.
+  const [systemMapTemplates, setSystemMapTemplates] = useState([]);
 
   // Workspace settings
   const [workspaceScanningEnabled, setWorkspaceScanningEnabled] = useState(true);
@@ -72,6 +76,12 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
 
   // Per-project scanner sources
   const [projectSources, setProjectSources] = useState([]);
+
+  // Per-project System Map background — null row (no fetch match) means no
+  // background set. One row per project, so this mirrors projectSources'
+  // fetch-on-activeProjectId-change pattern rather than the workspace-wide
+  // array pattern most other entities use.
+  const [projectSystemMapBackground, setProjectSystemMapBackground] = useState(null);
 
   const connectionsRef = useRef(connections);
   connectionsRef.current = connections;
@@ -173,6 +183,28 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     })();
   }, [activeProjectId]);
 
+  // ── System Map background — re-fetched whenever the active project changes ─
+
+  useEffect(() => {
+    if (!activeProjectId) {
+      setProjectSystemMapBackground(null);
+      return;
+    }
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("project_system_map_background")
+          .select("*")
+          .eq("project_id", activeProjectId)
+          .maybeSingle();
+        if (error) throw error;
+        setProjectSystemMapBackground(data ?? null);
+      } catch {
+        // non-fatal — canvas just renders with no background
+      }
+    })();
+  }, [activeProjectId]);
+
   // ── Supabase data fetching ────────────────────────────────────────────────
 
   useEffect(() => {
@@ -186,6 +218,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       setAnalyses([]);
       setCanvasNodes([]);
       setRelationships([]);
+      setSystemMapTemplates([]);
       return;
     }
 
@@ -368,6 +401,30 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       }
     };
 
+    // Global pool (curated + the caller's own uploads, per RLS) — not filtered
+    // by workspace_id since system_map_templates has no such column.
+    // asset_url/thumbnail_url are stored as relative object paths within the
+    // `system-map-templates` bucket (not full URLs — see the seed migration),
+    // so full public URLs are resolved once here rather than at every render site.
+    const fetchSystemMapTemplates = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("system_map_templates")
+          .select("*")
+          .eq("active", true)
+          .order("name", { ascending: true });
+        if (error) throw error;
+        const resolved = (data ?? []).map((t) => ({
+          ...t,
+          asset_url: supabase.storage.from("system-map-templates").getPublicUrl(t.asset_url).data.publicUrl,
+          thumbnail_url: supabase.storage.from("system-map-templates").getPublicUrl(t.thumbnail_url).data.publicUrl,
+        }));
+        setSystemMapTemplates(resolved);
+      } catch {
+        // non-fatal — picker just shows an empty library
+      }
+    };
+
     const fetchWorkspaceScanning = async () => {
       try {
         const { data } = await supabase
@@ -408,6 +465,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     fetchCanvasTextNodes();
     fetchRelationships();
     fetchAnalyses();
+    fetchSystemMapTemplates();
     fetchWorkspaceScanning();
   }, [workspaceId, showToast]);
 
@@ -1369,6 +1427,52 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     }
   }, [workspaceId, showToast]);
 
+  // ── System Map background template ───────────────────────────────────────
+  // One row per project (project_id is the table's PK) — set/remove are both
+  // upserts on that key, same shape as upsertAnalysis/deleteAnalysis above.
+
+  const setSystemMapBackground = useCallback((projectId, templateId) => {
+    const fields = { template_id: templateId };
+    setProjectSystemMapBackground((prev) =>
+      prev && prev.project_id === projectId ? { ...prev, ...fields } : { project_id: projectId, ...fields }
+    );
+    if (workspaceId) {
+      (async () => {
+        try {
+          const { error } = await supabase
+            .from("project_system_map_background")
+            .upsert(
+              { project_id: projectId, workspace_id: workspaceId, ...fields },
+              { onConflict: "project_id" }
+            );
+          if (error) throw error;
+        } catch {
+          showToast("Failed to set System Map background", "error");
+        }
+      })();
+    }
+  }, [workspaceId, showToast]);
+
+  const removeSystemMapBackground = useCallback((projectId) => {
+    setProjectSystemMapBackground((prev) =>
+      prev && prev.project_id === projectId ? { ...prev, template_id: null } : prev
+    );
+    if (workspaceId) {
+      (async () => {
+        try {
+          const { error } = await supabase
+            .from("project_system_map_background")
+            .update({ template_id: null })
+            .eq("project_id", projectId)
+            .eq("workspace_id", workspaceId);
+          if (error) throw error;
+        } catch {
+          showToast("Failed to remove System Map background", "error");
+        }
+      })();
+    }
+  }, [workspaceId, showToast]);
+
   // ── Canvas / System Map ───────────────────────────────────────────────────
 
   const updateNodePosition = useCallback((nodeId, pos) => {
@@ -1892,6 +1996,10 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     deleteSystemMap,
     deleteAnalysis,
     deleteProject,
+    systemMapTemplates,
+    projectSystemMapBackground,
+    setSystemMapBackground,
+    removeSystemMapBackground,
     showToast,
     inboxProjectFilter,
     setInboxProjectFilter,

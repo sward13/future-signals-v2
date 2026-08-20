@@ -21,6 +21,7 @@ import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { ClusterDetailDrawer } from "../clusters/ClusterDetailDrawer.jsx";
 import { Tag, HorizTag, ConfidenceBadge } from "../shared/Tag.jsx";
+import { TemplatePickerModal } from "../shared/TemplatePickerModal.jsx";
 
 const NODE_W = 156;
 
@@ -457,8 +458,50 @@ function FormatBarTextNode({ node, onUpdate, onDuplicate, onDelete }) {
   );
 }
 
+// ─── BackgroundTemplateNode — System Map background template layer ───────────
+// Must be defined outside CanvasArea for a stable nodeTypes reference. Renders
+// a single non-interactive, non-selectable React Flow node holding the
+// project's chosen foresight-framework template graphic (Three Horizons, a
+// 2x2 matrix, etc.), at reduced opacity so it reads as a scaffold rather than
+// competing with actual map content. Mounted INSIDE .react-flow__viewport (a
+// real RF node, not a <Background>/<Panel>-style prop child of <ReactFlow>) so
+// it pans/zooms with the canvas and is captured automatically by PNG export —
+// see docs/system-map-background-templates-spec.md's "Canvas rendering"
+// section for why that distinction matters.
+//
+// Fixed base box for V1 (position/scale are fixed per project, not
+// user-adjustable — see the spec's OQ-BG-02). `objectFit: "contain"` lets any
+// template's native aspect ratio (landscape Three Horizons, square 2x2
+// matrix, etc.) fit without distortion or cropping.
+const BACKGROUND_BASE_W = 1400;
+const BACKGROUND_BASE_H = 900;
+
+function BackgroundTemplateNode({ data }) {
+  const { template, opacity, scale } = data;
+  if (!template) return null;
+  return (
+    <div
+      style={{
+        width: BACKGROUND_BASE_W,
+        height: BACKGROUND_BASE_H,
+        transform: `scale(${scale ?? 1})`,
+        transformOrigin: "top left",
+        opacity: opacity ?? 0.35,
+        pointerEvents: "none",
+      }}
+    >
+      <img
+        src={template.asset_url}
+        alt=""
+        draggable={false}
+        style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+      />
+    </div>
+  );
+}
+
 // Stable type maps — defined once outside any component
-const nodeTypes = { cluster: ClusterNodeComponent, textNode: TextNodeComponent };
+const nodeTypes = { cluster: ClusterNodeComponent, textNode: TextNodeComponent, backgroundTemplate: BackgroundTemplateNode };
 const edgeTypes = { relationship: RelationshipEdgeComponent };
 
 // ─── Relationship modal ───────────────────────────────────────────────────────
@@ -1158,6 +1201,7 @@ function CanvasArea({
   panelsHidden, onTogglePanels,
   isFullscreen, onToggleFullscreen,
   systemMapExportRef,
+  mapBackground,
 }) {
   const { zoomIn, zoomOut, setViewport, getViewport, screenToFlowPosition, fitView: fitViewFn } = useReactFlow();
 
@@ -1261,9 +1305,13 @@ function CanvasArea({
   const onUpdateTextNodeRef = useRef(onUpdateTextNode);
   useEffect(() => { onUpdateTextNodeRef.current = onUpdateTextNode; }, [onUpdateTextNode]);
 
-  // Rebuild RF nodes whenever cluster nodes OR text nodes change (add/remove).
+  // Rebuild RF nodes whenever cluster nodes OR text nodes OR the background
+  // template change (add/remove/swap).
   const nodeIdsKey = projectNodes.map((n) => n.id).join(",");
   const textNodeIdsKey = projectTextNodes.map((n) => n.id).join(",");
+  const backgroundKey = mapBackground
+    ? `${mapBackground.template?.id}|${mapBackground.opacity}|${mapBackground.positionX}|${mapBackground.positionY}|${mapBackground.scale}`
+    : "none";
   useEffect(() => {
     setRFNodes((prev) => {
       const dbIds = new Set(projectTextNodes.map((n) => n.id));
@@ -1294,7 +1342,25 @@ function CanvasArea({
       const pendingLocal = prev.filter(
         (n) => n.type === "textNode" && n.data?.autoFocus && !dbIds.has(n.id)
       );
+      // Background renders first (lowest array position) and also carries an
+      // explicit low zIndex, so it stays behind cluster nodes/edges regardless
+      // of RF's default stacking. Non-interactive: selectable/draggable false,
+      // and BackgroundTemplateNode itself sets pointerEvents: "none".
+      const backgroundNode = mapBackground?.template ? [{
+        id: "__system_map_background__",
+        type: "backgroundTemplate",
+        position: { x: mapBackground.positionX, y: mapBackground.positionY },
+        selectable: false,
+        draggable: false,
+        zIndex: -1,
+        data: {
+          template: mapBackground.template,
+          opacity: mapBackground.opacity,
+          scale: mapBackground.scale,
+        },
+      }] : [];
       return [
+        ...backgroundNode,
         ...projectNodes.map((pNode) => ({
           id: pNode.id,
           type: "cluster",
@@ -1313,7 +1379,7 @@ function CanvasArea({
       ];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodeIdsKey, textNodeIdsKey]);
+  }, [nodeIdsKey, textNodeIdsKey, backgroundKey]);
 
   // Update data (selection, connectMode) without resetting positions.
   // Skip text nodes — they manage their own selection via rfNode.selected.
@@ -1534,7 +1600,10 @@ function CanvasArea({
   const visibleNodes = hiddenSubtypes.size === 0
     ? rfNodes
     : rfNodes.map((n) => {
-        if (n.type === "textNode") return n;
+        // Neither text annotations nor the background template have a cluster
+        // subtype — the Trend/Driver/Tension filter only ever applies to
+        // cluster nodes.
+        if (n.type === "textNode" || n.type === "backgroundTemplate") return n;
         const subtype = n.data?.cluster?.subtype;
         return { ...n, hidden: hiddenSubtypes.has(subtype) };
       });
@@ -1861,6 +1930,7 @@ export default function ScenarioCanvas({ appState }) {
     updateCluster, assignInputToCluster, removeInputFromCluster,
     deleteSystemMap, deleteAnalysis, showToast, scenarioDetailId, closeScenarioDetail,
     systemMapExportRef,
+    systemMapTemplates, projectSystemMapBackground, setSystemMapBackground, removeSystemMapBackground,
   } = appState;
 
   const project = projects.find((p) => p.id === activeProjectId) || null;
@@ -1871,8 +1941,22 @@ export default function ScenarioCanvas({ appState }) {
     .filter((r) => r.projectId === activeProjectId)
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
+  // Resolved background: the project's chosen template (or null if none set /
+  // the referenced template was soft-disabled since selection).
+  const backgroundTemplateId = projectSystemMapBackground?.template_id || null;
+  const mapBackground = backgroundTemplateId
+    ? {
+        template: systemMapTemplates.find((t) => t.id === backgroundTemplateId) || null,
+        opacity: projectSystemMapBackground.opacity ?? 0.35,
+        positionX: projectSystemMapBackground.position_x ?? 0,
+        positionY: projectSystemMapBackground.position_y ?? 0,
+        scale: projectSystemMapBackground.scale ?? 1,
+      }
+    : null;
+
   const [viewMode, setViewMode] = useState("canvas");
   const [confirmDeleteMap, setConfirmDeleteMap] = useState(false);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [panelsHidden, setPanelsHidden] = useState(false);
@@ -2062,6 +2146,18 @@ export default function ScenarioCanvas({ appState }) {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              onClick={() => setTemplatePickerOpen(true)}
+              style={{
+                fontSize: 11, padding: "5px 11px", borderRadius: 6,
+                border: `1px solid ${mapBackground?.template ? c.brand : c.border}`,
+                background: mapBackground?.template ? c.brandBg : "transparent",
+                color: mapBackground?.template ? c.brand : c.muted,
+                cursor: "pointer", fontFamily: "inherit",
+              }}
+            >
+              {mapBackground?.template ? mapBackground.template.name : "Background"}
+            </button>
             {(projectNodes.length > 0 || projectRels.length > 0) && (
               <button
                 onClick={() => setConfirmDeleteMap(true)}
@@ -2101,6 +2197,21 @@ export default function ScenarioCanvas({ appState }) {
           onClose={() => setConfirmDeleteMap(false)}
         />
       )}
+
+      <TemplatePickerModal
+        open={templatePickerOpen}
+        onClose={() => setTemplatePickerOpen(false)}
+        templates={systemMapTemplates}
+        currentTemplateId={mapBackground?.template?.id || null}
+        onSelect={(templateId) => {
+          setSystemMapBackground(activeProjectId, templateId);
+          showToast("Background template applied");
+        }}
+        onRemove={() => {
+          removeSystemMapBackground(activeProjectId);
+          showToast("Background template removed");
+        }}
+      />
 
       {viewMode === "table" ? (
         <TableView
@@ -2146,6 +2257,7 @@ export default function ScenarioCanvas({ appState }) {
               isFullscreen={isFullscreen}
               onToggleFullscreen={() => setIsFullscreen((f) => !f)}
               systemMapExportRef={systemMapExportRef}
+              mapBackground={mapBackground}
             />
           </ReactFlowProvider>
 
