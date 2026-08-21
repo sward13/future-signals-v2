@@ -1345,13 +1345,18 @@ function CanvasArea({
       // Background renders first (lowest array position) and also carries an
       // explicit low zIndex, so it stays behind cluster nodes/edges regardless
       // of RF's default stacking. Non-interactive: selectable/draggable false,
-      // and BackgroundTemplateNode itself sets pointerEvents: "none".
+      // focusable: false (RF nodes are tabbable by default independent of those
+      // two — without this the node wrapper still shows RF's default focus-ring
+      // outline on click, which reads as a false "selected" state even though
+      // no app-level selection ever fires), and BackgroundTemplateNode itself
+      // sets pointerEvents: "none".
       const backgroundNode = mapBackground?.template ? [{
         id: "__system_map_background__",
         type: "backgroundTemplate",
         position: { x: mapBackground.positionX, y: mapBackground.positionY },
         selectable: false,
         draggable: false,
+        focusable: false,
         zIndex: -1,
         data: {
           template: mapBackground.template,
