@@ -13,6 +13,11 @@
  *   relationships:   [{ from_cluster_id, to_cluster_id, type,
  *                       source_handle, target_handle }]  (relationships)
  *   clusterLookup:   Map<cluster_id, clusterRow> from buildClusterLookup()
+ *   mapBackground:   { assetUrl, opacity, positionX, positionY, scale } | null
+ *                    — pre-resolved by server-lib/publish-project.js's
+ *                    fetchMapBackground() (project_system_map_background joined
+ *                    to system_map_templates, asset_url already a public URL).
+ *                    See docs/system-map-background-templates-spec.md.
  *
  * Confirmed schema facts this relies on:
  *   - canvas_nodes persists ONLY cluster_id + x/y — no width/height. Node size
@@ -37,6 +42,12 @@ import {
 const NODE_W = 156;
 const NODE_H = 56;
 const PAD = 48;
+
+// Background template's base box, matching BACKGROUND_BASE_W/H in
+// ScenarioCanvas.jsx's BackgroundTemplateNode — kept in sync by hand, same as
+// REL_COLORS below vs. REL_TYPES in that file.
+const BACKGROUND_BASE_W = 1400;
+const BACKGROUND_BASE_H = 900;
 
 const CH = {
   ink: "#17171A",
@@ -194,6 +205,23 @@ function renderNode(node, clusterLookup) {
     </g>`;
 }
 
+/**
+ * The background template layer — a single SVG <image>, painted before edges/
+ * nodes/text so it sits behind everything, matching the live canvas's z-order
+ * (see BackgroundTemplateNode in ScenarioCanvas.jsx). Returns "" when no
+ * background is set.
+ */
+function renderBackground(mapBackground) {
+  if (!mapBackground?.assetUrl) return "";
+  const scale = num(mapBackground.scale, 1);
+  const w = BACKGROUND_BASE_W * scale;
+  const h = BACKGROUND_BASE_H * scale;
+  const x = num(mapBackground.positionX);
+  const y = num(mapBackground.positionY);
+  const opacity = num(mapBackground.opacity, 0.35);
+  return `<image href="${esc(mapBackground.assetUrl)}" x="${round(x)}" y="${round(y)}" width="${round(w)}" height="${round(h)}" opacity="${opacity}" preserveAspectRatio="xMidYMid meet" />`;
+}
+
 function renderTextNode(tn) {
   if (!tn || typeof tn.text !== "string" || tn.text.trim() === "") return "";
   const x = num(tn.x);
@@ -250,25 +278,32 @@ function renderEdge(rel, placed, clusterLookup, usedColors) {
 
 /**
  * Build the System Map section as an inline SVG string.
- * Returns "" when nothing is placed on the canvas (empty map).
+ * Returns "" when nothing is placed on the canvas AND no background is set
+ * (an empty map with a background chosen still renders, showing the scaffold).
  */
-export function renderSystemMap(canvasNodes, canvasTextNodes, relationships, clusterLookup) {
+export function renderSystemMap(canvasNodes, canvasTextNodes, relationships, clusterLookup, mapBackground) {
   const nodes = Array.isArray(canvasNodes) ? canvasNodes.filter((n) => n && n.cluster_id) : [];
   const textNodes = Array.isArray(canvasTextNodes) ? canvasTextNodes : [];
   const rels = Array.isArray(relationships) ? relationships : [];
+  const hasBackground = Boolean(mapBackground?.assetUrl);
 
-  if (nodes.length === 0 && textNodes.length === 0) return "";
+  if (nodes.length === 0 && textNodes.length === 0 && !hasBackground) return "";
 
   // Placed clusters, keyed by cluster_id — the source of truth for edge routing.
   const placed = new Map();
   for (const n of nodes) placed.set(n.cluster_id, { x: num(n.x), y: num(n.y) });
 
   const usedColors = new Set();
+  // Background paints first (bottom), matching the live canvas's z-order.
+  const backgroundSvg = renderBackground(mapBackground);
   const edgeSvg = rels.map((r) => renderEdge(r, placed, clusterLookup, usedColors)).join("");
   const nodeSvg = nodes.map((n) => renderNode(n, clusterLookup)).join("");
   const textSvg = textNodes.map(renderTextNode).join("");
 
-  // Bounding box over everything drawn.
+  // Bounding box over everything drawn, including the background's own box —
+  // matches PNG export, where the background is a real canvas node and
+  // therefore always included in the exported frame (see the Pass 1 audit's
+  // "Canvas rendering" finding: this is intentional, not incidental).
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   const extend = (x0, y0, x1, y1) => {
     minX = Math.min(minX, x0); minY = Math.min(minY, y0);
@@ -279,6 +314,12 @@ export function renderSystemMap(canvasNodes, canvasTextNodes, relationships, clu
     const size = num(tn.font_size, 16);
     const w = String(tn.text || "").length * size * 0.6;
     extend(num(tn.x), num(tn.y), num(tn.x) + w, num(tn.y) + size * 1.4);
+  }
+  if (hasBackground) {
+    const scale = num(mapBackground.scale, 1);
+    const bx = num(mapBackground.positionX);
+    const by = num(mapBackground.positionY);
+    extend(bx, by, bx + BACKGROUND_BASE_W * scale, by + BACKGROUND_BASE_H * scale);
   }
   if (!Number.isFinite(minX)) { minX = 0; minY = 0; maxX = NODE_W; maxY = NODE_H; }
 
@@ -297,6 +338,7 @@ export function renderSystemMap(canvasNodes, canvasTextNodes, relationships, clu
 
   const svg = `<svg viewBox="${vbX} ${vbY} ${vbW} ${vbH}" style="width:100%; max-width:${vbW}px; height:auto; display:block; margin:0 auto;" role="img" aria-label="System map of ${nodes.length} clusters and their relationships">
       <defs>${markers}</defs>
+      ${backgroundSvg}
       ${edgeSvg}
       ${nodeSvg}
       ${textSvg}

@@ -37,6 +37,14 @@ function makeFakeClient(fixtures = {}, opts = {}) {
       const p = fixtures.project && fixtures.project.id === filters.id ? fixtures.project : null;
       return { data: p, error: p ? null : { message: "not found" } };
     }
+    // Keyed by id, not project_id — must be handled before the generic
+    // project-scoped fallback below (which would otherwise match every row,
+    // since filters.project_id and a template row's project_id are both
+    // simply undefined).
+    if (table === "system_map_templates") {
+      const rows = (fixtures.system_map_templates || []).filter((r) => r.id === filters.id);
+      return { data: rows, error: null };
+    }
     if (table === "project_publications") {
       let rows = pubRows;
       if (filters.project_id) rows = rows.filter((r) => r.project_id === filters.project_id);
@@ -78,6 +86,8 @@ function makeFakeClient(fixtures = {}, opts = {}) {
           calls.uploads.push({ bucket, path, body, options });
           return Promise.resolve({ data: { path }, error: null });
         },
+        // Real Supabase's getPublicUrl is synchronous, not a promise.
+        getPublicUrl: (path) => ({ data: { publicUrl: `https://fake.supabase.co/storage/v1/object/public/${bucket}/${path}` } }),
       }),
     },
     __calls: calls,
@@ -270,6 +280,59 @@ test("publishProject: a Future Models sub-type with zero items never errors", as
   assert.doesNotMatch(client.__calls.uploads[0].body, /A scenario/);
   // no content under Future Models → no empty heading
   assert.doesNotMatch(client.__calls.uploads[0].body, /Future Models/);
+});
+
+// ─── System Map background template ─────────────────────────────────────────────
+
+test("publishProject: renders the background as an <image> resolved to a public URL", async () => {
+  const f = baseFixtures();
+  f.project_system_map_background = [
+    { project_id: PID, workspace_id: WID, template_id: "tpl-1", opacity: 0.35, position_x: 0, position_y: 0, scale: 1 },
+  ];
+  f.system_map_templates = [
+    { id: "tpl-1", name: "Three Horizons", asset_url: "three-horizons.svg", active: true },
+  ];
+  const client = makeFakeClient(f);
+  const result = await publishProject(PID, { supabase: client, now: NOW });
+  assert.equal(result.status, "published");
+
+  const body = client.__calls.uploads[0].body;
+  assert.match(body, /<image href="https:\/\/fake\.supabase\.co\/storage\/v1\/object\/public\/system-map-templates\/three-horizons\.svg"/);
+  assert.match(body, /opacity="0\.35"/);
+});
+
+test("publishProject: no background row → no <image>, no throw", async () => {
+  const client = makeFakeClient(baseFixtures()); // no project_system_map_background fixture at all
+  const result = await publishProject(PID, { supabase: client, now: NOW });
+  assert.equal(result.status, "published");
+  assert.doesNotMatch(client.__calls.uploads[0].body, /<image/);
+});
+
+test("publishProject: a background row with a dangling template_id degrades gracefully (no <image>, no throw)", async () => {
+  const f = baseFixtures();
+  f.project_system_map_background = [
+    { project_id: PID, workspace_id: WID, template_id: "does-not-exist", opacity: 0.35, position_x: 0, position_y: 0, scale: 1 },
+  ];
+  f.system_map_templates = []; // the referenced template row doesn't exist
+  const client = makeFakeClient(f);
+  let result;
+  await assert.doesNotReject(async () => { result = await publishProject(PID, { supabase: client, now: NOW }); });
+  assert.equal(result.status, "published");
+  assert.doesNotMatch(client.__calls.uploads[0].body, /<image/);
+});
+
+test("publishProject: excluding System Map also skips fetching the background + template tables", async () => {
+  const f = baseFixtures();
+  f.project_system_map_background = [
+    { project_id: PID, workspace_id: WID, template_id: "tpl-1", opacity: 0.35, position_x: 0, position_y: 0, scale: 1 },
+  ];
+  f.system_map_templates = [{ id: "tpl-1", name: "Three Horizons", asset_url: "three-horizons.svg", active: true }];
+  const client = makeFakeClient(f);
+  await publishProject(PID, { supabase: client, now: NOW, selection: { systemMap: false } });
+
+  const reads = client.__calls.reads;
+  assert.ok(!reads.includes("project_system_map_background"));
+  assert.ok(!reads.includes("system_map_templates"));
 });
 
 // ─── Open Graph tags ─────────────────────────────────────────────────────────────

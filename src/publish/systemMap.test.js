@@ -195,3 +195,81 @@ test("a placed node whose cluster was deleted degrades to a fallback label", () 
   assertClean(html);
   assert.match(html, /\[deleted cluster\]/);
 });
+
+// ─── Background template ────────────────────────────────────────────────────
+
+const mapBackground = {
+  assetUrl: "https://kptatqipjwihkdxdxlvh.supabase.co/storage/v1/object/public/system-map-templates/three-horizons.svg",
+  opacity: 0.35,
+  positionX: 0,
+  positionY: 0,
+  scale: 1,
+};
+
+test("renders the background as an SVG <image> at its stored opacity/position/scale", () => {
+  const html = renderSystemMap(canvasNodes, [], relationships, clusterLookup, mapBackground);
+  assertClean(html);
+  assert.match(
+    html,
+    /<image href="https:\/\/kptatqipjwihkdxdxlvh\.supabase\.co\/storage\/v1\/object\/public\/system-map-templates\/three-horizons\.svg" x="0" y="0" width="1400" height="900" opacity="0\.35"/
+  );
+});
+
+test("background paints before edges/nodes/text (bottom of the SVG document order)", () => {
+  const html = renderSystemMap(canvasNodes, [], relationships, clusterLookup, mapBackground);
+  // Search only the visible content, past </defs> — the arrowhead marker
+  // definitions inside <defs> also contain a <path>, which would otherwise
+  // false-positive as "the first edge".
+  const content = html.slice(html.indexOf("</defs>"));
+  const imageIdx = content.indexOf("<image");
+  const pathIdx = content.indexOf("<path"); // first edge
+  const cardIdx = content.indexOf('fill="#FFFFFF"'); // first node's white card
+  assert.ok(imageIdx !== -1 && pathIdx !== -1 && cardIdx !== -1);
+  assert.ok(imageIdx < pathIdx, "background must precede edges");
+  assert.ok(imageIdx < cardIdx, "background must precede nodes");
+});
+
+test("scale multiplies the background's base box (1400x900)", () => {
+  const html = renderSystemMap([], [], [], clusterLookup, { ...mapBackground, scale: 2 });
+  assert.match(html, /width="2800" height="1800"/);
+});
+
+test("position offsets the background's x/y", () => {
+  const html = renderSystemMap([], [], [], clusterLookup, { ...mapBackground, positionX: 120, positionY: -40 });
+  assert.match(html, /x="120" y="-40"/);
+});
+
+test("missing opacity/scale fall back to sane defaults (0.35 opacity, 1x scale)", () => {
+  const html = renderSystemMap([], [], [], clusterLookup, { assetUrl: mapBackground.assetUrl, positionX: 0, positionY: 0 });
+  assertClean(html);
+  assert.match(html, /opacity="0\.35"/);
+  assert.match(html, /width="1400" height="900"/);
+});
+
+test("an empty canvas WITH a background still renders (shows the scaffold with nothing placed on it)", () => {
+  const html = renderSystemMap([], [], [], clusterLookup, mapBackground);
+  assertClean(html);
+  assert.match(html, /<svg/);
+  assert.match(html, /<image/);
+});
+
+test("an empty canvas with no background still returns empty string (unchanged behavior)", () => {
+  assert.equal(renderSystemMap([], [], [], clusterLookup, null), "");
+  assert.equal(renderSystemMap([], [], [], clusterLookup, undefined), "");
+});
+
+test("omitting the mapBackground argument entirely is safe (backward compatible) and renders no <image>", () => {
+  const html = renderSystemMap(canvasNodes, [], relationships, clusterLookup);
+  assertClean(html);
+  assert.doesNotMatch(html, /<image/);
+});
+
+test("the viewBox expands to include the background's extent, even when clusters are small/clustered together", () => {
+  const tightNodes = [{ cluster_id: "c1", x: 10, y: 10 }, { cluster_id: "c2", x: 30, y: 30 }];
+  const withoutBg = renderSystemMap(tightNodes, [], [], clusterLookup);
+  const withBg = renderSystemMap(tightNodes, [], [], clusterLookup, mapBackground);
+  const viewBoxOf = (html) => html.match(/viewBox="([-\d.]+) ([-\d.]+) ([-\d.]+) ([-\d.]+)"/).slice(1).map(Number);
+  const [, , wWithout] = viewBoxOf(withoutBg);
+  const [, , wWith] = viewBoxOf(withBg);
+  assert.ok(wWith > wWithout, `expected background-inclusive viewBox (${wWith}) to be wider than cluster-only (${wWithout})`);
+});

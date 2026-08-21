@@ -86,6 +86,41 @@ async function selectByProject(supabase, table, projectId) {
   return data || [];
 }
 
+const TEMPLATES_BUCKET = "system-map-templates";
+
+// Resolves the project's System Map background (if any) to what renderSystemMap
+// needs to draw it: a public asset URL + the stored opacity/position/scale.
+// Two-step lookup (background row → template row) since a template reference
+// isn't denormalized onto project_system_map_background. Degrades to null (no
+// background rendered) rather than throwing on a dangling template_id — a
+// template can be deleted after a project already referenced it.
+async function fetchMapBackground(supabase, projectId) {
+  const { data: bgRow, error: bgErr } = await supabase
+    .from("project_system_map_background")
+    .select("*")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (bgErr) throw new Error(`Failed to load System Map background: ${bgErr.message}`);
+  if (!bgRow?.template_id) return null;
+
+  const { data: template, error: tplErr } = await supabase
+    .from("system_map_templates")
+    .select("asset_url")
+    .eq("id", bgRow.template_id)
+    .maybeSingle();
+  if (tplErr) throw new Error(`Failed to load System Map background template: ${tplErr.message}`);
+  if (!template) return null; // dangling reference — degrade gracefully
+
+  const { data: urlData } = supabase.storage.from(TEMPLATES_BUCKET).getPublicUrl(template.asset_url);
+  return {
+    assetUrl: urlData.publicUrl,
+    opacity: bgRow.opacity,
+    positionX: bgRow.position_x,
+    positionY: bgRow.position_y,
+    scale: bgRow.scale,
+  };
+}
+
 async function fetchProjectData(supabase, projectId, sel) {
   const { data: project, error: projectErr } = await supabase
     .from("projects")
@@ -108,6 +143,7 @@ async function fetchProjectData(supabase, projectId, sel) {
     relationships,
     canvasNodes,
     canvasTextNodes,
+    mapBackground,
     scenarios,
     preferredFutures,
     strategicOptions,
@@ -118,6 +154,7 @@ async function fetchProjectData(supabase, projectId, sel) {
     sel.systemMap ? selectByProject(supabase, "relationships", projectId) : [],
     sel.systemMap ? selectByProject(supabase, "canvas_nodes", projectId) : [],
     sel.systemMap ? selectByProject(supabase, "canvas_text_nodes", projectId) : [],
+    sel.systemMap ? fetchMapBackground(supabase, projectId) : null,
     wantScenarios ? selectByProject(supabase, "scenarios", projectId) : [],
     fm.enabled && fm.preferredFutures.enabled ? selectByProject(supabase, "preferred_futures", projectId) : [],
     fm.enabled && fm.strategicOptions.enabled ? selectByProject(supabase, "strategic_options", projectId) : [],
@@ -153,6 +190,7 @@ async function fetchProjectData(supabase, projectId, sel) {
     relationships,
     canvasNodes,
     canvasTextNodes,
+    mapBackground,
     scenarios,
     preferredFutures,
     strategicOptions,
@@ -191,6 +229,7 @@ export function assembleHtml(data, { publishedAt, publicUrl, selection } = {}) {
     relationships,
     canvasNodes,
     canvasTextNodes,
+    mapBackground,
     scenarios,
     preferredFutures,
     strategicOptions,
@@ -204,7 +243,7 @@ export function assembleHtml(data, { publishedAt, publicUrl, selection } = {}) {
   const parts = [
     renderHero(project, { publishedAt }),
     renderOverview(project),
-    sel.systemMap ? renderSystemMap(canvasNodes, canvasTextNodes, relationships, clusterLookup) : "",
+    sel.systemMap ? renderSystemMap(canvasNodes, canvasTextNodes, relationships, clusterLookup, mapBackground) : "",
     sel.systemAnalysis ? renderSystemAnalysis(analysis) : "",
   ];
 
