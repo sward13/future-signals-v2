@@ -4,6 +4,11 @@ import { c } from "../../styles/tokens.js";
 import { projectDomainLabel } from "../../lib/projectDomains.js";
 import { ChevronDown } from "lucide-react";
 
+// Matches the panel's own maxHeight below — used as the worst-case height
+// estimate for the viewport-collision check, same pattern as
+// ClusterAssignMenu.jsx's DROPDOWN_MAX_HEIGHT.
+const PANEL_MAX_HEIGHT = 280;
+
 const sectionHeader = {
   padding: "8px 14px 4px", fontSize: 11,
   letterSpacing: "0.02em", color: c.hint, fontWeight: 500,
@@ -42,6 +47,10 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
     onAdd(projectId);
   };
 
+  // Flip to open upward when there isn't room below — same pattern as
+  // ClusterAssignMenu.jsx's spaceBelow/openUp check.
+  const openUp = anchorRect ? window.innerHeight - anchorRect.bottom < PANEL_MAX_HEIGHT + 48 : false;
+
   return (
     <div style={{ position: "relative" }}>
       <button
@@ -61,10 +70,14 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              position: "fixed", top: anchorRect.bottom + 4, right: window.innerWidth - anchorRect.right,
+              position: "fixed",
+              right: window.innerWidth - anchorRect.right,
+              ...(openUp
+                ? { bottom: window.innerHeight - anchorRect.top + 4 }
+                : { top: anchorRect.bottom + 4 }),
               background: c.white, border: `1px solid ${c.border}`,
               borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
-              minWidth: 220, maxHeight: 280, overflowY: "auto",
+              minWidth: 220, maxHeight: PANEL_MAX_HEIGHT, overflowY: "auto",
               zIndex: 51, textAlign: "left",
               fontFamily: "inherit",
             }}
