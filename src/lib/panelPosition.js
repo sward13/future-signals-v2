@@ -36,11 +36,22 @@ const FLIP_BUFFER = 48;
  *   preferredDirection?: "down"|"up",    // default "down"
  *   align?: "right"|"left",              // default "right"
  *   gap?: number,                        // gap between trigger and panel, default 4
+ *   zIndex?: number,                     // optional — see below
  * }} opts
- * @returns {{position: "fixed", top?: number, bottom?: number, left?: number, right?: number}|null}
+ * @returns {{position: "fixed", top?: number, bottom?: number, left?: number, right?: number, zIndex?: number}|null}
  *   A style object to spread into the panel's `style` prop, or null when
  *   anchorRect is absent (mirrors every call site's existing `anchorRect &&`
  *   guard before rendering the portal).
+ *
+ * zIndex is opt-in and passed straight through into the returned object when
+ * given, so a caller that's reusable across hosts with different stacking
+ * baselines (e.g. AddToProjectButton.jsx, rendered both inline in a flat
+ * Inbox row list and inside InputDetailDrawer.jsx's zIndex:301 slide-in
+ * panel) can thread a per-host z-index through the same call/spread it
+ * already uses for position, rather than hardcoding one value that's wrong
+ * for at least one host. Omit it and the caller keeps its own separate
+ * zIndex literal, exactly as every existing call site already does — this
+ * is purely additive.
  */
 export function computeFlipPosition(anchorRect, opts = {}) {
   if (!anchorRect) return null;
@@ -49,6 +60,7 @@ export function computeFlipPosition(anchorRect, opts = {}) {
     preferredDirection = "down",
     align = "right",
     gap = 4,
+    zIndex,
   } = opts;
 
   const threshold = panelHeight + FLIP_BUFFER;
@@ -64,5 +76,10 @@ export function computeFlipPosition(anchorRect, opts = {}) {
     ? { left: anchorRect.left }
     : { right: window.innerWidth - anchorRect.right };
 
-  return { position: "fixed", ...vertical, ...horizontal };
+  return {
+    position: "fixed",
+    ...vertical,
+    ...horizontal,
+    ...(zIndex !== undefined ? { zIndex } : {}),
+  };
 }

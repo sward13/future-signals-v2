@@ -22,13 +22,23 @@ const item = {
 
 /**
  * Inline "Add to project" dropdown button, shared by My Inputs and AI
- * Suggested rows in the Inbox.
+ * Suggested rows in the Inbox, and by InputDetailDrawer.jsx's slide-in panel.
  *
  * If `recommendedProjectId` is provided, the dropdown shows a Recommended
  * section (with a "Best match" badge) above an alphabetical "Other projects"
  * list. Otherwise it shows a single alphabetical "Add to project" list.
+ *
+ * `zIndex` defaults to a baseline appropriate for a flat inline row (the
+ * Inbox list). A host with its own elevated stacking context — e.g.
+ * InputDetailDrawer.jsx's slide-in panel at zIndex 300/301 — must pass a
+ * `zIndex` explicitly higher than its own, or this dropdown paints underneath
+ * it (portaled to document.body correctly, but z-index alone still
+ * determines paint order against anything else also in the root stacking
+ * context). The panel itself renders one above `zIndex` (backdrop uses
+ * `zIndex`, panel uses `zIndex + 1`), matching ClusterAssignMenu.jsx's
+ * 9998/9999 backdrop/panel pairing convention.
  */
-export function AddToProjectButton({ projects, recommendedProjectId, onAdd, buttonStyle }) {
+export function AddToProjectButton({ projects, recommendedProjectId, onAdd, buttonStyle, zIndex = 50 }) {
   const [open, setOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState(null);
   const buttonRef = useRef(null);
@@ -47,7 +57,7 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
     onAdd(projectId);
   };
 
-  const panelPosition = computeFlipPosition(anchorRect, { panelHeight: PANEL_MAX_HEIGHT });
+  const panelPosition = computeFlipPosition(anchorRect, { panelHeight: PANEL_MAX_HEIGHT, zIndex: zIndex + 1 });
 
   return (
     <div style={{ position: "relative" }}>
@@ -64,7 +74,7 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
       </button>
       {open && panelPosition && createPortal(
         <>
-          <div onClick={(e) => { e.stopPropagation(); setOpen(false); }} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
+          <div onClick={(e) => { e.stopPropagation(); setOpen(false); }} style={{ position: "fixed", inset: 0, zIndex }} />
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
@@ -72,7 +82,7 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
               background: c.white, border: `1px solid ${c.border}`,
               borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
               minWidth: 220, maxHeight: PANEL_MAX_HEIGHT, overflowY: "auto",
-              zIndex: 51, textAlign: "left",
+              textAlign: "left",
               fontFamily: "inherit",
             }}
           >

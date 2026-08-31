@@ -121,3 +121,30 @@ test("gap defaults to 4px and is configurable", () => {
     assert.equal(customGap.top, 110);
   });
 });
+
+// ─── zIndex ─────────────────────────────────────────────────────────────────────
+// Lets a reusable panel thread a per-host z-index through the same call/spread
+// it already uses for position — e.g. AddToProjectButton.jsx, rendered both
+// inline in a flat list (low baseline is fine) and inside a zIndex:301 slide-in
+// drawer (needs an explicit override above that, or it paints underneath).
+
+test("zIndex is omitted from the result when not provided (existing callers unaffected)", () => {
+  withViewport(1200, 800, () => {
+    const pos = computeFlipPosition(rect(80, 100, 0, 0), { panelHeight: 280 });
+    assert.equal("zIndex" in pos, false);
+  });
+});
+
+test("zIndex is passed through into the returned style object when provided", () => {
+  withViewport(1200, 800, () => {
+    const pos = computeFlipPosition(rect(80, 100, 0, 0), { panelHeight: 280, zIndex: 401 });
+    assert.equal(pos.zIndex, 401);
+  });
+});
+
+test("zIndex: 0 is a valid explicit value, not treated as absent", () => {
+  withViewport(1200, 800, () => {
+    const pos = computeFlipPosition(rect(80, 100, 0, 0), { panelHeight: 280, zIndex: 0 });
+    assert.equal(pos.zIndex, 0);
+  });
+});

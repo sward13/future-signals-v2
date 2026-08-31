@@ -17,6 +17,16 @@ import { sanitizeUrl } from "../../utils/sanitizeUrl.js";
 // viewport-collision check.
 const DUPE_PICKER_MAX_HEIGHT = 300;
 
+// This drawer's own backdrop/panel sit at zIndex 300/301 (below). Any portal
+// opened from a control inside the drawer needs a z-index explicitly above
+// that pair, or it paints underneath the drawer despite being correctly
+// portaled to document.body — z-index alone determines paint order once
+// both are direct participants in the root stacking context. The
+// duplicate-to-cluster picker below already uses 400/401 for this reason;
+// AddToProjectButton's dropdown (rendered from this same drawer, just above)
+// gets the same tier for consistency, passed via its zIndex prop.
+const OVERLAY_Z_INDEX = 400;
+
 const HORIZON_COLORS = {
   H1: [c.green700, c.green50, c.greenBorder],
   H2: [c.blue700,  c.blue50,  c.blueBorder],
@@ -173,6 +183,7 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
                 recommendedProjectId={input.metadata?.suggested_projects?.[0]?.id}
                 onAdd={(projectId) => onSaveToProject(input.id, projectId)}
                 buttonStyle={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: `1px solid ${c.borderStrong}`, cursor: "pointer", fontFamily: "inherit" }}
+                zIndex={OVERLAY_Z_INDEX}
               />
             )}
             {onDismissSuggested && (
@@ -460,19 +471,19 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
                   </button>
                   {dupePickerOpen && dupeAnchorRect && createPortal(
                     <>
-                      <div onClick={() => setDupePickerOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 400 }} />
+                      <div onClick={() => setDupePickerOpen(false)} style={{ position: "fixed", inset: 0, zIndex: OVERLAY_Z_INDEX }} />
                       <div style={{
                         ...computeFlipPosition(dupeAnchorRect, {
                           panelHeight: DUPE_PICKER_MAX_HEIGHT,
                           preferredDirection: "up",
                           align: "left",
+                          zIndex: OVERLAY_Z_INDEX + 1,
                         }),
                         background: c.white,
                         border: `1px solid ${c.border}`,
                         borderRadius: 10,
                         boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
                         minWidth: 220,
-                        zIndex: 401,
                         overflow: "hidden",
                       }}>
                         <div style={{ padding: "8px 14px 4px", fontSize: 11, letterSpacing: "0.02em", color: c.muted, fontWeight: 500 }}>
