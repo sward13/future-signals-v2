@@ -1,11 +1,13 @@
 /**
  * StrategicOptionRead — read view for a single strategic option.
  * Two-column layout: main content + metadata sidebar.
+ *
+ * Read-only: no destructive action lives here. Delete moved to
+ * StrategicOptionForm's edit-mode Danger Zone — see
+ * docs/edit-view-mode-consistency-audit-prompt.md.
  */
-import { useState } from "react";
-import { c, btnSec, btnG, fontHeading } from "../../styles/tokens.js";
+import clsx from "clsx";
 import { HorizTag } from "../shared/Tag.jsx";
-import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { RichTextField } from "../shared/RichTextField.jsx";
 import { textToDoc, docIsEmpty } from "../../lib/richtextDoc.js";
 
@@ -13,23 +15,27 @@ import { textToDoc, docIsEmpty } from "../../lib/richtextDoc.js";
 function hasField(o, key) { return !docIsEmpty(o[`${key}_doc`]) || o[key]; }
 function fieldDoc(o, key) { return o[`${key}_doc`] ?? textToDoc(o[key]); }
 
+const sideLabel = "text-[11px] font-medium text-hint tracking-[0.02em] mb-2";
+const sectionHeading = "text-[11px] font-medium text-hint tracking-[0.02em] mb-2.5 pb-2 border-b border-border";
+const prose = "text-ui text-muted leading-[1.75] whitespace-pre-wrap";
+
 // ─── Feasibility badge ────────────────────────────────────────────────────────
+
+const FEASIBILITY_CLASSES = {
+  high:   "text-green-700 bg-green-50 border-green-border",
+  medium: "text-amber-700 bg-amber-50 border-amber-border",
+  low:    "text-red-800 bg-red-50 border-red-border",
+};
 
 function FeasibilityBadge({ value }) {
   if (!value) return null;
-  const map = {
-    high:   [c.green700,  c.green50,  c.greenBorder],
-    medium: [c.amber700,  c.amber50,  c.amberBorder],
-    low:    [c.red800,    c.red50,    c.redBorder],
-  };
   const key = value.toLowerCase();
-  const [col, bg, brd] = map[key] || [c.hint, c.surfaceAlt, c.border];
   const label = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
   return (
-    <span style={{
-      fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 10,
-      background: bg, color: col, border: `1px solid ${brd}`,
-    }}>
+    <span className={clsx(
+      "text-[10px] font-medium py-0.5 px-1.75 rounded-pill border",
+      FEASIBILITY_CLASSES[key] || "text-hint bg-surface-alt border-border",
+    )}>
       {label}
     </span>
   );
@@ -37,21 +43,21 @@ function FeasibilityBadge({ value }) {
 
 // ─── Resource Intensity badge (High = costly/red, Low = lightweight/green) ───
 
+const RESOURCE_INTENSITY_CLASSES = {
+  high:   "text-red-800 bg-red-50 border-red-border",
+  medium: "text-amber-700 bg-amber-50 border-amber-border",
+  low:    "text-green-700 bg-green-50 border-green-border",
+};
+
 function ResourceIntensityBadge({ value }) {
   if (!value) return null;
-  const map = {
-    high:   [c.red800,   c.red50,   c.redBorder],
-    medium: [c.amber700, c.amber50, c.amberBorder],
-    low:    [c.green700, c.green50, c.greenBorder],
-  };
   const key = value.toLowerCase();
-  const [col, bg, brd] = map[key] || [c.hint, c.surfaceAlt, c.border];
   const label = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
   return (
-    <span style={{
-      fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 10,
-      background: bg, color: col, border: `1px solid ${brd}`,
-    }}>
+    <span className={clsx(
+      "text-[10px] font-medium py-0.5 px-1.75 rounded-pill border",
+      RESOURCE_INTENSITY_CLASSES[key] || "text-hint bg-surface-alt border-border",
+    )}>
       {label}
     </span>
   );
@@ -63,20 +69,18 @@ export default function StrategicOptionRead({ appState }) {
   const {
     strategicOptions, scenarios, preferredFutures,
     activeSOId, activeProjectId,
-    openStrategicOptionEdit, deleteStrategicOption,
+    openStrategicOptionEdit,
     openScenario, openPreferredFuture,
-    setActiveScreen, showToast,
+    setActiveScreen,
   } = appState;
-
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const opt = strategicOptions.find((o) => o.id === activeSOId);
 
   if (!opt) {
     return (
-      <div style={{ padding: "28px 32px", background: c.bg }}>
-        <div style={{ fontSize: 14, color: c.muted }}>Strategic option not found.</div>
-        <button onClick={() => setActiveScreen("future-models")} style={{ ...btnG, marginTop: 12 }}>
+      <div className="py-7 px-8 bg-bg">
+        <div className="text-sm text-muted">Strategic option not found.</div>
+        <button onClick={() => setActiveScreen("future-models")} className="py-1.75 px-3 rounded-btn bg-transparent text-muted border-none text-xs cursor-pointer font-[inherit] mt-3">
           ← Future Models
         </button>
       </div>
@@ -96,274 +100,200 @@ export default function StrategicOptionRead({ appState }) {
       pf.scenario_ids.some((id) => optScenarioSet.has(id))
   );
 
-  const handleDelete = () => {
-    deleteStrategicOption(activeSOId);
-    showToast("Strategic option deleted");
-    setActiveScreen("future-models");
-  };
-
-  const sideLabel = {
-    fontSize: 11, fontWeight: 500, color: c.hint,
-    letterSpacing: "0.02em",
-    marginBottom: 8,
-  };
-
-  const sectionHeading = {
-    fontSize: 11, fontWeight: 500, color: c.hint,
-    letterSpacing: "0.02em",
-    marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid ${c.border}`,
-  };
-
-  const prose = { fontSize: 13, color: c.muted, lineHeight: 1.75, whiteSpace: "pre-wrap" };
-
   return (
-    <>
-      <div style={{ background: c.bg, minHeight: "100%" }}>
+    <div className="bg-bg min-h-full">
 
-        {/* Top bar */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "12px 24px",
-          background: c.white, borderBottom: `1px solid ${c.border}`,
-          position: "sticky", top: 0, zIndex: 10,
-        }}>
+      {/* Top bar */}
+      <div className="flex items-center justify-between py-3 px-6 bg-white border-b border-border sticky top-0 z-10">
+        <button
+          onClick={() => setActiveScreen("future-models")}
+          className="py-1.25 px-0 rounded-btn bg-transparent text-muted border-none text-xs cursor-pointer font-[inherit]"
+        >
+          ← Future Models
+        </button>
+        <div className="flex gap-2 items-center">
           <button
-            onClick={() => setActiveScreen("future-models")}
-            style={{ ...btnG, fontSize: 12, padding: "5px 0", color: c.muted }}
+            onClick={() => openStrategicOptionEdit(activeSOId)}
+            className="py-1.5 px-4 rounded-container bg-transparent text-muted border border-border-strong text-xs cursor-pointer font-[inherit]"
           >
-            ← Future Models
+            Edit
           </button>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button
-              onClick={() => setConfirmDelete(true)}
-              style={{ ...btnG, fontSize: 12, color: c.hint }}
-            >
-              Delete
-            </button>
-            <button
-              onClick={() => openStrategicOptionEdit(activeSOId)}
-              style={{ ...btnSec, fontSize: 12, padding: "6px 16px" }}
-            >
-              Edit
-            </button>
-          </div>
-        </div>
-
-        {/* Two-column body */}
-        <div style={{
-          display: "grid", gridTemplateColumns: "1fr 280px",
-          maxWidth: 1000, margin: "0 auto", padding: "0 0 80px",
-        }}>
-
-          {/* ── Main content ──────────────────────────────────── */}
-          <div style={{ padding: "36px 36px 0" }}>
-
-            {/* Eyebrow */}
-            <div style={{
-              display: "flex", alignItems: "center", gap: 8,
-              fontSize: 11, fontWeight: 500, color: c.hint,
-              letterSpacing: "0.02em",
-              marginBottom: 10,
-            }}>
-              Strategic Option
-              {opt.horizon && <HorizTag h={opt.horizon} />}
-              {opt.feasibility && <FeasibilityBadge value={opt.feasibility} />}
-            </div>
-
-            {/* Title */}
-            <div style={{
-              fontSize: 22, fontWeight: 500, color: c.ink,
-              lineHeight: 1.25, marginBottom: 12, letterSpacing: "-0.01em",
-              fontFamily: fontHeading,
-            }}>
-              {opt.name}
-            </div>
-
-            {/* Description */}
-            {hasField(opt, "description") && (
-              <div style={{
-                fontSize: 14, color: c.muted, lineHeight: 1.7,
-                marginBottom: 28, maxWidth: 560,
-              }}>
-                <RichTextField value={fieldDoc(opt, "description")} editable={false} />
-              </div>
-            )}
-
-            {/* What this involves */}
-            {hasField(opt, "actions") && (
-              <div style={{ marginBottom: 28 }}>
-                <div style={sectionHeading}>What this involves</div>
-                <div style={prose}><RichTextField value={fieldDoc(opt, "actions")} editable={false} /></div>
-              </div>
-            )}
-
-            {/* Intended outcome */}
-            {hasField(opt, "intended_outcome") && (
-              <div style={{ marginBottom: 28 }}>
-                <div style={sectionHeading}>Intended outcome</div>
-                <div style={prose}><RichTextField value={fieldDoc(opt, "intended_outcome")} editable={false} /></div>
-              </div>
-            )}
-
-            {/* Implications — amber left border to signal trade-off */}
-            {hasField(opt, "implications") && (
-              <div style={{ marginBottom: 28 }}>
-                <div style={sectionHeading}>Implications</div>
-                <div style={{
-                  ...prose,
-                  paddingLeft: 14,
-                  borderLeft: `3px solid ${c.amberBorder}`,
-                }}>
-                  <RichTextField value={fieldDoc(opt, "implications")} editable={false} />
-                </div>
-              </div>
-            )}
-
-            {/* Dependencies */}
-            {hasField(opt, "dependencies") && (
-              <div style={{ marginBottom: 28 }}>
-                <div style={sectionHeading}>Dependencies</div>
-                <div style={prose}><RichTextField value={fieldDoc(opt, "dependencies")} editable={false} /></div>
-              </div>
-            )}
-
-            {/* Risks */}
-            {hasField(opt, "risks") && (
-              <div style={{ marginBottom: 28 }}>
-                <div style={sectionHeading}>Risks</div>
-                <div style={prose}><RichTextField value={fieldDoc(opt, "risks")} editable={false} /></div>
-              </div>
-            )}
-          </div>
-
-          {/* ── Sidebar ───────────────────────────────────────── */}
-          <div style={{
-            padding: "36px 20px 0",
-            borderLeft: `1px solid ${c.border}`,
-            display: "flex", flexDirection: "column", gap: 20,
-          }}>
-
-            {/* Responds to */}
-            {scenarioIds.length > 0 && (
-              <div>
-                <div style={sideLabel}>Responds to</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {scenarioIds.map((id) => {
-                    const sc = scenarioById(id);
-                    return (
-                      <div
-                        key={id}
-                        onClick={() => sc && openScenario(id)}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 7,
-                          padding: "6px 8px", background: c.fieldBg,
-                          border: `1px solid ${c.border}`, borderRadius: 6,
-                          fontSize: 11, color: sc ? c.muted : c.hint,
-                          cursor: sc ? "pointer" : "default",
-                        }}
-                      >
-                        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {sc?.name || id}
-                        </span>
-                        {sc && <span style={{ color: c.hint, fontSize: 11 }}>→</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Supports (preferred futures) */}
-            {supportedPFs.length > 0 && (
-              <div>
-                <div style={sideLabel}>Supports</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {supportedPFs.map((pf) => (
-                    <div
-                      key={pf.id}
-                      onClick={() => openPreferredFuture(pf.id)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 7,
-                        padding: "6px 8px", background: c.fieldBg,
-                        border: `1px solid ${c.border}`, borderRadius: 6,
-                        fontSize: 11, color: c.muted, cursor: "pointer",
-                      }}
-                    >
-                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {pf.name}
-                      </span>
-                      <span style={{ color: c.hint, fontSize: 11 }}>→</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Character */}
-            <div>
-              <div style={sideLabel}>Character</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {opt.horizon && (
-                  <div>
-                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>Horizon</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <HorizTag h={opt.horizon} />
-                      <span style={{ fontSize: 11, color: c.hint }}>
-                        {opt.horizon === "H1" && "Near-term"}
-                        {opt.horizon === "H2" && "Mid-term"}
-                        {opt.horizon === "H3" && "Long-term"}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {opt.feasibility && (
-                  <div>
-                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>Feasibility</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <FeasibilityBadge value={opt.feasibility} />
-                      <span style={{ fontSize: 11, color: c.hint }}>
-                        {opt.feasibility.toLowerCase() === "high"   && "Readily achievable now"}
-                        {opt.feasibility.toLowerCase() === "medium" && "Achievable with effort"}
-                        {opt.feasibility.toLowerCase() === "low"    && "Significant barriers exist"}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {opt.reversibility && (
-                  <div>
-                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>Reversibility</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <FeasibilityBadge value={opt.reversibility} />
-                    </div>
-                  </div>
-                )}
-                {opt.resource_intensity && (
-                  <div>
-                    <div style={{ fontSize: 10, color: c.hint, marginBottom: 3 }}>Resource Intensity</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <ResourceIntensityBadge value={opt.resource_intensity} />
-                    </div>
-                  </div>
-                )}
-                {!opt.horizon && !opt.feasibility && !opt.reversibility && !opt.resource_intensity && (
-                  <div style={{ fontSize: 11, color: c.hint }}>No structured fields set.</div>
-                )}
-              </div>
-            </div>
-
-          </div>
         </div>
       </div>
 
-      {confirmDelete && (
-        <ConfirmDialog
-          title="Delete strategic option"
-          message={`"${opt.name}" will be permanently deleted. This cannot be undone.`}
-          confirmLabel="Delete option"
-          onConfirm={handleDelete}
-          onClose={() => setConfirmDelete(false)}
-        />
-      )}
-    </>
+      {/* Two-column body */}
+      <div className="grid grid-cols-[1fr_280px] max-w-[1000px] mx-auto pb-20">
+
+        {/* ── Main content ──────────────────────────────────── */}
+        <div className="pt-9 px-9">
+
+          {/* Eyebrow */}
+          <div className="flex items-center gap-2 text-[11px] font-medium text-hint tracking-[0.02em] mb-2.5">
+            Strategic Option
+            {opt.horizon && <HorizTag h={opt.horizon} />}
+            {opt.feasibility && <FeasibilityBadge value={opt.feasibility} />}
+          </div>
+
+          {/* Title */}
+          <div className="text-[26px] font-medium text-ink leading-[1.2] mb-3 tracking-[-0.01em]">
+            {opt.name}
+          </div>
+
+          {/* Description */}
+          {hasField(opt, "description") && (
+            <div className="text-sm text-muted leading-[1.7] mb-7 max-w-[560px]">
+              <RichTextField value={fieldDoc(opt, "description")} editable={false} />
+            </div>
+          )}
+
+          {/* What this involves */}
+          {hasField(opt, "actions") && (
+            <div className="mb-7">
+              <div className={sectionHeading}>What this involves</div>
+              <div className={prose}><RichTextField value={fieldDoc(opt, "actions")} editable={false} /></div>
+            </div>
+          )}
+
+          {/* Intended outcome */}
+          {hasField(opt, "intended_outcome") && (
+            <div className="mb-7">
+              <div className={sectionHeading}>Intended outcome</div>
+              <div className={prose}><RichTextField value={fieldDoc(opt, "intended_outcome")} editable={false} /></div>
+            </div>
+          )}
+
+          {/* Implications — amber left border to signal trade-off */}
+          {hasField(opt, "implications") && (
+            <div className="mb-7">
+              <div className={sectionHeading}>Implications</div>
+              <div className={clsx(prose, "pl-3.5 border-l-[3px] border-l-amber-border")}>
+                <RichTextField value={fieldDoc(opt, "implications")} editable={false} />
+              </div>
+            </div>
+          )}
+
+          {/* Dependencies */}
+          {hasField(opt, "dependencies") && (
+            <div className="mb-7">
+              <div className={sectionHeading}>Dependencies</div>
+              <div className={prose}><RichTextField value={fieldDoc(opt, "dependencies")} editable={false} /></div>
+            </div>
+          )}
+
+          {/* Risks */}
+          {hasField(opt, "risks") && (
+            <div className="mb-7">
+              <div className={sectionHeading}>Risks</div>
+              <div className={prose}><RichTextField value={fieldDoc(opt, "risks")} editable={false} /></div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Sidebar ───────────────────────────────────────── */}
+        <div className="pt-9 px-5 border-l border-border flex flex-col gap-5">
+
+          {/* Responds to */}
+          {scenarioIds.length > 0 && (
+            <div>
+              <div className={sideLabel}>Responds to</div>
+              <div className="flex flex-col gap-1">
+                {scenarioIds.map((id) => {
+                  const sc = scenarioById(id);
+                  return (
+                    <div
+                      key={id}
+                      onClick={() => sc && openScenario(id)}
+                      className={clsx(
+                        "flex items-center gap-1.75 py-1.5 px-2 bg-field-bg border border-border rounded-[6px] text-[11px]",
+                        sc ? "text-muted cursor-pointer" : "text-hint cursor-default",
+                      )}
+                    >
+                      <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                        {sc?.name || id}
+                      </span>
+                      {sc && <span className="text-hint text-[11px]">→</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Supports (preferred futures) */}
+          {supportedPFs.length > 0 && (
+            <div>
+              <div className={sideLabel}>Supports</div>
+              <div className="flex flex-col gap-1">
+                {supportedPFs.map((pf) => (
+                  <div
+                    key={pf.id}
+                    onClick={() => openPreferredFuture(pf.id)}
+                    className="flex items-center gap-1.75 py-1.5 px-2 bg-field-bg border border-border rounded-[6px] text-[11px] text-muted cursor-pointer"
+                  >
+                    <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                      {pf.name}
+                    </span>
+                    <span className="text-hint text-[11px]">→</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Character */}
+          <div>
+            <div className={sideLabel}>Character</div>
+            <div className="flex flex-col gap-2">
+              {opt.horizon && (
+                <div>
+                  <div className="text-[10px] text-hint mb-0.75">Horizon</div>
+                  <div className="flex items-center gap-1.5">
+                    <HorizTag h={opt.horizon} />
+                    <span className="text-[11px] text-hint">
+                      {opt.horizon === "H1" && "Near-term"}
+                      {opt.horizon === "H2" && "Mid-term"}
+                      {opt.horizon === "H3" && "Long-term"}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {opt.feasibility && (
+                <div>
+                  <div className="text-[10px] text-hint mb-0.75">Feasibility</div>
+                  <div className="flex items-center gap-1.5">
+                    <FeasibilityBadge value={opt.feasibility} />
+                    <span className="text-[11px] text-hint">
+                      {opt.feasibility.toLowerCase() === "high"   && "Readily achievable now"}
+                      {opt.feasibility.toLowerCase() === "medium" && "Achievable with effort"}
+                      {opt.feasibility.toLowerCase() === "low"    && "Significant barriers exist"}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {opt.reversibility && (
+                <div>
+                  <div className="text-[10px] text-hint mb-0.75">Reversibility</div>
+                  <div className="flex items-center gap-1.5">
+                    <FeasibilityBadge value={opt.reversibility} />
+                  </div>
+                </div>
+              )}
+              {opt.resource_intensity && (
+                <div>
+                  <div className="text-[10px] text-hint mb-0.75">Resource Intensity</div>
+                  <div className="flex items-center gap-1.5">
+                    <ResourceIntensityBadge value={opt.resource_intensity} />
+                  </div>
+                </div>
+              )}
+              {!opt.horizon && !opt.feasibility && !opt.reversibility && !opt.resource_intensity && (
+                <div className="text-[11px] text-hint">No structured fields set.</div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
   );
 }
