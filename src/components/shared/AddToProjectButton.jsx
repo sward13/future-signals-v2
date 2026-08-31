@@ -2,11 +2,11 @@ import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { c } from "../../styles/tokens.js";
 import { projectDomainLabel } from "../../lib/projectDomains.js";
+import { computeFlipPosition } from "../../lib/panelPosition.js";
 import { ChevronDown } from "lucide-react";
 
 // Matches the panel's own maxHeight below — used as the worst-case height
-// estimate for the viewport-collision check, same pattern as
-// ClusterAssignMenu.jsx's DROPDOWN_MAX_HEIGHT.
+// estimate for the viewport-collision check (see computeFlipPosition).
 const PANEL_MAX_HEIGHT = 280;
 
 const sectionHeader = {
@@ -47,9 +47,7 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
     onAdd(projectId);
   };
 
-  // Flip to open upward when there isn't room below — same pattern as
-  // ClusterAssignMenu.jsx's spaceBelow/openUp check.
-  const openUp = anchorRect ? window.innerHeight - anchorRect.bottom < PANEL_MAX_HEIGHT + 48 : false;
+  const panelPosition = computeFlipPosition(anchorRect, { panelHeight: PANEL_MAX_HEIGHT });
 
   return (
     <div style={{ position: "relative" }}>
@@ -64,17 +62,13 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
       >
         Add to project <ChevronDown size={11} strokeWidth={2} />
       </button>
-      {open && anchorRect && createPortal(
+      {open && panelPosition && createPortal(
         <>
           <div onClick={(e) => { e.stopPropagation(); setOpen(false); }} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              position: "fixed",
-              right: window.innerWidth - anchorRect.right,
-              ...(openUp
-                ? { bottom: window.innerHeight - anchorRect.top + 4 }
-                : { top: anchorRect.bottom + 4 }),
+              ...panelPosition,
               background: c.white, border: `1px solid ${c.border}`,
               borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
               minWidth: 220, maxHeight: PANEL_MAX_HEIGHT, overflowY: "auto",

@@ -6,6 +6,12 @@ import { c, inp, btnP, btnSec, fontHeading, tabCount } from "../../styles/tokens
 import { STEEPLED } from "../../data/seeds.js";
 import { HorizTag, SubtypeTag } from "../shared/Tag.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
+import { computeFlipPosition } from "../../lib/panelPosition.js";
+
+// Worst-case height estimates for computeFlipPosition's viewport-collision
+// check, matching each portal's actual rendered content below.
+const ROW_MENU_MAX_HEIGHT = 60;    // one "Duplicate to cluster" row
+const DUPE_PICKER_MAX_HEIGHT = 300; // header + 220px-capped list + footer
 
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { AddFromInboxModal } from "../inputs/AddFromInboxModal.jsx";
@@ -1079,9 +1085,7 @@ export default function ProjectDetail({ appState }) {
             style={{ position: "fixed", inset: 0, zIndex: 200 }}
           />
           <div style={{
-            position: "fixed",
-            top: rowMenu.rect.bottom + 4,
-            right: window.innerWidth - rowMenu.rect.right,
+            ...computeFlipPosition(rowMenu.rect, { panelHeight: ROW_MENU_MAX_HEIGHT }),
             background: c.white,
             border: `1px solid ${c.border}`,
             borderRadius: 8,
@@ -1126,9 +1130,7 @@ export default function ProjectDetail({ appState }) {
               style={{ position: "fixed", inset: 0, zIndex: 200 }}
             />
             <div style={{
-              position: "fixed",
-              top: dupePicker.rect.bottom + 4,
-              right: window.innerWidth - dupePicker.rect.right,
+              ...computeFlipPosition(dupePicker.rect, { panelHeight: DUPE_PICKER_MAX_HEIGHT }),
               background: c.white,
               border: `1px solid ${c.border}`,
               borderRadius: 10,

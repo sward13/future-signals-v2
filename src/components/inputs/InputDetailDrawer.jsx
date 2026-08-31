@@ -9,7 +9,13 @@ import { c, inp, ta, btnP, btnSec, btnG, fl } from "../../styles/tokens.js";
 import { INPUT_TYPES, ThreeCardSelector, SteepleSelector, HorizonSelector, TypeSwitcherChip } from "./InputFormFields.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { AddToProjectButton } from "../shared/AddToProjectButton.jsx";
+import { computeFlipPosition } from "../../lib/panelPosition.js";
 import { sanitizeUrl } from "../../utils/sanitizeUrl.js";
+
+// Worst-case height estimate for the duplicate-to-cluster picker below
+// (header + 220px-capped list + footer), used by computeFlipPosition's
+// viewport-collision check.
+const DUPE_PICKER_MAX_HEIGHT = 300;
 
 const HORIZON_COLORS = {
   H1: [c.green700, c.green50, c.greenBorder],
@@ -456,9 +462,11 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
                     <>
                       <div onClick={() => setDupePickerOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 400 }} />
                       <div style={{
-                        position: "fixed",
-                        bottom: window.innerHeight - dupeAnchorRect.top + 4,
-                        left: dupeAnchorRect.left,
+                        ...computeFlipPosition(dupeAnchorRect, {
+                          panelHeight: DUPE_PICKER_MAX_HEIGHT,
+                          preferredDirection: "up",
+                          align: "left",
+                        }),
                         background: c.white,
                         border: `1px solid ${c.border}`,
                         borderRadius: 10,
