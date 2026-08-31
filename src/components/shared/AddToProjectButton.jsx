@@ -20,7 +20,7 @@ const item = {
  * Suggested rows in the Inbox.
  *
  * If `recommendedProjectId` is provided, the dropdown shows a Recommended
- * section (with an "AI pick" badge) above an alphabetical "Other projects"
+ * section (with a "Best match" badge) above an alphabetical "Other projects"
  * list. Otherwise it shows a single alphabetical "Add to project" list.
  */
 export function AddToProjectButton({ projects, recommendedProjectId, onAdd, buttonStyle }) {
@@ -80,7 +80,7 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
                     <div style={{ fontSize: 10, color: c.hint }}>{projectDomainLabel(recommendedProject)}</div>
                   </div>
                   <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: c.blue50, color: c.blue700, border: `1px solid ${c.blueBorder}`, fontWeight: 500, flexShrink: 0 }}>
-                    AI pick
+                    Best match
                   </span>
                 </button>
                 <div style={{ height: 1, background: c.border, margin: "2px 0" }} />
