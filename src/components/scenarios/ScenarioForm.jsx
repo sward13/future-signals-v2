@@ -2,11 +2,21 @@
  * ScenarioForm — create and edit view for a scenario.
  * mode='new'  → creates a new scenario under the active project
  * mode='edit' → edits appState.activeScenarioId
+ *
+ * Danger Zone (delete) lives here, in edit mode only — not in ScenarioRead,
+ * the read/view surface. See docs/edit-view-mode-consistency-audit-prompt.md.
+ *
+ * Remaining arbitrary values — no clean Tailwind token equivalent yet:
+ *   bg-[url('data:image/svg+xml,...')]  Select-arrow icon (see selectStyle
+ *     below) — kept as an inline style, same precedent as ClustersPanel.jsx's
+ *     grid-template-columns arbitrary style for content Tailwind can't
+ *     cleanly express as a utility class.
  */
 import { useState } from "react";
-import { c, sel, btnP, btnG, fl, fh, legend } from "../../styles/tokens.js";
+import clsx from "clsx";
 import { RichTextField } from "../shared/RichTextField.jsx";
 import { ClusterForcePicker } from "../shared/ClusterForcePicker.jsx";
+import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { textToDoc, docToText } from "../../lib/richtextDoc.js";
 import { serializeRichText } from "../shared/richtext/serialize.js";
 
@@ -14,15 +24,12 @@ import { serializeRichText } from "../shared/richtext/serialize.js";
 
 function ZoneDivider({ label }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "28px 0 24px" }}>
-      <div style={{ flex: 1, height: 1, background: c.border }} />
-      <span style={{
-        fontSize: 11, fontWeight: 500, color: c.hint,
-        letterSpacing: "0.02em",
-      }}>
+    <div className="flex items-center gap-3 mt-7 mb-6">
+      <div className="flex-1 h-px bg-border" />
+      <span className="text-[11px] font-medium text-hint tracking-[0.02em]">
         {label}
       </span>
-      <div style={{ flex: 1, height: 1, background: c.border }} />
+      <div className="flex-1 h-px bg-border" />
     </div>
   );
 }
@@ -39,22 +46,17 @@ function KeyDiffsList({ diffs, onChange }) {
   const add = () => onChange([...diffs, ""]);
 
   return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={fl}>Key differences from today</div>
-      <div style={fh}>Each item should be a concrete, present-tense statement about how this world differs.</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+    <div className="mb-5">
+      <div className="text-xs font-medium text-ink mb-1.25 flex items-center gap-1.5">Key differences from today</div>
+      <div className="text-[11px] text-hint mb-1.5 italic leading-[1.45]">Each item should be a concrete, present-tense statement about how this world differs.</div>
+      <div className="flex flex-col gap-1.5">
         {diffs.map((diff, i) => (
-          <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 10, fontWeight: 500, color: c.hint, minWidth: 16, textAlign: "right" }}>
+          <div key={i} className="flex gap-2 items-center">
+            <span className="text-[10px] font-medium text-hint min-w-4 text-right">
               {i + 1}
             </span>
             <input
-              style={{
-                flex: 1, padding: "8px 10px",
-                border: `1px solid ${c.borderStrong}`, borderRadius: 7,
-                background: c.white, color: c.ink, fontSize: 13,
-                fontFamily: "inherit", outline: "none",
-              }}
+              className="flex-1 py-2 px-2.5 border border-border-strong rounded-btn bg-white text-ink text-ui font-[inherit] outline-none"
               value={diff}
               onChange={(e) => update(i, e.target.value)}
               placeholder={`Difference ${i + 1}…`}
@@ -63,10 +65,7 @@ function KeyDiffsList({ diffs, onChange }) {
               <button
                 type="button"
                 onClick={() => remove(i)}
-                style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  color: c.hint, fontSize: 16, lineHeight: 1, padding: "0 4px",
-                }}
+                className="bg-transparent border-none cursor-pointer text-hint text-base leading-none px-1 py-0"
               >
                 ×
               </button>
@@ -77,12 +76,7 @@ function KeyDiffsList({ diffs, onChange }) {
       <button
         type="button"
         onClick={add}
-        style={{
-          marginTop: 8, background: "none",
-          border: `1px dashed ${c.border}`, borderRadius: 7,
-          padding: "6px 14px", fontSize: 11, color: c.hint,
-          cursor: "pointer", fontFamily: "inherit", width: "100%",
-        }}
+        className="mt-2 bg-transparent border border-dashed border-border rounded-btn py-1.5 px-3.5 text-[11px] text-hint cursor-pointer font-[inherit] w-full"
       >
         + Add another
       </button>
@@ -95,10 +89,16 @@ function KeyDiffsList({ diffs, onChange }) {
 const HORIZONS = ["H1", "H2", "H3"];
 const ARCHETYPES = ["Continuation", "Collapse", "Constraint", "Transformation"];
 
+const selectClass = "w-full py-2.25 px-2.75 border border-border-strong rounded-container bg-white text-ink text-ui font-[inherit] outline-none appearance-none pr-[30px] cursor-pointer bg-no-repeat";
+const selectArrowStyle = {
+  backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23999' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+  backgroundPosition: "right 10px center",
+};
+
 export default function ScenarioForm({ appState, mode }) {
   const {
     scenarios, clusters, activeProjectId, activeScenarioId,
-    addScenario, updateScenario,
+    addScenario, updateScenario, deleteScenario,
     setActiveScreen, openScenario, showToast,
   } = appState;
 
@@ -129,6 +129,7 @@ export default function ScenarioForm({ appState, mode }) {
     scenario?.narrative_doc ?? textToDoc(scenario?.narrative || "")
   );
   const [saving,          setSaving]          = useState(false);
+  const [confirmDelete,   setConfirmDelete]   = useState(false);
 
   const goBack = () => setActiveScreen("future-models");
 
@@ -169,34 +170,29 @@ export default function ScenarioForm({ appState, mode }) {
     }
   };
 
-  const selectStyle = {
-    ...sel,
-    backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23999' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
-    backgroundRepeat: "no-repeat",
-    backgroundPosition: "right 10px center",
-    paddingRight: 30,
-    cursor: "pointer",
+  const handleDelete = () => {
+    deleteScenario(activeScenarioId);
+    showToast("Scenario deleted");
+    setActiveScreen("future-models");
   };
 
   return (
-    <div style={{ background: c.bg, minHeight: "100%" }}>
+    <div className="bg-bg min-h-full">
 
       {/* Top bar */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "12px 24px",
-        background: c.white, borderBottom: `1px solid ${c.border}`,
-        position: "sticky", top: 0, zIndex: 10,
-      }}>
-        <button onClick={goBack} style={{ ...btnG, fontSize: 12, padding: "5px 0", color: c.muted }}>
+      <div className="flex items-center justify-between py-3 px-6 bg-white border-b border-border sticky top-0 z-10">
+        <button onClick={goBack} className="py-1.25 px-0 rounded-btn bg-transparent text-muted border-none text-xs cursor-pointer font-[inherit]">
           ← Future Models
         </button>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button onClick={goBack} style={{ ...btnG, fontSize: 12 }}>Discard</button>
+        <div className="flex gap-2 items-center">
+          <button onClick={goBack} className="py-1.75 px-3 rounded-btn bg-transparent text-muted border-none text-xs cursor-pointer font-[inherit]">Discard</button>
           <button
             onClick={handleSave}
             disabled={saving}
-            style={{ ...btnP, fontSize: 12, padding: "7px 20px", opacity: saving ? 0.6 : 1 }}
+            className={clsx(
+              "py-1.75 px-5 rounded-container bg-brand text-white border-none text-xs font-medium cursor-pointer font-[inherit]",
+              saving ? "opacity-60" : "opacity-100",
+            )}
           >
             {saving ? "Saving…" : "Save"}
           </button>
@@ -204,55 +200,49 @@ export default function ScenarioForm({ appState, mode }) {
       </div>
 
       {/* Form body */}
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "36px 24px 80px" }}>
+      <div className="max-w-[720px] mx-auto pt-9 px-6 pb-20">
 
         {/* Eyebrow */}
-        <div style={{
-          fontSize: 11, letterSpacing: "0.02em",
-          color: c.hint, marginBottom: 12,
-        }}>
+        <div className="text-[11px] tracking-[0.02em] text-hint mb-3">
           {mode === "new" ? "New scenario" : "Edit scenario"}
         </div>
 
         {/* Name */}
-        <div style={{ marginBottom: 24 }}>
+        <div className="mb-6">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Name this scenario"
             autoFocus
-            style={{
-              width: "100%", fontSize: 24, fontWeight: 500, color: c.ink,
-              border: "none", background: "transparent", outline: "none",
-              fontFamily: "inherit", padding: "0 0 16px", borderBottom: `1px solid ${c.border}`,
-              boxSizing: "border-box",
-            }}
+            className="w-full text-2xl font-medium text-ink border-none bg-transparent outline-none font-[inherit] pb-4 border-b border-border box-border"
           />
-          <div style={legend}>* required</div>
+          <div className="text-[11px] text-hint mt-1">* required</div>
         </div>
 
         {/* Zone 1: Frame */}
         <ZoneDivider label="Frame" />
 
         {/* Horizon + Archetype row */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+        <div className="grid grid-cols-2 gap-4 mb-5">
           <div>
-            <div style={fl}>Time horizon</div>
+            <div className="text-xs font-medium text-ink mb-1.25 flex items-center gap-1.5">Time horizon</div>
             <select
               value={horizon}
               onChange={(e) => setHorizon(e.target.value)}
-              style={selectStyle}
+              className={selectClass}
+              style={selectArrowStyle}
             >
               <option value="">— Select horizon</option>
               {HORIZONS.map((h) => <option key={h} value={h}>{h}</option>)}
             </select>
           </div>
           <div>
-            <div style={fl}>Archetype</div>
+            <div className="text-xs font-medium text-ink mb-1.25 flex items-center gap-1.5">Archetype</div>
             <select
               value={archetype}
               onChange={(e) => setArchetype(e.target.value)}
-              style={selectStyle}
+              className={selectClass}
+              style={selectArrowStyle}
             >
               <option value="">— Select archetype</option>
               {ARCHETYPES.map((a) => <option key={a} value={a}>{a}</option>)}
@@ -261,25 +251,13 @@ export default function ScenarioForm({ appState, mode }) {
         </div>
 
         {/* Driving forces / Suppressed forces — side by side with a hairline
-            divider, stacking to one column below ~700px. The Horizon/Archetype
+            divider, stacking to one column below 700px. The Horizon/Archetype
             grid above has no responsive behavior to mirror (it's a bare
-            gridTemplateColumns: "1fr 1fr" with no breakpoint), so this is new
-            behavior, not a copy of an existing one — a plain inline `style`
-            can't express a media query, hence the scoped <style> block below
-            rather than a third-party layout dependency. */}
-        <style>{`
-          .scenario-forces-row {
-            display: grid;
-            grid-template-columns: 1fr 1px 1fr;
-            gap: 16px;
-          }
-          .scenario-forces-divider { background: ${c.border}; }
-          @media (max-width: 700px) {
-            .scenario-forces-row { grid-template-columns: 1fr; gap: 20px; }
-            .scenario-forces-divider { display: none; }
-          }
-        `}</style>
-        <div className="scenario-forces-row">
+            2-col grid with no breakpoint), so this is new behavior, not a
+            copy of an existing one. Uses Tailwind's arbitrary breakpoint
+            variant (min-[700px]:) rather than a scoped <style> block with a
+            hand-written media query, now that this file is on Tailwind. */}
+        <div className="grid grid-cols-1 gap-5 min-[700px]:grid-cols-[1fr_1px_1fr] min-[700px]:gap-4">
           <div>
             <ClusterForcePicker
               role="driving"
@@ -292,7 +270,7 @@ export default function ScenarioForm({ appState, mode }) {
               onGoToClusters={() => setActiveScreen("cluster")}
             />
           </div>
-          <div className="scenario-forces-divider" />
+          <div className="hidden min-[700px]:block bg-border" />
           <div>
             <ClusterForcePicker
               role="suppressed"
@@ -311,9 +289,9 @@ export default function ScenarioForm({ appState, mode }) {
         <ZoneDivider label="Story" />
 
         {/* Description */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={fl}>Description</div>
-          <div style={fh}>A brief summary — what is this scenario and what makes it distinct?</div>
+        <div className="mb-5">
+          <div className="text-xs font-medium text-ink mb-1.25 flex items-center gap-1.5">Description</div>
+          <div className="text-[11px] text-hint mb-1.5 italic leading-[1.45]">A brief summary — what is this scenario and what makes it distinct?</div>
           <RichTextField
             value={descriptionDoc}
             onChange={setDescriptionDoc}
@@ -325,9 +303,9 @@ export default function ScenarioForm({ appState, mode }) {
         <KeyDiffsList diffs={keyDiffs} onChange={setKeyDiffs} />
 
         {/* Narrative — rich-text proof-of-concept field */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={fl}>Narrative</div>
-          <div style={fh}>How does this world come to be? Write as much or as little as is useful.</div>
+        <div className="mb-5">
+          <div className="text-xs font-medium text-ink mb-1.25 flex items-center gap-1.5">Narrative</div>
+          <div className="text-[11px] text-hint mb-1.5 italic leading-[1.45]">How does this world come to be? Write as much or as little as is useful.</div>
           <RichTextField
             value={narrativeDoc}
             onChange={setNarrativeDoc}
@@ -336,7 +314,32 @@ export default function ScenarioForm({ appState, mode }) {
           />
         </div>
 
+        {/* Danger zone — delete, edit mode only (no record exists yet in "new" mode).
+            Matches EditProjectDrawer.jsx's convention: visually separated below
+            a border, label left / action right, confirmed via ConfirmDialog. */}
+        {mode === "edit" && (
+          <div className="pt-5 mt-2 border-t border-border flex items-center justify-between">
+            <div className="text-[11px] text-hint">Danger zone</div>
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="text-[11px] py-1 px-3 rounded-btn border border-red-border bg-transparent text-red-800 cursor-pointer font-[inherit]"
+            >
+              Delete scenario
+            </button>
+          </div>
+        )}
+
       </div>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete scenario"
+          message={`"${scenario?.name}" will be permanently deleted. This cannot be undone.`}
+          confirmLabel="Delete scenario"
+          onConfirm={handleDelete}
+          onClose={() => setConfirmDelete(false)}
+        />
+      )}
     </div>
   );
 }
