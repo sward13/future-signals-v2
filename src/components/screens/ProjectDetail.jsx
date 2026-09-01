@@ -7,7 +7,7 @@ import { STEEPLED } from "../../data/seeds.js";
 import { HorizTag, SubtypeTag } from "../shared/Tag.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { computeFlipPosition } from "../../lib/panelPosition.js";
-import { ConfirmModal } from "../shared/ConfirmModal.jsx";
+import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 
 // Worst-case height estimates for computeFlipPosition's viewport-collision
 // check, matching each portal's actual rendered content below.
@@ -1027,10 +1027,11 @@ export default function ProjectDetail({ appState }) {
       `}</style>
 
       {confirmDeleteIds && (
-        <ConfirmModal
-          message={`Delete ${confirmDeleteIds.length} input${confirmDeleteIds.length !== 1 ? "s" : ""}?`}
+        <ConfirmDialog
+          title={`Delete ${confirmDeleteIds.length} input${confirmDeleteIds.length !== 1 ? "s" : ""}?`}
+          message="This cannot be undone."
           onConfirm={handleBulkDelete}
-          onCancel={() => setConfirmDeleteIds(null)}
+          onClose={() => setConfirmDeleteIds(null)}
         />
       )}
 

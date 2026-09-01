@@ -8,7 +8,7 @@
  */
 import { useState, useMemo, useEffect } from "react";
 import { c, inp, btnP, btnSm, btnG, fontHeading, countBadge } from "../../styles/tokens.js";
-import { ConfirmModal } from "../shared/ConfirmModal.jsx";
+import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { CirclePlus, Sparkles } from "lucide-react";
 import { projectDomainLabel } from "../../lib/projectDomains.js";
 import { DragGhost } from "../clusters/DragGhost.jsx";
@@ -1064,10 +1064,11 @@ export default function Inbox({ appState }) {
       />
 
       {confirmDeleteManualIds && (
-        <ConfirmModal
-          message={`Delete ${confirmDeleteManualIds.length} input${confirmDeleteManualIds.length !== 1 ? "s" : ""}?`}
+        <ConfirmDialog
+          title={`Delete ${confirmDeleteManualIds.length} input${confirmDeleteManualIds.length !== 1 ? "s" : ""}?`}
+          message="This cannot be undone."
           onConfirm={handleBulkDeleteManual}
-          onCancel={() => setConfirmDeleteManualIds(null)}
+          onClose={() => setConfirmDeleteManualIds(null)}
         />
       )}
     </>

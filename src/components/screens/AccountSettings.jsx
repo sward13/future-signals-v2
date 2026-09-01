@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { c, inp, btnSm, btnSec, btnG, fl, fh, fontHeading } from "../../styles/tokens.js";
-import { ConfirmModal } from "../shared/ConfirmModal.jsx";
+import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { AddSourceModal } from "../shared/AddSourceModal.jsx";
 import { projectDomainLabel, projectHasDomain } from "../../lib/projectDomains.js";
 
@@ -303,14 +303,15 @@ function SourcesSection({ workspaceId, addSource, deleteSource, showToast }) {
       )}
 
       {confirmDelete && (
-        <ConfirmModal
-          message={
+        <ConfirmDialog
+          title={
             confirmDelete.optInCount > 0
               ? `Delete "${confirmDelete.source.name}"? It's currently active in ${confirmDelete.optInCount} project${confirmDelete.optInCount !== 1 ? "s" : ""} and will be removed from their scanning sources.`
               : `Delete "${confirmDelete.source.name}"?`
           }
+          message="This cannot be undone."
           onConfirm={handleDeleteConfirm}
-          onCancel={() => setConfirmDelete(null)}
+          onClose={() => setConfirmDelete(null)}
         />
       )}
 
