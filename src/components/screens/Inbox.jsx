@@ -7,8 +7,8 @@
  * @param {{ appState: object }} props
  */
 import { useState, useMemo, useEffect } from "react";
-import { createPortal } from "react-dom";
-import { c, inp, btnP, btnSm, btnSec, btnG, fontHeading, countBadge } from "../../styles/tokens.js";
+import { c, inp, btnP, btnSm, btnG, fontHeading, countBadge } from "../../styles/tokens.js";
+import { ConfirmModal } from "../shared/ConfirmModal.jsx";
 import { CirclePlus, Sparkles } from "lucide-react";
 import { projectDomainLabel } from "../../lib/projectDomains.js";
 import { DragGhost } from "../clusters/DragGhost.jsx";
@@ -466,41 +466,6 @@ function SearchFilterBar({
   );
 }
 
-// ─── Confirm delete modal ────────────────────────────────────────────────────
-
-function ConfirmDeleteModal({ count, onConfirm, onCancel }) {
-  return createPortal(
-    <>
-      <div onClick={onCancel} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 400 }} />
-      <div style={{
-        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-        background: c.white, borderRadius: 12, padding: "24px 28px",
-        boxShadow: "0 16px 48px rgba(0,0,0,0.18)", zIndex: 401, minWidth: 320,
-        fontFamily: "inherit",
-      }}>
-        <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
-          Delete {count} input{count !== 1 ? "s" : ""}?
-        </div>
-        <div style={{ fontSize: 12, color: c.muted, marginBottom: 20, lineHeight: 1.5 }}>
-          This cannot be undone.
-        </div>
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <button onClick={onCancel} style={{ ...btnSec, fontSize: 12, padding: "7px 16px" }}>
-            Cancel
-          </button>
-          <button onClick={onConfirm} style={{
-            padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 500,
-            cursor: "pointer", fontFamily: "inherit", border: "none",
-            background: "#DC2626", color: "#fff",
-          }}>
-            Delete
-          </button>
-        </div>
-      </div>
-    </>,
-    document.body
-  );
-}
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
@@ -953,11 +918,7 @@ export default function Inbox({ appState }) {
             </div>
             <button
               onClick={() => setConfirmDeleteManualIds([...selectedManualIds])}
-              style={{
-                padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 500,
-                cursor: "pointer", fontFamily: "inherit",
-                background: "rgb(254, 226, 226)", color: "rgb(185, 28, 28)", border: "none",
-              }}
+              className="py-1.75 px-3.5 rounded-btn text-[11px] font-medium cursor-pointer font-[inherit] border-none bg-[#FEE2E2] text-[#B91C1C]"
             >
               Delete
             </button>
@@ -1103,8 +1064,8 @@ export default function Inbox({ appState }) {
       />
 
       {confirmDeleteManualIds && (
-        <ConfirmDeleteModal
-          count={confirmDeleteManualIds.length}
+        <ConfirmModal
+          message={`Delete ${confirmDeleteManualIds.length} input${confirmDeleteManualIds.length !== 1 ? "s" : ""}?`}
           onConfirm={handleBulkDeleteManual}
           onCancel={() => setConfirmDeleteManualIds(null)}
         />
