@@ -135,7 +135,7 @@ export default function StrategicOptionRead({ appState }) {
           </div>
 
           {/* Title */}
-          <div className="text-[26px] font-medium text-ink leading-[1.2] mb-3 tracking-[-0.01em]">
+          <div className="text-[22px] font-medium text-ink leading-[1.25] mb-3 tracking-[-0.01em] font-heading">
             {opt.name}
           </div>
 
