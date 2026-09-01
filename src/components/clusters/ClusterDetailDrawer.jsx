@@ -1,10 +1,27 @@
 /**
  * ClusterDetailDrawer — right-side drawer showing full cluster detail with read/edit mode.
  * Shows name, subtype, horizon, likelihood, description, and linked inputs.
+ * This is System Map's own, independent cluster-detail implementation —
+ * separate from the Cluster tab's ClusterDetailPanel.jsx/ClusterDrawer.jsx
+ * pair. Not consolidated with that pair in this pass (a separate future
+ * decision); patched in place instead.
+ *
+ * Read-only: no destructive action lives in view mode. Delete moved to the
+ * edit-mode Danger Zone — see docs/edit-view-mode-consistency-audit-prompt.md.
+ * The linked-input "×" unlink action was found edit-only here, which
+ * disagreed with the Cluster tab's ClusterDetailPanel.jsx (where the
+ * equivalent action is unconditional in view mode). Aligned here: unlink is
+ * now available in both view and edit mode, since it's a reversible
+ * relationship change, not a destructive one. "+ Add input" (AssignPicker)
+ * stays edit-only — it has no unconditional-in-view precedent in the
+ * Cluster tab pair to align with, so it wasn't moved. The "Related inputs"
+ * search panel (Add/Dismiss) was already unconditional in both modes before
+ * this pass — no change needed there.
+ *
  * @param {{ clusterId: string|null, clusters: object[], inputs: object[], onClose: () => void, onSave: (id, fields) => void, onRemoveInput: (inputId, clusterId) => void, onAssignInput: (inputId, clusterId) => void }} props
  */
-import { useState, useEffect } from "react";
-import { c, inp, ta, btnP, btnSec, btnG, fl } from "../../styles/tokens.js";
+import { useState } from "react";
+import clsx from "clsx";
 import { SubtypeTag, HorizTag, Tag } from "../shared/Tag.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { supabase } from "../../lib/supabase.js";
@@ -13,46 +30,36 @@ const SUBTYPES = ["Trend", "Driver", "Tension"];
 const HORIZONS  = ["H1", "H2", "H3"];
 const LIKELIHOODS = ["Possible", "Plausible", "Probable"];
 
-const HORIZON_COLORS = {
-  H1: [c.green700, c.green50, c.greenBorder],
-  H2: [c.blue700,  c.blue50,  c.blueBorder],
-  H3: [c.amber700, c.amber50, c.amberBorder],
+const HORIZON_CLASSES = {
+  H1: "border-green-border bg-green-50 text-green-700",
+  H2: "border-blue-border bg-blue-50 text-blue-700",
+  H3: "border-amber-border bg-amber-50 text-amber-700",
 };
 
 function LikelihoodTag({ l }) {
   const map = {
-    Probable:  [c.green700,  c.green50,  c.greenBorder],
-    Plausible: [c.blue700,   c.blue50,   c.blueBorder],
-    Possible:  [c.amber700,  c.amber50,  c.amberBorder],
+    Probable:  ["var(--color-green-700)",  "var(--color-green-50)",  "var(--color-green-border)"],
+    Plausible: ["var(--color-blue-700)",   "var(--color-blue-50)",   "var(--color-blue-border)"],
+    Possible:  ["var(--color-amber-700)",  "var(--color-amber-50)",  "var(--color-amber-border)"],
   };
-  const [col, bg, brd] = map[l] || [c.hint, "transparent", c.border];
+  const [col, bg, brd] = map[l] || ["var(--color-hint)", "transparent", "var(--color-border)"];
   return <Tag label={l} color={col} bg={bg} border={brd} />;
 }
 
 function AssignPicker({ availableInputs, onAssign, onClose }) {
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 350 }} />
-      <div style={{
-        position: "absolute", top: "100%", left: 0, marginTop: 4,
-        background: c.white, border: `1px solid ${c.border}`,
-        borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
-        minWidth: 260, zIndex: 351, overflow: "hidden",
-      }}>
+      <div onClick={onClose} className="fixed inset-0 z-[350]" />
+      <div className="absolute top-full left-0 mt-1 bg-white border border-border rounded-pill shadow-[0_6px_24px_rgba(0,0,0,0.12)] min-w-[260px] z-[351] overflow-hidden">
         {availableInputs.length === 0 ? (
-          <div style={{ padding: "12px 14px", fontSize: 12, color: c.hint }}>All project inputs already linked.</div>
+          <div className="py-3 px-3.5 text-xs text-hint">All project inputs already linked.</div>
         ) : (
-          <div style={{ maxHeight: 200, overflowY: "auto" }}>
+          <div className="max-h-[200px] overflow-y-auto">
             {availableInputs.map((i) => (
               <button
                 key={i.id}
                 onClick={() => onAssign(i.id)}
-                style={{
-                  display: "block", width: "100%", padding: "9px 14px",
-                  background: "transparent", border: "none", borderBottom: `1px solid ${c.border}`,
-                  textAlign: "left", cursor: "pointer", fontFamily: "inherit",
-                  fontSize: 12, color: c.ink,
-                }}
+                className="block w-full py-2.25 px-3.5 bg-transparent border-none border-b border-border text-left cursor-pointer font-[inherit] text-xs text-ink"
               >
                 {i.name}
               </button>
@@ -65,10 +72,16 @@ function AssignPicker({ availableInputs, onAssign, onClose }) {
 }
 
 const RELATED_CATEGORIES = [
-  { key: "likely",     label: "Likely matches",  dot: c.green700,  desc: "Supports or extends"     },
-  { key: "possible",   label: "Possible matches", dot: c.blue700,   desc: "Partial or ambiguous"   },
-  { key: "challenges", label: "Challenges",       dot: c.amber700,  desc: "Complicates or strains" },
+  { key: "likely",     label: "Likely matches",  dot: "var(--color-green-700)",  desc: "Supports or extends"     },
+  { key: "possible",   label: "Possible matches", dot: "var(--color-blue-700)",   desc: "Partial or ambiguous"   },
+  { key: "challenges", label: "Challenges",       dot: "var(--color-amber-700)",  desc: "Complicates or strains" },
 ];
+
+const inpClass = "w-full py-2.25 px-2.75 border border-border-strong rounded-container bg-white text-ink text-ui font-[inherit] outline-none box-border";
+const taClass = clsx(inpClass, "resize-none leading-[1.55]");
+const btnPClass = "py-2.5 px-5.5 rounded-container bg-brand text-white border-none text-ui font-medium cursor-pointer font-[inherit]";
+const btnSecClass = "py-2.25 px-4.5 rounded-container bg-transparent text-muted border border-border-strong text-ui cursor-pointer font-[inherit]";
+const flClass = "text-xs font-medium text-ink mb-1.25 flex items-center gap-1.5";
 
 export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSave, onRemoveInput, onAssignInput, onDelete, startInEditMode = false }) {
   const cluster = clusters.find((cl) => cl.id === clusterId) || null;
@@ -84,16 +97,19 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
   const [relatedError,      setRelatedError]      = useState(null);
   const [dismissedIds,      setDismissedIds]      = useState(new Set());
 
-  useEffect(() => {
-    if (cluster) {
-      setFields({
-        name:        cluster.name        || "",
-        subtype:     cluster.subtype     || "Trend",
-        horizon:     cluster.horizon     || "H1",
-        likelihood:  cluster.likelihood  || "Plausible",
-        description: cluster.description || "",
-      });
-    }
+  // Re-seed fields (and reset transient UI state) when the selected cluster
+  // changes, without an effect (react-hooks/set-state-in-effect) — adjust
+  // state during render.
+  const [prevClusterId, setPrevClusterId] = useState(clusterId);
+  if (clusterId !== prevClusterId) {
+    setPrevClusterId(clusterId);
+    setFields(cluster ? {
+      name:        cluster.name        || "",
+      subtype:     cluster.subtype     || "Trend",
+      horizon:     cluster.horizon     || "H1",
+      likelihood:  cluster.likelihood  || "Plausible",
+      description: cluster.description || "",
+    } : {});
     setEditing(!!startInEditMode);
     setPickerOpen(false);
     setConfirmDelete(false);
@@ -102,7 +118,7 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
     setLoadingRelated(false);
     setRelatedError(null);
     setDismissedIds(new Set());
-  }, [clusterId]);
+  }
 
   if (!cluster) return null;
 
@@ -153,61 +169,58 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 300 }} />
-      <div style={{
-        position: "fixed", top: 0, right: 0, bottom: 0, width: 460,
-        background: c.white, borderLeft: `1px solid ${c.border}`,
-        zIndex: 301, display: "flex", flexDirection: "column",
-        animation: "drawerSlideIn 0.28s ease",
-      }}>
+      <div onClick={onClose} className="fixed inset-0 bg-black/25 z-[300]" />
+      <div
+        className="fixed top-0 right-0 bottom-0 w-[460px] bg-white border-l border-border z-[301] flex flex-col"
+        style={{ animation: "drawerSlideIn 0.28s ease" }}
+      >
         {/* Header */}
-        <div style={{
-          padding: "18px 24px 14px", borderBottom: `1px solid ${c.border}`,
-          display: "flex", alignItems: "center", gap: 8, flexShrink: 0,
-        }}>
+        <div className="pt-4.5 px-6 pb-3.5 border-b border-border flex items-center gap-2 shrink-0">
           <SubtypeTag sub={cluster.subtype} />
-          <div style={{ flex: 1 }} />
+          <div className="flex-1" />
           {!editing && (
-            <button onClick={() => setEditing(true)} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>Edit</button>
+            <button onClick={() => setEditing(true)} className={clsx(btnSecClass, "text-[11px] py-1.25 px-3.5")}>Edit</button>
           )}
-          <button onClick={onClose} style={{ ...btnG, fontSize: 16, padding: "2px 6px", color: c.muted }}>×</button>
+          <button onClick={onClose} className="bg-transparent border-none cursor-pointer font-[inherit] text-base py-0.5 px-1.5 text-muted rounded-btn">×</button>
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+        <div className="flex-1 overflow-y-auto py-5 px-6">
 
           {/* Name */}
-          <div style={{ marginBottom: 16 }}>
+          <div className="mb-4">
             {editing ? (
               <>
-                <div style={fl}>Cluster name</div>
-                <input style={inp} value={fields.name} onChange={(e) => set("name", e.target.value)} autoFocus />
+                <div className={flClass}>Cluster name</div>
+                <input className={inpClass} value={fields.name} onChange={(e) => set("name", e.target.value)} autoFocus />
               </>
             ) : (
-              <div style={{ fontSize: 17, fontWeight: 500, color: c.ink }}>{cluster.name}</div>
+              <div className="text-[17px] font-medium text-ink">{cluster.name}</div>
             )}
           </div>
 
           {/* Tags row */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
             <HorizTag h={cluster.horizon} />
             {cluster.likelihood && <LikelihoodTag l={cluster.likelihood} />}
           </div>
 
           {/* Subtype (edit) */}
           {editing && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={fl}>Subtype</div>
-              <div style={{ display: "flex", gap: 8 }}>
+            <div className="mb-4">
+              <div className={flClass}>Subtype</div>
+              <div className="flex gap-2">
                 {SUBTYPES.map((s) => {
                   const on = fields.subtype === s;
                   return (
-                    <button key={s} onClick={() => set("subtype", s)} style={{
-                      padding: "5px 16px", borderRadius: 20,
-                      border: `1px solid ${on ? c.ink : c.border}`,
-                      background: on ? c.ink : c.white, color: on ? c.white : c.muted,
-                      fontSize: 11, cursor: "pointer", fontFamily: "inherit",
-                    }}>
+                    <button
+                      key={s}
+                      onClick={() => set("subtype", s)}
+                      className={clsx(
+                        "py-1.25 px-4 rounded-[20px] border text-[11px] cursor-pointer font-[inherit]",
+                        on ? "border-ink bg-ink text-white" : "border-border bg-white text-muted",
+                      )}
+                    >
                       {s}
                     </button>
                   );
@@ -218,20 +231,20 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
 
           {/* Horizon (edit) */}
           {editing && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={fl}>Horizon</div>
-              <div style={{ display: "flex", gap: 8 }}>
+            <div className="mb-4">
+              <div className={flClass}>Horizon</div>
+              <div className="flex gap-2">
                 {HORIZONS.map((h) => {
                   const on = fields.horizon === h;
-                  const [col, bg, brd] = HORIZON_COLORS[h];
                   return (
-                    <button key={h} onClick={() => set("horizon", h)} style={{
-                      padding: "5px 18px", borderRadius: 20,
-                      border: `1px solid ${on ? brd : c.border}`,
-                      background: on ? bg : c.white, color: on ? col : c.muted,
-                      fontSize: 12, fontWeight: on ? 600 : 400,
-                      cursor: "pointer", fontFamily: "inherit",
-                    }}>
+                    <button
+                      key={h}
+                      onClick={() => set("horizon", h)}
+                      className={clsx(
+                        "py-1.25 px-4.5 rounded-[20px] border text-xs cursor-pointer font-[inherit]",
+                        on ? clsx(HORIZON_CLASSES[h], "font-semibold") : "border-border bg-white text-muted font-normal",
+                      )}
+                    >
                       {h}
                     </button>
                   );
@@ -242,18 +255,20 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
 
           {/* Likelihood (edit) */}
           {editing && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={fl}>Likelihood</div>
-              <div style={{ display: "flex", gap: 8 }}>
+            <div className="mb-4">
+              <div className={flClass}>Likelihood</div>
+              <div className="flex gap-2">
                 {LIKELIHOODS.map((l) => {
                   const on = fields.likelihood === l;
                   return (
-                    <button key={l} onClick={() => set("likelihood", l)} style={{
-                      padding: "5px 14px", borderRadius: 20,
-                      border: `1px solid ${on ? c.borderStrong : c.border}`,
-                      background: on ? c.ink : c.white, color: on ? c.white : c.muted,
-                      fontSize: 11, cursor: "pointer", fontFamily: "inherit",
-                    }}>
+                    <button
+                      key={l}
+                      onClick={() => set("likelihood", l)}
+                      className={clsx(
+                        "py-1.25 px-3.5 rounded-[20px] border text-[11px] cursor-pointer font-[inherit]",
+                        on ? "border-border-strong bg-ink text-white" : "border-border bg-white text-muted",
+                      )}
+                    >
                       {l}
                     </button>
                   );
@@ -263,31 +278,31 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
           )}
 
           {/* Description */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>Description</div>
+          <div className="mb-5">
+            <div className="text-[11px] tracking-[0.02em] text-hint mb-1.5">Description</div>
             {editing ? (
-              <textarea style={ta} rows={3} value={fields.description} onChange={(e) => set("description", e.target.value)} placeholder="What does this cluster represent?" />
+              <textarea className={taClass} rows={3} value={fields.description} onChange={(e) => set("description", e.target.value)} placeholder="What does this cluster represent?" />
             ) : cluster.description ? (
-              <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.65 }}>{cluster.description}</div>
+              <div className="text-xs text-muted leading-[1.65]">{cluster.description}</div>
             ) : (
-              <span style={{ fontSize: 12, color: c.hint, fontStyle: "italic" }}>No description.</span>
+              <span className="text-xs text-hint italic">No description.</span>
             )}
           </div>
 
           {/* Divider */}
-          <div style={{ height: 1, background: c.border, marginBottom: 16 }} />
+          <div className="h-px bg-border mb-4" />
 
           {/* Linked inputs */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint }}>
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="text-[11px] tracking-[0.02em] text-hint">
                 Linked inputs ({linkedInputs.length})
               </div>
               {editing && (
-                <div style={{ position: "relative" }}>
+                <div className="relative">
                   <button
                     onClick={() => setPickerOpen((s) => !s)}
-                    style={{ ...btnSec, fontSize: 11, padding: "4px 10px" }}
+                    className={clsx(btnSecClass, "text-[11px] py-1 px-2.5")}
                   >
                     + Add input
                   </button>
@@ -302,27 +317,21 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
               )}
             </div>
             {linkedInputs.length === 0 ? (
-              <div style={{ fontSize: 12, color: c.hint, fontStyle: "italic" }}>No inputs linked yet.</div>
+              <div className="text-xs text-hint italic">No inputs linked yet.</div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div className="flex flex-col gap-1.5">
                 {linkedInputs.map((i) => (
-                  <div key={i.id} style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "8px 12px", background: c.surfaceAlt,
-                    border: `1px solid ${c.border}`, borderRadius: 8,
-                  }}>
-                    <span style={{ fontSize: 10, color: c.hint }}>◎</span>
-                    <span style={{ fontSize: 12, color: c.ink, flex: 1 }}>{i.name}</span>
+                  <div key={i.id} className="flex items-center gap-2 py-2 px-3 bg-surface-alt border border-border rounded-container">
+                    <span className="text-[10px] text-hint">◎</span>
+                    <span className="text-xs text-ink flex-1">{i.name}</span>
                     {i.horizon && <HorizTag h={i.horizon} />}
-                    {editing && (
-                      <button
-                        onClick={() => onRemoveInput(i.id, cluster.id)}
-                        style={{ background: "transparent", border: "none", color: c.hint, fontSize: 14, cursor: "pointer", padding: "0 2px", fontFamily: "inherit" }}
-                        title="Remove from cluster"
-                      >
-                        ×
-                      </button>
-                    )}
+                    <button
+                      onClick={() => onRemoveInput(i.id, cluster.id)}
+                      className="bg-transparent border-none text-hint text-sm cursor-pointer py-0 px-0.5 font-[inherit]"
+                      title="Remove from cluster"
+                    >
+                      ×
+                    </button>
                   </div>
                 ))}
               </div>
@@ -330,34 +339,31 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
           </div>
 
           {/* Divider */}
-          <div style={{ height: 1, background: c.border, margin: "4px 0 14px" }} />
+          <div className="h-px bg-border mt-1 mb-3.5" />
 
           {/* ── Related inputs ──────────────────────────────────── */}
-          <div style={{ marginBottom: 8 }}>
+          <div className="mb-2">
 
             {/* Section header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint }}>
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-1.5">
+                <div className="text-[11px] tracking-[0.02em] text-hint">
                   🔍 Related inputs
                 </div>
                 {relatedResults !== null && totalRelatedVisible > 0 && (
-                  <span style={{
-                    fontSize: 10, padding: "1px 6px", borderRadius: 8,
-                    background: "rgba(0,0,0,0.06)", color: c.muted,
-                  }}>
+                  <span className="text-[10px] py-px px-1.5 rounded-container bg-black/[0.06] text-muted">
                     {totalRelatedVisible}
                   </span>
                 )}
               </div>
               {linkedInputs.length > 0 && (
                 relatedResults !== null && !loadingRelated ? (
-                  <button onClick={handleFindRelated} style={{ ...btnG, fontSize: 11 }}>Re-run</button>
+                  <button onClick={handleFindRelated} className="text-[11px] py-1.75 px-3 rounded-btn bg-transparent text-muted border-none cursor-pointer font-[inherit]">Re-run</button>
                 ) : (
                   <button
                     onClick={handleFindRelated}
                     disabled={loadingRelated}
-                    style={{ ...btnSec, fontSize: 11, padding: "4px 10px" }}
+                    className={clsx(btnSecClass, "text-[11px] py-1 px-2.5")}
                   >
                     Find related
                   </button>
@@ -367,102 +373,73 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
 
             {/* Body */}
             {linkedInputs.length === 0 ? (
-              <div style={{ fontSize: 11, color: c.hint, fontStyle: "italic" }}>
+              <div className="text-[11px] text-hint italic">
                 Add inputs to this cluster before finding related ones.
               </div>
             ) : loadingRelated ? (
-              <div style={{
-                padding: "18px 14px",
-                background: c.surfaceAlt, border: `1px solid ${c.border}`, borderRadius: 8,
-                display: "flex", alignItems: "center", gap: 8,
-              }}>
+              <div className="py-4.5 px-3.5 bg-surface-alt border border-border rounded-container flex items-center gap-2">
                 <div style={{
                   width: 14, height: 14, borderRadius: "50%", flexShrink: 0,
-                  border: `2px solid ${c.border}`, borderTopColor: c.muted,
+                  border: "2px solid var(--color-border)", borderTopColor: "var(--color-muted)",
                   animation: "relatedSpinner 0.7s linear infinite",
                 }} />
-                <span style={{ fontSize: 12, color: c.muted }}>Searching…</span>
+                <span className="text-xs text-muted">Searching…</span>
                 <style>{`@keyframes relatedSpinner { to { transform: rotate(360deg); } }`}</style>
               </div>
             ) : relatedError ? (
-              <div style={{
-                padding: "10px 12px", background: c.red50,
-                border: `1px solid ${c.redBorder}`, borderRadius: 8,
-                fontSize: 11, color: c.red800,
-              }}>
+              <div className="py-2.5 px-3 bg-red-50 border border-red-border rounded-container text-[11px] text-red-800">
                 {relatedError}
               </div>
             ) : relatedResults === null ? (
-              <div style={{
-                padding: "20px 16px", background: c.surfaceAlt,
-                border: `1px solid ${c.border}`, borderRadius: 8,
-                textAlign: "center",
-              }}>
-                <div style={{ fontSize: 11, color: c.muted, lineHeight: 1.55, marginBottom: 12 }}>
+              <div className="py-5 px-4 bg-surface-alt border border-border rounded-container text-center">
+                <div className="text-[11px] text-muted leading-[1.55] mb-3">
                   Search across all project inputs to find what supports, extends, or challenges this cluster.
                 </div>
-                <button onClick={handleFindRelated} style={{ ...btnP, fontSize: 11, padding: "6px 16px" }}>
+                <button onClick={handleFindRelated} className={clsx(btnPClass, "text-[11px] py-1.5 px-4")}>
                   Find related inputs
                 </button>
               </div>
             ) : totalRelatedVisible === 0 ? (
-              <div style={{
-                padding: "12px 14px", background: c.surfaceAlt,
-                border: `1px solid ${c.border}`, borderRadius: 8,
-                fontSize: 12, color: c.muted, textAlign: "center",
-              }}>
+              <div className="py-3 px-3.5 bg-surface-alt border border-border rounded-container text-xs text-muted text-center">
                 ✓ All suggestions reviewed.
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div className="flex flex-col gap-3.5">
                 {RELATED_CATEGORIES.map(({ key, label, dot, desc }) => {
                   const items = (relatedResults[key] || []).filter((r) => !dismissedIds.has(r.input_id));
                   if (items.length === 0) return null;
                   return (
                     <div key={key}>
                       {/* Category header */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
-                        <span style={{
-                          width: 7, height: 7, borderRadius: "50%",
-                          background: dot, display: "inline-block", flexShrink: 0,
-                        }} />
-                        <span style={{ fontSize: 11, letterSpacing: "0.02em", color: c.ink, fontWeight: 500 }}>
+                      <div className="flex items-center gap-1.5 mb-1.75">
+                        <span className="w-1.75 h-1.75 rounded-full inline-block shrink-0" style={{ background: dot }} />
+                        <span className="text-[11px] tracking-[0.02em] text-ink font-medium">
                           {label}
                         </span>
-                        <span style={{ fontSize: 10, color: c.hint, fontStyle: "italic", marginLeft: "auto" }}>
+                        <span className="text-[10px] text-hint italic ml-auto">
                           {desc}
                         </span>
                       </div>
                       {/* Result cards */}
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <div className="flex flex-col gap-1.5">
                         {items.map((result) => (
-                          <div key={result.input_id} style={{
-                            padding: "10px 12px",
-                            background: c.white, border: `1px solid ${c.border}`, borderRadius: 8,
-                          }}>
-                            <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 4, lineHeight: 1.35 }}>
+                          <div key={result.input_id} className="py-2.5 px-3 bg-white border border-border rounded-container">
+                            <div className="text-[13px] font-medium text-ink mb-1 leading-[1.35]">
                               {result.title}
                             </div>
-                            <div style={{
-                              fontSize: 11, color: c.muted, lineHeight: 1.55, marginBottom: 9,
-                              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-                            }}>
+                            <div className="text-[11px] text-muted leading-[1.55] mb-2.25 line-clamp-2">
                               {result.rationale}
                             </div>
-                            <div style={{ display: "flex", gap: 5 }}>
+                            <div className="flex gap-1.25">
                               <button
                                 onClick={() => handleAddFromRelated(result)}
-                                style={{
-                                  fontSize: 11, padding: "3px 11px", borderRadius: 5,
-                                  background: c.brand, color: c.white, border: "none",
-                                  cursor: "pointer", fontFamily: "inherit", fontWeight: 500,
-                                }}
+                                className="text-[11px] py-0.75 px-2.75 rounded-[5px] bg-brand text-white border-none cursor-pointer font-[inherit] font-medium"
                               >
                                 Add
                               </button>
                               <button
                                 onClick={() => handleDismissFromRelated(result.input_id)}
-                                style={{ ...btnG, fontSize: 11, padding: "3px 9px" }}
+                                className="text-[11px] py-0.75 px-2.25 rounded-btn bg-transparent text-muted border-none cursor-pointer font-[inherit]"
                               >
                                 Dismiss
                               </button>
@@ -478,24 +455,27 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
           </div>
         </div>
 
-        {/* Footer (edit mode only) */}
+        {/* Footer (edit mode): Cancel/Save row, then Danger Zone row below a
+            second border — matches EditProjectDrawer.jsx's convention. */}
         {editing && (
-          <div style={{
-            padding: "14px 24px 20px", borderTop: `1px solid ${c.border}`,
-            display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, flexShrink: 0,
-          }}>
-            <button onClick={handleCancel} style={btnSec}>Cancel</button>
-            <button onClick={handleSave} style={btnP}>Save changes</button>
-          </div>
-        )}
-        {!editing && onDelete && (
-          <div style={{ padding: "12px 24px 18px", borderTop: `1px solid ${c.border}`, flexShrink: 0, display: "flex", justifyContent: "flex-end" }}>
-            <button
-              onClick={() => setConfirmDelete(true)}
-              style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
-            >
-              Delete cluster
-            </button>
+          <div className="shrink-0">
+            <div className="pt-3.5 px-6 pb-5 border-t border-border flex items-center justify-end gap-2">
+              <button onClick={handleCancel} className={btnSecClass}>Cancel</button>
+              <button onClick={handleSave} className={btnPClass}>Save changes</button>
+            </div>
+            {onDelete && (
+              <div className="px-6 pb-5 border-t border-border">
+                <div className="pt-3.5 flex items-center justify-between">
+                  <div className="text-[11px] text-hint">Danger zone</div>
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="text-[11px] py-1.25 px-3 rounded-[6px] border border-red-border bg-transparent text-red-800 cursor-pointer font-[inherit]"
+                  >
+                    Delete cluster
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
