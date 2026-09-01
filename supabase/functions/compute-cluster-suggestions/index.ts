@@ -91,8 +91,45 @@ type AssignmentMatch = {
 };
 
 type NamingResult =
-  | { action: "create_new"; name: string; description: string; subtype: string; rationale: string }
+  | {
+      action: "create_new";
+      name: string;
+      description: string;
+      subtype: string;
+      rationale: string;
+      relevance: "core" | "low";
+    }
   | { action: "assign_to_existing"; cluster_name: string };
+
+type ProjectContext = {
+  question: string | null;
+  focus: string | null;
+  domain: string | null;
+  custom_domain: string | null;
+  scope_in: string[] | null;
+  scope_out: string[] | null;
+};
+
+// ─── Project-context prompt helpers ───────────────────────────────────────────
+// Ported from the legacy generate-cluster-suggestions function, which built this
+// context block but was never wired into the naming/rationale prompts here.
+
+function formatScopeLines(project: ProjectContext): string {
+  const lines: string[] = [];
+  if (project.scope_in?.length) lines.push(`In scope: ${project.scope_in.join(", ")}`);
+  if (project.scope_out?.length) lines.push(`Out of scope (exclude): ${project.scope_out.join(", ")}`);
+  return lines.length ? "\n" + lines.join("\n") : "";
+}
+
+function formatProjectContext(project: ProjectContext): string {
+  const domain = project.custom_domain || project.domain;
+  const lines: string[] = [
+    `This is for a foresight project investigating: "${project.question ?? "Not specified"}"`,
+  ];
+  if (project.focus) lines.push(`Focus: ${project.focus}`);
+  if (domain) lines.push(`Domain: ${domain}`);
+  return lines.join("\n") + formatScopeLines(project);
+}
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
@@ -129,13 +166,22 @@ serve(async (req: Request) => {
     // ── 1. Fetch project ───────────────────────────────────────────────────────
     const { data: project, error: projectError } = await supabase
       .from("projects")
-      .select("id, workspace_id")
+      .select("id, workspace_id, question, focus, domain, custom_domain, scope_in, scope_out")
       .eq("id", project_id)
       .single();
 
     if (projectError) throw projectError;
     if (!project) return respond({ error: "Project not found" }, 404);
     if (project.workspace_id !== callerWorkspaceId) return respond({ error: "Forbidden" }, 403);
+
+    const projectContext: ProjectContext = {
+      question:      project.question      ?? null,
+      focus:         project.focus         ?? null,
+      domain:        project.domain        ?? null,
+      custom_domain: project.custom_domain ?? null,
+      scope_in:      project.scope_in      ?? null,
+      scope_out:     project.scope_out     ?? null,
+    };
 
     // ── 2. Fetch all project inputs (filter embeddings in TS — pgvector/PostgREST
     //       does not reliably support .not('embedding', 'is', null)) ────────────
@@ -231,7 +277,7 @@ serve(async (req: Request) => {
         return respond({ assignments: 0 });
       }
 
-      const matches = await enrichAssignmentsWithRationale(rawMatches);
+      const matches = await enrichAssignmentsWithRationale(rawMatches, projectContext);
       const rows = assignmentMatchesToRows(matches, project_id, project.workspace_id);
 
       await supabase
@@ -268,6 +314,7 @@ serve(async (req: Request) => {
       clustering_sensitivity,
       project_id,
       project.workspace_id,
+      projectContext,
     );
 
     if (mode === "new_clusters") {
@@ -294,7 +341,7 @@ serve(async (req: Request) => {
     }
 
     // mode === "combined"
-    const enrichedAssignmentMatches = await enrichAssignmentsWithRationale(assignmentMatches);
+    const enrichedAssignmentMatches = await enrichAssignmentsWithRationale(assignmentMatches, projectContext);
     const assignmentRows = assignmentMatchesToRows(enrichedAssignmentMatches, project_id, project.workspace_id);
     const allAssignmentRows = [...assignmentRows, ...pass.assignmentRows];
     const allRows = [...allAssignmentRows, ...pass.newClusterRows];
@@ -440,6 +487,7 @@ async function runNewClusterPass(
   sensitivity: string,
   projectId: string,
   workspaceId: string,
+  projectContext: ProjectContext,
 ): Promise<{ assignmentRows: object[]; newClusterRows: object[]; errors: string[]; message?: string }> {
   const errors: string[] = [];
 
@@ -471,7 +519,7 @@ async function runNewClusterPass(
   for (const group of groups) {
     try {
       const groupInputs = candidateInputs.filter((i) => group.includes(i.id));
-      const named = await nameCluster(groupInputs, existingClusterNames);
+      const named = await nameCluster(groupInputs, existingClusterNames, projectContext);
 
       if (named.action === "assign_to_existing") {
         const target = allClusters.find(
@@ -487,7 +535,7 @@ async function runNewClusterPass(
 
         for (const inputId of group) {
           const inputObj = groupInputs.find((i) => i.id === inputId) ?? groupInputs[0];
-          const rationale = await generateAssignmentRationale(inputObj, target.name, target.description);
+          const rationale = await generateAssignmentRationale(inputObj, target.name, target.description, projectContext);
           assignmentRows.push({
             project_id:        projectId,
             workspace_id:      workspaceId,
@@ -512,6 +560,7 @@ async function runNewClusterPass(
         subtype:      named.subtype,
         input_ids:    group,
         rationale:    named.rationale,
+        relevance:    named.relevance,
         status:       "pending",
       });
 
@@ -534,6 +583,7 @@ async function runNewClusterPass(
 async function nameCluster(
   inputs: EmbeddedInput[],
   existingClusterNames: string[],
+  project: ProjectContext,
 ): Promise<NamingResult> {
   const inputList = inputs
     .map((i) => `- ${i.name}${i.description ? `: ${i.description}` : ""}`)
@@ -547,7 +597,14 @@ async function nameCluster(
 `You are helping a strategic foresight practitioner identify patterns in a group of signals.
 The following inputs have been grouped together by semantic similarity.
 
-Inputs:
+## Project context
+
+${formatProjectContext(project)}
+
+Every cluster you propose must be interpreted against this project's actual question and scope — not just the topic area implied by its domain. A group of inputs can share a domain (e.g. they're all "AI" news) without having any real bearing on what this project is investigating.
+
+## Grouped inputs
+
 ${inputList}
 
 Existing clusters in this project — your suggested name must be clearly and meaningfully distinct from all of these:
@@ -557,7 +614,7 @@ If the inputs you've been given are better described as belonging to one of the 
 { "action": "assign_to_existing", "cluster_name": "<name of the existing cluster>" }
 
 Otherwise, suggest a new cluster:
-{ "action": "create_new", "name": "...", "description": "...", "subtype": "trend" | "driver" | "tension", "rationale": "..." }
+{ "action": "create_new", "name": "...", "description": "...", "subtype": "trend" | "driver" | "tension", "rationale": "...", "relevance": "core" | "low" }
 
 Return JSON only with no preamble.
 
@@ -566,10 +623,15 @@ Rules for "create_new":
 - subtype 'driver' = a structural force shaping the future
 - subtype 'tension' = competing dynamics creating uncertainty or friction
 
+Relevance check — decide this before naming:
+- Set "relevance": "core" only if the group connects to the project's key question or its "In scope" items in a substantive way — not merely by sharing the project's broad domain.
+- Set "relevance": "low" if the group's only real connection to the project is generic domain overlap (e.g. it's relevant only because the project's domain is "Technology & AI" and these inputs happen to also be about AI, with no material tie to the actual question or "In scope" items).
+- Treat anything matching an "Out of scope" line as a strong signal to set "relevance": "low", even if it otherwise resembles a coherent pattern.
+- A "low" relevance cluster still gets a name and description (still describe the real pattern in the inputs) — it is deprioritized in the UI, not discarded. Do not force a group into "core" just to make it sound more important than it is.
+
 For "rationale" (1–3 sentences):
-- Explain what these inputs have in common thematically
-- Describe what pattern or dynamic they point to together
-- Explain why they form a meaningful cluster rather than a coincidental grouping
+- If relevance is "core": explain what these inputs have in common thematically, describe what pattern or dynamic they point to together, and explain why they form a meaningful cluster rather than a coincidental grouping.
+- If relevance is "low": state plainly, in one sentence, why this pattern doesn't materially bear on the project's actual question or scope (e.g. "This is a general AI-industry pattern that doesn't touch data-center infrastructure, demand, or the other scope_in items this project tracks.").
 - Write in the voice of a strategic foresight analyst. Reference the content of the inputs, not statistical similarity. Do not mention embeddings, cosine similarity, or any mathematical concepts.
 
 Naming rules — this is the most important part:
@@ -624,6 +686,7 @@ Bad examples (never use this style):
     description: String(parsed.description ?? ""),
     subtype:     VALID_SUBTYPES.includes(parsed.subtype) ? parsed.subtype : "trend",
     rationale:   String(parsed.rationale   ?? ""),
+    relevance:   parsed.relevance === "low" ? "low" : "core",
   };
 }
 
@@ -638,6 +701,7 @@ async function generateAssignmentRationale(
   input: EmbeddedInput,
   clusterName: string,
   clusterDescription: string | null,
+  project: ProjectContext,
 ): Promise<string | null> {
   const clusterLine = clusterDescription
     ? `Cluster: ${clusterName} — ${clusterDescription}`
@@ -645,6 +709,12 @@ async function generateAssignmentRationale(
 
   const prompt =
 `You are a strategic foresight analyst. In one sentence, explain why the following input belongs in the given cluster.
+
+## Project context
+
+${formatProjectContext(project)}
+
+Frame the rationale against what this project is actually investigating, not just the surface-level topic the input and cluster happen to share.
 
 Reference the content and theme of both — what they share, what dynamic connects them. Do not mention embeddings, similarity scores, or any mathematical concepts. Write as if explaining a judgment call to a colleague.
 
@@ -683,11 +753,12 @@ Respond with a single sentence of no more than 20 words. No preamble.`;
  */
 async function enrichAssignmentsWithRationale(
   matches: AssignmentMatch[],
+  project: ProjectContext,
 ): Promise<AssignmentMatch[]> {
   return Promise.all(
     matches.map(async (m) => ({
       ...m,
-      rationale: await generateAssignmentRationale(m.input, m.cluster.name, m.cluster.description),
+      rationale: await generateAssignmentRationale(m.input, m.cluster.name, m.cluster.description, project),
     })),
   );
 }
