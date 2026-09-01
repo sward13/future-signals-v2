@@ -79,7 +79,7 @@ export default function PreferredFutureRead({ appState }) {
 
           {/* Gradient accent bar */}
           <div
-            className="h-[3px] rounded mb-6"
+            className="h-[3px] rounded-[2px] mb-6"
             style={{ background: "linear-gradient(to right, rgba(59,109,17,0.3), rgba(24,95,165,0.3), rgba(133,79,11,0.3))" }}
           />
 
