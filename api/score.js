@@ -239,7 +239,7 @@ export default async function handler(req, res) {
         // dismissals are still there to fetch.
         const { data: dismissedRows } = await supabase
           .from('project_candidates')
-          .select('created_at, scored_at, candidates(embedding)')
+          .select('created_at, scored_at, dismissed_at, candidates(embedding)')
           .eq('project_id', project.id)
           .eq('user_action', 'dismissed');
 
@@ -248,7 +248,12 @@ export default async function handler(req, res) {
             const raw = r.candidates?.embedding;
             const embedding = typeof raw === 'string' ? JSON.parse(raw) : raw;
             if (!embedding) return null;
-            const dismissedAt = r.scored_at || r.created_at;
+            // dismissed_at is the real event the decay should measure from —
+            // scored_at/created_at are when the candidate was scored/ingested,
+            // not when the user actually dismissed it (audit finding,
+            // 2026-09-05). Falls back for rows dismissed before this column
+            // existed, rather than backfilling them.
+            const dismissedAt = r.dismissed_at || r.scored_at || r.created_at;
             const ageDays = (Date.now() - new Date(dismissedAt).getTime()) / 86_400_000;
             return { embedding, norm: norm(embedding), weight: negativePoolDecayWeight(ageDays) };
           })

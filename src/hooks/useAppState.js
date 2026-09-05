@@ -190,19 +190,25 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       setProjectSystemMapBackground(null);
       return;
     }
+    // Guard against a stale response: if the user switches projects again
+    // before this fetch resolves, an out-of-order response must not
+    // overwrite the newer project's already-correct background state.
+    let cancelled = false;
+    const projectId = activeProjectId;
     (async () => {
       try {
         const { data, error } = await supabase
           .from("project_system_map_background")
           .select("*")
-          .eq("project_id", activeProjectId)
+          .eq("project_id", projectId)
           .maybeSingle();
         if (error) throw error;
-        setProjectSystemMapBackground(data ?? null);
+        if (!cancelled) setProjectSystemMapBackground(data ?? null);
       } catch {
         // non-fatal — canvas just renders with no background
       }
     })();
+    return () => { cancelled = true; };
   }, [activeProjectId]);
 
   // ── Supabase data fetching ────────────────────────────────────────────────
@@ -794,7 +800,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
         for (const sp of suggestedProjects) {
           await supabase
             .from('project_candidates')
-            .update({ user_action: 'dismissed', dismissal_reason: 'not_relevant' })
+            .update({ user_action: 'dismissed', dismissal_reason: 'not_relevant', dismissed_at: now })
             .eq('candidate_id', input.metadata.candidate_id)
             .eq('project_id', sp.id);
         }

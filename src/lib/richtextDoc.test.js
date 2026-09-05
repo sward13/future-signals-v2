@@ -222,3 +222,33 @@ test("docToMarkdown: marks, headings, lists", () => {
   assert.match(md, /\*\*b\*\*_i_/);
   assert.match(md, /1\. first/);
 });
+
+// ── Nested lists (audit finding, 2026-09-05: child content used to vanish) ────
+
+function nestedListDoc() {
+  return {
+    type: "doc",
+    content: [
+      { type: "bulletList", content: [
+        { type: "listItem", content: [
+          { type: "paragraph", content: [{ type: "text", text: "Parent" }] },
+          { type: "bulletList", content: [
+            { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Child" }] }] },
+          ] },
+        ] },
+      ] },
+    ],
+  };
+}
+
+test("docToText: preserves nested list-item text, not just the parent item", () => {
+  const text = docToText(nestedListDoc());
+  assert.match(text, /- Parent/);
+  assert.match(text, /- Child/);
+});
+
+test("docToMarkdown: preserves nested list-item text, not just the parent item", () => {
+  const md = docToMarkdown(nestedListDoc());
+  assert.match(md, /- Parent/);
+  assert.match(md, /- Child/);
+});

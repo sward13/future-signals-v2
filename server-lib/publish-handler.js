@@ -18,6 +18,20 @@ import { publishProject, unpublishProject } from "./publish-project.js";
 
 const BUCKET = "published-projects";
 
+// Storage origin for the CSP img-src exception below (see serveView) —
+// derived from SUPABASE_URL so it's scoped to whichever Supabase project
+// this deployment actually talks to (staging vs. production each have their
+// own). Read lazily per-call, not at module load — matching the existing
+// convention in publish-project.js — since ESM import hoisting means a
+// module-top-level read can run before a caller (e.g. a test file) has set
+// the env var. Falls back to omitting img-src entirely if SUPABASE_URL is
+// unset — nothing served through serveView() should reach that state in
+// practice (publishing itself requires SUPABASE_URL), so this is a safety
+// net, not an expected path.
+function storageOrigin() {
+  try { return new URL(process.env.SUPABASE_URL).origin; } catch { return null; }
+}
+
 // Weak content validator for conditional requests on the served page.
 function weakEtag(html) {
   return `W/"${createHash("sha1").update(html).digest("base64url").slice(0, 24)}"`;
@@ -63,18 +77,25 @@ async function serveView(supabase, req, res) {
     const etag = weakEtag(html);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     // Content-Security-Policy: the published page executes NO script and loads
-    // NO external resources (audited: no <script>, no analytics/embeds, no
-    // external CSS/fonts/img — system font stack, inline SVG, and inline style
-    // attributes only). So default-src 'none' denies everything by default and
-    // script can never run — a hard backstop behind docToHtml's render-time
-    // filtering. The one deliberately-loose directive is style-src
-    // 'unsafe-inline', required because the page styles entirely via inline
-    // style="…" attributes; it does not weaken script/XSS protection. If images
-    // or any script (e.g. analytics) are ever added to the published page, this
-    // policy must be revisited rather than silently widened.
+    // NO external resources beyond the one exception below (audited: no
+    // <script>, no analytics/embeds, no external CSS/fonts — system font
+    // stack, inline SVG, and inline style attributes only). So default-src
+    // 'none' denies everything by default and script can never run — a hard
+    // backstop behind docToHtml's render-time filtering. The one
+    // deliberately-loose directive is style-src 'unsafe-inline', required
+    // because the page styles entirely via inline style="…" attributes; it
+    // does not weaken script/XSS protection. img-src is scoped to this
+    // deployment's Supabase Storage origin only — the System Map background
+    // template layer (src/publish/systemMap.js) renders a real <image> tag
+    // pointing at a public system-map-templates object, which default-src
+    // 'none' would otherwise silently block. If any other external resource
+    // (e.g. analytics) is ever added to the published page, this policy must
+    // be revisited rather than silently widened further.
+    const origin = storageOrigin();
+    const imgSrc = origin ? ` img-src ${origin};` : "";
     res.setHeader(
       "Content-Security-Policy",
-      "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+      `default-src 'none'; style-src 'unsafe-inline';${imgSrc} base-uri 'none'; form-action 'none'; frame-ancestors 'none'`
     );
     res.setHeader("X-Content-Type-Options", "nosniff");
     // ALWAYS revalidate. A republish overwrites the object in place under the same

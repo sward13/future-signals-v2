@@ -89,22 +89,47 @@ export function docToText(doc) {
 function blockToText(node) {
   if (!node) return "";
   if (node.type === "bulletList" || node.type === "orderedList") {
-    return (node.content || [])
-      .map((li, i) => {
-        const prefix = node.type === "orderedList" ? `${i + 1}. ` : "- ";
-        return prefix + inlineToText(collapseListItem(li));
-      })
-      .join("\n");
+    return renderListText(node, 0);
   }
   // paragraph, heading, or listItem contents
   return inlineToText(node.content);
 }
+// Renders a bulletList/orderedList as indented plain-text lines, recursing
+// into any list nested inside a listItem. Depth-capped like docToHtml's
+// renderBlock, for the same reason (a hand-crafted deeply-nested document
+// bypassing the editor shouldn't be able to blow the stack).
+function renderListText(listNode, depth) {
+  if (depth > MAX_DEPTH) return "";
+  const indent = "  ".repeat(depth);
+  return (listNode.content || [])
+    .map((li, i) => {
+      const prefix = listNode.type === "orderedList" ? `${i + 1}. ` : "- ";
+      const line = `${indent}${prefix}${inlineToText(collapseListItem(li))}`;
+      const nested = nestedLists(li)
+        .map((nl) => renderListText(nl, depth + 1))
+        .filter((s) => s !== "")
+        .join("\n");
+      return nested ? `${line}\n${nested}` : line;
+    })
+    .join("\n");
+}
+function listItemBlocks(li) {
+  return li && li.type === "listItem" && Array.isArray(li.content) ? li.content : [];
+}
+// listItem wraps its own text in a paragraph; return just that inline
+// content. Nested lists are deliberately excluded here — a caller renders
+// them separately, recursively (see renderListText/renderListMarkdown) — this
+// used to flatMap every child block's .content indiscriminately, which mixed
+// a nested list's listItem nodes into the same array as inline text nodes;
+// inlineToText/inlineToMarkdown silently drop anything that isn't
+// text/hardBreak, so nested list content vanished entirely (audit finding,
+// 2026-09-05).
 function collapseListItem(li) {
-  // listItem wraps its text in a paragraph; return that inline content.
-  if (li && li.type === "listItem" && Array.isArray(li.content)) {
-    return li.content.flatMap((b) => (Array.isArray(b.content) ? b.content : []));
-  }
-  return Array.isArray(li?.content) ? li.content : [];
+  return listItemBlocks(li).filter((b) => b?.type !== "bulletList" && b?.type !== "orderedList")
+    .flatMap((b) => (Array.isArray(b.content) ? b.content : []));
+}
+function nestedLists(li) {
+  return listItemBlocks(li).filter((b) => b?.type === "bulletList" || b?.type === "orderedList");
 }
 function inlineToText(content) {
   if (!Array.isArray(content)) return "";
@@ -202,16 +227,29 @@ function blockToMarkdown(node) {
       return `${"#".repeat(level)} ${inlineToMarkdown(node.content)}`;
     }
     case "bulletList":
-      return (node.content || [])
-        .map((li) => `- ${inlineToMarkdown(collapseListItem(li))}`)
-        .join("\n");
     case "orderedList":
-      return (node.content || [])
-        .map((li, i) => `${i + 1}. ${inlineToMarkdown(collapseListItem(li))}`)
-        .join("\n");
+      return renderListMarkdown(node, 0);
     default:
       return "";
   }
+}
+// Mirrors renderListText but for Markdown — see collapseListItem/nestedLists
+// for why nested lists need their own recursive render rather than being
+// flattened through inlineToMarkdown.
+function renderListMarkdown(listNode, depth) {
+  if (depth > MAX_DEPTH) return "";
+  const indent = "  ".repeat(depth);
+  return (listNode.content || [])
+    .map((li, i) => {
+      const prefix = listNode.type === "orderedList" ? `${i + 1}. ` : "- ";
+      const line = `${indent}${prefix}${inlineToMarkdown(collapseListItem(li))}`;
+      const nested = nestedLists(li)
+        .map((nl) => renderListMarkdown(nl, depth + 1))
+        .filter((s) => s !== "")
+        .join("\n");
+      return nested ? `${line}\n${nested}` : line;
+    })
+    .join("\n");
 }
 // Escape the characters that would let link text break out of a Markdown
 // `[label](url)` construct (e.g. text `a](javascript:x)[b`).
