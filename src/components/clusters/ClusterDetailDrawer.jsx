@@ -71,6 +71,16 @@ function AssignPicker({ availableInputs, onAssign, onClose }) {
   );
 }
 
+function fieldsFromCluster(cluster) {
+  return cluster ? {
+    name:        cluster.name        || "",
+    subtype:     cluster.subtype     || "Trend",
+    horizon:     cluster.horizon     || "H1",
+    likelihood:  cluster.likelihood  || "Plausible",
+    description: cluster.description || "",
+  } : {};
+}
+
 const RELATED_CATEGORIES = [
   { key: "likely",     label: "Likely matches",  dot: "var(--color-green-700)",  desc: "Supports or extends"     },
   { key: "possible",   label: "Possible matches", dot: "var(--color-blue-700)",   desc: "Partial or ambiguous"   },
@@ -87,7 +97,7 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
   const cluster = clusters.find((cl) => cl.id === clusterId) || null;
 
   const [editing, setEditing] = useState(!!startInEditMode);
-  const [fields, setFields] = useState({});
+  const [fields, setFields] = useState(() => fieldsFromCluster(cluster));
   const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -103,13 +113,7 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
   const [prevClusterId, setPrevClusterId] = useState(clusterId);
   if (clusterId !== prevClusterId) {
     setPrevClusterId(clusterId);
-    setFields(cluster ? {
-      name:        cluster.name        || "",
-      subtype:     cluster.subtype     || "Trend",
-      horizon:     cluster.horizon     || "H1",
-      likelihood:  cluster.likelihood  || "Plausible",
-      description: cluster.description || "",
-    } : {});
+    setFields(fieldsFromCluster(cluster));
     setEditing(!!startInEditMode);
     setPickerOpen(false);
     setConfirmDelete(false);
@@ -130,7 +134,7 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
 
   const handleSave = () => { onSave(cluster.id, fields); setEditing(false); };
   const handleCancel = () => {
-    setFields({ name: cluster.name || "", subtype: cluster.subtype || "Trend", horizon: cluster.horizon || "H1", likelihood: cluster.likelihood || "Plausible", description: cluster.description || "" });
+    setFields(fieldsFromCluster(cluster));
     setEditing(false);
   };
 
