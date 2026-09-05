@@ -256,18 +256,30 @@ function renderListMarkdown(listNode, indentPrefix, depth) {
 }
 function renderListItemMarkdown(li, indentPrefix, prefix, depth) {
   const contIndent = indentPrefix + " ".repeat(prefix.length);
+  const blocks = listItemBlocks(li);
   const lines = [];
   let prefixUsed = false;
-  for (const block of listItemBlocks(li)) {
+  blocks.forEach((block, idx) => {
     if (block?.type === "bulletList" || block?.type === "orderedList") {
       const nested = depth + 1 <= MAX_DEPTH ? renderListMarkdown(block, contIndent, depth + 1) : "";
-      if (nested) lines.push(nested);
-      continue;
+      if (nested) {
+        lines.push(nested);
+        // A blank line is required whenever more of this item's own content
+        // follows the nested list, or a CommonMark parser reads the
+        // following block as part of the nested list's last item instead of
+        // popping back out to this (parent) item — verified empirically
+        // against the `commonmark` reference implementation (audit finding,
+        // 2026-09-05: a trailing paragraph after a nested list was absorbed
+        // into the nested item). Not needed when the nested list is this
+        // item's last block.
+        if (idx < blocks.length - 1) lines.push("");
+      }
+      return;
     }
     const text = inlineToMarkdown(Array.isArray(block?.content) ? block.content : []);
     lines.push(prefixUsed ? `${contIndent}${text}` : `${indentPrefix}${prefix}${text}`);
     prefixUsed = true;
-  }
+  });
   if (!prefixUsed) lines.unshift(`${indentPrefix}${prefix}`); // no own paragraph — keep the marker
   return lines.join("\n");
 }

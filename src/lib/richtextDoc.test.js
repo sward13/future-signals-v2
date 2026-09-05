@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { Parser, HtmlRenderer } from "commonmark";
 import {
   textToDoc, docIsEmpty, docToText, docToHtml, docToMarkdown, EMPTY_DOC,
 } from "./richtextDoc.js";
@@ -301,5 +302,40 @@ test("docToText / docToMarkdown: preserve block order for Before-paragraph → n
   assert.ok(text.indexOf("Child") < text.indexOf("After"));
 
   const md = docToMarkdown(doc);
-  assert.equal(md, "- Before\n  - Child\n  After");
+  // A blank line must separate the nested list from the trailing paragraph —
+  // verified against the `commonmark` reference implementation: without it,
+  // a CommonMark parser absorbs "After" into Child's own <li> instead of
+  // popping back out to Before's item (audit finding, 2026-09-05).
+  assert.equal(md, "- Before\n  - Child\n\n  After");
+});
+
+// Regression guard: actually parse the exported Markdown with a real
+// CommonMark implementation and check the resulting structure, rather than
+// just asserting on the exported string. This is the check that would have
+// caught the audit's finding — reasoning about indentation/blank-line rules
+// from the spec (as the first version of this fix did) isn't a substitute
+// for parsing the output for real.
+test("docToMarkdown: nested-list-then-paragraph parses with the correct structure under a real CommonMark parser", () => {
+  const doc = {
+    type: "doc",
+    content: [
+      { type: "bulletList", content: [
+        { type: "listItem", content: [
+          { type: "paragraph", content: [{ type: "text", text: "Before" }] },
+          { type: "bulletList", content: [
+            { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Child" }] }] },
+          ] },
+          { type: "paragraph", content: [{ type: "text", text: "After" }] },
+        ] },
+      ] },
+    ],
+  };
+  const md = docToMarkdown(doc);
+  const html = new HtmlRenderer().render(new Parser().parse(md));
+
+  // "After" must land as a sibling paragraph within Before's own <li>,
+  // after the nested list closes...
+  assert.match(html, /<\/ul>\s*<p>After<\/p>/);
+  // ...never absorbed into Child's own <li>.
+  assert.doesNotMatch(html, /Child[\s\S]*?After<\/li>/);
 });
