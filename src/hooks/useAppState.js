@@ -190,6 +190,13 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       setProjectSystemMapBackground(null);
       return;
     }
+    // Clear immediately on every project change, before the fetch even
+    // starts — otherwise a slow or failed fetch for the new project leaves
+    // the PREVIOUS project's background displayed (indefinitely, if the
+    // fetch never resolves/errors) rather than just briefly stale (audit
+    // finding, 2026-09-05: reproduced by switching A → C and failing C's
+    // fetch — A's background stayed on screen under C's context).
+    setProjectSystemMapBackground(null);
     // Guard against a stale response: if the user switches projects again
     // before this fetch resolves, an out-of-order response must not
     // overwrite the newer project's already-correct background state.
@@ -205,7 +212,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
         if (error) throw error;
         if (!cancelled) setProjectSystemMapBackground(data ?? null);
       } catch {
-        // non-fatal — canvas just renders with no background
+        // non-fatal — canvas just renders with no background (already
+        // cleared above, so this never leaves a stale value on screen)
       }
     })();
     return () => { cancelled = true; };

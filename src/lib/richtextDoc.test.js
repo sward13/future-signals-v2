@@ -252,3 +252,54 @@ test("docToMarkdown: preserves nested list-item text, not just the parent item",
   assert.match(md, /- Parent/);
   assert.match(md, /- Child/);
 });
+
+test("docToMarkdown: nested ordered-list indent matches the parent marker width (CommonMark-parseable)", () => {
+  const doc = {
+    type: "doc",
+    content: [
+      { type: "orderedList", content: [
+        { type: "listItem", content: [
+          { type: "paragraph", content: [{ type: "text", text: "Parent" }] },
+          { type: "orderedList", content: [
+            { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Child" }] }] },
+          ] },
+        ] },
+      ] },
+    ],
+  };
+  const md = docToMarkdown(doc);
+  const lines = md.split("\n");
+  assert.equal(lines[0], "1. Parent");
+  // "1. " is 3 characters — the nested item must be indented to at least
+  // that column, or a CommonMark parser reads it as a new top-level list
+  // rather than nested under "Parent" (a flat 2-space indent broke this).
+  assert.equal(lines[1], "   1. Child");
+});
+
+test("docToText / docToMarkdown: preserve block order for Before-paragraph → nested list → After-paragraph", () => {
+  const doc = {
+    type: "doc",
+    content: [
+      { type: "bulletList", content: [
+        { type: "listItem", content: [
+          { type: "paragraph", content: [{ type: "text", text: "Before" }] },
+          { type: "bulletList", content: [
+            { type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Child" }] }] },
+          ] },
+          { type: "paragraph", content: [{ type: "text", text: "After" }] },
+        ] },
+      ] },
+    ],
+  };
+
+  const text = docToText(doc);
+  assert.equal(text, "- Before\n  - Child\n  After");
+  // Before must precede Child, which must precede After — the old
+  // implementation merged Before+After onto one line and moved Child to
+  // the end regardless of where it actually occurred in the document.
+  assert.ok(text.indexOf("Before") < text.indexOf("Child"));
+  assert.ok(text.indexOf("Child") < text.indexOf("After"));
+
+  const md = docToMarkdown(doc);
+  assert.equal(md, "- Before\n  - Child\n  After");
+});
