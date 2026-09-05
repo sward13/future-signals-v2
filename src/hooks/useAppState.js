@@ -630,6 +630,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       domain: fields.domain,
       source_type: "custom",
       credibility: "unvetted",
+      source_confidence: fields.source_confidence || "low",
       owner_id: workspaceId,
       active: true,
     };
@@ -637,6 +638,16 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     if (error) throw error;
     return { ...row, last_fetched_at: null, created_at: new Date().toISOString() };
   }, [workspaceId]);
+
+  // Edits apply going forward only — updating a source's name/URL/confidence
+  // never rewrites source_confidence on inputs already promoted/saved from it.
+  const updateSource = useCallback(async (id, fields) => {
+    const { error } = await supabase
+      .from("sources")
+      .update({ name: fields.name, url: fields.url, domain: fields.domain, source_confidence: fields.source_confidence })
+      .eq("id", id);
+    if (error) throw error;
+  }, []);
 
   const addProjectSource = useCallback(async ({ source_id, project_id, source }) => {
     const id = newId();
@@ -1980,6 +1991,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     updateProjectSource,
     deleteSource,
     addSource,
+    updateSource,
     addProjectSource,
     addCanvasNode,
     removeCanvasNode,

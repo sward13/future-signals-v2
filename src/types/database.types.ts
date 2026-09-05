@@ -58,9 +58,12 @@ export type Database = {
           created_at: string
           critical_uncertainties: string[]
           description: string | null
+          description_doc: Json | null
           id: string
           implications: string | null
+          implications_doc: Json | null
           key_dynamics: string | null
+          key_dynamics_doc: Json | null
           project_id: string
           updated_at: string | null
           workspace_id: string
@@ -70,9 +73,12 @@ export type Database = {
           created_at?: string
           critical_uncertainties?: string[]
           description?: string | null
+          description_doc?: Json | null
           id?: string
           implications?: string | null
+          implications_doc?: Json | null
           key_dynamics?: string | null
+          key_dynamics_doc?: Json | null
           project_id: string
           updated_at?: string | null
           workspace_id: string
@@ -82,9 +88,12 @@ export type Database = {
           created_at?: string
           critical_uncertainties?: string[]
           description?: string | null
+          description_doc?: Json | null
           id?: string
           implications?: string | null
+          implications_doc?: Json | null
           key_dynamics?: string | null
+          key_dynamics_doc?: Json | null
           project_id?: string
           updated_at?: string | null
           workspace_id?: string
@@ -334,6 +343,7 @@ export type Database = {
           name: string
           project_id: string
           rationale: string | null
+          relevance: string
           status: string
           subtype: string | null
           target_cluster_id: string | null
@@ -353,6 +363,7 @@ export type Database = {
           name: string
           project_id: string
           rationale?: string | null
+          relevance?: string
           status?: string
           subtype?: string | null
           target_cluster_id?: string | null
@@ -372,6 +383,7 @@ export type Database = {
           name?: string
           project_id?: string
           rationale?: string | null
+          relevance?: string
           status?: string
           subtype?: string | null
           target_cluster_id?: string | null
@@ -529,7 +541,9 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          description_doc: Json | null
           desired_outcomes: string | null
+          desired_outcomes_doc: Json | null
           guiding_principles: Json
           horizon: string | null
           id: string
@@ -544,7 +558,9 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          description_doc?: Json | null
           desired_outcomes?: string | null
+          desired_outcomes_doc?: Json | null
           guiding_principles?: Json
           horizon?: string | null
           id?: string
@@ -559,7 +575,9 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          description_doc?: Json | null
           desired_outcomes?: string | null
+          desired_outcomes_doc?: Json | null
           guiding_principles?: Json
           horizon?: string | null
           id?: string
@@ -595,10 +613,14 @@ export type Database = {
           corpus_sim: number | null
           created_at: string
           dismissal_reason: string | null
+          focus_used: boolean
           id: string
           key_question_sim: number | null
           negative_pool_sim: number | null
           project_id: string
+          scope_in_sim: number | null
+          scope_out_penalty: string | null
+          scope_out_sim: number | null
           score: number | null
           scored_at: string | null
           surfaced: boolean
@@ -610,10 +632,14 @@ export type Database = {
           corpus_sim?: number | null
           created_at?: string
           dismissal_reason?: string | null
+          focus_used?: boolean
           id?: string
           key_question_sim?: number | null
           negative_pool_sim?: number | null
           project_id: string
+          scope_in_sim?: number | null
+          scope_out_penalty?: string | null
+          scope_out_sim?: number | null
           score?: number | null
           scored_at?: string | null
           surfaced?: boolean
@@ -625,10 +651,14 @@ export type Database = {
           corpus_sim?: number | null
           created_at?: string
           dismissal_reason?: string | null
+          focus_used?: boolean
           id?: string
           key_question_sim?: number | null
           negative_pool_sim?: number | null
           project_id?: string
+          scope_in_sim?: number | null
+          scope_out_penalty?: string | null
+          scope_out_sim?: number | null
           score?: number | null
           scored_at?: string | null
           surfaced?: boolean
@@ -683,6 +713,63 @@ export type Database = {
           },
         ]
       }
+      project_publications: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          published_at: string | null
+          republished_at: string | null
+          sections_included: Json | null
+          slug: string
+          status: string
+          storage_path: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          published_at?: string | null
+          republished_at?: string | null
+          sections_included?: Json | null
+          slug: string
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          published_at?: string | null
+          republished_at?: string | null
+          sections_included?: Json | null
+          slug?: string
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_publications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_publications_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_sources: {
         Row: {
           created_at: string
@@ -722,6 +809,61 @@ export type Database = {
           },
         ]
       }
+      project_system_map_background: {
+        Row: {
+          opacity: number
+          position_x: number
+          position_y: number
+          project_id: string
+          scale: number
+          template_id: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          opacity?: number
+          position_x?: number
+          position_y?: number
+          project_id: string
+          scale?: number
+          template_id?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          opacity?: number
+          position_x?: number
+          position_y?: number
+          project_id?: string
+          scale?: number
+          template_id?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_system_map_background_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_system_map_background_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "system_map_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_system_map_background_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           assumptions: string | null
@@ -750,6 +892,7 @@ export type Database = {
           scope_out: string[]
           source_template_id: string | null
           stakeholders: string | null
+          updated_at: string
           workspace_id: string
         }
         Insert: {
@@ -779,6 +922,7 @@ export type Database = {
           scope_out?: string[]
           source_template_id?: string | null
           stakeholders?: string | null
+          updated_at?: string
           workspace_id: string
         }
         Update: {
@@ -808,6 +952,7 @@ export type Database = {
           scope_out?: string[]
           source_template_id?: string | null
           stakeholders?: string | null
+          updated_at?: string
           workspace_id?: string
         }
         Relationships: [
@@ -951,6 +1096,7 @@ export type Database = {
           confidence: string | null
           created_at: string
           description: string | null
+          description_doc: Json | null
           driving_forces: Json
           geographic_scope: string | null
           horizon: string | null
@@ -958,6 +1104,7 @@ export type Database = {
           key_differences: Json
           name: string
           narrative: string | null
+          narrative_doc: Json | null
           project_id: string
           suppressed_forces: Json
           updated_at: string
@@ -969,6 +1116,7 @@ export type Database = {
           confidence?: string | null
           created_at?: string
           description?: string | null
+          description_doc?: Json | null
           driving_forces?: Json
           geographic_scope?: string | null
           horizon?: string | null
@@ -976,6 +1124,7 @@ export type Database = {
           key_differences?: Json
           name: string
           narrative?: string | null
+          narrative_doc?: Json | null
           project_id: string
           suppressed_forces?: Json
           updated_at?: string
@@ -987,6 +1136,7 @@ export type Database = {
           confidence?: string | null
           created_at?: string
           description?: string | null
+          description_doc?: Json | null
           driving_forces?: Json
           geographic_scope?: string | null
           horizon?: string | null
@@ -994,6 +1144,7 @@ export type Database = {
           key_differences?: Json
           name?: string
           narrative?: string | null
+          narrative_doc?: Json | null
           project_id?: string
           suppressed_forces?: Json
           updated_at?: string
@@ -1079,6 +1230,7 @@ export type Database = {
           last_fetched_at: string | null
           name: string
           owner_id: string | null
+          source_confidence: string
           source_type: string
           url: string
         }
@@ -1091,6 +1243,7 @@ export type Database = {
           last_fetched_at?: string | null
           name: string
           owner_id?: string | null
+          source_confidence?: string
           source_type?: string
           url: string
         }
@@ -1103,6 +1256,7 @@ export type Database = {
           last_fetched_at?: string | null
           name?: string
           owner_id?: string | null
+          source_confidence?: string
           source_type?: string
           url?: string
         }
@@ -1119,57 +1273,75 @@ export type Database = {
       strategic_options: {
         Row: {
           actions: string | null
+          actions_doc: Json | null
           created_at: string
           dependencies: string | null
+          dependencies_doc: Json | null
           description: string | null
+          description_doc: Json | null
           feasibility: string | null
           horizon: string | null
           id: string
           implications: string | null
+          implications_doc: Json | null
           intended_outcome: string | null
+          intended_outcome_doc: Json | null
           name: string
           project_id: string
           resource_intensity: string | null
           reversibility: string | null
           risks: string | null
+          risks_doc: Json | null
           scenario_ids: Json
           updated_at: string
           workspace_id: string
         }
         Insert: {
           actions?: string | null
+          actions_doc?: Json | null
           created_at?: string
           dependencies?: string | null
+          dependencies_doc?: Json | null
           description?: string | null
+          description_doc?: Json | null
           feasibility?: string | null
           horizon?: string | null
           id?: string
           implications?: string | null
+          implications_doc?: Json | null
           intended_outcome?: string | null
+          intended_outcome_doc?: Json | null
           name: string
           project_id: string
           resource_intensity?: string | null
           reversibility?: string | null
           risks?: string | null
+          risks_doc?: Json | null
           scenario_ids?: Json
           updated_at?: string
           workspace_id: string
         }
         Update: {
           actions?: string | null
+          actions_doc?: Json | null
           created_at?: string
           dependencies?: string | null
+          dependencies_doc?: Json | null
           description?: string | null
+          description_doc?: Json | null
           feasibility?: string | null
           horizon?: string | null
           id?: string
           implications?: string | null
+          implications_doc?: Json | null
           intended_outcome?: string | null
+          intended_outcome_doc?: Json | null
           name?: string
           project_id?: string
           resource_intensity?: string | null
           reversibility?: string | null
           risks?: string | null
+          risks_doc?: Json | null
           scenario_ids?: Json
           updated_at?: string
           workspace_id?: string
@@ -1185,6 +1357,53 @@ export type Database = {
           {
             foreignKeyName: "strategic_options_workspace_id_fkey"
             columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      system_map_templates: {
+        Row: {
+          active: boolean
+          asset_url: string
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          owner_id: string | null
+          source_type: string
+          thumbnail_url: string
+        }
+        Insert: {
+          active?: boolean
+          asset_url: string
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          owner_id?: string | null
+          source_type?: string
+          thumbnail_url: string
+        }
+        Update: {
+          active?: boolean
+          asset_url?: string
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          owner_id?: string | null
+          source_type?: string
+          thumbnail_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_map_templates_owner_id_fkey"
+            columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
@@ -1347,12 +1566,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1376,11 +1595,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1401,11 +1620,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1426,11 +1645,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1443,11 +1662,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

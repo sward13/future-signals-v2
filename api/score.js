@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import {
-  norm, dot, CREDIBILITY_SCORES,
+  norm, dot, CREDIBILITY_SCORES, deriveSourceConfidence,
   buildPrimaryEmbeddingText, negativePoolDecayWeight, weightedPoolSimilarity,
   blendRelevanceScore, applyScopeOutPenalty, applyNegativePoolPenalty,
 } from '../server-lib/scoring.js';
@@ -401,15 +401,9 @@ export default async function handler(req, res) {
 
         const { data: source } = await supabase
           .from('sources')
-          .select('credibility')
+          .select('credibility, source_confidence')
           .eq('id', candidate.source_id)
           .single();
-
-        const signalQuality = source?.credibility === 'institutional'
-          ? 'Confirmed'
-          : source?.credibility === 'specialist'
-            ? 'Established'
-            : 'Emerging';
 
         await supabase.from('inputs').insert({
           workspace_id: project.workspace_id,
@@ -419,7 +413,7 @@ export default async function handler(req, res) {
           source_url: candidate.url,
           subtype: 'Signal',
           steepled: candidate.steepled || [],
-          signal_quality: signalQuality,
+          source_confidence: deriveSourceConfidence(source),
           is_seeded: true,
           metadata: {
             source: 'scanner',

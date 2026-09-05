@@ -259,7 +259,7 @@ export function ScanningPreferencesDrawer({
       <AddSourceModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onAdded={handleAdded}
+        onSubmit={handleAdded}
         defaultDomain={projectDomains(project)[0] ?? null}
       />
     </Drawer>

@@ -3,6 +3,7 @@ import { supabase } from "../../lib/supabase.js";
 import { c, inp, btnSm, btnSec, btnG, fl, fh, fontHeading } from "../../styles/tokens.js";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { AddSourceModal } from "../shared/AddSourceModal.jsx";
+import { ConfidenceBadge } from "../shared/Tag.jsx";
 import { projectDomainLabel, projectHasDomain } from "../../lib/projectDomains.js";
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
@@ -31,37 +32,15 @@ function SectionTab({ label, active, onClick }) {
   );
 }
 
-const CRED_LABELS = {
-  institutional: "Institutional",
-  specialist:    "Specialist",
-  general:       "General",
-  unvetted:      "Unvetted",
-};
-
-function CredBadge({ credibility }) {
-  const label = CRED_LABELS[credibility] ?? credibility;
-  const isInstitutional = credibility === "institutional";
-  const isSpecialist    = credibility === "specialist";
-  const bg    = isInstitutional ? c.green50  : isSpecialist ? c.amber50  : "rgba(0,0,0,0.05)";
-  const color = isInstitutional ? c.green700 : isSpecialist ? c.amber700 : c.muted;
-  return (
-    <span style={{
-      fontSize: 9, padding: "1px 5px", borderRadius: 3,
-      background: bg, color, fontWeight: 500, whiteSpace: "nowrap",
-    }}>
-      {label}
-    </span>
-  );
-}
-
 // ─── Sources section ──────────────────────────────────────────────────────────
 
-function SourcesSection({ workspaceId, addSource, deleteSource, showToast }) {
+function SourcesSection({ workspaceId, addSource, updateSource, deleteSource, showToast }) {
   const [sources,     setSources]     = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [filter,      setFilter]      = useState("all");   // "all" | "curated" | "user"
   const [search,      setSearch]      = useState("");
-  const [addOpen,     setAddOpen]     = useState(false);
+  // null | { mode: "add" } | { mode: "edit", source: <row> }
+  const [sourceModal, setSourceModal] = useState(null);
   // { source: <row>, optInCount: number } when confirm modal is open, else null
   const [confirmDelete, setConfirmDelete] = useState(null);
   // Set of domain keys the user has manually collapsed; ignored while searching
@@ -86,7 +65,7 @@ function SourcesSection({ workspaceId, addSource, deleteSource, showToast }) {
       try {
         const { data, error } = await supabase
           .from("sources")
-          .select("id, name, url, domain, source_type, credibility, active, owner_id")
+          .select("id, name, url, domain, source_type, source_confidence, active, owner_id")
           .eq("active", true)
           .or(`owner_id.is.null,owner_id.eq.${workspaceId}`)
           .order("name");
@@ -162,8 +141,21 @@ function SourcesSection({ workspaceId, addSource, deleteSource, showToast }) {
     }
   }
 
-  async function handleAdded(fields) {
-    setAddOpen(false);
+  async function handleSourceSubmit(fields) {
+    const editing = sourceModal?.mode === "edit" ? sourceModal.source : null;
+    setSourceModal(null);
+
+    if (editing) {
+      setSources(prev => prev.map(s => s.id === editing.id ? { ...s, ...fields } : s));
+      try {
+        await updateSource(editing.id, fields);
+      } catch {
+        setSources(prev => prev.map(s => s.id === editing.id ? editing : s));
+        showToast("Failed to update source", "error");
+      }
+      return;
+    }
+
     try {
       const row = await addSource(fields);
       setSources(prev => [...prev, row].sort((a, b) => a.name.localeCompare(b.name)));
@@ -185,7 +177,7 @@ function SourcesSection({ workspaceId, addSource, deleteSource, showToast }) {
         <SectionTab label="My sources" active={filter === "user"}    onClick={() => setFilter("user")} />
         <div style={{ flex: 1 }} />
         <button
-          onClick={() => setAddOpen(true)}
+          onClick={() => setSourceModal({ mode: "add" })}
           style={{
             background: "none", border: "none", cursor: "pointer",
             fontSize: 11.5, color: c.brand, fontFamily: "inherit",
@@ -273,21 +265,36 @@ function SourcesSection({ workspaceId, addSource, deleteSource, showToast }) {
                   </div>
                 )}
               </div>
-              <CredBadge credibility={src.credibility} />
+              <ConfidenceBadge conf={src.source_confidence} />
               {src.owner_id !== null && (
-                <button
-                  onClick={() => handleDeleteClick(src)}
-                  title="Delete source"
-                  style={{
-                    background: "none", border: "none", cursor: "pointer",
-                    padding: "2px 4px", color: c.faint, fontSize: 14, lineHeight: 1,
-                    flexShrink: 0, fontFamily: "inherit",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.color = "#DC2626"; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = c.faint; }}
-                >
-                  ×
-                </button>
+                <>
+                  <button
+                    onClick={() => setSourceModal({ mode: "edit", source: src })}
+                    title="Edit source"
+                    style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      padding: "2px 4px", color: c.faint, fontSize: 11, lineHeight: 1,
+                      flexShrink: 0, fontFamily: "inherit",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.color = c.ink; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = c.faint; }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClick(src)}
+                    title="Delete source"
+                    style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      padding: "2px 4px", color: c.faint, fontSize: 14, lineHeight: 1,
+                      flexShrink: 0, fontFamily: "inherit",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.color = "#DC2626"; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = c.faint; }}
+                  >
+                    ×
+                  </button>
+                </>
               )}
             </div>
           ))}
@@ -316,9 +323,10 @@ function SourcesSection({ workspaceId, addSource, deleteSource, showToast }) {
       )}
 
       <AddSourceModal
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        onAdded={handleAdded}
+        open={!!sourceModal}
+        source={sourceModal?.mode === "edit" ? sourceModal.source : null}
+        onClose={() => setSourceModal(null)}
+        onSubmit={handleSourceSubmit}
         defaultDomain={null}
       />
     </div>
@@ -382,7 +390,7 @@ function SectionCard({ children }) {
 // ─── Main screen ───────────────────────────────────────────────────────────────
 
 export default function AccountSettings({ appState, onSignOut }) {
-  const { user, workspaceId, projects, workspaceScanningEnabled, updateWorkspaceScanningEnabled, updateProject, showToast, deleteSource, addSource } = appState;
+  const { user, workspaceId, projects, workspaceScanningEnabled, updateWorkspaceScanningEnabled, updateProject, showToast, deleteSource, addSource, updateSource } = appState;
 
   // ── Timeout cleanup ─────────────────────────────────────────────────────────
 
@@ -787,7 +795,7 @@ export default function AccountSettings({ appState, onSignOut }) {
         {/* ── Sources section ──────────────────────────────────────── */}
         <SectionCard>
           <div style={{ fontSize: 13, fontWeight: 500, color: c.ink, marginBottom: 14 }}>Sources</div>
-          <SourcesSection workspaceId={workspaceId} addSource={addSource} deleteSource={deleteSource} showToast={showToast} />
+          <SourcesSection workspaceId={workspaceId} addSource={addSource} updateSource={updateSource} deleteSource={deleteSource} showToast={showToast} />
         </SectionCard>
 
         {/* ── Security section ─────────────────────────────────────── */}

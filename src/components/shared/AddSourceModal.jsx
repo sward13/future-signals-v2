@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { c, inp, btnSm, btnSec, fl } from "../../styles/tokens.js";
 import { DOMAINS } from "../../data/seeds.js";
 import { supabase } from "../../lib/supabase.js";
+import { ThreeCardSelector } from "../inputs/InputFormFields.jsx";
 
 function validateUrl(raw) {
   if (!raw.trim()) return "URL is required.";
@@ -12,10 +13,25 @@ function validateUrl(raw) {
   return null;
 }
 
-export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null }) {
-  const [url,        setUrl]        = useState("");
-  const [name,       setName]       = useState("");
-  const [domain,     setDomain]     = useState(defaultDomain ?? "");
+// Same three options, labels, and helper copy as the Signal form's Source
+// confidence selector (InputDrawer.jsx) — one taxonomy, one set of copy.
+const SOURCE_CONFIDENCE_OPTIONS = [
+  { value: "low",    title: "Low",    desc: "Social media, blogs, unverified sources",                               dotColor: c.amber700 },
+  { value: "medium", title: "Medium", desc: "Quality journalism, industry reports, expert commentary",               dotColor: c.blue700 },
+  { value: "high",   title: "High",   desc: "Peer-reviewed research, official statistics, established institutions",  dotColor: c.green700 },
+];
+
+/**
+ * @param {{ open: boolean, onClose: () => void, onSubmit: (fields) => void, defaultDomain?: string|null, source?: object|null }} props
+ * `source` present = edit mode (pre-fills from the existing row); absent = add mode.
+ */
+export function AddSourceModal({ open, onClose, onSubmit, defaultDomain = null, source = null }) {
+  const isEdit = !!source;
+
+  const [url,               setUrl]               = useState("");
+  const [name,              setName]              = useState("");
+  const [domain,            setDomain]            = useState(defaultDomain ?? "");
+  const [sourceConfidence,  setSourceConfidence]  = useState("low");
   const [errors,     setErrors]     = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [previewing, setPreviewing] = useState(false);
@@ -28,20 +44,21 @@ export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null })
   // doesn't overwrite a manual entry.
   const nameEditedByUser = useRef(false);
 
-  // Reset form each time the modal opens
+  // Reset form each time the modal opens — pre-fill from `source` in edit mode.
   useEffect(() => {
     if (open) {
-      setUrl("");
-      setName("");
-      setDomain(defaultDomain ?? "");
+      setUrl(source?.url ?? "");
+      setName(source?.name ?? "");
+      setDomain(source?.domain ?? defaultDomain ?? "");
+      setSourceConfidence(source?.source_confidence ?? "low");
       setErrors({});
       setSubmitting(false);
       setPreviewing(false);
       setPreview(null);
-      lastFetchedUrl.current   = "";
-      nameEditedByUser.current = false;
+      lastFetchedUrl.current   = source?.url ?? "";
+      nameEditedByUser.current = isEdit; // don't auto-overwrite an existing name on blur
     }
-  }, [open, defaultDomain]);
+  }, [open, defaultDomain, source, isEdit]);
 
   if (!open) return null;
 
@@ -96,7 +113,7 @@ export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null })
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setSubmitting(true);
-    onAdded({ url: url.trim(), name: name.trim(), domain });
+    onSubmit({ id: source?.id, url: url.trim(), name: name.trim(), domain, source_confidence: sourceConfidence });
   }
 
   return createPortal(
@@ -108,12 +125,12 @@ export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null })
       <div style={{
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
         background: c.white, borderRadius: 12, padding: "24px 28px",
-        boxShadow: "0 16px 48px rgba(0,0,0,0.18)", zIndex: 501, width: 440,
+        boxShadow: "0 16px 48px rgba(0,0,0,0.18)", zIndex: 501, width: 480,
         fontFamily: "inherit",
       }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 500, color: c.ink }}>Add a source</div>
+          <div style={{ fontSize: 14, fontWeight: 500, color: c.ink }}>{isEdit ? "Edit source" : "Add a source"}</div>
           <button
             onClick={onClose}
             style={{ background: "none", border: "none", cursor: "pointer", color: c.faint, fontSize: 16, padding: "0 2px", lineHeight: 1 }}
@@ -214,6 +231,19 @@ export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null })
           </div>
         </div>
 
+        {/* Source confidence */}
+        <ThreeCardSelector
+          label="Source confidence"
+          selected={sourceConfidence}
+          onSelect={(v) => setSourceConfidence(v ?? "low")}
+          options={SOURCE_CONFIDENCE_OPTIONS}
+        />
+        <div style={{ fontSize: 11, color: c.hint, marginTop: -10, marginBottom: 16 }}>
+          {isEdit
+            ? "Applies going forward only — signals already saved from this source keep their existing confidence."
+            : "Pre-fills on signals created from this source. Editable per-signal before saving."}
+        </div>
+
         {/* Footer */}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <button onClick={onClose} style={{ ...btnSec, fontSize: 12, padding: "7px 16px" }}>
@@ -224,7 +254,7 @@ export function AddSourceModal({ open, onClose, onAdded, defaultDomain = null })
             disabled={submitting}
             style={{ ...btnSm, fontSize: 12, padding: "7px 16px", opacity: submitting ? 0.6 : 1 }}
           >
-            Add source
+            {isEdit ? "Save changes" : "Add source"}
           </button>
         </div>
       </div>

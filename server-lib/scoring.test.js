@@ -9,6 +9,7 @@ import {
   blendRelevanceScore,
   applyScopeOutPenalty,
   applyNegativePoolPenalty,
+  deriveSourceConfidence,
   PRIMARY_WEIGHT,
   SCOPE_IN_WEIGHT,
   CREDIBILITY_WEIGHT,
@@ -178,4 +179,22 @@ test("a project with no scope_in/scope_out and no dismissal history still produc
   assert.equal(penalty, null);
   assert.equal(final, afterScopeOut); // no negative pool history => unaffected
   assert.ok(final > 0 && final <= 1);
+});
+
+// deriveSourceConfidence ---------------------------------------------------------
+
+test("deriveSourceConfidence prefers the source's own source_confidence over credibility", () => {
+  assert.equal(deriveSourceConfidence({ credibility: "specialist", source_confidence: "high" }), "high");
+});
+
+test("deriveSourceConfidence derives from credibility when source_confidence is absent", () => {
+  assert.equal(deriveSourceConfidence({ credibility: "institutional" }), "high");
+  assert.equal(deriveSourceConfidence({ credibility: "specialist" }), "medium");
+  assert.equal(deriveSourceConfidence({ credibility: "general" }), "low");
+  assert.equal(deriveSourceConfidence({ credibility: "unvetted" }), "low");
+});
+
+test("deriveSourceConfidence returns null for a missing source or unrecognised credibility", () => {
+  assert.equal(deriveSourceConfidence(null), null);
+  assert.equal(deriveSourceConfidence({ credibility: "made_up" }), null);
 });

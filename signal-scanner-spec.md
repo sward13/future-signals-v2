@@ -1,10 +1,20 @@
 # Feature Spec: AI Signal Scanner
 
-**Status:** Layers 1–3 core implemented. Layer 1 (heuristics) and Level 2/3 refinement remain post-launch.
+**Status:** Layers 1–3 (Source Corpus, Ingestion, Scoring) core implemented, including Level 3 (negative embedding pool) refinement, live since 2026-09-01. Level 1 (heuristic reweighting) and Level 2 (few-shot contextual scoring) remain post-launch — corrected from a prior version of this line that mislabeled Level 1 as "Layer 1" and claimed Level 3 hadn't shipped.
 **PRD section:** Addendum (slots after Input Creation, before Clustering)  
-**Last updated:** 28 June 2026
+**Last updated:** 4 September 2026 — reconciled against the live implementation as part of the source-confidence-unification work (see the new callout below)
 
 ---
+
+> **Doc-drift note (2026-09-04):** This spec had fallen behind the live implementation in several ways caught during this week's source-confidence-unification work — weights, model vendor, and the Layer 1/Add-as-signal behavior below are corrected in place. A few further discrepancies were found but are flagged rather than fully reconciled here, since fixing them properly means rewriting the affected sections rather than a line-level correction:
+> - **Recency is not actually part of ongoing scanning's score.** `recencyScore()` in `server-lib/scoring.js` is only called by the onboarding composite (`scoreCandidate()`); `blendRelevanceScore()` — the function `api/score.js` uses for every ongoing digest score — has no recency term. The "Recency" bullet under Layer 3 Scoring inputs describes a signal that doesn't apply outside onboarding.
+> - **Diversity bonus is onboarding-only.** A "diversity cap" exists in `api/seed-onboarding.js`; there is no equivalent in `api/score.js`'s ongoing scoring path. The Layer 3 "Diversity bonus" bullet reads as if it applies generally.
+> - **Level 1 (Heuristic Reweighting) has not shipped.** No `project_scoring_weights` table, source hit-rate downweighting, or STEEPLED-affinity reweighting exists anywhere in the codebase, despite the old Status line implying otherwise.
+> - **Level 3's actual mechanics are more conservative than described.** The "incorporates the delta" language under Level 3 suggests `positive_pool_sim − negative_pool_sim` feeds the score directly. The live `applyNegativePoolPenalty` only penalizes once `negative_pool_sim` clears `corpus_sim` by a small margin (0.015), capped at 0.3, weighted 0.15 — added after real production data showed the two similarities are ~93% correlated, so an uncapped delta would mostly cancel shared noise rather than isolate a real signal.
+> - **`candidates.status` enum is wrong.** The spec lists `pending · scored · promoted · dismissed · expired`. The real enum is `pending · scored · promoted · rejected · expired` — there is no `dismissed` status on `candidates` (dismissal lives on `project_candidates.user_action`), and `rejected` (set when the classification call judges a candidate not relevant) is missing from the spec entirely.
+> - **Layer 2's "Dedup" step overclaims.** Only URL-based dedup is implemented (`api/scan.js`). The described title-similarity/cosine cross-outlet dedup doesn't exist.
+> - **Layer 2 undersells the real pipeline.** A synchronous commercial-URL-pattern filter and a real `gpt-4o-mini` relevance-gate call (`checkRelevance` in `api/scan.js`, before a candidate is even inserted) both run ahead of the Fetch → Dedup → Classify → Embed steps described below, and aren't mentioned there.
+> - **`project_negative_pool` exists but is dormant.** The real table (referenced in `server-lib/clone-project.js`, documented in `docs/database-schema-reference.md`) matches this spec's proposed centroid-summary table (called `project_negative_pool_summary` below), but the live scoring path never reads or writes it — `api/score.js` computes the negative pool per-item, live, every run instead.
 
 ## Overview
 
@@ -30,7 +40,8 @@ A **Source** is a first-class entity representing a monitored information feed.
 | `url` | text | RSS/Atom feed URL |
 | `domain` | text | STEEPLED-adjacent domain category |
 | `source_type` | enum | `curated` · `user_added` |
-| `credibility` | enum | `institutional` · `specialist` · `general` · `unvetted` |
+| `credibility` | enum | `institutional` · `specialist` · `general` · `unvetted` — **internal-only as of 2026-09**, see below |
+| `source_confidence` | enum | `low` · `medium` · `high` — **user-facing field, added 2026-09** |
 | `owner_id` | uuid | null for curated (platform-wide); user id for user-added |
 | `active` | boolean | soft-disable without deletion |
 | `last_fetched_at` | timestamptz | tracks cron state |
@@ -38,7 +49,12 @@ A **Source** is a first-class entity representing a monitored information feed.
 
 **Curated sources** are maintained by A+W per domain. They ship as seed data and are shared across all users. These are the editorial differentiator — quality-controlled, regularly reviewed, and versioned. Target: 15–25 curated sources per domain at launch.
 
-**User-added sources** are private to the user who added them. A user can add an RSS feed URL and assign it a domain. User-added sources default to `unvetted` credibility, which affects scoring weights in Layer 3.
+**User-added sources** are private to the user who added them. A user can add an RSS feed URL, assign it a domain, and now (as of the 2026-09 source-confidence-unification pass) **edit** a source's name, URL, and domain after creation, not just add or delete it — Sources previously had no edit path. User-added sources default to `credibility: unvetted` and `source_confidence: low`.
+
+**Two separate confidence scales, deliberately decoupled (as of 2026-09):**
+- `credibility` (institutional/specialist/general/unvetted) is retained purely as an **internal scoring-weight input** — it feeds `CREDIBILITY_SCORES` in `server-lib/scoring.js` (see Layer 3) and is otherwise invisible to users. It is no longer shown anywhere in the UI.
+- `source_confidence` (Low/Medium/High) is the **user-facing field** — set on Add/Edit Source, shown as a badge on the Sources list, and propagated to signals promoted from that source via the shared `deriveSourceConfidence()` function in `server-lib/scoring.js` (prefers the source's own `source_confidence`; falls back to deriving it from `credibility` for a source that predates the column). This is the same Low/Medium/High field that already existed on signals as "Source Confidence" — the two are now backed by one taxonomy instead of two disconnected ones.
+- The mapping used to backfill every existing source's `source_confidence` from its prior `credibility` value: `institutional → high`, `specialist → medium`, `general → low`, `unvetted → low`.
 
 Sources attach to domains, not projects. A project inherits all sources matching its domain (both curated and user-added), plus any sources the user has explicitly linked to that project regardless of domain.
 
@@ -50,7 +66,7 @@ A server-side cron job (initially nightly; configurable to 2×/day for higher ti
 
 1. **Fetch** — pull new items from all active source feeds. Standard RSS/Atom parsing. Store raw items in a `candidates` table.
 2. **Dedup** — URL-based deduplication, plus title similarity check (cosine on embeddings) to catch the same story from multiple outlets.
-3. **Classify** — Haiku-tier LLM call per candidate:
+3. **Classify** — `gpt-4o-mini` call per candidate:
    - STEEPLED category assignment (may be multi-label)
    - Brief summary (2–3 sentences, used for digest display)
    - Domain relevance tag
@@ -66,7 +82,7 @@ A server-side cron job (initially nightly; configurable to 2×/day for higher ti
 | `url` | text | original article URL |
 | `published_at` | timestamptz | from feed |
 | `summary_raw` | text | feed description/snippet |
-| `summary_ai` | text | Haiku-generated summary |
+| `summary_ai` | text | AI-generated summary (`gpt-4o-mini`) |
 | `steepled` | text[] | AI-assigned categories |
 | `embedding` | vector(1536) | pgvector |
 | `ingested_at` | timestamptz | |
@@ -74,7 +90,7 @@ A server-side cron job (initially nightly; configurable to 2×/day for higher ti
 
 Candidates are ephemeral by design. Unpromoted candidates expire after 30 days and are soft-deleted (or hard-deleted on a cleanup cron). This keeps the candidates table lean.
 
-**Cost profile:** Layer 2 is the high-volume, low-cost layer. Haiku-tier classification + embedding generation. For a user with 3 projects spanning 2 domains, pulling from ~40 sources, expect ~50–150 new candidates/day. At Haiku pricing this is negligible per-user.
+**Cost profile:** Layer 2 is the high-volume, low-cost layer. `gpt-4o-mini` classification + `text-embedding-3-small` embedding generation — both OpenAI (the platform's only model vendor; no Anthropic/Claude calls anywhere in this pipeline). For a user with 3 projects spanning 2 domains, pulling from ~40 sources, expect ~50–150 new candidates/day. At `gpt-4o-mini`/embedding pricing this is negligible per-user.
 
 ### Layer 3 — Relevance Scoring
 
@@ -84,8 +100,8 @@ For each active project, a scoring job runs after ingestion completes. It evalua
 
 **Scoring inputs:**
 
-- **Combined project context (question + focus)** — the primary relevance signal. At scoring time, `projects.question` and `projects.focus` are concatenated (with a newline separator) and embedded using `text-embedding-3-small`. Cosine similarity between this combined embedding and the candidate embedding drives 50% of the score. If `focus` is null or empty, the embedding falls back to `question` alone. The combined embedding is computed once per project batch and reused across all candidates; it is never written back to the database.
-- **Scope In similarity** — if `projects.scope_in` (a `text[]` array) is non-empty, its elements are joined and embedded. Cosine similarity between this embedding and the candidate embedding contributes a 10% positive signal. If `scope_in` is empty, this term is skipped and its weight is not redistributed.
+- **Combined project context (question + focus)** — the primary relevance signal. At scoring time, `projects.question` and `projects.focus` are concatenated (with a newline separator) and embedded using `text-embedding-3-small`. Cosine similarity between this combined embedding and the candidate embedding drives 40% of the score. If `focus` is null or empty, the embedding falls back to `question` alone. The combined embedding is computed once per project batch and reused across all candidates; it is never written back to the database.
+- **Scope In similarity** — if `projects.scope_in` (a `text[]` array) is non-empty, its elements are joined and embedded. Cosine similarity between this embedding and the candidate embedding contributes a 30% positive signal — as of the 2026-09-01 rebalance below, this is the single strongest individual signal measured, stronger than the primary question+focus similarity itself. If `scope_in` is empty, this term is skipped and its weight is not redistributed (the remaining weights are renormalized to sum to 1.0, not left capped below it).
 - **Scope Out penalty** — if `projects.scope_out` (a `text[]` array) is non-empty, its elements are joined and embedded. Cosine similarity between this embedding and the candidate is computed after the weighted sum and applied as a penalty: similarity above 0.75 applies a hard penalty (score × 0.25); similarity between 0.5 and 0.75 applies a soft penalty (subtract `(scope_out_sim − 0.5) × 0.4`). The scope_out embedding is computed once per project batch. If `scope_out` is empty, no penalty is applied.
 - **Positive pool (existing corpus)** — average cosine similarity from the candidate to all existing signal embeddings in the project (i.e. signals the user has created or promoted). This produces two distinct signals:
   - **High similarity** → candidate reinforces existing clusters. Label: `reinforcing`.
@@ -95,14 +111,16 @@ For each active project, a scoring job runs after ingestion completes. It evalua
 - **Recency** — a decay function that favours newer items but doesn't hard-filter. A 3-week-old article that's highly relevant still surfaces; it just ranks below an equally relevant article from yesterday.
 - **Diversity bonus** — if the top N candidates are all from the same source or same STEEPLED category, inject variety. This prevents the digest from becoming a single-source echo chamber.
 
-**Base weight distribution (before scope_out penalty):**
+**Base weight distribution (before scope_out penalty), as of the 2026-09-01 rebalance — pulled directly from `PRIMARY_WEIGHT`/`SCOPE_IN_WEIGHT`/`CREDIBILITY_WEIGHT`/`CORPUS_WEIGHT` in `server-lib/scoring.js`:**
 
 | Signal | Weight | Notes |
 |---|---|---|
-| Combined question + focus similarity | 50% | Falls back to question-only if focus is null |
-| Corpus similarity (positive pool) | 20% | |
-| Source credibility | 20% | |
-| Scope In similarity | 10% | Skipped (weight not redistributed) if scope_in is empty |
+| Combined question + focus similarity | 40% | Falls back to question-only if focus is null. Was 50% before the rebalance. |
+| Scope In similarity | 30% | Skipped, and the remaining weights renormalized, if scope_in is empty. Was 10% (folded into the primary embedding, not a separate term) before the rebalance. |
+| Source credibility | 20% | Unchanged. Keys off the retained internal `credibility` field, not the user-facing `source_confidence` — see Layer 1. |
+| Corpus similarity (positive pool) | 10% | Was 20% before the rebalance. |
+
+Both changes came from the same real-data check (833 surfaced candidates, "Future of data centers" project, 2026-09-01): folding `scope_in` into the primary embedding measurably *reduced* its ability to separate on-topic from off-topic candidates versus scoring it as its own weighted term, and `corpus_sim` was found to be *backwards* for a project with a topically contaminated positive pool (on-topic candidates scored lower than off-topic ones) — halved rather than zeroed, since this formula runs for every project and a contaminated pool isn't assumed to be the default case. Weights are always renormalized to whatever's actually used (fixing a pre-existing bug where an absent `scope_in` term left weights summing to 0.9, not 1.0, structurally capping the max achievable score for projects without `scope_in`).
 
 The scope_out penalty is applied after the weighted sum as a post-processing step, not as a weight term.
 
@@ -139,7 +157,7 @@ Each candidate receives a per-project score (0–100) and a classification (`rei
 
 ## Graduated Scoring Refinement
 
-The scanner's intelligence improves over time without requiring custom model training or proprietary inference infrastructure. All refinement runs through API calls to foundation models (Claude) and vector operations on pgvector. The "training" is not model weight updates — it's progressive enrichment of the prompt context and scoring inputs derived from the user's accumulated promote/dismiss decisions.
+The scanner's intelligence improves over time without requiring custom model training or proprietary inference infrastructure. All refinement runs through API calls to foundation models — OpenAI (`gpt-4o-mini`), matching the rest of the platform's AI stack; there is no Anthropic/Claude usage anywhere in this pipeline — and vector operations on pgvector. The "training" is not model weight updates — it's progressive enrichment of the prompt context and scoring inputs derived from the user's accumulated promote/dismiss decisions.
 
 Three levels ship incrementally. Each builds on the previous level's data.
 
@@ -159,7 +177,7 @@ These heuristics are recomputed weekly (or on-demand when a threshold of new dec
 
 ### Level 2 — Few-shot Contextual Scoring (post-launch iteration)
 
-Augments the vector similarity scoring with a Haiku-tier LLM call that incorporates the user's decision history as few-shot examples.
+Augments the vector similarity scoring with a `gpt-4o-mini` call that incorporates the user's decision history as few-shot examples.
 
 For each scoring batch, the system constructs a prompt that includes:
 
@@ -173,7 +191,7 @@ The model returns a relevance score (0–100) and a one-sentence rationale expla
 
 The LLM score is blended with the vector similarity score — not a replacement. Suggested weighting: 60% vector math, 40% LLM score. This ensures the system degrades gracefully if the LLM call fails or times out.
 
-**Cost profile:** One Haiku-class call per candidate per project. For a user with 3 projects and 100 new candidates/day, that's ~300 Haiku calls/day — well within typical API budgets. The calls are batched and run asynchronously as part of the scoring cron.
+**Cost profile:** One `gpt-4o-mini` call per candidate per project. For a user with 3 projects and 100 new candidates/day, that's ~300 `gpt-4o-mini` calls/day — well within typical API budgets. The calls are batched and run asynchronously as part of the scoring cron.
 
 **Data requirement:** ~10 promoted signals and ~10 dismissed candidates in the project before few-shot context becomes useful. Below that, the system runs Level 1 + vector scoring only.
 
@@ -232,8 +250,8 @@ The centroid approach trades per-item granularity for computational efficiency. 
 | Level | Mechanism | Cost | Data threshold | Ships |
 |---|---|---|---|---|
 | 1 — Heuristics | SQL aggregation on decisions | Zero | ~20–30 decisions | Launch |
-| 2 — Few-shot | Haiku API call with context | Low (batched Haiku) | ~10 promotes + 10 dismisses | Post-launch |
-| 3 — Negative pool | pgvector similarity with decay | Near-zero (vector math) | ~15+ dismissals | Post-launch |
+| 2 — Few-shot | `gpt-4o-mini` API call with context | Low (batched) | ~10 promotes + 10 dismisses | Post-launch |
+| 3 — Negative pool | pgvector similarity with decay | Near-zero (vector math) | ~15+ dismissals | **Shipped 2026-09-01** (mechanics are more conservative than described above — see the doc-drift note near the top) |
 
 All three levels stack. At maturity, a single candidate's score incorporates vector similarity to positive and negative pools, heuristic source/category reweighting, and an LLM-generated relevance assessment — all without a single custom-trained model or any proprietary inference infrastructure.
 
@@ -256,7 +274,7 @@ Within the project digest, candidates are grouped into two sections:
 Each candidate card shows:
 - Title (linked to source)
 - AI summary (2–3 sentences)
-- Source name + credibility indicator
+- Source name + source confidence indicator (Low/Medium/High — `credibility` is internal-only as of 2026-09, see Layer 1)
 - STEEPLED category pills
 - Published date
 - Relevance score (as a subtle meter or just "Strong match" / "Possible match")
@@ -267,7 +285,7 @@ Each candidate card shows:
 - Description ← AI summary
 - Source URL ← candidate URL
 - STEEPLED ← AI-assigned categories
-- Signal Quality ← derived from source credibility (institutional → Established, specialist → Emerging, general/unvetted → Emerging)
+- Source Confidence ← pre-filled from the source's `source_confidence` value (via the shared `deriveSourceConfidence()` function — see Layer 1), editable by the user before saving. Scanner promotion never touches `signal_quality` — writing scanner-derived values into that legacy field was live behavior until the 2026-09 source-confidence-unification pass, and was removed because `design-principles.md` explicitly forbids it (the terminology table lists `Emerging`/`Established`/`Confirmed` as values to never use for Signal Strength).
 
 The user can edit any field before saving. This is the scaffold principle in action: AI does the heavy lifting of metadata population, the user makes the judgment call.
 
@@ -296,7 +314,7 @@ This is clean code reuse. The onboarding step is a view over the same scanning i
 Signal scanning plugs into the existing tiered AI caps model via `ai_usage_log`.
 
 **Operation types to track:**
-- `scan_classify` — Haiku-tier classification per candidate (Layer 2)
+- `scan_classify` — `gpt-4o-mini` classification per candidate (Layer 2)
 - `scan_embed` — embedding generation per candidate (Layer 2)
 - `scan_score` — relevance scoring per project (Layer 3, negligible cost but track for visibility)
 - `scan_promote` — signal creation from candidate (counts as standard signal enrichment)
@@ -338,7 +356,7 @@ New tables introduced by this feature:
 
 ```
 sources
-├── id, name, url, domain, source_type, credibility, owner_id, active, last_fetched_at
+├── id, name, url, domain, source_type, credibility (internal scoring-only), source_confidence (user-facing, added 2026-09), owner_id, active, last_fetched_at
 
 project_sources (junction)
 ├── project_id, source_id, opted_in (boolean, default true)
@@ -392,7 +410,7 @@ The Chrome extension is a manual signal capture tool. Could it also serve as a l
 This feature has natural dependency ordering:
 
 1. **Source entity + curated seed data** — table, RLS, seed CSVs for ≥3 domains to start
-2. **Candidates table + ingestion cron** — RSS fetch, dedup, Haiku classification, embedding
+2. **Candidates table + ingestion cron** — RSS fetch, dedup, `gpt-4o-mini` classification, embedding
 3. **Scoring engine** — Layer 3 relevance scoring against project context
 4. **Digest UI** — project-scoped candidate list with promote/dismiss actions
 5. **Onboarding integration** — wire the "seed your project" step into the onboarding flow

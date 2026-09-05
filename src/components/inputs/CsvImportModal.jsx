@@ -14,7 +14,7 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const VALID_SUBTYPES   = new Set(["signal", "issue", "projection", "plan", "obstacle", "source"]);
 const VALID_STRENGTHS  = new Set(["weak", "moderate", "strong"]);
-const VALID_CONFIDENCES = new Set(["low", "moderate", "high"]);
+const VALID_CONFIDENCES = new Set(["low", "medium", "high"]);
 const VALID_HORIZONS   = new Set(["H1", "H2", "H3"]);
 
 const STEEPLED_MAP = {

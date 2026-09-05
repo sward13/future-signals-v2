@@ -9,6 +9,28 @@ export const CREDIBILITY_SCORES = {
   unvetted: 25,
 };
 
+// Maps the legacy 4-tier sources.credibility enum onto the 3-tier
+// source_confidence scale (low/medium/high) shared with inputs.source_confidence.
+// Confirmed against real production data 2026-09-04 (institutional=47,
+// specialist=52, general=1, unvetted=1) — general and unvetted both resolved
+// to low since the single source in each tier was non-authoritative.
+export const CREDIBILITY_TO_SOURCE_CONFIDENCE = {
+  institutional: "high",
+  specialist: "medium",
+  general: "low",
+  unvetted: "low",
+};
+
+// Confidence tier to stamp on a signal/candidate promoted from `source`.
+// Prefers the source's own source_confidence — the live, user-editable value
+// once Sources supports Add/Edit — and only falls back to deriving it from
+// the legacy credibility enum for a source that predates that column (should
+// not happen post-backfill, but keeps this safe against partial data).
+export function deriveSourceConfidence(source) {
+  if (!source) return null;
+  return source.source_confidence || CREDIBILITY_TO_SOURCE_CONFIDENCE[source.credibility] || null;
+}
+
 // Builds the text embedded for a project's primary relevance comparison:
 // question + focus. scope_in is deliberately NOT folded in here — real
 // production data (833 surfaced candidates, "Future of data centers" project,
