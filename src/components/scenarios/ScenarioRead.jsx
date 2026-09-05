@@ -117,7 +117,7 @@ export default function ScenarioRead({ appState }) {
           )}
 
           {/* Narrative */}
-          {scenario.narrative && (
+          {(!docIsEmpty(scenario.narrative_doc) || scenario.narrative) && (
             <div className="mb-7">
               <div className="text-[11px] font-medium text-hint tracking-[0.02em] mb-2.5 pb-2 border-b border-border">
                 Narrative

@@ -104,7 +104,7 @@ type NamingResult =
 type ProjectContext = {
   question: string | null;
   focus: string | null;
-  domain: string | null;
+  domains: string[];
   custom_domain: string | null;
   scope_in: string[] | null;
   scope_out: string[] | null;
@@ -121,13 +121,20 @@ function formatScopeLines(project: ProjectContext): string {
   return lines.length ? "\n" + lines.join("\n") : "";
 }
 
+// Combines every selected predefined domain with the freeform custom domain
+// (if set) — a project can have more than one predefined domain since
+// 20260817120000_project_domains_multiselect.sql, and omitting all but the
+// first (as reading the legacy `domain` column alone would) silently drops
+// context the naming/rationale prompts below should have. Matches the
+// pattern already used by api/seed-onboarding.js and
+// send-weekly-digest/index.ts for the same multi-domain model.
 function formatProjectContext(project: ProjectContext): string {
-  const domain = project.custom_domain || project.domain;
+  const domainList = [...project.domains, ...(project.custom_domain ? [project.custom_domain] : [])];
   const lines: string[] = [
     `This is for a foresight project investigating: "${project.question ?? "Not specified"}"`,
   ];
   if (project.focus) lines.push(`Focus: ${project.focus}`);
-  if (domain) lines.push(`Domain: ${domain}`);
+  if (domainList.length) lines.push(`Domain: ${domainList.join(", ")}`);
   return lines.join("\n") + formatScopeLines(project);
 }
 
@@ -166,7 +173,7 @@ serve(async (req: Request) => {
     // ── 1. Fetch project ───────────────────────────────────────────────────────
     const { data: project, error: projectError } = await supabase
       .from("projects")
-      .select("id, workspace_id, question, focus, domain, custom_domain, scope_in, scope_out")
+      .select("id, workspace_id, question, focus, domains, custom_domain, scope_in, scope_out")
       .eq("id", project_id)
       .single();
 
@@ -177,7 +184,7 @@ serve(async (req: Request) => {
     const projectContext: ProjectContext = {
       question:      project.question      ?? null,
       focus:         project.focus         ?? null,
-      domain:        project.domain        ?? null,
+      domains:       (project.domains as string[] | null) ?? [],
       custom_domain: project.custom_domain ?? null,
       scope_in:      project.scope_in      ?? null,
       scope_out:     project.scope_out     ?? null,
