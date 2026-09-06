@@ -1,6 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
-import { norm, dot, CREDIBILITY_SCORES } from '../server-lib/scoring.js';
+import {
+  norm, dot, CREDIBILITY_SCORES, deriveSourceConfidence,
+  buildPrimaryEmbeddingText, negativePoolDecayWeight, weightedPoolSimilarity,
+  blendRelevanceScore, applyScopeOutPenalty, applyNegativePoolPenalty,
+} from '../server-lib/scoring.js';
 import { cronSecretOk, bearerToken } from '../server-lib/cron-auth.js';
 
 export const config = {
@@ -59,7 +63,7 @@ export default async function handler(req, res) {
     // Fetch active projects — now includes focus, scope_in, scope_out for richer scoring.
     const { data: projects, error: projectsError } = await supabase
       .from('projects')
-      .select('id, workspace_id, name, domain, question, focus, scope_in, scope_out, key_question_embedding, scanning_enabled')
+      .select('id, workspace_id, name, domains, custom_domain, question, focus, scope_in, scope_out, key_question_embedding, scanning_enabled')
       .not('question', 'is', null)
       .neq('question', '');
 
@@ -79,8 +83,12 @@ export default async function handler(req, res) {
         .map(ws => ws.workspace_id)
     );
 
+    // A project is scoring-active if it has at least one domain — predefined or
+    // custom. Scoring is semantic (key-question embedding), not domain-filtered,
+    // so a custom-only project still scores against user-added-source candidates.
     const activeProjects = projects.filter(p =>
-      !disabledWorkspaces.has(p.workspace_id) && p.scanning_enabled !== false && p.domain
+      !disabledWorkspaces.has(p.workspace_id) && p.scanning_enabled !== false &&
+      ((p.domains?.length ?? 0) > 0 || p.custom_domain)
     );
 
     if (!activeProjects.length) return res.status(200).json({ success: true, results });
@@ -159,30 +167,36 @@ export default async function handler(req, res) {
             .eq('id', project.id);
         }
 
-        // ── Primary embedding: question + focus (in memory, not stored) ───────
-        // Concatenate focus when present for a richer semantic signal. Falls
+        // ── Primary embedding: question + focus (in memory, not stored). Falls
         // back to the cached question-only embedding when focus is absent.
+        // scope_in is deliberately NOT folded in here — see the comment on
+        // buildPrimaryEmbeddingText in server-lib/scoring.js for why (real
+        // data showed folding measurably underperforms scoring it separately).
         const hasFocus = Boolean(project.focus?.trim());
+        const hasScopeIn = Array.isArray(project.scope_in) && project.scope_in.length > 0;
+        const focusUsed = hasFocus;
         let primaryEmbedding;
-        let focusUsed = false;
 
         if (hasFocus) {
-          const combinedText = `${project.question}\n${project.focus.trim()}`;
+          const combinedText = buildPrimaryEmbeddingText({
+            question: project.question,
+            focus: project.focus,
+          });
           const embResp = await openai.embeddings.create({
             model: 'text-embedding-3-small',
             input: combinedText,
           });
           primaryEmbedding = embResp.data[0].embedding;
-          focusUsed = true;
         } else {
           primaryEmbedding = keyQuestionEmbedding;
         }
         const primaryNorm = norm(primaryEmbedding);
 
-        // ── Scope In embedding (once per project, reused across all candidates) ─
+        // ── Scope In embedding — a genuine, separately-weighted scoring input
+        // (see SCOPE_IN_WEIGHT in blendRelevanceScore), not just a diagnostic.
         let scopeInEmbedding = null;
         let scopeInNormVal = null;
-        if (Array.isArray(project.scope_in) && project.scope_in.length > 0) {
+        if (hasScopeIn) {
           const embResp = await openai.embeddings.create({
             model: 'text-embedding-3-small',
             input: project.scope_in.join(', '),
@@ -217,6 +231,34 @@ export default async function handler(req, res) {
           .filter(Boolean)
           .map(e => ({ embedding: e, _norm: norm(e) }));
 
+        // ── Negative pool (Level 3): dismissed candidates for this project ────
+        // No lookback cap — a dismissal can be much older than the 30-day
+        // candidate ingestion window and still matter, just decayed. Candidates
+        // aren't actually cleaned up after 30 days in the live system (the
+        // spec's expiry cron was never implemented), so embeddings for old
+        // dismissals are still there to fetch.
+        const { data: dismissedRows } = await supabase
+          .from('project_candidates')
+          .select('created_at, scored_at, dismissed_at, candidates(embedding)')
+          .eq('project_id', project.id)
+          .eq('user_action', 'dismissed');
+
+        const negativePool = (dismissedRows || [])
+          .map(r => {
+            const raw = r.candidates?.embedding;
+            const embedding = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            if (!embedding) return null;
+            // dismissed_at is the real event the decay should measure from —
+            // scored_at/created_at are when the candidate was scored/ingested,
+            // not when the user actually dismissed it (audit finding,
+            // 2026-09-05). Falls back for rows dismissed before this column
+            // existed, rather than backfilling them.
+            const dismissedAt = r.dismissed_at || r.scored_at || r.created_at;
+            const ageDays = (Date.now() - new Date(dismissedAt).getTime()) / 86_400_000;
+            return { embedding, norm: norm(embedding), weight: negativePoolDecayWeight(ageDays) };
+          })
+          .filter(Boolean);
+
         const alreadyScoredIds = scoredByProject.get(project.id) ?? new Set();
         const newCandidates = allCandidates.filter(c => !alreadyScoredIds.has(c.id));
 
@@ -228,16 +270,24 @@ export default async function handler(req, res) {
           // Primary similarity (question + focus combined)
           const primarySim = dot(candidate.embedding, primaryEmbedding) / (candidate._norm * primaryNorm);
 
-          // Corpus similarity
+          // Corpus similarity (positive pool)
           const corpusSim = corpusEmbeddings.length
             ? corpusEmbeddings.reduce((s, c) => s + dot(candidate.embedding, c.embedding) / (candidate._norm * c._norm), 0) / corpusEmbeddings.length
             : 0;
+
+          // Negative pool similarity (Level 3) — decay-weighted average
+          // similarity to this project's dismissed candidates. 0 when there's
+          // no dismissal history yet, which collapses the delta below to plain
+          // corpusSim — no penalty, no error, on a project with zero dismissals.
+          const negativePoolSim = weightedPoolSimilarity(candidate.embedding, candidate._norm, negativePool);
 
           // Source credibility
           const credibility = sourceMap[candidate.source_id]?.credibility || 'general';
           const credibilityScore = CREDIBILITY_SCORES[credibility] || 50;
 
-          // Scope In similarity (null when scope_in is absent — contributes 0, no weight renorm)
+          // Scope In similarity — a genuine scoring input (SCOPE_IN_WEIGHT),
+          // not just diagnostic. null when scope_in is absent — weight is
+          // omitted and the rest is renormalized (see blendRelevanceScore).
           const scopeInSim = scopeInEmbedding !== null
             ? dot(candidate.embedding, scopeInEmbedding) / (candidate._norm * scopeInNormVal)
             : null;
@@ -248,39 +298,31 @@ export default async function handler(req, res) {
             : null;
 
           // ── Weighted sum (normalised 0–1 before scaling) ──────────────────
-          // Weights: primary 50% | corpus 20% | credibility 20% | scope_in 10%
-          // Absent scope_in contributes 0; weights are not renormalised (per spec).
-          let normalizedScore =
-            (primarySim * 0.5) +
-            (corpusSim * 0.2) +
-            ((credibilityScore / 100) * 0.2) +
-            (scopeInSim !== null ? scopeInSim * 0.1 : 0);
+          // Weights: primary (question+focus) 40% | scope_in 30% | credibility
+          // 20% | corpus 10%. Always renormalized to the weight actually used
+          // — see blendRelevanceScore in server-lib/scoring.js for the full
+          // reasoning (including why corpusSim's weight was cut, not left at
+          // its original 20%).
+          const rawScore = blendRelevanceScore({ primarySim, corpusSim, credibilityScore, scopeInSim });
 
-          // ── Scope Out penalty (applied post-sum, pre-scale) ───────────────
-          // Hard (>0.75 sim): score × 0.25
-          // Soft (0.5–0.75 sim): score − (sim − 0.5) × 0.4
-          let scopeOutPenaltyApplied = null;
-          if (scopeOutSim !== null) {
-            if (scopeOutSim > 0.75) {
-              normalizedScore *= 0.25;
-              scopeOutPenaltyApplied = 'hard';
-              results.scope_out_hard_penalties++;
-            } else if (scopeOutSim > 0.5) {
-              normalizedScore -= (scopeOutSim - 0.5) * 0.4;
-              scopeOutPenaltyApplied = 'soft';
-              results.scope_out_soft_penalties++;
-            }
-          }
+          // ── Scope Out penalty, then negative-pool penalty (both post-sum,
+          // pre-scale, independent bounded adjustments) ─────────────────────
+          const { normalizedScore: afterScopeOut, penalty: scopeOutPenaltyApplied } = applyScopeOutPenalty(rawScore, scopeOutSim);
+          if (scopeOutPenaltyApplied === 'hard') results.scope_out_hard_penalties++;
+          if (scopeOutPenaltyApplied === 'soft') results.scope_out_soft_penalties++;
+
+          const normalizedScore = applyNegativePoolPenalty(afterScopeOut, corpusSim, negativePoolSim);
 
           const score = Math.max(0, Math.round(normalizedScore * 100));
 
-          if (scopeInSim !== null || scopeOutPenaltyApplied) {
+          if (scopeInSim !== null || scopeOutPenaltyApplied || negativePool.length > 0) {
             console.debug(
               `[score] candidate="${candidate.title?.slice(0, 60)}" ` +
               `focus_used=${focusUsed} ` +
               `scope_in_sim=${scopeInSim?.toFixed(3) ?? null} ` +
               `scope_out_sim=${scopeOutSim?.toFixed(3) ?? null} ` +
               `scope_out_penalty_applied=${scopeOutPenaltyApplied} ` +
+              `negative_pool_sim=${negativePoolSim.toFixed(3)} ` +
               `score=${score}`
             );
           }
@@ -301,7 +343,13 @@ export default async function handler(req, res) {
             classification,
             key_question_sim: primarySim,
             corpus_sim: corpusSim,
+            negative_pool_sim: negativePoolSim,
+            scope_in_sim: scopeInSim,
+            scope_out_sim: scopeOutSim,
+            scope_out_penalty: scopeOutPenaltyApplied,
+            focus_used: focusUsed,
             surfaced,
+            scored_at: new Date().toISOString(),
           });
 
           results.candidates_evaluated++;
@@ -358,15 +406,9 @@ export default async function handler(req, res) {
 
         const { data: source } = await supabase
           .from('sources')
-          .select('credibility')
+          .select('credibility, source_confidence')
           .eq('id', candidate.source_id)
           .single();
-
-        const signalQuality = source?.credibility === 'institutional'
-          ? 'Confirmed'
-          : source?.credibility === 'specialist'
-            ? 'Established'
-            : 'Emerging';
 
         await supabase.from('inputs').insert({
           workspace_id: project.workspace_id,
@@ -376,7 +418,7 @@ export default async function handler(req, res) {
           source_url: candidate.url,
           subtype: 'Signal',
           steepled: candidate.steepled || [],
-          signal_quality: signalQuality,
+          source_confidence: deriveSourceConfidence(source),
           is_seeded: true,
           metadata: {
             source: 'scanner',

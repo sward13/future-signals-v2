@@ -8,7 +8,8 @@
  *
  * ID → name resolution is delegated to server-lib/resolve-references.js — this
  * module never re-implements lookup logic. Cluster/scenario references in the
- * narrative sections go through resolveDrivingForces() / resolveScenarioRefs().
+ * narrative sections go through resolveDrivingForces() / resolveSuppressedForces()
+ * / resolveScenarioRefs().
  *
  * Reading order (per web-export-spec.md), NOT build order:
  *   Hero → Overview → System Map → System Analysis → Scenarios →
@@ -19,7 +20,8 @@
  *             assumptions, h1_start/h1_end/h2_start/h2_end/h3_start/h3_end
  *   analyses: description, key_dynamics, critical_uncertainties (text[]),
  *             implications, confidence
- *   scenarios: name, archetype, horizon, description, narrative, driving_forces
+ *   scenarios: name, archetype, horizon, description, narrative, driving_forces,
+ *             suppressed_forces
  *   preferred_futures: name, description, desired_outcomes,
  *             guiding_principles (jsonb[]), scenario_ids (jsonb[])
  *   strategic_options: name, description, intended_outcome, actions,
@@ -31,8 +33,11 @@
 
 import { c } from "../styles/tokens.js";
 import { sanitizeUrl } from "../utils/sanitizeUrl.js";
+import { projectDomainLabel } from "../lib/projectDomains.js";
+import { docToHtml, docIsEmpty } from "../lib/richtextDoc.js";
 import {
   resolveDrivingForces,
+  resolveSuppressedForces,
   resolveScenarioRefs,
 } from "../../server-lib/resolve-references.js";
 
@@ -130,14 +135,33 @@ const LABEL = `font-size:10px; text-transform:uppercase; letter-spacing:0.06em; 
 const BODY = `font-size:14px; line-height:1.7; color:${CH.ink}; margin:0 0 16px;`;
 const REF = `font-size:12px; color:${CH.faint}; margin:0;`;
 
-function eyebrow(text) {
-  return `<p style="${EYEBROW}">${esc(text)}</p>`;
+// Inline styles for rich-text (Tiptap JSON) content on the published page,
+// matching the page's inline-styled typography. Passed to docToHtml().
+const RICH_STYLES = {
+  p: BODY,
+  h2: `font-family:${CH.serif}; font-weight:600; font-size:20px; line-height:1.3; margin:24px 0 10px; color:${CH.ink};`,
+  h3: `font-weight:600; font-size:16px; line-height:1.35; margin:20px 0 8px; color:${CH.ink};`,
+  ul: `${BODY} padding-left:22px;`,
+  ol: `${BODY} padding-left:22px;`,
+  li: `margin:0 0 6px;`,
+  a: `color:${CH.ink}; text-decoration:underline;`,
+};
+
+/** Render a rich-text field (Tiptap JSON doc) or fall back to escaped legacy text. */
+function richOrText(doc, legacyText) {
+  if (!docIsEmpty(doc)) return docToHtml(doc, { styles: RICH_STYLES });
+  return hasText(legacyText) ? `<p style="${BODY}">${esc(legacyText.trim())}</p>` : "";
 }
 
-/** A labeled free-text paragraph, or "" when the value is blank. */
-function labeledText(label, value) {
-  if (!hasText(value)) return "";
-  return `<p style="${LABEL}">${esc(label)}</p><p style="${BODY}">${esc(value)}</p>`;
+/** A labelled rich-text block: LABEL heading + rich body (or legacy fallback). */
+function labeledRich(label, doc, legacyText) {
+  const body = richOrText(doc, legacyText);
+  if (!body) return "";
+  return `<p style="${LABEL}">${esc(label)}</p>${body}`;
+}
+
+function eyebrow(text) {
+  return `<p style="${EYEBROW}">${esc(text)}</p>`;
 }
 
 /** A labeled bullet list from an array, or "" when empty. */
@@ -202,8 +226,12 @@ export function renderOverview(project) {
       </div>`
     : "";
 
+  // Domain renders the full multi-domain label; all other fields read the raw
+  // project value.
+  const fieldValue = (key) => (key === "domain" ? projectDomainLabel(p) : p[key]);
+
   const cells = OVERVIEW_FIELDS
-    .filter(([, key]) => hasText(p[key]))
+    .filter(([, key]) => hasText(fieldValue(key)))
     .map(([label, key], i) => {
       // Column dividers: 2nd and 3rd column in each row of three get a
       // border-left (the 1st does not), matching the prototype's meta grid.
@@ -213,7 +241,7 @@ export function renderOverview(project) {
         : `border-left:1px solid ${CH.border}; padding:0 18px 24px 18px;`;
       return `<div style="flex:0 0 33.33%; max-width:33.33%; box-sizing:border-box; ${divider}">
           <p style="${LABEL}">${esc(label)}</p>
-          <p style="font-size:13px; color:${CH.ink}; margin:0;">${esc(p[key])}</p>
+          <p style="font-size:13px; color:${CH.ink}; margin:0;">${esc(fieldValue(key))}</p>
         </div>`;
     })
     .join("");
@@ -286,9 +314,10 @@ export function renderSystemAnalysis(analysis) {
     hasText(a.confidence);
   if (!hasContent) return "";
 
-  const description = hasText(a.description)
-    ? `<p style="${BODY} margin-bottom:24px;">${esc(a.description.trim())}</p>`
-    : "";
+  // Rich-text fields: prefer the Tiptap JSON doc, fall back to escaped legacy
+  // text. Same docToHtml whitelist/escaping as the Scenario path — see the
+  // red-team harness's renderSystemAnalysis coverage.
+  const description = richOrText(a.description_doc, a.description);
   const confidence = hasText(a.confidence)
     ? badge(`Confidence: ${a.confidence}`, tierColors(a.confidence))
     : "";
@@ -296,9 +325,9 @@ export function renderSystemAnalysis(analysis) {
   return `${section(
     `${eyebrow("System analysis")}
       ${description}
-      ${labeledText("Key dynamics", a.key_dynamics)}
+      ${labeledRich("Key dynamics", a.key_dynamics_doc, a.key_dynamics)}
       ${labeledList("Critical uncertainties", a.critical_uncertainties)}
-      ${labeledText("Implications", a.implications)}
+      ${labeledRich("Implications", a.implications_doc, a.implications)}
       ${confidence}`
   )}`;
 }
@@ -323,16 +352,13 @@ export function renderScenario(scenario, clusterLookup) {
     .filter(Boolean)
     .join("");
 
-  const description = hasText(s.description)
-    ? `<p style="${BODY}">${esc(s.description.trim())}</p>`
-    : "";
-  const narrative = hasText(s.narrative)
-    ? `<p style="${BODY}">${esc(s.narrative.trim())}</p>`
-    : "";
+  const description = richOrText(s.description_doc, s.description);
+  const narrative = richOrText(s.narrative_doc, s.narrative);
   const informedBy = refLine("Informed by", resolveDrivingForces(s, clusterLookup));
+  const suppressedBy = refLine("Suppressed by", resolveSuppressedForces(s, clusterLookup));
 
   return section(
-    `${narrativeHead("Scenario", s.name, badges)}${description}${narrative}${informedBy}`,
+    `${narrativeHead("Scenario", s.name, badges)}${description}${narrative}${informedBy}${suppressedBy}`,
     { border: false }
   );
 }
@@ -341,15 +367,13 @@ export function renderScenario(scenario, clusterLookup) {
 
 export function renderPreferredFuture(pf, scenarioLookup) {
   const p = pf || {};
-  const description = hasText(p.description)
-    ? `<p style="${BODY}">${esc(p.description.trim())}</p>`
-    : "";
+  const description = richOrText(p.description_doc, p.description);
   const basedOn = refLine("Based on", resolveScenarioRefs(p.scenario_ids, scenarioLookup));
 
   return section(
     `${narrativeHead("Preferred future", p.name, "")}
       ${description}
-      ${labeledText("Desired outcomes", p.desired_outcomes)}
+      ${labeledRich("Desired outcomes", p.desired_outcomes_doc, p.desired_outcomes)}
       ${labeledList("Guiding principles", p.guiding_principles)}
       ${basedOn}`,
     { border: false }
@@ -368,17 +392,15 @@ export function renderStrategicOption(option, scenarioLookup) {
     .filter(Boolean)
     .join("");
 
-  const description = hasText(o.description)
-    ? `<p style="${BODY}">${esc(o.description.trim())}</p>`
-    : "";
+  const description = richOrText(o.description_doc, o.description);
   const respondsTo = refLine("Responds to", resolveScenarioRefs(o.scenario_ids, scenarioLookup));
 
   return section(
     `${narrativeHead("Strategic option", o.name, badges)}
       ${description}
-      ${labeledText("Intended outcome", o.intended_outcome)}
-      ${labeledText("What this involves", o.actions)}
-      ${labeledText("Implications", o.implications)}
+      ${labeledRich("Intended outcome", o.intended_outcome_doc, o.intended_outcome)}
+      ${labeledRich("What this involves", o.actions_doc, o.actions)}
+      ${labeledRich("Implications", o.implications_doc, o.implications)}
       ${respondsTo}`,
     { border: false }
   );

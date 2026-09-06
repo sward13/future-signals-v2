@@ -17,7 +17,12 @@ import {
   buildClusterLookup,
   resolveRelationship,
   resolveDrivingForces,
+  resolveSuppressedForces,
 } from "../../../server-lib/resolve-references.js";
+import { docToMarkdown, docIsEmpty } from "../../lib/richtextDoc.js";
+
+/** Rich-text field → Markdown: prefer the JSON doc, else the legacy text column. */
+const mdRich = (doc, legacy) => (!docIsEmpty(doc) ? docToMarkdown(doc) : (legacy || "").trim());
 
 export function buildMarkdown(
   project,
@@ -97,16 +102,22 @@ export function buildMarkdown(
         sc.archetype ? `**Archetype:** ${sc.archetype}` : null,
       ].filter(Boolean);
       if (meta.length) lines.push(meta.join(" | "));
-      if (sc.description?.trim()) lines.push(sc.description.trim());
+      if (!docIsEmpty(sc.description_doc) || sc.description?.trim()) lines.push(mdRich(sc.description_doc, sc.description));
       const diffs = (Array.isArray(sc.key_differences) ? sc.key_differences : []).filter(Boolean);
       if (diffs.length > 0) {
         lines.push("**Key differences:**");
         diffs.forEach((d) => lines.push(`- ${d}`));
       }
-      if (sc.narrative?.trim()) lines.push(sc.narrative.trim());
+      // Narrative is the rich-text PoC field: JSON doc → Markdown, else legacy text.
+      if (!docIsEmpty(sc.narrative_doc)) lines.push(docToMarkdown(sc.narrative_doc));
+      else if (sc.narrative?.trim()) lines.push(sc.narrative.trim());
       const drivingNames = resolveDrivingForces(sc, clusterLookup);
       if (drivingNames.length > 0) {
         lines.push(`**Driving forces:** ${drivingNames.join(", ")}`);
+      }
+      const suppressedNames = resolveSuppressedForces(sc, clusterLookup);
+      if (suppressedNames.length > 0) {
+        lines.push(`**Suppressed forces:** ${suppressedNames.join(", ")}`);
       }
       nl();
     }
@@ -119,8 +130,8 @@ export function buildMarkdown(
     for (const pf of projectPFs) {
       lines.push(`### ${pf.name}`);
       if (pf.horizon) lines.push(`**Horizon:** ${pf.horizon}`);
-      if (pf.description?.trim()) lines.push(pf.description.trim());
-      if (pf.desired_outcomes?.trim()) lines.push(`**Desired outcomes:** ${pf.desired_outcomes.trim()}`);
+      if (!docIsEmpty(pf.description_doc) || pf.description?.trim()) lines.push(mdRich(pf.description_doc, pf.description));
+      if (!docIsEmpty(pf.desired_outcomes_doc) || pf.desired_outcomes?.trim()) lines.push(`**Desired outcomes:** ${mdRich(pf.desired_outcomes_doc, pf.desired_outcomes)}`);
       const principles = (Array.isArray(pf.guiding_principles) ? pf.guiding_principles : []).filter(Boolean);
       if (principles.length > 0) {
         lines.push("**Guiding principles:**");
@@ -151,10 +162,10 @@ export function buildMarkdown(
         opt.feasibility ? `**Feasibility:** ${opt.feasibility}` : null,
       ].filter(Boolean);
       if (meta.length) lines.push(meta.join(" | "));
-      if (opt.description?.trim())      lines.push(opt.description.trim());
-      if (opt.intended_outcome?.trim()) lines.push(`**Intended outcome:** ${opt.intended_outcome.trim()}`);
-      if (opt.actions?.trim())          lines.push(`**What this involves:** ${opt.actions.trim()}`);
-      if (opt.implications?.trim())     lines.push(`**Implications:** ${opt.implications.trim()}`);
+      if (!docIsEmpty(opt.description_doc) || opt.description?.trim())      lines.push(mdRich(opt.description_doc, opt.description));
+      if (!docIsEmpty(opt.intended_outcome_doc) || opt.intended_outcome?.trim()) lines.push(`**Intended outcome:** ${mdRich(opt.intended_outcome_doc, opt.intended_outcome)}`);
+      if (!docIsEmpty(opt.actions_doc) || opt.actions?.trim())          lines.push(`**What this involves:** ${mdRich(opt.actions_doc, opt.actions)}`);
+      if (!docIsEmpty(opt.implications_doc) || opt.implications?.trim())     lines.push(`**Implications:** ${mdRich(opt.implications_doc, opt.implications)}`);
       nl();
     }
   }

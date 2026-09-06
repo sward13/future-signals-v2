@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { HorizonBar } from "../shared/HorizonBar.jsx";
 import { analysisHasCont } from "./SystemAnalysisCanvas.jsx";
 import { EditProjectDrawer } from "../projects/EditProjectDrawer.jsx";
+import { projectDomainLabel } from "../../lib/projectDomains.js";
 
 // ─── Analysis panel spec (minimal — full spec lives in SystemAnalysisCanvas) ──
 
@@ -247,8 +248,8 @@ export default function ProjectOverview({ appState }) {
             </div>
             <div>
               <div className="text-xs text-faint mb-1">Domain</div>
-              {project.domain
-                ? <div className="text-sm text-ink">{project.domain}</div>
+              {projectDomainLabel(project)
+                ? <div className="text-sm text-ink">{projectDomainLabel(project)}</div>
                 : <div className="text-sm text-faint italic">Not set</div>}
             </div>
             <div>

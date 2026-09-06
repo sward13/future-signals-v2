@@ -116,11 +116,15 @@ function AssignCard({ group, inputs, fadingIds, onAcceptAll, onDismissOne }) {
 // ── New cluster suggestion card ───────────────────────────────────────────────
 
 function NewClusterCard({ sug, inputs, isFading, onAccept, onDismiss }) {
+  const isLowRelevance = sug.relevance === "low";
   const [editMode,      setEditMode]      = useState(false);
   const [editName,      setEditName]      = useState(sug.name);
   const [editDesc,      setEditDesc]      = useState(sug.description || "");
   const [localIds,      setLocalIds]      = useState(sug.input_ids || []);
-  const [showRationale, setShowRationale] = useState(false);
+  // Low-relevance cards start with the rationale open — it's the one-sentence
+  // explanation of *why* this was deprioritized, so it shouldn't be hidden
+  // behind an extra click.
+  const [showRationale, setShowRationale] = useState(isLowRelevance);
 
   const subtype      = sug.subtype ? sug.subtype.charAt(0).toUpperCase() + sug.subtype.slice(1) : "Trend";
   const visibleInputs = localIds.map((id) => inputs.find((i) => i.id === id)).filter(Boolean);
@@ -135,8 +139,10 @@ function NewClusterCard({ sug, inputs, isFading, onAccept, onDismiss }) {
 
   return (
     <div style={{
-      background: c.white, border: `1px solid ${c.border}`, borderRadius: 9,
-      overflow: "hidden", opacity: isFading ? 0 : 1, transition: "opacity 0.25s", marginBottom: 8,
+      background: isLowRelevance ? c.surfaceAlt : c.white,
+      border: `1px solid ${c.border}`, borderRadius: 9,
+      overflow: "hidden", opacity: isFading ? 0 : (isLowRelevance ? 0.85 : 1),
+      transition: "opacity 0.25s", marginBottom: 8,
     }}>
       <div style={{ padding: "11px 12px" }}>
 
@@ -153,7 +159,16 @@ function NewClusterCard({ sug, inputs, isFading, onAccept, onDismiss }) {
               <div style={{ fontSize: 12, fontWeight: 600, color: c.ink, lineHeight: 1.4 }}>{sug.name}</div>
             )}
           </div>
-          <div style={{ flexShrink: 0, paddingTop: 2 }}>
+          <div style={{ flexShrink: 0, paddingTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+            {isLowRelevance && (
+              <span style={{
+                fontSize: 9, fontWeight: 500, padding: "1px 5px", borderRadius: 3,
+                background: c.surfaceHover, color: c.hint, border: `1px solid ${c.border}`,
+                whiteSpace: "nowrap",
+              }}>
+                Low relevance
+              </span>
+            )}
             <SubtypeTag sub={subtype} />
           </div>
         </div>
@@ -188,7 +203,7 @@ function NewClusterCard({ sug, inputs, isFading, onAccept, onDismiss }) {
               }}
             >
               <span style={{ fontSize: 9 }}>{showRationale ? "▾" : "▸"}</span>
-              · Why this cluster?
+              · {isLowRelevance ? "Why low relevance?" : "Why this cluster?"}
             </button>
             {showRationale && (
               <div style={{
@@ -449,6 +464,19 @@ export function ClusterSuggestions({
     [newSugs, dismissed, newFading]
   );
 
+  // Groups whose only real tie to the project is generic domain overlap (per
+  // compute-cluster-suggestions' relevance check) are shown separately,
+  // collapsed by default, rather than as equal-weight cluster suggestions.
+  const coreNewSugs = useMemo(
+    () => visibleNewSugs.filter((sug) => sug.relevance !== "low"),
+    [visibleNewSugs],
+  );
+  const lowRelevanceSugs = useMemo(
+    () => visibleNewSugs.filter((sug) => sug.relevance === "low"),
+    [visibleNewSugs],
+  );
+  const [showLowRelevance, setShowLowRelevance] = useState(false);
+
   const hasAnything = assignGroups.length > 0 || visibleNewSugs.length > 0;
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -600,12 +628,39 @@ export function ClusterSuggestions({
               </div>
             )}
 
-            {visibleNewSugs.length > 0 && (
+            {coreNewSugs.length > 0 && (
               <div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: c.hint, letterSpacing: "0.02em", marginBottom: 8 }}>
                   New cluster suggestions
                 </div>
-                {visibleNewSugs.map((sug) => (
+                {coreNewSugs.map((sug) => (
+                  <NewClusterCard
+                    key={sug.id}
+                    sug={sug}
+                    inputs={inputs}
+                    isFading={newFading.has(sug.id)}
+                    onAccept={handleAcceptNewCluster}
+                    onDismiss={handleDismissNewCluster}
+                  />
+                ))}
+              </div>
+            )}
+
+            {lowRelevanceSugs.length > 0 && (
+              <div style={{ marginTop: coreNewSugs.length > 0 ? 14 : 0 }}>
+                <button
+                  onClick={() => setShowLowRelevance((s) => !s)}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    fontSize: 11, fontWeight: 600, color: c.hint, letterSpacing: "0.02em",
+                    padding: 0, fontFamily: "inherit", marginBottom: 8,
+                    display: "flex", alignItems: "center", gap: 4,
+                  }}
+                >
+                  <span style={{ fontSize: 9 }}>{showLowRelevance ? "▾" : "▸"}</span>
+                  Lower-relevance suggestions ({lowRelevanceSugs.length})
+                </button>
+                {showLowRelevance && lowRelevanceSugs.map((sug) => (
                   <NewClusterCard
                     key={sug.id}
                     sug={sug}

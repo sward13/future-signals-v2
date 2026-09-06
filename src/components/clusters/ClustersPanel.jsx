@@ -127,7 +127,7 @@ export function ClustersPanel({
   const mode    = modeProp    !== undefined ? modeProp    : _mode;
   const setMode = setModeProp !== undefined ? setModeProp : _setMode;
 
-  const [view, setView] = useState("list");       // "list" | "card"
+  const [view, setView] = useState("card");       // "list" | "card"
   const [selectedClusterId, setSelectedClusterId] = useState(null);
   const [dropTargetId, setDropTargetId] = useState(null);
   const [dropIsCopy,   setDropIsCopy]   = useState(false);

@@ -1,7 +1,13 @@
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { c } from "../../styles/tokens.js";
+import { projectDomainLabel } from "../../lib/projectDomains.js";
+import { computeFlipPosition } from "../../lib/panelPosition.js";
 import { ChevronDown } from "lucide-react";
+
+// Matches the panel's own maxHeight below — used as the worst-case height
+// estimate for the viewport-collision check (see computeFlipPosition).
+const PANEL_MAX_HEIGHT = 280;
 
 const sectionHeader = {
   padding: "8px 14px 4px", fontSize: 11,
@@ -16,13 +22,23 @@ const item = {
 
 /**
  * Inline "Add to project" dropdown button, shared by My Inputs and AI
- * Suggested rows in the Inbox.
+ * Suggested rows in the Inbox, and by InputDetailDrawer.jsx's slide-in panel.
  *
  * If `recommendedProjectId` is provided, the dropdown shows a Recommended
- * section (with an "AI pick" badge) above an alphabetical "Other projects"
+ * section (with a "Best match" badge) above an alphabetical "Other projects"
  * list. Otherwise it shows a single alphabetical "Add to project" list.
+ *
+ * `zIndex` defaults to a baseline appropriate for a flat inline row (the
+ * Inbox list). A host with its own elevated stacking context — e.g.
+ * InputDetailDrawer.jsx's slide-in panel at zIndex 300/301 — must pass a
+ * `zIndex` explicitly higher than its own, or this dropdown paints underneath
+ * it (portaled to document.body correctly, but z-index alone still
+ * determines paint order against anything else also in the root stacking
+ * context). The panel itself renders one above `zIndex` (backdrop uses
+ * `zIndex`, panel uses `zIndex + 1`), matching ClusterAssignMenu.jsx's
+ * 9998/9999 backdrop/panel pairing convention.
  */
-export function AddToProjectButton({ projects, recommendedProjectId, onAdd, buttonStyle }) {
+export function AddToProjectButton({ projects, recommendedProjectId, onAdd, buttonStyle, zIndex = 50 }) {
   const [open, setOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState(null);
   const buttonRef = useRef(null);
@@ -41,6 +57,8 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
     onAdd(projectId);
   };
 
+  const panelPosition = computeFlipPosition(anchorRect, { panelHeight: PANEL_MAX_HEIGHT, zIndex: zIndex + 1 });
+
   return (
     <div style={{ position: "relative" }}>
       <button
@@ -54,17 +72,17 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
       >
         Add to project <ChevronDown size={11} strokeWidth={2} />
       </button>
-      {open && anchorRect && createPortal(
+      {open && panelPosition && createPortal(
         <>
-          <div onClick={(e) => { e.stopPropagation(); setOpen(false); }} style={{ position: "fixed", inset: 0, zIndex: 50 }} />
+          <div onClick={(e) => { e.stopPropagation(); setOpen(false); }} style={{ position: "fixed", inset: 0, zIndex }} />
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              position: "fixed", top: anchorRect.bottom + 4, right: window.innerWidth - anchorRect.right,
+              ...panelPosition,
               background: c.white, border: `1px solid ${c.border}`,
               borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
-              minWidth: 220, maxHeight: 280, overflowY: "auto",
-              zIndex: 51, textAlign: "left",
+              minWidth: 220, maxHeight: PANEL_MAX_HEIGHT, overflowY: "auto",
+              textAlign: "left",
               fontFamily: "inherit",
             }}
           >
@@ -76,10 +94,10 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
                     <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {recommendedProject.name}
                     </div>
-                    <div style={{ fontSize: 10, color: c.hint }}>{recommendedProject.domain}</div>
+                    <div style={{ fontSize: 10, color: c.hint }}>{projectDomainLabel(recommendedProject)}</div>
                   </div>
                   <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: c.blue50, color: c.blue700, border: `1px solid ${c.blueBorder}`, fontWeight: 500, flexShrink: 0 }}>
-                    AI pick
+                    Best match
                   </span>
                 </button>
                 <div style={{ height: 1, background: c.border, margin: "2px 0" }} />
@@ -94,7 +112,7 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
               otherProjects.map((p) => (
                 <button key={p.id} onClick={() => handleSelect(p.id)} style={item}>
                   <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                  <div style={{ fontSize: 10, color: c.hint }}>{p.domain}</div>
+                  <div style={{ fontSize: 10, color: c.hint }}>{projectDomainLabel(p)}</div>
                 </button>
               ))
             )}

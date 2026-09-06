@@ -1,59 +1,91 @@
 /**
  * InputDetailDrawer — right-side drawer showing full input detail with read/edit mode.
  * Read-only by default; clicking Edit makes all fields editable.
+ *
+ * Read-only: no destructive action lives in view mode. Delete moved to the
+ * edit-mode Danger Zone — see docs/edit-view-mode-consistency-audit-prompt.md.
+ * "Duplicate to cluster" stays in view mode: it creates a new copy elsewhere
+ * and never mutates or destroys this input, so it's a read-adjacent
+ * convenience action, not a destructive one — same category as the Cluster
+ * tab's "X" unlink action.
+ *
+ * Note: this drawer hand-rolls its own backdrop/panel shell rather than
+ * using the shared Drawer.jsx (which InputDrawer.jsx, the create-only
+ * sibling, already uses) — a pre-existing inconsistency, out of scope here.
+ *
  * @param {{ inputId: string|null, inputs: object[], projects: object[], onClose: () => void, onSave: (id, fields) => void }} props
  */
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { c, inp, ta, btnP, btnSec, btnG, fl } from "../../styles/tokens.js";
+import clsx from "clsx";
 import { INPUT_TYPES, ThreeCardSelector, SteepleSelector, HorizonSelector, TypeSwitcherChip } from "./InputFormFields.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { AddToProjectButton } from "../shared/AddToProjectButton.jsx";
+import { computeFlipPosition } from "../../lib/panelPosition.js";
 import { sanitizeUrl } from "../../utils/sanitizeUrl.js";
 
-const HORIZON_COLORS = {
-  H1: [c.green700, c.green50, c.greenBorder],
-  H2: [c.blue700,  c.blue50,  c.blueBorder],
-  H3: [c.amber700, c.amber50, c.amberBorder],
+// Worst-case height estimate for the duplicate-to-cluster picker below
+// (header + 220px-capped list + footer), used by computeFlipPosition's
+// viewport-collision check.
+const DUPE_PICKER_MAX_HEIGHT = 300;
+
+// This drawer's own backdrop/panel sit at zIndex 300/301 (below). Any portal
+// opened from a control inside the drawer needs a z-index explicitly above
+// that pair, or it paints underneath the drawer despite being correctly
+// portaled to document.body — z-index alone determines paint order once
+// both are direct participants in the root stacking context. The
+// duplicate-to-cluster picker below already uses 400/401 for this reason;
+// AddToProjectButton's dropdown (rendered from this same drawer, just above)
+// gets the same tier for consistency, passed via its zIndex prop.
+const OVERLAY_Z_INDEX = 400;
+
+const HORIZON_CLASSES = {
+  H1: "text-green-700 bg-green-50 border-green-border",
+  H2: "text-blue-700 bg-blue-50 border-blue-border",
+  H3: "text-amber-700 bg-amber-50 border-amber-border",
 };
 
 function TypeChip({ typeId }) {
   const t = INPUT_TYPES.find((x) => x.id === typeId) || INPUT_TYPES[0];
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 5,
-      fontSize: 11, fontWeight: 500,
-      padding: "3px 10px", borderRadius: 20,
-      background: t.bg, color: t.color, border: `1px solid ${t.border}`,
-    }}>
+    <span
+      className="inline-flex items-center gap-1.25 text-[11px] font-medium py-0.75 px-2.5 rounded-[20px] border"
+      style={{ background: t.bg, color: t.color, borderColor: t.border }}
+    >
       {t.icon} {t.label}
     </span>
   );
 }
 
 const SIGNAL_STRENGTH_OPTIONS = [
-  { value: "weak",     title: "Weak",     desc: "Single source, edge case, or very early emergence",           dotColor: c.amber700 },
-  { value: "moderate", title: "Moderate", desc: "Multiple sources or visible within a specific community",      dotColor: c.blue700 },
-  { value: "strong",   title: "Strong",   desc: "Widespread, data-backed, or reported by mainstream sources",   dotColor: c.green700 },
+  { value: "weak",     title: "Weak",     desc: "Single source, edge case, or very early emergence",           dotColor: "var(--color-amber-700)" },
+  { value: "moderate", title: "Moderate", desc: "Multiple sources or visible within a specific community",      dotColor: "var(--color-blue-700)" },
+  { value: "strong",   title: "Strong",   desc: "Widespread, data-backed, or reported by mainstream sources",   dotColor: "var(--color-green-700)" },
 ];
 
 const SOURCE_CONFIDENCE_OPTIONS = [
-  { value: "low",    title: "Low",    desc: "Social media, blogs, unverified sources",                               dotColor: c.amber700 },
-  { value: "medium", title: "Medium", desc: "Quality journalism, industry reports, expert commentary",               dotColor: c.blue700 },
-  { value: "high",   title: "High",   desc: "Peer-reviewed research, official statistics, established institutions",  dotColor: c.green700 },
+  { value: "low",    title: "Low",    desc: "Social media, blogs, unverified sources",                               dotColor: "var(--color-amber-700)" },
+  { value: "medium", title: "Medium", desc: "Quality journalism, industry reports, expert commentary",               dotColor: "var(--color-blue-700)" },
+  { value: "high",   title: "High",   desc: "Peer-reviewed research, official statistics, established institutions",  dotColor: "var(--color-green-700)" },
 ];
 
-const STRENGTH_COLORS = {
-  weak:     [c.amber700, c.amber50, c.amberBorder],
-  moderate: [c.blue700,  c.blue50,  c.blueBorder],
-  high:     [c.green700, c.green50, c.greenBorder],
+const STRENGTH_CLASSES = {
+  weak:     "text-amber-700 bg-amber-50 border-amber-border",
+  moderate: "text-blue-700 bg-blue-50 border-blue-border",
+  high:     "text-green-700 bg-green-50 border-green-border",
 };
 
-const CONFIDENCE_COLORS = {
-  low:    [c.amber700, c.amber50, c.amberBorder],
-  medium: [c.blue700,  c.blue50,  c.blueBorder],
-  high:   [c.green700, c.green50, c.greenBorder],
+const CONFIDENCE_CLASSES = {
+  low:    "text-amber-700 bg-amber-50 border-amber-border",
+  medium: "text-blue-700 bg-blue-50 border-blue-border",
+  high:   "text-green-700 bg-green-50 border-green-border",
 };
+
+const inpClass = "w-full py-2.25 px-2.75 border border-border-strong rounded-container bg-white text-ink text-ui font-[inherit] outline-none box-border";
+const taClass = clsx(inpClass, "resize-none leading-[1.55]");
+const btnPClass = "py-2.5 px-5.5 rounded-container bg-brand text-white border-none text-ui font-medium cursor-pointer font-[inherit]";
+const btnSecClass = "py-2.25 px-4.5 rounded-container bg-transparent text-muted border border-border-strong text-ui cursor-pointer font-[inherit]";
+const flClass = "text-xs font-medium text-ink mb-1.25 flex items-center gap-1.5";
 
 export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], onClose, onSave, onDelete, onAccept, onSaveToProject, onDismissSuggested, projectClusters, onAssignToCluster, onOpenCluster, onDuplicateToCluster }) {
   const input = inputs.find((i) => i.id === inputId) || null;
@@ -66,24 +98,27 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
   const [dupeAnchorRect, setDupeAnchorRect] = useState(null);
   const dupeButtonRef = useRef(null);
 
-  useEffect(() => {
-    if (input) {
-      setFields({
-        name:              input.name              || "",
-        description:       input.description       || "",
-        source_url:        input.source_url        || "",
-        subtype:           input.subtype           || "signal",
-        steepled:          input.steepled          || [],
-        signal_strength:   input.signal_strength   || null,
-        source_confidence: input.source_confidence || null,
-        horizon:           input.horizon           || null,
-        project_id:        input.project_id        || "",
-      });
-    }
+  // Re-seed fields (and reset transient UI state) when the selected input
+  // changes, without an effect (react-hooks/set-state-in-effect) — adjust
+  // state during render.
+  const [prevInputId, setPrevInputId] = useState(inputId);
+  if (inputId !== prevInputId) {
+    setPrevInputId(inputId);
+    setFields(input ? {
+      name:              input.name              || "",
+      description:       input.description       || "",
+      source_url:        input.source_url        || "",
+      subtype:           input.subtype           || "signal",
+      steepled:          input.steepled          || [],
+      signal_strength:   input.signal_strength   || null,
+      source_confidence: input.source_confidence || null,
+      horizon:           input.horizon           || null,
+      project_id:        input.project_id        || "",
+    } : {});
     setEditing(false);
     setReassigning(false);
     setDupePickerOpen(false);
-  }, [inputId]);
+  }
 
   if (!input) return null;
 
@@ -119,44 +154,40 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
   const assignedProject  = projects.find((p) => p.id === (fields.project_id || input.project_id));
   const assignedClusters = clusters.filter((cl) => (cl.input_ids || []).includes(input.id));
 
+  const eligibleClusters = projectClusters
+    ? projectClusters.filter((cl) => !(cl.input_ids || []).includes(input.id))
+    : [];
+  const canDupe = !!onDuplicateToCluster && eligibleClusters.length > 0;
+
   return (
     <>
       {/* Backdrop */}
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 300 }} />
+      <div onClick={onClose} className="fixed inset-0 bg-black/25 z-[300]" />
 
       {/* Panel */}
-      <div style={{
-        position: "fixed", top: 0, right: 0, bottom: 0, width: 460,
-        background: c.white, borderLeft: `1px solid ${c.border}`,
-        zIndex: 301, display: "flex", flexDirection: "column",
-        animation: "drawerSlideIn 0.28s ease",
-      }}>
+      <div
+        className="fixed top-0 right-0 bottom-0 w-[460px] bg-white border-l border-border z-[301] flex flex-col"
+        style={{ animation: "drawerSlideIn 0.28s ease" }}
+      >
         {/* Header row 1: type badge + panel controls */}
-        <div style={{
-          padding: "18px 24px 12px",
-          display: "flex", alignItems: "center", gap: 10, flexShrink: 0,
-        }}>
+        <div className="pt-4.5 px-6 pb-3 flex items-center gap-2.5 shrink-0">
           <TypeChip typeId={input.subtype} />
-          <div style={{ flex: 1 }} />
+          <div className="flex-1" />
           {!editing && (
-            <button onClick={() => setEditing(true)} style={{ ...btnSec, fontSize: 11, padding: "5px 14px" }}>
+            <button onClick={() => setEditing(true)} className={clsx(btnSecClass, "text-[11px] py-1.25 px-3.5")}>
               Edit
             </button>
           )}
-          <button onClick={onClose} style={{ ...btnG, fontSize: 16, padding: "2px 6px", color: c.muted }}>×</button>
+          <button onClick={onClose} className="bg-transparent border-none cursor-pointer font-[inherit] text-base py-0.5 px-1.5 text-muted rounded-btn">×</button>
         </div>
 
         {/* Header row 2: scanner action buttons (AI suggested only) */}
         {!editing && isAiSuggested && (
-          <div style={{
-            padding: "0 24px 12px",
-            display: "flex", alignItems: "center", gap: 6,
-            borderBottom: `1px solid ${c.border}`,
-          }}>
+          <div className="px-6 pb-3 flex items-center gap-1.5 border-b border-border">
             {onAccept && (
               <button
                 onClick={() => { onAccept(input); onClose(); }}
-                style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: c.ink, color: c.white, border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}
+                className="text-[11px] py-1.25 px-3.5 rounded-container bg-ink text-white border-none cursor-pointer font-[inherit] font-medium"
               >
                 Accept →
               </button>
@@ -166,13 +197,14 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
                 projects={projects}
                 recommendedProjectId={input.metadata?.suggested_projects?.[0]?.id}
                 onAdd={(projectId) => onSaveToProject(input.id, projectId)}
-                buttonStyle={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: `1px solid ${c.borderStrong}`, cursor: "pointer", fontFamily: "inherit" }}
+                buttonStyle={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: "var(--color-muted)", border: "1px solid var(--color-border-strong)", cursor: "pointer", fontFamily: "inherit" }}
+                zIndex={OVERLAY_Z_INDEX}
               />
             )}
             {onDismissSuggested && (
               <button
                 onClick={() => { onDismissSuggested(input); onClose(); }}
-                style={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: c.muted, border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                className="text-[11px] py-1.25 px-3.5 rounded-container bg-transparent text-muted border-none cursor-pointer font-[inherit]"
               >
                 Dismiss
               </button>
@@ -182,21 +214,21 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
 
         {/* Divider for non-AI inputs (matches visual rhythm) */}
         {(editing || !isAiSuggested) && (
-          <div style={{ height: 1, background: c.border, flexShrink: 0 }} />
+          <div className="h-px bg-border shrink-0" />
         )}
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+        <div className="flex-1 overflow-y-auto py-5 px-6">
 
           {/* Title */}
-          <div style={{ marginBottom: 16 }}>
+          <div className="mb-4">
             {editing ? (
               <>
-                <div style={fl}>Title / Name</div>
-                <input style={inp} value={fields.name} onChange={(e) => set("name", e.target.value)} autoFocus />
+                <div className={flClass}>Title / Name</div>
+                <input className={inpClass} value={fields.name} onChange={(e) => set("name", e.target.value)} autoFocus />
               </>
             ) : (
-              <div style={{ fontSize: 17, fontWeight: 500, color: c.ink, lineHeight: 1.35 }}>{input.name}</div>
+              <div className="text-[17px] font-medium text-ink leading-[1.35]">{input.name}</div>
             )}
           </div>
 
@@ -209,11 +241,10 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
                 const t = INPUT_TYPES.find((x) => x.id === fields.subtype);
                 if (!t) return null;
                 return (
-                  <div style={{
-                    padding: "10px 14px", borderRadius: 8,
-                    background: t.bg, border: `1px solid ${t.border}`,
-                    fontSize: 12, color: t.color, lineHeight: 1.55, marginBottom: 22,
-                  }}>
+                  <div
+                    className="py-2.5 px-3.5 rounded-container border text-xs leading-body mb-5.5"
+                    style={{ background: t.bg, borderColor: t.border, color: t.color }}
+                  >
                     {t.description}
                   </div>
                 );
@@ -222,48 +253,48 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
           )}
 
           {/* Description */}
-          <div style={{ marginBottom: 16 }}>
+          <div className="mb-4">
             {editing ? (
               <>
-                <div style={fl}>Description</div>
-                <textarea style={ta} rows={3} value={fields.description} onChange={(e) => set("description", e.target.value)} />
+                <div className={flClass}>Description</div>
+                <textarea className={taClass} rows={3} value={fields.description} onChange={(e) => set("description", e.target.value)} />
               </>
             ) : input.description ? (
-              <div style={{ fontSize: 12, color: c.muted, lineHeight: 1.65 }}>{input.description}</div>
+              <div className="text-xs text-muted leading-[1.65]">{input.description}</div>
             ) : (
-              <div style={{ fontSize: 12, color: c.hint, fontStyle: "italic" }}>No description.</div>
+              <div className="text-xs text-hint italic">No description.</div>
             )}
           </div>
 
           {/* Source URL */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>Source</div>
+          <div className="mb-4">
+            <div className="text-[11px] tracking-[0.02em] text-hint mb-1.5">Source</div>
             {editing ? (
-              <input style={inp} type="url" value={fields.source_url} onChange={(e) => set("source_url", e.target.value)} placeholder="https://…" />
+              <input className={inpClass} type="url" value={fields.source_url} onChange={(e) => set("source_url", e.target.value)} placeholder="https://…" />
             ) : input.source_url ? (
-              <a href={sanitizeUrl(input.source_url)} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: c.blue700, wordBreak: "break-all" }}>
+              <a href={sanitizeUrl(input.source_url)} target="_blank" rel="noreferrer" className="text-xs text-blue-700 break-all">
                 {input.source_url}
               </a>
             ) : (
-              <span style={{ fontSize: 12, color: c.hint, fontStyle: "italic" }}>No source URL.</span>
+              <span className="text-xs text-hint italic">No source URL.</span>
             )}
           </div>
 
           {/* Divider */}
-          <div style={{ height: 1, background: c.border, margin: "16px 0" }} />
+          <div className="h-px bg-border my-4" />
 
           {/* STEEPLED */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>STEEPLED</div>
+          <div className="mb-4">
+            <div className="text-[11px] uppercase tracking-[0.02em] text-hint mb-1.5">STEEPLED</div>
             {editing ? (
               <SteepleSelector selected={fields.steepled} onToggle={toggleSteeple} />
             ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+              <div className="flex flex-wrap gap-1.25">
                 {(input.steepled || []).length === 0 ? (
-                  <span style={{ fontSize: 12, color: c.hint, fontStyle: "italic" }}>None tagged.</span>
+                  <span className="text-xs text-hint italic">None tagged.</span>
                 ) : (
                   (input.steepled || []).map((t) => (
-                    <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>{t}</span>
+                    <span key={t} className="text-[10px] py-0.5 px-1.75 rounded-pill bg-surface-alt text-muted border border-border">{t}</span>
                   ))
                 )}
               </div>
@@ -271,12 +302,12 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
           </div>
 
           {/* Cluster membership */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>Cluster</div>
+          <div className="mb-4">
+            <div className="text-[11px] tracking-[0.02em] text-hint mb-1.5">Cluster</div>
             {projectClusters && onAssignToCluster ? (
               assignedClusters.length === 0 || reassigning ? (
                 <select
-                  style={{ ...inp, fontSize: 12, appearance: "none" }}
+                  className="w-full py-2.25 px-2.75 border border-border-strong rounded-container bg-white text-ink text-xs font-[inherit] outline-none appearance-none box-border"
                   defaultValue=""
                   onChange={(e) => {
                     if (!e.target.value) return;
@@ -290,35 +321,34 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
                   ))}
                 </select>
               ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <div className="flex items-center gap-2 flex-wrap">
                   {assignedClusters.map((cl) => (
                     <span
                       key={cl.id}
                       onClick={() => onOpenCluster?.(cl.id)}
-                      style={{
-                        fontSize: 11, padding: "3px 10px", borderRadius: 8,
-                        background: c.blue50, color: c.blue700, border: `1px solid ${c.blueBorder}`,
-                        cursor: onOpenCluster ? "pointer" : "default",
-                      }}
+                      className={clsx(
+                        "text-[11px] py-0.75 px-2.5 rounded-container bg-blue-50 text-blue-700 border border-blue-border",
+                        onOpenCluster ? "cursor-pointer" : "cursor-default",
+                      )}
                     >
-                      {cl.name} {onOpenCluster && <span style={{ opacity: 0.6 }}>›</span>}
+                      {cl.name} {onOpenCluster && <span className="opacity-60">›</span>}
                     </span>
                   ))}
                   <button
                     onClick={() => setReassigning(true)}
-                    style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
+                    className="text-[11px] text-muted bg-transparent border-none cursor-pointer font-[inherit] p-0"
                   >
                     Reassign
                   </button>
                 </div>
               )
             ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+              <div className="flex flex-wrap gap-1.25">
                 {assignedClusters.length === 0 ? (
-                  <span style={{ fontSize: 12, color: c.hint, fontStyle: "italic" }}>Unassigned</span>
+                  <span className="text-xs text-hint italic">Unassigned</span>
                 ) : (
                   assignedClusters.map((cl) => (
-                    <span key={cl.id} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 8, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>
+                    <span key={cl.id} className="text-[10px] py-0.5 px-2 rounded-container bg-surface-alt text-muted border border-border">
                       {cl.name}
                     </span>
                   ))
@@ -328,8 +358,8 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
           </div>
 
           {/* Signal strength */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>Signal strength</div>
+          <div className="mb-4">
+            <div className="text-[11px] tracking-[0.02em] text-hint mb-1.5">Signal strength</div>
             {editing ? (
               <ThreeCardSelector
                 label=""
@@ -339,23 +369,25 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
               />
             ) : (() => {
               const opt = SIGNAL_STRENGTH_OPTIONS.find((o) => o.value === input.signal_strength);
-              const [col, bg, brd] = STRENGTH_COLORS[input.signal_strength] || [c.hint, c.surfaceAlt, c.border];
               return opt ? (
                 <div>
-                  <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}` }}>
+                  <span className={clsx(
+                    "text-[11px] py-0.5 px-2.25 rounded-pill border",
+                    STRENGTH_CLASSES[input.signal_strength] || "text-hint bg-surface-alt border-border",
+                  )}>
                     {opt.title}
                   </span>
-                  <div style={{ fontSize: 11, color: c.muted, marginTop: 5, lineHeight: 1.45 }}>{opt.desc}</div>
+                  <div className="text-[11px] text-muted mt-1.25 leading-[1.45]">{opt.desc}</div>
                 </div>
               ) : (
-                <span style={{ fontSize: 11, color: c.hint, fontStyle: "italic" }}>Not set</span>
+                <span className="text-[11px] text-hint italic">Not set</span>
               );
             })()}
           </div>
 
           {/* Source confidence */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>Source confidence</div>
+          <div className="mb-4">
+            <div className="text-[11px] tracking-[0.02em] text-hint mb-1.5">Source confidence</div>
             {editing ? (
               <ThreeCardSelector
                 label=""
@@ -365,44 +397,43 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
               />
             ) : (() => {
               const opt = SOURCE_CONFIDENCE_OPTIONS.find((o) => o.value === input.source_confidence);
-              const [col, bg, brd] = CONFIDENCE_COLORS[input.source_confidence] || [c.hint, c.surfaceAlt, c.border];
               return opt ? (
                 <div>
-                  <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}` }}>
+                  <span className={clsx(
+                    "text-[11px] py-0.5 px-2.25 rounded-pill border",
+                    CONFIDENCE_CLASSES[input.source_confidence] || "text-hint bg-surface-alt border-border",
+                  )}>
                     {opt.title}
                   </span>
-                  <div style={{ fontSize: 11, color: c.muted, marginTop: 5, lineHeight: 1.45 }}>{opt.desc}</div>
+                  <div className="text-[11px] text-muted mt-1.25 leading-[1.45]">{opt.desc}</div>
                 </div>
               ) : (
-                <span style={{ fontSize: 11, color: c.hint, fontStyle: "italic" }}>Not set</span>
+                <span className="text-[11px] text-hint italic">Not set</span>
               );
             })()}
           </div>
 
           {/* Horizon */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>Horizon</div>
+          <div className="mb-4">
+            <div className="text-[11px] tracking-[0.02em] text-hint mb-1.5">Horizon</div>
             {editing ? (
               <HorizonSelector selected={fields.horizon} onSelect={(v) => set("horizon", v)} />
             ) : (
-              (() => {
-                const h = input.horizon;
-                const [col, bg, brd] = HORIZON_COLORS[h] || [c.hint, "transparent", c.border];
-                return (
-                  <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}` }}>
-                    {h || "Not set"}
-                  </span>
-                );
-              })()
+              <span className={clsx(
+                "text-[11px] py-0.5 px-2.25 rounded-pill border",
+                HORIZON_CLASSES[input.horizon] || "text-hint bg-transparent border-border",
+              )}>
+                {input.horizon || "Not set"}
+              </span>
             )}
           </div>
 
           {/* Project assignment */}
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 6 }}>Project</div>
+          <div className="mb-2">
+            <div className="text-[11px] tracking-[0.02em] text-hint mb-1.5">Project</div>
             {editing ? (
               <select
-                style={{ ...inp, appearance: "none" }}
+                className={clsx(inpClass, "appearance-none")}
                 value={fields.project_id}
                 onChange={(e) => set("project_id", e.target.value)}
               >
@@ -410,110 +441,98 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             ) : (
-              <span style={{
-                fontSize: 12, padding: "2px 9px", borderRadius: 8,
-                background: assignedProject ? c.blue50 : c.surfaceAlt,
-                color: assignedProject ? c.blue700 : c.hint,
-                border: `1px solid ${assignedProject ? c.blueBorder : c.border}`,
-              }}>
+              <span className={clsx(
+                "text-xs py-0.5 px-2.25 rounded-container border",
+                assignedProject ? "bg-blue-50 text-blue-700 border-blue-border" : "bg-surface-alt text-hint border-border",
+              )}>
                 {assignedProject ? assignedProject.name : "Inbox"}
               </span>
             )}
           </div>
         </div>
 
-        {/* Footer (edit mode only) */}
+        {/* Footer (edit mode): Cancel/Save row, then Danger Zone row below a
+            second border — matches EditProjectDrawer.jsx's convention. */}
         {editing && (
-          <div style={{
-            padding: "14px 24px 20px", borderTop: `1px solid ${c.border}`,
-            display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, flexShrink: 0,
-          }}>
-            <button onClick={handleCancel} style={btnSec}>Cancel</button>
-            <button onClick={handleSave} style={btnP}>Save changes</button>
+          <div className="shrink-0">
+            <div className="pt-3.5 px-6 pb-5 border-t border-border flex items-center justify-end gap-2">
+              <button onClick={handleCancel} className={btnSecClass}>Cancel</button>
+              <button onClick={handleSave} className={btnPClass}>Save changes</button>
+            </div>
+            {onDelete && !isAiSuggested && (
+              <div className="px-6 pb-5 border-t border-border">
+                <div className="pt-3.5 flex items-center justify-between">
+                  <div className="text-[11px] text-hint">Danger zone</div>
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="text-[11px] py-1.25 px-3 rounded-[6px] border border-red-border bg-transparent text-red-800 cursor-pointer font-[inherit]"
+                  >
+                    Delete input
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
-        {!editing && (onDelete || onDuplicateToCluster) && !isAiSuggested && (() => {
-          const eligibleClusters = projectClusters
-            ? projectClusters.filter((cl) => !(cl.input_ids || []).includes(input.id))
-            : [];
-          const canDupe = !!onDuplicateToCluster && eligibleClusters.length > 0;
-          return (
-            <div style={{ padding: "12px 24px 18px", borderTop: `1px solid ${c.border}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              {canDupe ? (
-                <div style={{ position: "relative" }}>
-                  <button
-                    ref={dupeButtonRef}
-                    onClick={() => {
-                      const rect = dupeButtonRef.current?.getBoundingClientRect();
-                      setDupeAnchorRect(rect ?? null);
-                      setDupePickerOpen((o) => !o);
-                    }}
-                    style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, border: `1px solid ${c.borderStrong}`, background: "transparent", color: c.muted, cursor: "pointer", fontFamily: "inherit" }}
+
+        {/* Footer (view mode): Duplicate to cluster only — a read-adjacent
+            convenience action (creates a copy elsewhere, doesn't mutate or
+            destroy this input), so it stays available in view mode. */}
+        {!editing && canDupe && !isAiSuggested && (
+          <div className="pt-3 px-6 pb-4.5 border-t border-border shrink-0">
+            <div className="relative">
+              <button
+                ref={dupeButtonRef}
+                onClick={() => {
+                  const rect = dupeButtonRef.current?.getBoundingClientRect();
+                  setDupeAnchorRect(rect ?? null);
+                  setDupePickerOpen((o) => !o);
+                }}
+                className="text-[11px] py-1.25 px-3 rounded-[6px] border border-border-strong bg-transparent text-muted cursor-pointer font-[inherit]"
+              >
+                Duplicate to cluster
+              </button>
+              {dupePickerOpen && dupeAnchorRect && createPortal(
+                <>
+                  <div onClick={() => setDupePickerOpen(false)} className="fixed inset-0" style={{ zIndex: OVERLAY_Z_INDEX }} />
+                  <div
+                    className="bg-white border border-border rounded-pill shadow-[0_6px_24px_rgba(0,0,0,0.12)] min-w-[220px] overflow-hidden"
+                    style={computeFlipPosition(dupeAnchorRect, {
+                      panelHeight: DUPE_PICKER_MAX_HEIGHT,
+                      preferredDirection: "up",
+                      align: "left",
+                      zIndex: OVERLAY_Z_INDEX + 1,
+                    })}
                   >
-                    Duplicate to cluster
-                  </button>
-                  {dupePickerOpen && dupeAnchorRect && createPortal(
-                    <>
-                      <div onClick={() => setDupePickerOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 400 }} />
-                      <div style={{
-                        position: "fixed",
-                        bottom: window.innerHeight - dupeAnchorRect.top + 4,
-                        left: dupeAnchorRect.left,
-                        background: c.white,
-                        border: `1px solid ${c.border}`,
-                        borderRadius: 10,
-                        boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
-                        minWidth: 220,
-                        zIndex: 401,
-                        overflow: "hidden",
-                      }}>
-                        <div style={{ padding: "8px 14px 4px", fontSize: 11, letterSpacing: "0.02em", color: c.muted, fontWeight: 500 }}>
-                          Copy to cluster
-                        </div>
-                        <div style={{ maxHeight: 220, overflowY: "auto" }}>
-                          {eligibleClusters.map((cl) => (
-                            <button
-                              key={cl.id}
-                              onClick={async () => {
-                                setDupePickerOpen(false);
-                                await onDuplicateToCluster(cl.id);
-                              }}
-                              style={{
-                                display: "block", width: "100%", padding: "9px 14px",
-                                background: "transparent", border: "none",
-                                borderBottom: `1px solid ${c.border}`,
-                                textAlign: "left", cursor: "pointer",
-                                fontSize: 12, color: c.ink, fontFamily: "inherit",
-                              }}
-                              onMouseEnter={(e) => { e.currentTarget.style.background = c.surfaceAlt; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                            >
-                              {cl.name}
-                            </button>
-                          ))}
-                        </div>
-                        <div style={{ padding: "6px 14px", borderTop: `1px solid ${c.border}` }}>
-                          <button onClick={() => setDupePickerOpen(false)} style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    </>,
-                    document.body
-                  )}
-                </div>
-              ) : <div />}
-              {onDelete && (
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  style={{ fontSize: 11, padding: "5px 12px", borderRadius: 6, border: `1px solid ${c.redBorder}`, background: "transparent", color: c.red800, cursor: "pointer", fontFamily: "inherit" }}
-                >
-                  Delete input
-                </button>
+                    <div className="pt-2 px-3.5 pb-1 text-[11px] tracking-[0.02em] text-muted font-medium">
+                      Copy to cluster
+                    </div>
+                    <div className="max-h-[220px] overflow-y-auto">
+                      {eligibleClusters.map((cl) => (
+                        <button
+                          key={cl.id}
+                          onClick={async () => {
+                            setDupePickerOpen(false);
+                            await onDuplicateToCluster(cl.id);
+                          }}
+                          className="block w-full py-2.25 px-3.5 bg-transparent border-none border-b border-border text-left cursor-pointer text-xs text-ink font-[inherit] hover:bg-surface-alt"
+                        >
+                          {cl.name}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="py-1.5 px-3.5 border-t border-border">
+                      <button onClick={() => setDupePickerOpen(false)} className="text-[11px] text-muted bg-transparent border-none cursor-pointer font-[inherit]">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </>,
+                document.body
               )}
             </div>
-          );
-        })()}
+          </div>
+        )}
       </div>
 
       {confirmDelete && (

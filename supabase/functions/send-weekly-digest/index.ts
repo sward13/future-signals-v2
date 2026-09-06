@@ -89,7 +89,7 @@ async function runDigest() {
 
   const { data: allProjects, error: projErr } = await supabase
     .from("projects")
-    .select("id, workspace_id, domain, scanning_enabled")
+    .select("id, workspace_id, domains, custom_domain, scanning_enabled")
     .in("workspace_id", workspaceIds);
   if (projErr) throw projErr;
 
@@ -139,7 +139,12 @@ async function runDigest() {
       continue;
     }
 
-    const domains = [...new Set(scanningProjects.map((p) => p.domain).filter(Boolean))] as string[];
+    const domains = [...new Set(
+      scanningProjects.flatMap((p) => [
+        ...((p.domains ?? []) as string[]),
+        ...(p.custom_domain ? [p.custom_domain as string] : []),
+      ]),
+    )] as string[];
 
     const meta: DigestMeta = {
       userEmail: user.email,

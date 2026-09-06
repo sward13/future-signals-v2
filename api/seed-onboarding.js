@@ -39,13 +39,15 @@ export default async function handler(req, res) {
 
     const { data: project, error: projectError } = await supabase
       .from('projects')
-      .select('id, domain, question')
+      .select('id, domains, custom_domain, question')
       .eq('id', projectId)
       .eq('workspace_id', workspace.id)
       .single();
     if (projectError || !project) return res.status(404).json({ error: 'Project not found' });
 
-    if (!project.domain) return res.status(200).json({ candidates: [] });
+    // A project with no predefined domains and no custom domain can't be seeded.
+    const hasAnyDomain = (project.domains?.length ?? 0) > 0 || !!project.custom_domain;
+    if (!hasAnyDomain) return res.status(200).json({ candidates: [] });
 
     // ── Primary: read from inputs promoted by the Layer 3 scorer (score.js) ──
     //
@@ -209,8 +211,10 @@ export default async function handler(req, res) {
         keyQuestionEmbedding = embeddingResponse.data[0].embedding;
       }
 
+      // Curated candidates come only from predefined domains — a custom domain
+      // has no curated sources. An empty array matches nothing (correct).
       const { data: pool } = await supabase.rpc('get_seeding_candidates', {
-        p_domain: project.domain,
+        p_domains: project.domains ?? [],
       });
 
       const fallbackScored = (pool || [])

@@ -7,9 +7,10 @@
  * @param {{ appState: object }} props
  */
 import { useState, useMemo, useEffect } from "react";
-import { createPortal } from "react-dom";
-import { c, inp, btnP, btnSm, btnSec, btnG, fontHeading, countBadge } from "../../styles/tokens.js";
+import { c, inp, btnP, btnSm, btnG, fontHeading, countBadge } from "../../styles/tokens.js";
+import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { CirclePlus, Sparkles } from "lucide-react";
+import { projectDomainLabel } from "../../lib/projectDomains.js";
 import { DragGhost } from "../clusters/DragGhost.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
@@ -114,7 +115,7 @@ function ProjectPickerPopover({ projects, onSelect, onClose, onCreateProject }) 
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                  <div style={{ fontSize: 10, color: c.hint }}>{p.domain}</div>
+                  <div style={{ fontSize: 10, color: c.hint }}>{projectDomainLabel(p)}</div>
                 </div>
               </button>
             ))}
@@ -465,41 +466,6 @@ function SearchFilterBar({
   );
 }
 
-// ─── Confirm delete modal ────────────────────────────────────────────────────
-
-function ConfirmDeleteModal({ count, onConfirm, onCancel }) {
-  return createPortal(
-    <>
-      <div onClick={onCancel} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 400 }} />
-      <div style={{
-        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-        background: c.white, borderRadius: 12, padding: "24px 28px",
-        boxShadow: "0 16px 48px rgba(0,0,0,0.18)", zIndex: 401, minWidth: 320,
-        fontFamily: "inherit",
-      }}>
-        <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
-          Delete {count} input{count !== 1 ? "s" : ""}?
-        </div>
-        <div style={{ fontSize: 12, color: c.muted, marginBottom: 20, lineHeight: 1.5 }}>
-          This cannot be undone.
-        </div>
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <button onClick={onCancel} style={{ ...btnSec, fontSize: 12, padding: "7px 16px" }}>
-            Cancel
-          </button>
-          <button onClick={onConfirm} style={{
-            padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 500,
-            cursor: "pointer", fontFamily: "inherit", border: "none",
-            background: "#DC2626", color: "#fff",
-          }}>
-            Delete
-          </button>
-        </div>
-      </div>
-    </>,
-    document.body
-  );
-}
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
@@ -570,7 +536,7 @@ export default function Inbox({ appState }) {
   // one entry per project (name + domain subtitle).
   const aiProjectFilterOptions = useMemo(() => [
     { value: "", label: "All projects" },
-    ...projects.map((p) => ({ value: p.id, label: p.name, sublabel: p.domain })),
+    ...projects.map((p) => ({ value: p.id, label: p.name, sublabel: projectDomainLabel(p) })),
   ], [projects]);
 
   // Apply search + filters independently per section
@@ -952,11 +918,7 @@ export default function Inbox({ appState }) {
             </div>
             <button
               onClick={() => setConfirmDeleteManualIds([...selectedManualIds])}
-              style={{
-                padding: "7px 14px", borderRadius: 7, fontSize: 11, fontWeight: 500,
-                cursor: "pointer", fontFamily: "inherit",
-                background: "rgb(254, 226, 226)", color: "rgb(185, 28, 28)", border: "none",
-              }}
+              className="py-1.75 px-3.5 rounded-btn text-[11px] font-medium cursor-pointer font-[inherit] border-none bg-[#FEE2E2] text-[#B91C1C]"
             >
               Delete
             </button>
@@ -1102,10 +1064,11 @@ export default function Inbox({ appState }) {
       />
 
       {confirmDeleteManualIds && (
-        <ConfirmDeleteModal
-          count={confirmDeleteManualIds.length}
+        <ConfirmDialog
+          title={`Delete ${confirmDeleteManualIds.length} input${confirmDeleteManualIds.length !== 1 ? "s" : ""}?`}
+          message="This cannot be undone."
           onConfirm={handleBulkDeleteManual}
-          onCancel={() => setConfirmDeleteManualIds(null)}
+          onClose={() => setConfirmDeleteManualIds(null)}
         />
       )}
     </>

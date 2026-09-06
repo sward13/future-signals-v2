@@ -68,12 +68,40 @@ function SectionHeader({ title, count, action }) {
   );
 }
 
+// ─── Scenario card forces footer (Driving + Suppressed) ───────────────────────
+// Dot colors match ClusterForcePicker's role accents (green700 = Driving,
+// cyan700 = Suppressed) so the same role reads consistently between the
+// builder and this card.
+
+function ForceRow({ label, dotColor, ids, clusterName }) {
+  if (ids.length === 0) return null;
+  return (
+    <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+      <span style={{ width: 5, height: 5, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+      <span style={{ fontSize: 9, fontWeight: 500, color: c.hint, textTransform: "uppercase", letterSpacing: "0.04em", marginRight: 2 }}>
+        {label}
+      </span>
+      {ids.slice(0, 4).map((id) => (
+        <span key={id} style={{
+          fontSize: 10, color: c.muted, background: c.bg,
+          borderRadius: 4, padding: "1px 6px",
+          border: `1px solid ${c.border}`,
+        }}>
+          {clusterName(id)}
+        </span>
+      ))}
+      {ids.length > 4 && <span style={{ fontSize: 10, color: c.hint }}>+{ids.length - 4}</span>}
+    </div>
+  );
+}
+
 // ─── Scenario card (2-col grid) ───────────────────────────────────────────────
 
 function ScenarioCard({ scenario, clusterName, onClick }) {
   const [hovered, setHovered] = useState(false);
   const diffs = Array.isArray(scenario.key_differences) ? scenario.key_differences : [];
   const forces = Array.isArray(scenario.driving_forces) ? scenario.driving_forces : [];
+  const suppressed = Array.isArray(scenario.suppressed_forces) ? scenario.suppressed_forces : [];
 
   return (
     <div
@@ -123,24 +151,14 @@ function ScenarioCard({ scenario, clusterName, onClick }) {
         </div>
       )}
 
-      {/* Driving forces footer */}
-      {forces.length > 0 && (
+      {/* Driving + Suppressed forces footer */}
+      {(forces.length > 0 || suppressed.length > 0) && (
         <div style={{
-          display: "flex", gap: 4, flexWrap: "wrap",
+          display: "flex", flexDirection: "column", gap: 5,
           paddingTop: 10, borderTop: `1px solid ${c.border}`,
         }}>
-          {forces.slice(0, 4).map((id) => (
-            <span key={id} style={{
-              fontSize: 10, color: c.muted, background: c.bg,
-              borderRadius: 4, padding: "1px 6px",
-              border: `1px solid ${c.border}`,
-            }}>
-              {clusterName(id)}
-            </span>
-          ))}
-          {forces.length > 4 && (
-            <span style={{ fontSize: 10, color: c.hint }}>+{forces.length - 4}</span>
-          )}
+          <ForceRow label="Driving" dotColor={c.green700} ids={forces} clusterName={clusterName} />
+          <ForceRow label="Suppressed" dotColor={c.cyan700} ids={suppressed} clusterName={clusterName} />
         </div>
       )}
     </div>

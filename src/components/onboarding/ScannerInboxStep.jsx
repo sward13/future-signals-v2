@@ -3,6 +3,7 @@ import { RadioOff } from "lucide-react";
 import { supabase } from "../../lib/supabase.js";
 import { c, btnP } from "../../styles/tokens.js";
 import logoLight from "../../assets/logo_light.svg";
+import { deriveSourceConfidence } from "../../../server-lib/scoring.js";
 
 // Dot index 3 active (0-indexed)
 const STEP_DOT = 3;
@@ -10,12 +11,6 @@ const TOTAL_DOTS = 5;
 
 // Threshold for "unlock AI clustering" messaging
 const CLUSTER_THRESHOLD = 10;
-
-const CREDIBILITY_TO_SOURCE_CONFIDENCE = {
-  institutional: "high",
-  specialist:    "medium",
-  general:       "low",
-};
 
 function StepDots() {
   return (
@@ -214,8 +209,7 @@ export function ScannerInboxStep({
 
     const results = await Promise.allSettled(
       selected.map((candidate) => {
-        const sourceConfidence =
-          CREDIBILITY_TO_SOURCE_CONFIDENCE[candidate.source_credibility] ?? null;
+        const sourceConfidence = deriveSourceConfidence({ credibility: candidate.source_credibility });
 
         return supabase
           .from("inputs")

@@ -19,6 +19,7 @@
 import { useState } from "react";
 import logoLight from "../../assets/logo_light.svg";
 import { c, countBadge } from "../../styles/tokens.js";
+import { projectDomainLabel } from "../../lib/projectDomains.js";
 import {
   Home, Inbox as InboxIcon, PanelsTopLeft, SquareArrowRight,
   Boxes, Network, LayoutDashboard, ChartNoAxesCombined, Download,
@@ -196,9 +197,9 @@ export function Sidebar({
                 <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {p.name}
                 </div>
-                {p.domain && (
+                {projectDomainLabel(p) && (
                   <div style={{ fontSize: 10, color: c.hint, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {p.domain}
+                    {projectDomainLabel(p)}
                   </div>
                 )}
               </button>

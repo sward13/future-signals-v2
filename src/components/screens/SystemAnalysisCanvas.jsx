@@ -8,6 +8,9 @@ import { useState, useEffect, useMemo } from "react";
 import { c, btnSec, fontHeading } from "../../styles/tokens.js";
 import { ProjectPicker } from "../shared/ProjectPicker.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
+import { RichTextField } from "../shared/RichTextField.jsx";
+import { textToDoc, docToText, docIsEmpty } from "../../lib/richtextDoc.js";
+import { serializeRichText } from "../shared/richtext/serialize.js";
 
 // ─── Panel definitions ─────────────────────────────────────────────────────────
 
@@ -57,12 +60,20 @@ const PANELS = [
 function getDefault(panel) {
   if (panel.type === "chips")      return [];
   if (panel.type === "confidence") return null;
-  return "";
+  return null; // text panels hold a rich-text JSON doc (null when empty)
 }
 
-/** Returns true if the given panel value contains practitioner-entered content. */
+/**
+ * Returns true if the given panel value contains practitioner-entered content.
+ * Text panels now carry a rich-text JSON doc in the canvas, but this is also
+ * called from ProjectOverview with the saved legacy text column (a string) —
+ * so tolerate both shapes.
+ */
 export function analysisHasCont(panelType, value) {
-  if (panelType === "text")  return (value || "").trim().length > 0;
+  if (panelType === "text") {
+    if (value && typeof value === "object") return !docIsEmpty(value); // rich-text doc
+    return (value || "").trim().length > 0;                            // legacy string
+  }
   if (panelType === "chips") return (value || []).length > 0;
   return value !== null && value !== undefined;
 }
@@ -198,19 +209,17 @@ function AnalysisPanel({ panel, value, onChange, selected, onSelect }) {
 
       {/* Content */}
       {panel.type === "text" && (
-        <textarea
-          value={value || ""}
-          onChange={(e) => { e.stopPropagation(); onChange(e.target.value); }}
-          onClick={(e) => e.stopPropagation()}
-          onFocus={() => onSelect(panel.id)}
-          placeholder={panel.placeholder}
-          style={{
-            flex: 1, width: "100%", boxSizing: "border-box",
-            padding: "5px 9px 7px", border: "none", background: "transparent",
-            color: c.ink, fontSize: 11, fontFamily: "inherit",
-            outline: "none", resize: "none", lineHeight: 1.6, cursor: "text",
-          }}
-        />
+        <div
+          onFocusCapture={() => onSelect(panel.id)}
+          style={{ flex: 1, boxSizing: "border-box", padding: "5px 9px 7px", overflowY: "auto", cursor: "text" }}
+        >
+          <RichTextField
+            variant="compact"
+            value={value}
+            onChange={onChange}
+            placeholder={panel.placeholder}
+          />
+        </div>
       )}
       {panel.type === "chips" && (
         <ChipsPanel
@@ -241,23 +250,33 @@ export default function SystemAnalysisCanvas({ appState }) {
   const project  = projects.find((p) => p.id === activeProjectId) || null;
   const analysis = (analyses || []).find((a) => a.project_id === activeProjectId) || null;
 
+  // The saved value for a panel, in the shape the canvas edits it. Text panels
+  // are rich-text docs: prefer the stored _doc, else wrap the legacy text column.
+  const savedPanelValue = (panel) => {
+    if (!analysis) return getDefault(panel);
+    if (panel.type === "text") {
+      return analysis[`${panel.id}_doc`] ?? textToDoc(analysis[panel.id] || "");
+    }
+    return analysis[panel.id] ?? getDefault(panel);
+  };
+
   // Sync local fields from the saved analysis whenever the project or loaded record changes
   useEffect(() => {
     const init = {};
-    for (const panel of PANELS) {
-      init[panel.id] = analysis ? (analysis[panel.id] ?? getDefault(panel)) : getDefault(panel);
-    }
+    for (const panel of PANELS) init[panel.id] = savedPanelValue(panel);
+    // Intentional: reset the editable local copy when the loaded record changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalFields(init);
   }, [activeProjectId, analysis?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isDirty = useMemo(() => {
     for (const panel of PANELS) {
       const local = localFields[panel.id] ?? getDefault(panel);
-      const saved = analysis ? (analysis[panel.id] ?? getDefault(panel)) : getDefault(panel);
+      const saved = savedPanelValue(panel);
       if (JSON.stringify(local) !== JSON.stringify(saved)) return true;
     }
     return false;
-  }, [localFields, analysis]);
+  }, [localFields, analysis]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getValue = (panelId) => localFields[panelId] ?? getDefault(PANELS.find((p) => p.id === panelId));
 
@@ -265,8 +284,22 @@ export default function SystemAnalysisCanvas({ appState }) {
     setLocalFields((prev) => ({ ...prev, [panelId]: val }));
   };
 
-  const handleSave = () => {
-    upsertAnalysis(activeProjectId, localFields);
+  const handleSave = async () => {
+    // Build the DB payload. Text panels dual-write: the JSON doc is the source
+    // of truth (normalized to the allowed schema); the legacy text column holds
+    // a plain flattening for fallback/rollback. Chips/confidence are unchanged.
+    const dbFields = {};
+    for (const panel of PANELS) {
+      const val = localFields[panel.id] ?? getDefault(panel);
+      if (panel.type === "text") {
+        const norm = await serializeRichText(val);
+        dbFields[`${panel.id}_doc`] = norm;
+        dbFields[panel.id] = norm ? docToText(norm) : null;
+      } else {
+        dbFields[panel.id] = val;
+      }
+    }
+    upsertAnalysis(activeProjectId, dbFields);
     showToast("Analysis saved");
   };
 

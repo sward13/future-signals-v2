@@ -6,6 +6,13 @@ import { c, inp, btnP, btnSec, fontHeading, tabCount } from "../../styles/tokens
 import { STEEPLED } from "../../data/seeds.js";
 import { HorizTag, SubtypeTag } from "../shared/Tag.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
+import { computeFlipPosition } from "../../lib/panelPosition.js";
+import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
+
+// Worst-case height estimates for computeFlipPosition's viewport-collision
+// check, matching each portal's actual rendered content below.
+const ROW_MENU_MAX_HEIGHT = 60;    // one "Duplicate to cluster" row
+const DUPE_PICKER_MAX_HEIGHT = 300; // header + 220px-capped list + footer
 
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { AddFromInboxModal } from "../inputs/AddFromInboxModal.jsx";
@@ -183,42 +190,6 @@ function AiRow({ inp, selected, onCheck, activeProjectId, onAccept, onDismiss })
         </button>
       </div>
     </div>
-  );
-}
-
-// ─── Confirm delete modal ────────────────────────────────────────────────────
-
-function ConfirmDeleteModal({ count, onConfirm, onCancel }) {
-  return createPortal(
-    <>
-      <div onClick={onCancel} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 400 }} />
-      <div style={{
-        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-        background: c.white, borderRadius: 12, padding: "24px 28px",
-        boxShadow: "0 16px 48px rgba(0,0,0,0.18)", zIndex: 401, minWidth: 320,
-        fontFamily: "inherit",
-      }}>
-        <div style={{ fontSize: 14, fontWeight: 500, color: c.ink, marginBottom: 6 }}>
-          Delete {count} input{count !== 1 ? "s" : ""}?
-        </div>
-        <div style={{ fontSize: 12, color: c.muted, marginBottom: 20, lineHeight: 1.5 }}>
-          This cannot be undone.
-        </div>
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <button onClick={onCancel} style={{ ...btnSec, fontSize: 12, padding: "7px 16px" }}>
-            Cancel
-          </button>
-          <button onClick={onConfirm} style={{
-            padding: "7px 16px", borderRadius: 8, fontSize: 12, fontWeight: 500,
-            cursor: "pointer", fontFamily: "inherit", border: "none",
-            background: "#DC2626", color: "#fff",
-          }}>
-            Delete
-          </button>
-        </div>
-      </div>
-    </>,
-    document.body
   );
 }
 
@@ -966,30 +937,22 @@ export default function ProjectDetail({ appState }) {
 
               {/* Multi-select action bar — sticky at bottom */}
               {someSelected && (
-                <div style={{
-                  position: "sticky", bottom: 0,
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "9px 14px",
-                  background: "rgb(249, 249, 247)",
-                  borderTop: `1px solid ${c.border}`,
-                  animation: "slideUp 0.16s ease",
-                }}>
-                  <span style={{ fontSize: 12, color: c.muted, flex: 1 }}>
+                <div
+                  className="sticky bottom-0 flex items-center gap-2 py-2.25 px-3.5 bg-surface-alt border-t border-border"
+                  style={{ animation: "slideUp 0.16s ease" }}
+                >
+                  <span className="text-xs text-muted flex-1">
                     {selectedIds.size} selected
                   </span>
                   <button
                     onClick={() => setConfirmDeleteIds([...selectedIds])}
-                    style={{
-                      padding: "4px 10px", borderRadius: 7, fontSize: 11, fontWeight: 500,
-                      cursor: "pointer", fontFamily: "inherit", border: "none",
-                      background: "rgb(254, 226, 226)", color: "rgb(185, 28, 28)",
-                    }}
+                    className="py-1 px-2.5 rounded-btn text-[11px] font-medium cursor-pointer font-[inherit] border-none bg-[#FEE2E2] text-[#B91C1C]"
                   >
                     Delete
                   </button>
                   <button
                     onClick={() => { setSelectedIds(new Set()); setLastCheckedId(null); }}
-                    style={{ fontSize: 11, color: "rgb(102, 102, 102)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                    className="text-[11px] text-muted bg-transparent border-none cursor-pointer font-[inherit]"
                   >
                     ✕ Clear
                   </button>
@@ -1064,10 +1027,11 @@ export default function ProjectDetail({ appState }) {
       `}</style>
 
       {confirmDeleteIds && (
-        <ConfirmDeleteModal
-          count={confirmDeleteIds.length}
+        <ConfirmDialog
+          title={`Delete ${confirmDeleteIds.length} input${confirmDeleteIds.length !== 1 ? "s" : ""}?`}
+          message="This cannot be undone."
           onConfirm={handleBulkDelete}
-          onCancel={() => setConfirmDeleteIds(null)}
+          onClose={() => setConfirmDeleteIds(null)}
         />
       )}
 
@@ -1079,9 +1043,7 @@ export default function ProjectDetail({ appState }) {
             style={{ position: "fixed", inset: 0, zIndex: 200 }}
           />
           <div style={{
-            position: "fixed",
-            top: rowMenu.rect.bottom + 4,
-            right: window.innerWidth - rowMenu.rect.right,
+            ...computeFlipPosition(rowMenu.rect, { panelHeight: ROW_MENU_MAX_HEIGHT }),
             background: c.white,
             border: `1px solid ${c.border}`,
             borderRadius: 8,
@@ -1126,9 +1088,7 @@ export default function ProjectDetail({ appState }) {
               style={{ position: "fixed", inset: 0, zIndex: 200 }}
             />
             <div style={{
-              position: "fixed",
-              top: dupePicker.rect.bottom + 4,
-              right: window.innerWidth - dupePicker.rect.right,
+              ...computeFlipPosition(dupePicker.rect, { panelHeight: DUPE_PICKER_MAX_HEIGHT }),
               background: c.white,
               border: `1px solid ${c.border}`,
               borderRadius: 10,

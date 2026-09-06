@@ -76,6 +76,22 @@ export function SubtypeTag({ sub }) {
   return <Tag label={sub} color={col} bg={bg} border={brd} />;
 }
 
+// Dedicated warm-neutral Likelihood ramp — deliberately distinct from the
+// Horizon green/blue/amber family (see tokens.js). ClustersPanel.jsx still has
+// its own local LikelihoodTag borrowing Horizon colors (a known, untouched
+// inconsistency); this is the correct-token version for new call sites.
+const LIKELIHOOD_MAP = {
+  Possible: [c.likelihoodPossible700, c.likelihoodPossible50, c.likelihoodPossibleBorder],
+  Plausible: [c.likelihoodPlausible700, c.likelihoodPlausible50, c.likelihoodPlausibleBorder],
+  Probable: [c.likelihoodProbable700, c.likelihoodProbable50, c.likelihoodProbableBorder],
+};
+
+/** @param {{ l: string }} props — l is 'Possible' | 'Plausible' | 'Probable' */
+export function LikelihoodTag({ l }) {
+  const [col, bg, brd] = LIKELIHOOD_MAP[l] || [c.hint, "transparent", c.border];
+  return <Tag label={l} color={col} bg={bg} border={brd} />;
+}
+
 // source_confidence tiers resolve onto Signal Strength's tier colors — one shared
 // map, so a future color change never has to be made twice.
 const CONFIDENCE_TO_TIER = { low: "weak", medium: "moderate", high: "strong" };

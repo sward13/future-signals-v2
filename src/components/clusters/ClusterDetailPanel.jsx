@@ -1,134 +1,120 @@
 /**
  * ClusterDetailPanel — slides in from the right within the 320px ClustersPanel.
  * Uses position:absolute / translateX so the inputs panel stays fully visible.
+ *
+ * Read-only: no destructive action lives here. Delete moved to ClusterDrawer's
+ * edit-mode Danger Zone — see docs/edit-view-mode-consistency-audit-prompt.md.
+ * The "X" unlink-input-from-cluster action stays here, unconditionally
+ * available — a reversible relationship change, not a destructive one.
+ *
  * @param {{ open: boolean, cluster: object|null, inputs: object[], onClose: () => void, onRemoveInput: (inputId, clusterId) => void, onDelete: (id) => void }} props
  */
-import { useState, useEffect } from "react";
-import { c, btnSec } from "../../styles/tokens.js";
-import { SubtypeTag, HorizTag, Tag } from "../shared/Tag.jsx";
-import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
+import { useState } from "react";
+import clsx from "clsx";
+import { SubtypeTag, HorizTag } from "../shared/Tag.jsx";
 import { ClusterDrawer } from "./ClusterDrawer.jsx";
 
+const LIKELIHOOD_CLASSES = {
+  Probable:  "text-green-700 bg-green-50 border-green-border",
+  Plausible: "text-blue-700 bg-blue-50 border-blue-border",
+  Possible:  "text-amber-700 bg-amber-50 border-amber-border",
+};
+
 function LikelihoodTag({ l }) {
-  const map = {
-    Probable:  [c.green700, c.green50,  c.greenBorder],
-    Plausible: [c.blue700,  c.blue50,   c.blueBorder],
-    Possible:  [c.amber700, c.amber50,  c.amberBorder],
-  };
-  const [col, bg, brd] = map[l] || [c.hint, "transparent", c.border];
-  return <Tag label={l} color={col} bg={bg} border={brd} />;
+  if (!l) return null;
+  return (
+    <span className={clsx(
+      "text-[10px] px-1.75 py-0.5 rounded-pill border whitespace-nowrap",
+      LIKELIHOOD_CLASSES[l] || "text-hint border-border",
+    )}>
+      {l}
+    </span>
+  );
 }
 
 export function ClusterDetailPanel({ open, cluster, inputs, onClose, onRemoveInput, onDelete, updateCluster }) {
-  const [confirmDelete,  setConfirmDelete]  = useState(false);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);
 
-  useEffect(() => {
-    setConfirmDelete(false);
+  // Reset editDrawerOpen when the selected cluster changes, without an
+  // effect (react-hooks/set-state-in-effect) — adjust state during render.
+  const [prevClusterId, setPrevClusterId] = useState(cluster?.id);
+  if (cluster?.id !== prevClusterId) {
+    setPrevClusterId(cluster?.id);
     setEditDrawerOpen(false);
-  }, [cluster?.id]);
+  }
 
   const linkedInputs = cluster ? inputs.filter((i) => cluster.input_ids?.includes(i.id)) : [];
 
   return (
     <>
-      <div style={{
-        position: "absolute",
-        inset: 0,
-        background: c.white,
-        display: "flex",
-        flexDirection: "column",
-        transform: open ? "translateX(0)" : "translateX(100%)",
-        transition: "transform 220ms ease",
-        zIndex: 10,
-        borderLeft: `1px solid ${c.border}`,
-        overflow: "hidden",
-      }}>
+      <div
+        className={clsx(
+          "absolute inset-0 bg-white flex flex-col z-10 border-l border-border overflow-hidden transition-transform duration-[220ms] ease-in-out",
+          open ? "translate-x-0" : "translate-x-full",
+        )}
+      >
 
         {/* Header */}
-        <div style={{
-          padding: "11px 14px",
-          borderBottom: `1px solid ${c.border}`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexShrink: 0,
-        }}>
+        <div className="py-2.75 px-3.5 border-b border-border flex items-center justify-between shrink-0">
           <button
             onClick={onClose}
-            style={{
-              background: "none", border: "none", cursor: "pointer",
-              fontFamily: "inherit", fontSize: 12, color: c.blue700,
-              padding: 0, display: "flex", alignItems: "center", gap: 4,
-            }}
+            className="bg-transparent border-none cursor-pointer font-[inherit] text-xs text-blue-700 p-0 flex items-center gap-1"
           >
             ← Clusters
           </button>
           <button
             onClick={() => setEditDrawerOpen(true)}
-            style={{
-              background: "none", border: `1px solid ${c.borderStrong}`,
-              cursor: "pointer", fontFamily: "inherit", fontSize: 11,
-              color: c.muted, padding: "4px 10px", borderRadius: 6,
-            }}
+            className="bg-transparent border border-border-strong cursor-pointer font-[inherit] text-[11px] text-muted py-1 px-2.5 rounded-btn"
           >
             Edit
           </button>
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px 10px" }}>
+        <div className="flex-1 overflow-y-auto py-3.5 px-3.5 pb-2.5">
 
           {cluster && (
             <>
               {/* Badges */}
-              <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap" }}>
+              <div className="flex gap-1.25 mb-2.5 flex-wrap">
                 <SubtypeTag sub={cluster.subtype} />
                 <HorizTag h={cluster.horizon} />
                 {cluster.likelihood && <LikelihoodTag l={cluster.likelihood} />}
               </div>
 
               {/* Name */}
-              <div style={{ fontSize: 16, fontWeight: 600, color: c.ink, marginBottom: 8, lineHeight: 1.3 }}>
+              <div className="text-base font-semibold text-ink mb-2 leading-[1.3]">
                 {cluster.name}
               </div>
 
               {/* Description */}
-              <div style={{ fontSize: 12, color: cluster.description ? c.muted : c.hint, fontStyle: cluster.description ? "normal" : "italic", lineHeight: 1.65, marginBottom: 16 }}>
+              <div className={clsx(
+                "text-xs leading-[1.65] mb-4",
+                cluster.description ? "text-muted not-italic" : "text-hint italic",
+              )}>
                 {cluster.description || "No description."}
               </div>
 
-              <div style={{ height: 1, background: c.border, marginBottom: 12 }} />
+              <div className="h-px bg-border mb-3" />
 
               {/* Linked inputs */}
-              <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 8 }}>
+              <div className="text-[11px] tracking-[0.02em] text-hint mb-2">
                 Linked inputs ({linkedInputs.length})
               </div>
 
               {linkedInputs.length === 0 ? (
-                <div style={{ fontSize: 12, color: c.hint, fontStyle: "italic" }}>No inputs linked yet.</div>
+                <div className="text-xs text-hint italic">No inputs linked yet.</div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <div className="flex flex-col gap-1">
                   {linkedInputs.map((inp) => (
-                    <div key={inp.id} style={{
-                      display: "flex", alignItems: "center", gap: 7,
-                      padding: "7px 10px", background: c.surfaceAlt,
-                      borderRadius: 7, border: `1px solid ${c.border}`,
-                    }}>
-                      <span style={{ fontSize: 8, color: c.hint, flexShrink: 0 }}>●</span>
-                      <span style={{
-                        fontSize: 12, color: c.ink, flex: 1,
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                      }}>
+                    <div key={inp.id} className="flex items-center gap-1.75 py-1.75 px-2.5 bg-surface-alt rounded-btn border border-border">
+                      <span className="text-[8px] text-hint shrink-0">●</span>
+                      <span className="text-xs text-ink flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
                         {inp.name}
                       </span>
                       <button
                         onClick={() => onRemoveInput(inp.id, cluster.id)}
-                        style={{
-                          background: "none", border: "none", cursor: "pointer",
-                          fontSize: 11, color: c.hint, padding: "0 2px",
-                          fontFamily: "inherit", flexShrink: 0, lineHeight: 1,
-                        }}
+                        className="bg-transparent border-none cursor-pointer text-[11px] text-hint py-0 px-0.5 font-[inherit] shrink-0 leading-none"
                         title="Remove from cluster"
                       >
                         ✕
@@ -140,30 +126,7 @@ export function ClusterDetailPanel({ open, cluster, inputs, onClose, onRemoveInp
             </>
           )}
         </div>
-
-        {/* Footer */}
-        <div style={{ padding: "10px 14px 14px", borderTop: `1px solid ${c.border}`, flexShrink: 0 }}>
-          <button
-            onClick={() => setConfirmDelete(true)}
-            style={{
-              width: "100%", padding: "7px 0", borderRadius: 7,
-              border: `1px solid ${c.redBorder}`, background: "transparent",
-              color: c.red800, fontSize: 12, cursor: "pointer", fontFamily: "inherit",
-            }}
-          >
-            Delete cluster
-          </button>
-        </div>
       </div>
-
-      {confirmDelete && cluster && (
-        <ConfirmDialog
-          title={`Delete "${cluster.name}"?`}
-          message="This will permanently delete the cluster. Inputs linked to it will not be deleted. This cannot be undone."
-          onConfirm={() => { setConfirmDelete(false); onDelete(cluster.id); }}
-          onClose={() => setConfirmDelete(false)}
-        />
-      )}
 
       {cluster && (
         <ClusterDrawer
@@ -178,6 +141,7 @@ export function ClusterDetailPanel({ open, cluster, inputs, onClose, onRemoveInp
             description: cluster.description,
           }}
           onSave={(fields) => { updateCluster(cluster.id, fields); setEditDrawerOpen(false); }}
+          onDelete={() => { setEditDrawerOpen(false); onDelete(cluster.id); }}
           projectId={cluster.project_id}
           projectInputs={[]}
         />

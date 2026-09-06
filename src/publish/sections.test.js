@@ -46,7 +46,7 @@ const inputs = [
 ];
 
 const scenarios = [
-  { id: "s1", name: "Longevity for those who can pay", archetype: "Continuation", horizon: "H2", description: "Access concentrates among those able to pay.", narrative: "A widening gap.", driving_forces: ["c1", "c2"] },
+  { id: "s1", name: "Longevity for those who can pay", archetype: "Continuation", horizon: "H2", description: "Access concentrates among those able to pay.", narrative: "A widening gap.", driving_forces: ["c1", "c2"], suppressed_forces: ["c2"] },
 ];
 
 const clusterLookup = buildClusterLookup(clusters);
@@ -193,11 +193,31 @@ test("renderScenario: resolves driving forces to cluster names, not ids", () => 
   assert.doesNotMatch(html, /\bc1\b|\bc2\b/);
 });
 
-test("renderScenario: degrades with only a name and dangling driving forces", () => {
-  const html = renderScenario({ name: "Sparse scenario", driving_forces: ["ghost"] }, clusterLookup);
+test("renderScenario: resolves suppressed forces to cluster names, not ids", () => {
+  const html = renderScenario(scenarios[0], clusterLookup);
+  assertClean(html);
+  assert.match(html, /Suppressed by: Pharma competition escalating/);
+});
+
+test("renderScenario: a cluster resolved into both Informed by and Suppressed by when dual-assigned", () => {
+  const html = renderScenario(
+    { name: "Dual role", driving_forces: ["c1"], suppressed_forces: ["c1"] },
+    clusterLookup
+  );
+  assertClean(html);
+  assert.match(html, /Informed by: Societal values shift toward longevity/);
+  assert.match(html, /Suppressed by: Societal values shift toward longevity/);
+});
+
+test("renderScenario: degrades with only a name and dangling driving/suppressed forces", () => {
+  const html = renderScenario(
+    { name: "Sparse scenario", driving_forces: ["ghost"], suppressed_forces: ["also-ghost"] },
+    clusterLookup
+  );
   assertClean(html);
   assert.match(html, /Sparse scenario/);
   assert.doesNotMatch(html, /Informed by/); // all refs dangled → line omitted
+  assert.doesNotMatch(html, /Suppressed by/);
 });
 
 // ─── Preferred Future ────────────────────────────────────────────────────────

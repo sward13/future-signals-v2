@@ -1,29 +1,33 @@
 /**
  * PreferredFutureRead — read view for a single preferred future.
  * Two-column layout: main content + metadata sidebar.
+ *
+ * Read-only: no destructive action lives here. Delete moved to
+ * PreferredFutureForm's edit-mode Danger Zone — see
+ * docs/edit-view-mode-consistency-audit-prompt.md.
  */
-import { useState } from "react";
-import { c, btnSec, btnG } from "../../styles/tokens.js";
 import { HorizTag } from "../shared/Tag.jsx";
-import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
+import { RichTextField } from "../shared/RichTextField.jsx";
+import { textToDoc, docIsEmpty } from "../../lib/richtextDoc.js";
+
+const sideLabel = "text-[11px] font-medium text-hint tracking-[0.02em] mb-2";
+const sectionHeading = "text-[11px] font-medium text-hint tracking-[0.02em] mb-2.5 pb-2 border-b border-border";
 
 export default function PreferredFutureRead({ appState }) {
   const {
     preferredFutures, scenarios, strategicOptions,
     activePFId, activeProjectId,
-    openPreferredFutureEdit, deletePreferredFuture,
-    openScenario, openStrategicOption, setActiveScreen, showToast,
+    openPreferredFutureEdit,
+    openScenario, openStrategicOption, setActiveScreen,
   } = appState;
-
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const pf = preferredFutures.find((p) => p.id === activePFId);
 
   if (!pf) {
     return (
-      <div style={{ padding: "28px 32px", background: c.bg }}>
-        <div style={{ fontSize: 14, color: c.muted }}>Preferred future not found.</div>
-        <button onClick={() => setActiveScreen("future-models")} style={{ ...btnG, marginTop: 12 }}>
+      <div className="py-7 px-8 bg-bg">
+        <div className="text-sm text-muted">Preferred future not found.</div>
+        <button onClick={() => setActiveScreen("future-models")} className="py-1.75 px-3 rounded-btn bg-transparent text-muted border-none text-xs cursor-pointer font-[inherit] mt-3">
           ← Future Models
         </button>
       </div>
@@ -46,256 +50,178 @@ export default function PreferredFutureRead({ appState }) {
       o.scenario_ids.some((id) => pfScenarioSet.has(id))
   );
 
-  const handleDelete = () => {
-    deletePreferredFuture(activePFId);
-    showToast("Preferred future deleted");
-    setActiveScreen("future-models");
-  };
-
-  const sideLabel = {
-    fontSize: 11, fontWeight: 500, color: c.hint,
-    letterSpacing: "0.02em",
-    marginBottom: 8,
-  };
-
-  const sectionHeading = {
-    fontSize: 11, fontWeight: 500, color: c.hint,
-    letterSpacing: "0.02em",
-    marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid ${c.border}`,
-  };
-
   return (
-    <>
-      <div style={{ background: c.bg, minHeight: "100%" }}>
+    <div className="bg-bg min-h-full">
 
-        {/* Top bar */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "12px 24px",
-          background: c.white, borderBottom: `1px solid ${c.border}`,
-          position: "sticky", top: 0, zIndex: 10,
-        }}>
+      {/* Top bar */}
+      <div className="flex items-center justify-between py-3 px-6 bg-white border-b border-border sticky top-0 z-10">
+        <button
+          onClick={() => setActiveScreen("future-models")}
+          className="py-1.25 px-0 rounded-btn bg-transparent text-muted border-none text-xs cursor-pointer font-[inherit]"
+        >
+          ← Future Models
+        </button>
+        <div className="flex gap-2 items-center">
           <button
-            onClick={() => setActiveScreen("future-models")}
-            style={{ ...btnG, fontSize: 12, padding: "5px 0", color: c.muted }}
+            onClick={() => openPreferredFutureEdit(activePFId)}
+            className="py-1.5 px-4 rounded-container bg-transparent text-muted border border-border-strong text-xs cursor-pointer font-[inherit]"
           >
-            ← Future Models
+            Edit
           </button>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button
-              onClick={() => setConfirmDelete(true)}
-              style={{ ...btnG, fontSize: 12, color: c.hint }}
-            >
-              Delete
-            </button>
-            <button
-              onClick={() => openPreferredFutureEdit(activePFId)}
-              style={{ ...btnSec, fontSize: 12, padding: "6px 16px" }}
-            >
-              Edit
-            </button>
-          </div>
-        </div>
-
-        {/* Two-column body */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", maxWidth: 1000, margin: "0 auto", padding: "0 0 80px" }}>
-
-          {/* ── Main content ──────────────────────────────────── */}
-          <div style={{ padding: "36px 36px 0" }}>
-
-            {/* Gradient accent bar */}
-            <div style={{
-              height: 3, borderRadius: 2, marginBottom: 24,
-              background: "linear-gradient(to right, rgba(59,109,17,0.3), rgba(24,95,165,0.3), rgba(133,79,11,0.3))",
-            }} />
-
-            {/* Eyebrow */}
-            <div style={{
-              display: "flex", alignItems: "center", gap: 8,
-              fontSize: 11, fontWeight: 500, color: c.hint,
-              letterSpacing: "0.02em",
-              marginBottom: 10,
-            }}>
-              Preferred Future
-              {pf.horizon && <HorizTag h={pf.horizon} />}
-            </div>
-
-            {/* Title */}
-            <div style={{
-              fontSize: 26, fontWeight: 500, color: c.ink,
-              lineHeight: 1.2, marginBottom: 12, letterSpacing: "-0.01em",
-            }}>
-              {pf.name}
-            </div>
-
-            {/* Description */}
-            {pf.description && (
-              <div style={{
-                fontSize: 14, color: c.muted, lineHeight: 1.7,
-                marginBottom: 28, maxWidth: 560,
-              }}>
-                {pf.description}
-              </div>
-            )}
-
-            {/* Desired outcomes */}
-            {pf.desired_outcomes && (
-              <div style={{ marginBottom: 28 }}>
-                <div style={sectionHeading}>Desired outcomes</div>
-                <div style={{ fontSize: 13, color: c.muted, lineHeight: 1.75, whiteSpace: "pre-wrap" }}>
-                  {pf.desired_outcomes}
-                </div>
-              </div>
-            )}
-
-            {/* Guiding principles */}
-            {principles.length > 0 && (
-              <div style={{ marginBottom: 28 }}>
-                <div style={sectionHeading}>Guiding principles</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {principles.map((p, i) => (
-                    <div key={i} style={{
-                      padding: "9px 14px",
-                      background: c.fieldBg,
-                      border: `1px solid ${c.border}`,
-                      borderLeft: `3px solid ${c.green700}`,
-                      borderRadius: 7,
-                      fontSize: 13, color: c.muted, lineHeight: 1.5,
-                    }}>
-                      {p}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Strategic priorities */}
-            {priorities.length > 0 && (
-              <div style={{ marginBottom: 28 }}>
-                <div style={sectionHeading}>Strategic priorities</div>
-                <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 8 }}>
-                  {priorities.map((p, i) => (
-                    <li key={i} style={{ fontSize: 13, color: c.muted, lineHeight: 1.5 }}>
-                      {p}
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            )}
-
-            {/* Indicators of progress */}
-            {inds.length > 0 && (
-              <div style={{ marginBottom: 28 }}>
-                <div style={sectionHeading}>Indicators of progress</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {inds.map((ind, i) => (
-                    <div key={i} style={{
-                      display: "flex", alignItems: "flex-start", gap: 10,
-                      fontSize: 13, color: c.muted, lineHeight: 1.5,
-                    }}>
-                      <span style={{
-                        width: 7, height: 7, borderRadius: "50%",
-                        background: c.green700, flexShrink: 0, marginTop: 4,
-                      }} />
-                      {ind}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ── Sidebar ───────────────────────────────────────── */}
-          <div style={{
-            padding: "36px 20px 0",
-            borderLeft: `1px solid ${c.border}`,
-            display: "flex", flexDirection: "column", gap: 20,
-          }}>
-
-            {/* Informed by scenarios */}
-            {scenarioIds.length > 0 && (
-              <div>
-                <div style={sideLabel}>Informed by</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {scenarioIds.map((id) => {
-                    const sc = scenarioById(id);
-                    return (
-                      <div
-                        key={id}
-                        onClick={() => sc && openScenario(id)}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 7,
-                          padding: "6px 8px", background: c.fieldBg,
-                          border: `1px solid ${c.border}`, borderRadius: 6,
-                          fontSize: 11, color: sc ? c.muted : c.hint,
-                          cursor: sc ? "pointer" : "default",
-                        }}
-                      >
-                        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {sc?.name || id}
-                        </span>
-                        {sc && <span style={{ color: c.hint, fontSize: 11 }}>→</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Connected options */}
-            {connectedOptions.length > 0 && (
-              <div>
-                <div style={sideLabel}>Connected options</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {connectedOptions.map((opt) => (
-                    <div
-                      key={opt.id}
-                      onClick={() => openStrategicOption(opt.id)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 7,
-                        padding: "6px 8px", background: c.fieldBg,
-                        border: `1px solid ${c.border}`, borderRadius: 6,
-                        fontSize: 11, color: c.muted, cursor: "pointer",
-                      }}
-                    >
-                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {opt.name}
-                      </span>
-                      <span style={{ color: c.hint, fontSize: 11 }}>→</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Horizon */}
-            {pf.horizon && (
-              <div>
-                <div style={sideLabel}>Horizon</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <HorizTag h={pf.horizon} />
-                  <div style={{ fontSize: 11, color: c.hint, marginTop: 4, lineHeight: 1.5 }}>
-                    {pf.horizon === "H1" && "Near-term: likely within 1–3 years"}
-                    {pf.horizon === "H2" && "Mid-term: likely within 4–7 years"}
-                    {pf.horizon === "H3" && "Long-term: 8+ years out"}
-                  </div>
-                </div>
-              </div>
-            )}
-
-          </div>
         </div>
       </div>
 
-      {confirmDelete && (
-        <ConfirmDialog
-          title="Delete preferred future"
-          message={`"${pf.name}" will be permanently deleted. This cannot be undone.`}
-          confirmLabel="Delete preferred future"
-          onConfirm={handleDelete}
-          onClose={() => setConfirmDelete(false)}
-        />
-      )}
-    </>
+      {/* Two-column body */}
+      <div className="grid grid-cols-[1fr_280px] max-w-[1000px] mx-auto pb-20">
+
+        {/* ── Main content ──────────────────────────────────── */}
+        <div className="pt-9 px-9">
+
+          {/* Gradient accent bar */}
+          <div
+            className="h-[3px] rounded-[2px] mb-6"
+            style={{ background: "linear-gradient(to right, rgba(59,109,17,0.3), rgba(24,95,165,0.3), rgba(133,79,11,0.3))" }}
+          />
+
+          {/* Eyebrow */}
+          <div className="flex items-center gap-2 text-[11px] font-medium text-hint tracking-[0.02em] mb-2.5">
+            Preferred Future
+            {pf.horizon && <HorizTag h={pf.horizon} />}
+          </div>
+
+          {/* Title */}
+          <div className="text-[26px] font-medium text-ink leading-[1.2] mb-3 tracking-[-0.01em]">
+            {pf.name}
+          </div>
+
+          {/* Description */}
+          {(!docIsEmpty(pf.description_doc) || pf.description) && (
+            <div className="text-sm text-muted leading-[1.7] mb-7 max-w-[560px]">
+              <RichTextField value={pf.description_doc ?? textToDoc(pf.description)} editable={false} />
+            </div>
+          )}
+
+          {/* Desired outcomes */}
+          {(!docIsEmpty(pf.desired_outcomes_doc) || pf.desired_outcomes) && (
+            <div className="mb-7">
+              <div className={sectionHeading}>Desired outcomes</div>
+              <div className="text-ui text-muted leading-[1.75]">
+                <RichTextField value={pf.desired_outcomes_doc ?? textToDoc(pf.desired_outcomes)} editable={false} />
+              </div>
+            </div>
+          )}
+
+          {/* Guiding principles */}
+          {principles.length > 0 && (
+            <div className="mb-7">
+              <div className={sectionHeading}>Guiding principles</div>
+              <div className="flex flex-col gap-1.5">
+                {principles.map((p, i) => (
+                  <div key={i} className="py-2.25 px-3.5 bg-field-bg border border-border border-l-[3px] border-l-green-700 rounded-btn text-ui text-muted leading-[1.5]">
+                    {p}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Strategic priorities */}
+          {priorities.length > 0 && (
+            <div className="mb-7">
+              <div className={sectionHeading}>Strategic priorities</div>
+              <ol className="m-0 pl-5 flex flex-col gap-2">
+                {priorities.map((p, i) => (
+                  <li key={i} className="text-ui text-muted leading-[1.5]">
+                    {p}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {/* Indicators of progress */}
+          {inds.length > 0 && (
+            <div className="mb-7">
+              <div className={sectionHeading}>Indicators of progress</div>
+              <div className="flex flex-col gap-1.5">
+                {inds.map((ind, i) => (
+                  <div key={i} className="flex items-start gap-2.5 text-ui text-muted leading-[1.5]">
+                    <span className="w-1.75 h-1.75 rounded-full bg-green-700 shrink-0 mt-1" />
+                    {ind}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Sidebar ───────────────────────────────────────── */}
+        <div className="pt-9 px-5 border-l border-border flex flex-col gap-5">
+
+          {/* Informed by scenarios */}
+          {scenarioIds.length > 0 && (
+            <div>
+              <div className={sideLabel}>Informed by</div>
+              <div className="flex flex-col gap-1">
+                {scenarioIds.map((id) => {
+                  const sc = scenarioById(id);
+                  return (
+                    <div
+                      key={id}
+                      onClick={() => sc && openScenario(id)}
+                      className={
+                        `flex items-center gap-1.75 py-1.5 px-2 bg-field-bg border border-border rounded-[6px] text-[11px] ${sc ? "text-muted cursor-pointer" : "text-hint cursor-default"}`
+                      }
+                    >
+                      <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                        {sc?.name || id}
+                      </span>
+                      {sc && <span className="text-hint text-[11px]">→</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Connected options */}
+          {connectedOptions.length > 0 && (
+            <div>
+              <div className={sideLabel}>Connected options</div>
+              <div className="flex flex-col gap-1">
+                {connectedOptions.map((opt) => (
+                  <div
+                    key={opt.id}
+                    onClick={() => openStrategicOption(opt.id)}
+                    className="flex items-center gap-1.75 py-1.5 px-2 bg-field-bg border border-border rounded-[6px] text-[11px] text-muted cursor-pointer"
+                  >
+                    <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                      {opt.name}
+                    </span>
+                    <span className="text-hint text-[11px]">→</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Horizon */}
+          {pf.horizon && (
+            <div>
+              <div className={sideLabel}>Horizon</div>
+              <div className="flex flex-col gap-1">
+                <HorizTag h={pf.horizon} />
+                <div className="text-[11px] text-hint mt-1 leading-[1.5]">
+                  {pf.horizon === "H1" && "Near-term: likely within 1–3 years"}
+                  {pf.horizon === "H2" && "Mid-term: likely within 4–7 years"}
+                  {pf.horizon === "H3" && "Long-term: 8+ years out"}
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
   );
 }

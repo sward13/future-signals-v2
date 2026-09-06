@@ -5,8 +5,9 @@
  * @param {{ open: boolean, onClose: () => void, onSave: (fields: object) => void }} props
  */
 import { useState, useRef, useEffect, useCallback, memo } from "react";
-import { c, inp, ta, sel, btnP, btnG, fl, fh, legend } from "../../styles/tokens.js";
-import { DOMAINS } from "../../data/seeds.js";
+import { c, inp, ta, btnP, btnG, fl, fh, legend } from "../../styles/tokens.js";
+import { DomainMultiSelect } from "../shared/DomainMultiSelect.jsx";
+import { legacyDomainValue } from "../../lib/projectDomains.js";
 
 // ─── Horizon slider ────────────────────────────────────────────────────────────
 
@@ -358,11 +359,15 @@ const DEFAULT_END_YEAR = CURRENT_YEAR + 15;
 export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnabled = true, showToast }) {
   // ── Form fields ──────────────────────────────────────────────────────
   const [name, setName] = useState("");
-  const [domain, setDomain] = useState("");
+  const [domains, setDomains] = useState([]);
+  const [customSelected, setCustomSelected] = useState(false);
+  const [customDomain, setCustomDomain] = useState("");
   const [question, setQuestion] = useState("");
   const [nameError, setNameError] = useState(false);
+  const [customError, setCustomError] = useState(false);
   const [scanningEnabled, setScanningEnabled] = useState(true);
-  const hasDomain = !!domain.trim();
+  const trimmedCustom = customDomain.trim();
+  const hasDomain = domains.length > 0 || (customSelected && !!trimmedCustom);
 
   // ── Horizon slider state ─────────────────────────────────────────────
   const [startYear, setStartYear] = useState(CURRENT_YEAR);
@@ -380,8 +385,8 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
   const [audience, setAudience] = useState("");
 
   const resetForm = () => {
-    setName(""); setDomain(""); setQuestion("");
-    setNameError(false);
+    setName(""); setDomains([]); setCustomSelected(false); setCustomDomain(""); setQuestion("");
+    setNameError(false); setCustomError(false);
     setStartYear(CURRENT_YEAR); setEndYear(DEFAULT_END_YEAR);
     setH1Pct(0.22); setH2Pct(0.58);
     setFocus(""); setScopeIn([]); setScopeOut([]); setGeo(""); setAssumptions(""); setStakeholders(""); setAudience("");
@@ -393,15 +398,20 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
   const handleSave = () => {
     let hasError = false;
     if (!name.trim()) { setNameError(true); hasError = true; }
+    // Custom / Other, when toggled on, requires a name (can't be blank).
+    if (customSelected && !trimmedCustom) { setCustomError(true); hasError = true; }
     if (hasError) return;
 
     const span = endYear - startYear;
     const h1End = String(Math.round(startYear + h1Pct * span));
     const h2End = String(Math.round(startYear + h2Pct * span));
 
+    const finalCustom = customSelected ? trimmedCustom : "";
     onSave({
       name: name.trim(),
-      domain,
+      domains,
+      custom_domain: finalCustom || null,
+      domain: legacyDomainValue(domains, finalCustom), // legacy column, rollback safety
       question,
       h1_start: String(startYear),
       h1_end: h1End,
@@ -433,7 +443,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
 
   // Completion percentage (rough estimate for the progress bar)
   const pct = Math.round(
-    ([name.trim(), domain, question].filter(Boolean).length / 3) * 100
+    ([name.trim(), hasDomain, question].filter(Boolean).length / 3) * 100
   );
 
   if (!open) return null;
@@ -514,18 +524,17 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
 
           {/* ── Domain ────────────────────────────────────────── */}
           <div style={{ marginBottom: 16 }}>
-            <div style={fl}>Domain</div>
-            <div style={{ position: "relative" }}>
-              <select
-                style={sel}
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
-              >
-                <option value="">Select a domain…</option>
-                {DOMAINS.map((d) => <option key={d} value={d}>{d}</option>)}
-              </select>
-              <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: c.hint, pointerEvents: "none" }}>▾</span>
-            </div>
+            <div style={fl}>Domain <span style={{ color: c.hint, fontWeight: 400 }}>— select one or more</span></div>
+            <DomainMultiSelect
+              domains={domains}
+              customDomain={customDomain}
+              customSelected={customSelected}
+              onDomainsChange={setDomains}
+              onCustomSelectedChange={(v) => { setCustomSelected(v); if (!v) setCustomError(false); }}
+              onCustomDomainChange={(v) => { setCustomDomain(v); if (v.trim()) setCustomError(false); }}
+              allowCustom
+            />
+            {customError && <div style={{ fontSize: 11, color: c.red800, marginTop: 4 }}>Name your custom domain, or deselect it.</div>}
           </div>
 
           {/* ── Key question ──────────────────────────────────── */}

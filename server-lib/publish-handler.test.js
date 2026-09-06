@@ -336,6 +336,19 @@ test("GET ?view: serves real HTML with a no-cache (always-revalidate) header + E
   assert.ok(res.headers["etag"], "an ETag is set for conditional requests");
 });
 
+test("GET ?view: CSP allows img-src from the Supabase Storage origin (background templates) but nothing else external", async () => {
+  const html = "<!DOCTYPE html><html><body>Hello world</body></html>";
+  const client = makeFakeClient(publishedFixtures("csp-slug", html));
+  const handler = createPublishHandler({ supabase: client });
+  const res = mockRes();
+  await handler({ method: "GET", headers: {}, query: { view: "csp-slug" } }, res);
+
+  const csp = res.headers["content-security-policy"];
+  assert.match(csp, /default-src 'none'/);
+  assert.match(csp, /img-src https:\/\/staging\.example\.supabase\.co/);
+  assert.doesNotMatch(csp, /script-src/); // no script exception — default-src 'none' still blocks script
+});
+
 test("GET ?view: a matching If-None-Match returns 304 with no body (cheap repeat view)", async () => {
   const html = "<!DOCTYPE html><html><body>Same content</body></html>";
   const client = makeFakeClient(publishedFixtures("etag-slug", html));

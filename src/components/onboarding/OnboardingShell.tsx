@@ -34,11 +34,14 @@ import { ProjectCreateStep } from "./ProjectCreateStep.jsx";
 import { CreatingTransition } from "./CreatingTransition.tsx";
 import { ScannerInboxStep } from "./ScannerInboxStep.jsx";
 import { ClusteringResultsStep } from "./ClusteringResultsStep.tsx";
+import { projectDomainLabel } from "../../lib/projectDomains.js";
 
 interface Project {
   id: string;
   name: string;
   domain: string;
+  domains?: string[] | null;
+  custom_domain?: string | null;
   question: string;
 }
 
@@ -87,7 +90,7 @@ export function OnboardingShell({ workspaceId, onProjectCreate, onComplete }: Pr
     const init = async () => {
       const { data: rows } = await supabase
         .from("projects")
-        .select("id, name, domain, question")
+        .select("id, name, domain, domains, custom_domain, question")
         .eq("workspace_id", workspaceId)
         .order("created_at", { ascending: false })
         .limit(1);
@@ -247,7 +250,7 @@ export function OnboardingShell({ workspaceId, onProjectCreate, onComplete }: Pr
   if (step === 3) {
     return (
       <CreatingTransition
-        projectDomain={pendingProject?.domain ?? "your"}
+        projectDomain={projectDomainLabel(pendingProject) || "your"}
         onNext={handleCreatingDone}
       />
     );
@@ -281,7 +284,7 @@ export function OnboardingShell({ workspaceId, onProjectCreate, onComplete }: Pr
         projectId={pendingProject?.id ?? ""}
         workspaceId={workspaceId}
         projectName={pendingProject?.name ?? ""}
-        domain={pendingProject?.domain ?? ""}
+        domain={projectDomainLabel(pendingProject) || ""}
         keyQuestion={pendingProject?.question ?? ""}
         onComplete={handleScannerComplete}
         onBack={handleBackFromSignals}

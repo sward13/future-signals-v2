@@ -202,13 +202,17 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
   // replacements and avoid re-fetching when the user blurs without changing the URL.
   const scrapedUrlRef    = useRef("");
   const titleEditedByUser = useRef(false);
+  // True once the practitioner has manually picked a source confidence so the
+  // known-source lookup below doesn't overwrite a manual entry.
+  const sourceConfidenceEditedByUser = useRef(false);
 
   const handleUrlBlur = async (url) => {
     if (!url || !url.startsWith("http")) return;
     if (url === scrapedUrlRef.current) return; // Same URL — no-op
 
-    // URL changed: reset manual-edit flag so the new scrape can write the title.
+    // URL changed: reset manual-edit flags so the new scrape/lookup can write in.
     titleEditedByUser.current = false;
+    sourceConfidenceEditedByUser.current = false;
 
     setScraping(true);
     // Clear stale summary from the previous URL immediately so the user
@@ -235,11 +239,30 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
     } finally {
       setScraping(false);
     }
+
+    // Best-effort: pre-fill Source confidence if the pasted URL's host matches
+    // a known source. Scaffold, not a gate — silent no-op if nothing matches
+    // or the user has already picked a value themselves.
+    try {
+      const hostname = new URL(url).hostname.replace(/^www\./, "");
+      const { data: match } = await supabase
+        .from("sources")
+        .select("source_confidence")
+        .ilike("url", `%${hostname}%`)
+        .limit(1)
+        .maybeSingle();
+      if (match?.source_confidence && !sourceConfidenceEditedByUser.current) {
+        setFields((prev) => prev.source_confidence ? prev : { ...prev, source_confidence: match.source_confidence });
+      }
+    } catch {
+      // Silent fail — same scaffold-not-lock treatment as the scrape above
+    }
   };
 
   const typeData = INPUT_TYPES.find((t) => t.id === selectedType);
 
   const setField = (key, value) => {
+    if (key === "source_confidence") sourceConfidenceEditedByUser.current = true;
     setFields((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -252,6 +275,7 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
       description: prev.description,
       source_url: prev.source_url,
     }));
+    sourceConfidenceEditedByUser.current = false;
   };
 
   const handleSave = () => {
@@ -283,6 +307,7 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
     setScraping(false);
     scrapedUrlRef.current = "";
     titleEditedByUser.current = false;
+    sourceConfidenceEditedByUser.current = false;
   };
 
   const handleClose = () => {
