@@ -4,15 +4,14 @@ import { CirclePlus, Settings2, FolderInput } from "lucide-react";
 import { useScannerStatus } from "../../hooks/useScannerStatus.js";
 import { c, inp, btnP, btnSec, fontHeading, tabCount } from "../../styles/tokens.js";
 import { STEEPLED } from "../../data/seeds.js";
-import { HorizTag, SubtypeTag } from "../shared/Tag.jsx";
+import { HorizTag } from "../shared/Tag.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { computeFlipPosition } from "../../lib/panelPosition.js";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 
-// Worst-case height estimates for computeFlipPosition's viewport-collision
-// check, matching each portal's actual rendered content below.
-const ROW_MENU_MAX_HEIGHT = 60;    // one "Duplicate to cluster" row
-const DUPE_PICKER_MAX_HEIGHT = 300; // header + 220px-capped list + footer
+// Worst-case height estimate for computeFlipPosition's viewport-collision
+// check on the row context menu (one "Duplicate" row).
+const ROW_MENU_MAX_HEIGHT = 60;
 
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { AddFromInboxModal } from "../inputs/AddFromInboxModal.jsx";
@@ -227,9 +226,8 @@ export default function ProjectDetail({ appState }) {
   const [filterHorizon,     setFilterHorizon]     = useState(null);
   const [filterSteepled,    setFilterSteepled]    = useState(null);
   const [openFilterDropdown,setOpenFilterDropdown]= useState(null);
-  // Row context menu + cluster picker for "Duplicate to cluster"
+  // Row context menu hosting the "Duplicate" action
   const [rowMenu,    setRowMenu]    = useState(null); // null | { inputId, rect }
-  const [dupePicker, setDupePicker] = useState(null); // null | { inputId, rect }
   // Scanner Suggestions tab state
   const [aiSearchQuery,        setAiSearchQuery]        = useState("");
   const [aiFilterType,         setAiFilterType]         = useState(null);
@@ -441,11 +439,7 @@ export default function ProjectDetail({ appState }) {
     setEditDrawerOpen(true);
   };
 
-  const handleUpdateProject = (fields) => {
-    updateProject(project.id, fields);
-    showToast("Project updated");
-    setEditDrawerOpen(false);
-  };
+  const handleUpdateProject = (fields) => updateProject(project.id, fields);
 
   const handleDeleteProject = () => {
     deleteProject(project.id);
@@ -454,10 +448,10 @@ export default function ProjectDetail({ appState }) {
     setActiveScreen("dashboard");
   };
 
-  const handleDuplicateToCluster = async (inputId, destCluster) => {
-    setDupePicker(null);
-    const result = await duplicateInputToCluster(inputId, destCluster.id);
-    if (result) showToast(`Copied to "${destCluster.name}"`);
+  const handleDuplicate = async (inputId) => {
+    setRowMenu(null);
+    const result = await duplicateInputToCluster(inputId);
+    if (result) showToast("Input duplicated");
   };
 
   const cell = { fontSize: 11, letterSpacing: "0.02em", color: c.hint, flexShrink: 0 };
@@ -918,7 +912,6 @@ export default function ProjectDetail({ appState }) {
                             e.stopPropagation();
                             const rect = e.currentTarget.getBoundingClientRect();
                             setRowMenu((prev) => prev?.inputId === inp.id ? null : { inputId: inp.id, rect });
-                            setDupePicker(null);
                           }}
                           style={{
                             background: "none", border: "none", cursor: "pointer",
@@ -1048,16 +1041,14 @@ export default function ProjectDetail({ appState }) {
             border: `1px solid ${c.border}`,
             borderRadius: 8,
             boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
-            minWidth: 180,
+            // Sized to fit its content (a single "Duplicate" item). The 180px
+            // min-width here was left over from when this menu hosted the wider
+            // "Duplicate to cluster" label + cluster picker.
             zIndex: 201,
             overflow: "hidden",
           }}>
             <button
-              onClick={() => {
-                const { inputId, rect } = rowMenu;
-                setRowMenu(null);
-                setDupePicker({ inputId, rect });
-              }}
+              onClick={() => handleDuplicate(rowMenu.inputId)}
               style={{
                 display: "block", width: "100%", padding: "9px 14px",
                 background: "transparent", border: "none",
@@ -1067,86 +1058,12 @@ export default function ProjectDetail({ appState }) {
               onMouseEnter={(e) => { e.currentTarget.style.background = c.surfaceAlt; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
             >
-              Duplicate to cluster
+              Duplicate
             </button>
           </div>
         </>,
         document.body
       )}
-
-      {/* ── Cluster picker portal for duplicate ─────────────── */}
-      {dupePicker && (() => {
-        const sourceInput = inputs.find((i) => i.id === dupePicker.inputId);
-        const assignedClusterIds = new Set(
-          projectClusters.filter((cl) => cl.input_ids?.includes(dupePicker.inputId)).map((cl) => cl.id)
-        );
-        const eligibleClusters = projectClusters.filter((cl) => !assignedClusterIds.has(cl.id));
-        return createPortal(
-          <>
-            <div
-              onClick={() => setDupePicker(null)}
-              style={{ position: "fixed", inset: 0, zIndex: 200 }}
-            />
-            <div style={{
-              ...computeFlipPosition(dupePicker.rect, { panelHeight: DUPE_PICKER_MAX_HEIGHT }),
-              background: c.white,
-              border: `1px solid ${c.border}`,
-              borderRadius: 10,
-              boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
-              minWidth: 220,
-              zIndex: 201,
-              overflow: "hidden",
-            }}>
-              <div style={{
-                padding: "8px 14px 4px",
-                fontSize: 11, letterSpacing: "0.02em",
-                color: c.muted, fontWeight: 500,
-              }}>
-                Copy to cluster
-              </div>
-              {eligibleClusters.length === 0 ? (
-                <div style={{ padding: "8px 14px 12px", fontSize: 12, color: c.muted, fontStyle: "italic" }}>
-                  {projectClusters.length === 0
-                    ? "No clusters yet — build one first."
-                    : "Input is already in all clusters."}
-                </div>
-              ) : (
-                <div style={{ maxHeight: 220, overflowY: "auto" }}>
-                  {eligibleClusters.map((cl) => (
-                    <button
-                      key={cl.id}
-                      onClick={() => sourceInput && handleDuplicateToCluster(sourceInput.id, cl)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 8,
-                        width: "100%", padding: "9px 14px",
-                        background: "transparent", border: "none",
-                        borderBottom: `1px solid ${c.border}`,
-                        textAlign: "left", cursor: "pointer", fontFamily: "inherit",
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = c.surfaceAlt; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                    >
-                      <SubtypeTag sub={cl.subtype} />
-                      <span style={{ fontSize: 12, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {cl.name}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div style={{ padding: "6px 14px", borderTop: `1px solid ${c.border}` }}>
-                <button
-                  onClick={() => setDupePicker(null)}
-                  style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </>,
-          document.body
-        );
-      })()}
     </div>
   );
 }
