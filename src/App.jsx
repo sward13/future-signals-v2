@@ -433,8 +433,8 @@ export default function App() {
         onDuplicateToCluster={activeProjectId ? async (destClusterId) => {
           const newInput = await duplicateInputToCluster(inputDetailId, destClusterId);
           if (newInput) {
-            const cl = clusters.find((c) => c.id === destClusterId);
-            appState.showToast(`Copied to "${cl?.name ?? "cluster"}"`);
+            const cl = destClusterId ? clusters.find((c) => c.id === destClusterId) : null;
+            appState.showToast(cl ? `Copied to "${cl.name}"` : "Input duplicated");
           }
         } : undefined}
       />

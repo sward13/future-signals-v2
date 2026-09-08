@@ -835,25 +835,31 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     }
   }, [workspaceId, showToast]);
 
-  const duplicateInputToCluster = useCallback(async (sourceInputId, destClusterId) => {
+  // destClusterId is optional. When omitted (null), the RPC copies the input
+  // into the same project with no cluster membership (shows up in Unassigned);
+  // when given, it also links the copy to that cluster. The copy's name always
+  // gets " (Copy)" appended (server-side).
+  const duplicateInputToCluster = useCallback(async (sourceInputId, destClusterId = null) => {
     if (!workspaceId) return null;
     try {
       const { data, error } = await supabase.rpc("duplicate_input_to_cluster", {
         p_source_id:       sourceInputId,
-        p_dest_cluster_id: destClusterId,
+        p_dest_cluster_id: destClusterId ?? null,
         p_workspace_id:    workspaceId,
       });
       if (error) throw error;
       const newInput = Array.isArray(data) ? data[0] : data;
       if (!newInput) throw new Error("no row returned");
       setInputs((prev) => [newInput, ...prev]);
-      setClusters((prev) =>
-        prev.map((cl) =>
-          cl.id === destClusterId && !cl.input_ids.includes(newInput.id)
-            ? { ...cl, input_ids: [...cl.input_ids, newInput.id] }
-            : cl
-        )
-      );
+      if (destClusterId) {
+        setClusters((prev) =>
+          prev.map((cl) =>
+            cl.id === destClusterId && !cl.input_ids.includes(newInput.id)
+              ? { ...cl, input_ids: [...cl.input_ids, newInput.id] }
+              : cl
+          )
+        );
+      }
       return newInput;
     } catch {
       showToast("Failed to duplicate input", "error");
