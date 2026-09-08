@@ -503,6 +503,13 @@ function assignmentMatchesToRows(
     input_ids:          [m.input.id],
     confidence:         m.confidence,
     rationale:          m.rationale,
+    // `relevance` is NOT NULL DEFAULT 'core' and is only meaningful for
+    // new_cluster rows. It must still be set explicitly here: a combined-mode
+    // insert batches assignment + new_cluster rows in one PostgREST call, whose
+    // unioned column list includes `relevance` as soon as any new_cluster row is
+    // present — which makes PostgREST send an explicit NULL (not the default)
+    // for assignment rows that omit it, violating the NOT NULL constraint.
+    relevance:          "core",
     status:             "pending",
   }));
 }
@@ -643,6 +650,10 @@ async function runNewClusterPass(
           input_ids:         [inputId],
           confidence:        null,
           rationale:         rationales[idx],
+          // NOT NULL DEFAULT 'core' — must be explicit so a mixed
+          // assignment+new_cluster PostgREST batch doesn't send NULL. See
+          // assignmentMatchesToRows for the full explanation.
+          relevance:         "core",
           status:            "pending",
         });
       });
