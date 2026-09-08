@@ -4,10 +4,9 @@
  *
  * Read-only: no destructive action lives in view mode. Delete moved to the
  * edit-mode Danger Zone — see docs/edit-view-mode-consistency-audit-prompt.md.
- * "Duplicate to cluster" stays in view mode: it creates a new copy elsewhere
- * and never mutates or destroys this input, so it's a read-adjacent
- * convenience action, not a destructive one — same category as the Cluster
- * tab's "X" unlink action.
+ * "Duplicate" stays in view mode: it creates a new unassigned copy and never
+ * mutates or destroys this input, so it's a read-adjacent convenience action,
+ * not a destructive one — same category as the Cluster tab's "X" unlink action.
  *
  * Note: this drawer hand-rolls its own backdrop/panel shell rather than
  * using the shared Drawer.jsx (which InputDrawer.jsx, the create-only
@@ -15,28 +14,19 @@
  *
  * @param {{ inputId: string|null, inputs: object[], projects: object[], onClose: () => void, onSave: (id, fields) => void }} props
  */
-import { useState, useRef } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import clsx from "clsx";
 import { INPUT_TYPES, ThreeCardSelector, SteepleSelector, HorizonSelector, TypeSwitcherChip } from "./InputFormFields.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { AddToProjectButton } from "../shared/AddToProjectButton.jsx";
-import { computeFlipPosition } from "../../lib/panelPosition.js";
 import { sanitizeUrl } from "../../utils/sanitizeUrl.js";
-
-// Worst-case height estimate for the duplicate-to-cluster picker below
-// (header + 220px-capped list + footer), used by computeFlipPosition's
-// viewport-collision check.
-const DUPE_PICKER_MAX_HEIGHT = 300;
 
 // This drawer's own backdrop/panel sit at zIndex 300/301 (below). Any portal
 // opened from a control inside the drawer needs a z-index explicitly above
 // that pair, or it paints underneath the drawer despite being correctly
-// portaled to document.body — z-index alone determines paint order once
-// both are direct participants in the root stacking context. The
-// duplicate-to-cluster picker below already uses 400/401 for this reason;
-// AddToProjectButton's dropdown (rendered from this same drawer, just above)
-// gets the same tier for consistency, passed via its zIndex prop.
+// portaled to document.body — z-index alone determines paint order once both
+// are direct participants in the root stacking context. AddToProjectButton's
+// dropdown (rendered from this drawer) uses this tier via its zIndex prop.
 const OVERLAY_Z_INDEX = 400;
 
 const HORIZON_CLASSES = {
@@ -94,9 +84,6 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
   const [fields, setFields] = useState({});
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [reassigning, setReassigning] = useState(false);
-  const [dupePickerOpen, setDupePickerOpen] = useState(false);
-  const [dupeAnchorRect, setDupeAnchorRect] = useState(null);
-  const dupeButtonRef = useRef(null);
 
   // Re-seed fields (and reset transient UI state) when the selected input
   // changes, without an effect (react-hooks/set-state-in-effect) — adjust
@@ -117,7 +104,6 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
     } : {});
     setEditing(false);
     setReassigning(false);
-    setDupePickerOpen(false);
   }
 
   if (!input) return null;
@@ -154,10 +140,9 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
   const assignedProject  = projects.find((p) => p.id === (fields.project_id || input.project_id));
   const assignedClusters = clusters.filter((cl) => (cl.input_ids || []).includes(input.id));
 
-  const eligibleClusters = projectClusters
-    ? projectClusters.filter((cl) => !(cl.input_ids || []).includes(input.id))
-    : [];
-  const canDupe = !!onDuplicateToCluster && eligibleClusters.length > 0;
+  // Plain duplicate is available whenever the handler is wired (project context);
+  // it no longer depends on there being an eligible destination cluster.
+  const canDupe = !!onDuplicateToCluster;
 
   return (
     <>
@@ -475,62 +460,17 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
           </div>
         )}
 
-        {/* Footer (view mode): Duplicate to cluster only — a read-adjacent
-            convenience action (creates a copy elsewhere, doesn't mutate or
-            destroy this input), so it stays available in view mode. */}
+        {/* Footer (view mode): Duplicate only — a read-adjacent convenience
+            action (creates an unassigned copy, doesn't mutate or destroy this
+            input), so it stays available in view mode. */}
         {!editing && canDupe && !isAiSuggested && (
           <div className="pt-3 px-6 pb-4.5 border-t border-border shrink-0">
-            <div className="relative">
-              <button
-                ref={dupeButtonRef}
-                onClick={() => {
-                  const rect = dupeButtonRef.current?.getBoundingClientRect();
-                  setDupeAnchorRect(rect ?? null);
-                  setDupePickerOpen((o) => !o);
-                }}
-                className="text-[11px] py-1.25 px-3 rounded-[6px] border border-border-strong bg-transparent text-muted cursor-pointer font-[inherit]"
-              >
-                Duplicate to cluster
-              </button>
-              {dupePickerOpen && dupeAnchorRect && createPortal(
-                <>
-                  <div onClick={() => setDupePickerOpen(false)} className="fixed inset-0" style={{ zIndex: OVERLAY_Z_INDEX }} />
-                  <div
-                    className="bg-white border border-border rounded-pill shadow-[0_6px_24px_rgba(0,0,0,0.12)] min-w-[220px] overflow-hidden"
-                    style={computeFlipPosition(dupeAnchorRect, {
-                      panelHeight: DUPE_PICKER_MAX_HEIGHT,
-                      preferredDirection: "up",
-                      align: "left",
-                      zIndex: OVERLAY_Z_INDEX + 1,
-                    })}
-                  >
-                    <div className="pt-2 px-3.5 pb-1 text-[11px] tracking-[0.02em] text-muted font-medium">
-                      Copy to cluster
-                    </div>
-                    <div className="max-h-[220px] overflow-y-auto">
-                      {eligibleClusters.map((cl) => (
-                        <button
-                          key={cl.id}
-                          onClick={async () => {
-                            setDupePickerOpen(false);
-                            await onDuplicateToCluster(cl.id);
-                          }}
-                          className="block w-full py-2.25 px-3.5 bg-transparent border-none border-b border-border text-left cursor-pointer text-xs text-ink font-[inherit] hover:bg-surface-alt"
-                        >
-                          {cl.name}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="py-1.5 px-3.5 border-t border-border">
-                      <button onClick={() => setDupePickerOpen(false)} className="text-[11px] text-muted bg-transparent border-none cursor-pointer font-[inherit]">
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                </>,
-                document.body
-              )}
-            </div>
+            <button
+              onClick={() => onDuplicateToCluster()}
+              className="text-[11px] py-1.25 px-3 rounded-[6px] border border-border-strong bg-transparent text-muted cursor-pointer font-[inherit]"
+            >
+              Duplicate
+            </button>
           </div>
         )}
       </div>
