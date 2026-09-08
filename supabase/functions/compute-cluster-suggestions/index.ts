@@ -406,6 +406,23 @@ function computeAssignmentMatches(
   const perClusterCap = Math.ceil((inputs.length / clusters.length) * 2);
   const clusterCounts = new Map<string, number>();
 
+  // Fix 3: Single-cluster confidence floor. The margin gate below (best vs
+  // second-best centroid) is what stops every same-topic input from routing to
+  // one cluster — but it can only fire when there are 2+ clusters to compare.
+  // With exactly one populated cluster there's no competitor, so a broad or
+  // blended centroid becomes an "attractor" that every same-domain input clears
+  // at the moderate threshold (observed: 45 loosely-related inputs all funnelled
+  // into a single 2-member cluster). When no margin signal is available, require
+  // HIGH confidence instead of moderate so only inputs strongly and specifically
+  // about that cluster are suggested. A background-centroid "lift" test was
+  // evaluated as a more general alternative and rejected: it over-suppressed
+  // legitimate matches in multi-cluster projects and produced false negatives on
+  // genuinely on-theme inputs that sit close to a thematically-tight project's
+  // overall centroid.
+  const confidenceFloor = clusters.length < 2
+    ? ASSIGNMENT_HIGH_CONFIDENCE
+    : ASSIGNMENT_MODERATE_CONFIDENCE;
+
   const matches: AssignmentMatch[] = [];
 
   for (const input of inputs) {
@@ -432,10 +449,10 @@ function computeAssignmentMatches(
       }
     }
 
-    const matched = bestSim >= ASSIGNMENT_MODERATE_CONFIDENCE;
+    const matched = bestSim >= confidenceFloor;
     console.log(
       `[assign] "${input.name}" → best "${bestCluster.name}" @ ${bestSim.toFixed(4)}` +
-      (matched ? ` ✓ ${bestSim >= ASSIGNMENT_HIGH_CONFIDENCE ? "high" : "moderate"}` : " ✗ below threshold"),
+      (matched ? ` ✓ ${bestSim >= ASSIGNMENT_HIGH_CONFIDENCE ? "high" : "moderate"}` : ` ✗ below floor ${confidenceFloor}`),
     );
 
     if (!matched) continue;
