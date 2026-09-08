@@ -419,6 +419,12 @@ export default async function handler(req, res) {
           subtype: 'Signal',
           steepled: candidate.steepled || [],
           source_confidence: deriveSourceConfidence(source),
+          // Carry the candidate's embedding (already parsed + used for scoring
+          // above) onto the promoted input. Without this, scanner-promoted
+          // inputs land with a null embedding and are invisible to clustering /
+          // corpus similarity — unlike manual inputs (embedded on creation) and
+          // the onboarding seed path (seed-onboarding.js), which both set it.
+          embedding: candidate.embedding,
           is_seeded: true,
           metadata: {
             source: 'scanner',
