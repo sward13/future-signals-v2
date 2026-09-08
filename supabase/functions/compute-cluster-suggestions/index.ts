@@ -34,6 +34,13 @@ const SENSITIVITY_THRESHOLDS: Record<string, number> = {
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_MODEL   = "gpt-4o-mini";
 
+// Max in-flight OpenAI calls when naming groups / generating rationales. A
+// fully-embedded project can yield 20+ groups in one run; naming them
+// sequentially (one blocking call each) took ~50s and tripped a runtime limit.
+// Bounded parallelism keeps total wall time low while staying well under the
+// OpenAI rate limit.
+const OPENAI_CONCURRENCY = 6;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -384,6 +391,9 @@ serve(async (req: Request) => {
       : typeof err === "object" && err !== null
         ? JSON.stringify(err)
         : String(err);
+    // Surface the failure in the function logs — the client only ever sees a
+    // generic "non-2xx status code", so without this a 500 is undiagnosable.
+    console.error("[compute-cluster-suggestions] 500:", message);
     return respond({ error: message }, 500);
   }
 });
@@ -505,6 +515,30 @@ function assignmentMatchesToRows(
  * with 'assign_to_existing' instead of proposing a new cluster — those groups
  * become per-input assignment rows targeting the named existing cluster.
  */
+/**
+ * Runs `fn` over `items` with at most `limit` promises in flight at once,
+ * preserving input order in the returned array. Used to bound concurrent
+ * OpenAI calls.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  async function worker(): Promise<void> {
+    while (true) {
+      const i = next++;
+      if (i >= items.length) return;
+      results[i] = await fn(items[i], i);
+    }
+  }
+  const workerCount = Math.min(Math.max(1, limit), items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
 async function runNewClusterPass(
   candidateInputs: EmbeddedInput[],
   allClusters: ClusterMeta[],
@@ -540,63 +574,93 @@ async function runNewClusterPass(
   const assignmentRows: object[] = [];
   const newClusterRows: object[] = [];
 
-  for (const group of groups) {
-    try {
+  // Name every group with bounded concurrency instead of one blocking call at a
+  // time. Trade-off vs. the old sequential loop: groups no longer see the names
+  // chosen by *earlier groups in the same run* (that cross-group de-dup was
+  // inherently sequential). Collisions among freshly-proposed names are rare and
+  // cosmetic — the practitioner edits names on review — so we accept it for the
+  // large speed-up. Each group still sees all pre-existing real cluster names.
+  type NamedGroup = {
+    group: string[];
+    groupInputs: EmbeddedInput[];
+    named: NamingResult | null;
+    error: string | null;
+  };
+
+  const namedGroups: NamedGroup[] = await mapWithConcurrency(
+    groups,
+    OPENAI_CONCURRENCY,
+    async (group): Promise<NamedGroup> => {
       const groupInputs = candidateInputs.filter((i) => group.includes(i.id));
-      const named = await nameCluster(groupInputs, existingClusterNames, projectContext);
+      try {
+        const named = await nameCluster(groupInputs, existingClusterNames, projectContext);
+        return { group, groupInputs, named, error: null };
+      } catch (err) {
+        return {
+          group,
+          groupInputs,
+          named: null,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
+    },
+  );
 
-      if (named.action === "assign_to_existing") {
-        const target = allClusters.find(
-          (c) => c.name.trim().toLowerCase() === named.cluster_name.trim().toLowerCase(),
+  for (const { group, groupInputs, named, error } of namedGroups) {
+    if (error || !named) {
+      errors.push(`Naming failed for group of ${group.length} inputs: ${error ?? "unknown error"}`);
+      continue;
+    }
+
+    if (named.action === "assign_to_existing") {
+      const target = allClusters.find(
+        (c) => c.name.trim().toLowerCase() === named.cluster_name.trim().toLowerCase(),
+      );
+
+      if (!target) {
+        errors.push(
+          `LLM suggested assigning a group to "${named.cluster_name}" but no matching cluster was found.`,
         );
-
-        if (!target) {
-          errors.push(
-            `LLM suggested assigning a group to "${named.cluster_name}" but no matching cluster was found.`,
-          );
-          continue;
-        }
-
-        for (const inputId of group) {
-          const inputObj = groupInputs.find((i) => i.id === inputId) ?? groupInputs[0];
-          const rationale = await generateAssignmentRationale(inputObj, target.name, target.description, projectContext);
-          assignmentRows.push({
-            project_id:        projectId,
-            workspace_id:      workspaceId,
-            type:              "assignment",
-            name:              target.name,
-            target_cluster_id: target.id,
-            input_ids:         [inputId],
-            confidence:        null,
-            rationale,
-            status:            "pending",
-          });
-        }
         continue;
       }
 
-      newClusterRows.push({
-        project_id:   projectId,
-        workspace_id: workspaceId,
-        type:         "new_cluster",
-        name:         named.name,
-        description:  named.description,
-        subtype:      named.subtype,
-        input_ids:    group,
-        rationale:    named.rationale,
-        relevance:    named.relevance,
-        status:       "pending",
-      });
-
-      // Track the new name so subsequent groups avoid colliding with it
-      existingClusterNames.push(named.name);
-    } catch (err) {
-      errors.push(
-        `Naming failed for group of ${group.length} inputs: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+      const rationales = await mapWithConcurrency(
+        group,
+        OPENAI_CONCURRENCY,
+        (inputId) => {
+          const inputObj = groupInputs.find((i) => i.id === inputId) ?? groupInputs[0];
+          return generateAssignmentRationale(inputObj, target.name, target.description, projectContext);
+        },
       );
+
+      group.forEach((inputId, idx) => {
+        assignmentRows.push({
+          project_id:        projectId,
+          workspace_id:      workspaceId,
+          type:              "assignment",
+          name:              target.name,
+          target_cluster_id: target.id,
+          input_ids:         [inputId],
+          confidence:        null,
+          rationale:         rationales[idx],
+          status:            "pending",
+        });
+      });
+      continue;
     }
+
+    newClusterRows.push({
+      project_id:   projectId,
+      workspace_id: workspaceId,
+      type:         "new_cluster",
+      name:         named.name,
+      description:  named.description,
+      subtype:      named.subtype,
+      input_ids:    group,
+      rationale:    named.rationale,
+      relevance:    named.relevance,
+      status:       "pending",
+    });
   }
 
   return { assignmentRows, newClusterRows, errors };
@@ -779,12 +843,10 @@ async function enrichAssignmentsWithRationale(
   matches: AssignmentMatch[],
   project: ProjectContext,
 ): Promise<AssignmentMatch[]> {
-  return Promise.all(
-    matches.map(async (m) => ({
-      ...m,
-      rationale: await generateAssignmentRationale(m.input, m.cluster.name, m.cluster.description, project),
-    })),
-  );
+  return mapWithConcurrency(matches, OPENAI_CONCURRENCY, async (m) => ({
+    ...m,
+    rationale: await generateAssignmentRationale(m.input, m.cluster.name, m.cluster.description, project),
+  }));
 }
 
 // ─── Math helpers ─────────────────────────────────────────────────────────────
