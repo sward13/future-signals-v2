@@ -291,62 +291,6 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
             )}
           </div>
 
-          {/* Cluster membership */}
-          <div className="mb-4">
-            <div className="text-[11px] tracking-[0.02em] text-hint mb-1.5">Cluster</div>
-            {projectClusters && onAssignToCluster ? (
-              assignedClusters.length === 0 || reassigning ? (
-                <select
-                  className="w-full py-2.25 px-2.75 border border-border-strong rounded-container bg-white text-ink text-xs font-[inherit] outline-none appearance-none box-border"
-                  defaultValue=""
-                  onChange={(e) => {
-                    if (!e.target.value) return;
-                    onAssignToCluster(input.id, e.target.value);
-                    setReassigning(false);
-                  }}
-                >
-                  <option value="" disabled>{reassigning ? "— Select a cluster —" : "— Assign to cluster —"}</option>
-                  {projectClusters.map((cl) => (
-                    <option key={cl.id} value={cl.id}>{cl.name}</option>
-                  ))}
-                </select>
-              ) : (
-                <div className="flex items-center gap-2 flex-wrap">
-                  {assignedClusters.map((cl) => (
-                    <span
-                      key={cl.id}
-                      onClick={() => onOpenCluster?.(cl.id)}
-                      className={clsx(
-                        "text-[11px] py-0.75 px-2.5 rounded-container bg-blue-50 text-blue-700 border border-blue-border",
-                        onOpenCluster ? "cursor-pointer" : "cursor-default",
-                      )}
-                    >
-                      {cl.name} {onOpenCluster && <span className="opacity-60">›</span>}
-                    </span>
-                  ))}
-                  <button
-                    onClick={() => setReassigning(true)}
-                    className="text-[11px] text-muted bg-transparent border-none cursor-pointer font-[inherit] p-0"
-                  >
-                    Reassign
-                  </button>
-                </div>
-              )
-            ) : (
-              <div className="flex flex-wrap gap-1.25">
-                {assignedClusters.length === 0 ? (
-                  <span className="text-xs text-hint italic">Unassigned</span>
-                ) : (
-                  assignedClusters.map((cl) => (
-                    <span key={cl.id} className="text-[10px] py-0.5 px-2 rounded-container bg-surface-alt text-muted border border-border">
-                      {cl.name}
-                    </span>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-
           {/* Signal strength */}
           <div className="mb-4">
             <div className="text-[11px] tracking-[0.02em] text-hint mb-1.5">Signal strength</div>
@@ -415,6 +359,62 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
               )}>
                 {input.horizon || "Not set"}
               </span>
+            )}
+          </div>
+
+          {/* Cluster membership */}
+          <div className="mb-4">
+            <div className="text-[11px] tracking-[0.02em] text-hint mb-1.5">Cluster</div>
+            {projectClusters && onAssignToCluster ? (
+              assignedClusters.length === 0 || reassigning ? (
+                <select
+                  className="w-full py-2.25 px-2.75 border border-border-strong rounded-container bg-white text-ink text-xs font-[inherit] outline-none appearance-none box-border"
+                  defaultValue=""
+                  onChange={(e) => {
+                    if (!e.target.value) return;
+                    onAssignToCluster(input.id, e.target.value);
+                    setReassigning(false);
+                  }}
+                >
+                  <option value="" disabled>{reassigning ? "— Select a cluster —" : "— Assign to cluster —"}</option>
+                  {projectClusters.map((cl) => (
+                    <option key={cl.id} value={cl.id}>{cl.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {assignedClusters.map((cl) => (
+                    <span
+                      key={cl.id}
+                      onClick={() => onOpenCluster?.(cl.id)}
+                      className={clsx(
+                        "text-[11px] py-0.75 px-2.5 rounded-container bg-blue-50 text-blue-700 border border-blue-border",
+                        onOpenCluster ? "cursor-pointer" : "cursor-default",
+                      )}
+                    >
+                      {cl.name} {onOpenCluster && <span className="opacity-60">›</span>}
+                    </span>
+                  ))}
+                  <button
+                    onClick={() => setReassigning(true)}
+                    className="text-[11px] text-muted bg-transparent border-none cursor-pointer font-[inherit] p-0"
+                  >
+                    Reassign
+                  </button>
+                </div>
+              )
+            ) : (
+              <div className="flex flex-wrap gap-1.25">
+                {assignedClusters.length === 0 ? (
+                  <span className="text-xs text-hint italic">Unassigned</span>
+                ) : (
+                  assignedClusters.map((cl) => (
+                    <span key={cl.id} className="text-[10px] py-0.5 px-2 rounded-container bg-surface-alt text-muted border border-border">
+                      {cl.name}
+                    </span>
+                  ))
+                )}
+              </div>
             )}
           </div>
 
