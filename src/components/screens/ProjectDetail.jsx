@@ -441,11 +441,7 @@ export default function ProjectDetail({ appState }) {
     setEditDrawerOpen(true);
   };
 
-  const handleUpdateProject = (fields) => {
-    updateProject(project.id, fields);
-    showToast("Project updated");
-    setEditDrawerOpen(false);
-  };
+  const handleUpdateProject = (fields) => updateProject(project.id, fields);
 
   const handleDeleteProject = () => {
     deleteProject(project.id);

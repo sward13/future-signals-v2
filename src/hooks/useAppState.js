@@ -588,21 +588,20 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     }
   }, [workspaceId, showToast]);
 
-  const updateProject = useCallback((id, fields) => {
+  const updateProject = useCallback(async (id, fields) => {
     setProjects((prev) => prev.map((p) => p.id === id ? { ...p, ...fields } : p));
-    if (workspaceId) {
-      (async () => {
-        try {
-          const { error } = await supabase
-            .from("projects")
-            .update(fields)
-            .eq("id", id)
-            .eq("workspace_id", workspaceId);
-          if (error) throw error;
-        } catch {
-          showToast("Failed to update project", "error");
-        }
-      })();
+    if (!workspaceId) return { error: null };
+    try {
+      const { error } = await supabase
+        .from("projects")
+        .update(fields)
+        .eq("id", id)
+        .eq("workspace_id", workspaceId);
+      if (error) throw error;
+      return { error: null };
+    } catch (err) {
+      showToast("Failed to update project", "error");
+      return { error: err };
     }
   }, [workspaceId, showToast]);
 

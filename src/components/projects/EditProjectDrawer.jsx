@@ -1,7 +1,7 @@
 /**
  * EditProjectDrawer — slide-over drawer for editing an existing project.
  * All fields are pre-populated from the current project object.
- * @param {{ project: object, onClose: () => void, onSave: (fields: object) => void, scrollTo?: string }} props
+ * @param {{ project: object, onClose: () => void, onSave: (fields: object) => Promise<{error?: any}|void>, scrollTo?: string }} props
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import { c, inp, ta, btnP, btnSec, btnG, fl, fh, legend } from "../../styles/tokens.js";
@@ -53,6 +53,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
   const [h1Pct, setH1Pct] = useState(initial.h1Pct);
   const [h2Pct, setH2Pct] = useState(initial.h2Pct);
   const [nameError, setNameError] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const bodyRef = useRef(null);
 
@@ -74,34 +75,42 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
     setEndYear(Math.max(v, startYear + 5));
   }, [startYear]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) { setNameError(true); return; }
     if (customSelected && !trimmedCustom) { setCustomError(true); return; }
-    const span = endYear - startYear;
-    const h1End = String(Math.round(startYear + h1Pct * span));
-    const h2End = String(Math.round(startYear + h2Pct * span));
-    const finalCustom = customSelected ? trimmedCustom : "";
-    onSave({
-      name: name.trim(),
-      domains,
-      custom_domain: finalCustom || null,
-      domain: legacyDomainValue(domains, finalCustom), // legacy column, rollback safety
-      question,
-      focus: focus,  // was: unit
-      scope_in: scopeIn,
-      scope_out: scopeOut,
-      geo,
-      assumptions,
-      stakeholders,
-      audience,
-      h1_start: String(startYear),
-      h1_end: h1End,
-      h2_start: h1End,
-      h2_end: h2End,
-      h3_start: h2End,
-      h3_end: String(endYear),
-      scanning_enabled: workspaceScanningEnabled && scanningEnabled && hasDomain,
-    });
+    setSaving(true);
+    try {
+      const span = endYear - startYear;
+      const h1End = String(Math.round(startYear + h1Pct * span));
+      const h2End = String(Math.round(startYear + h2Pct * span));
+      const finalCustom = customSelected ? trimmedCustom : "";
+      const result = await onSave({
+        name: name.trim(),
+        domains,
+        custom_domain: finalCustom || null,
+        domain: legacyDomainValue(domains, finalCustom), // legacy column, rollback safety
+        question,
+        focus: focus,  // was: unit
+        scope_in: scopeIn,
+        scope_out: scopeOut,
+        geo,
+        assumptions,
+        stakeholders,
+        audience,
+        h1_start: String(startYear),
+        h1_end: h1End,
+        h2_start: h1End,
+        h2_end: h2End,
+        h3_start: h2End,
+        h3_end: String(endYear),
+        scanning_enabled: workspaceScanningEnabled && scanningEnabled && hasDomain,
+      });
+      if (result?.error) return; // onSave already surfaced the error toast — keep the drawer open so nothing is lost
+      showToast?.("Project updated");
+      onClose();
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -322,12 +331,13 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
         {/* Footer */}
         <div style={{ flexShrink: 0 }}>
           <div style={{ padding: "14px 24px 18px", borderTop: `1px solid ${c.border}`, display: "flex", gap: 8 }}>
-            <button onClick={onClose} style={btnSec}>Cancel</button>
+            <button onClick={onClose} style={btnSec} disabled={saving}>Cancel</button>
             <button
               onClick={handleSave}
-              style={{ ...btnP, flex: 1, opacity: name.trim() ? 1 : 0.4 }}
+              disabled={saving || !name.trim()}
+              style={{ ...btnP, flex: 1, opacity: saving ? 0.6 : name.trim() ? 1 : 0.4 }}
             >
-              Save
+              {saving ? "Saving…" : "Save"}
             </button>
           </div>
           {onDelete && (
