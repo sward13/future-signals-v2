@@ -163,6 +163,11 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
               Edit
             </button>
           )}
+          {!editing && canDupe && !isAiSuggested && (
+            <button onClick={() => onDuplicateToCluster()} className={clsx(btnSecClass, "text-[11px] py-1.25 px-3.5")}>
+              Duplicate
+            </button>
+          )}
           <button onClick={onClose} className="bg-transparent border-none cursor-pointer font-[inherit] text-base py-0.5 px-1.5 text-muted rounded-btn">×</button>
         </div>
 
@@ -457,20 +462,6 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
                 </div>
               </div>
             )}
-          </div>
-        )}
-
-        {/* Footer (view mode): Duplicate only — a read-adjacent convenience
-            action (creates an unassigned copy, doesn't mutate or destroy this
-            input), so it stays available in view mode. */}
-        {!editing && canDupe && !isAiSuggested && (
-          <div className="pt-3 px-6 pb-4.5 border-t border-border shrink-0">
-            <button
-              onClick={() => onDuplicateToCluster()}
-              className="text-[11px] py-1.25 px-3 rounded-[6px] border border-border-strong bg-transparent text-muted cursor-pointer font-[inherit]"
-            >
-              Duplicate
-            </button>
           </div>
         )}
       </div>

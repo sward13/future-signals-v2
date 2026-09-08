@@ -1041,7 +1041,9 @@ export default function ProjectDetail({ appState }) {
             border: `1px solid ${c.border}`,
             borderRadius: 8,
             boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
-            minWidth: 180,
+            // Sized to fit its content (a single "Duplicate" item). The 180px
+            // min-width here was left over from when this menu hosted the wider
+            // "Duplicate to cluster" label + cluster picker.
             zIndex: 201,
             overflow: "hidden",
           }}>
