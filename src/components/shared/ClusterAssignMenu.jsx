@@ -1,10 +1,17 @@
 /**
  * ClusterAssignMenu — portal-based cluster picker used by any "Assign →" button.
  * Renders via createPortal to escape overflow:hidden ancestors.
+ *
+ * onNewCluster is optional: when omitted, the "+ New cluster" footer is hidden
+ * (e.g. the input detail drawer offers assignment only, not cluster creation).
  */
 import { createPortal } from "react-dom";
 import { c } from "../../styles/tokens.js";
 import { SubtypeTag } from "./Tag.jsx";
+
+// Shared row hover/focus feedback — matches the app's other portal menus.
+const rowHoverOn  = (e) => { e.currentTarget.style.background = c.surfaceAlt; };
+const rowHoverOff = (e) => { e.currentTarget.style.background = "transparent"; };
 
 const DROPDOWN_MAX_HEIGHT = 240;
 
@@ -40,6 +47,10 @@ export function ClusterAssignMenu({ clusters, onAssign, onNewCluster, onClose, a
               <button
                 key={cl.id}
                 onClick={() => onAssign(cl)}
+                onMouseEnter={rowHoverOn}
+                onMouseLeave={rowHoverOff}
+                onFocus={rowHoverOn}
+                onBlur={rowHoverOff}
                 style={{
                   display: "flex", alignItems: "center", gap: 8,
                   width: "100%", padding: "10px 14px",
@@ -56,18 +67,24 @@ export function ClusterAssignMenu({ clusters, onAssign, onNewCluster, onClose, a
             ))}
           </div>
         )}
-        <button
-          onClick={onNewCluster}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            width: "100%", padding: "10px 14px",
-            background: "transparent", border: "none",
-            textAlign: "left", cursor: "pointer", fontFamily: "inherit",
-            fontSize: 12, color: c.muted,
-          }}
-        >
-          <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> New cluster
-        </button>
+        {onNewCluster && (
+          <button
+            onClick={onNewCluster}
+            onMouseEnter={rowHoverOn}
+            onMouseLeave={rowHoverOff}
+            onFocus={rowHoverOn}
+            onBlur={rowHoverOff}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              width: "100%", padding: "10px 14px",
+              background: "transparent", border: "none",
+              textAlign: "left", cursor: "pointer", fontFamily: "inherit",
+              fontSize: 12, color: c.muted,
+            }}
+          >
+            <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> New cluster
+          </button>
+        )}
       </div>
     </>,
     document.body
