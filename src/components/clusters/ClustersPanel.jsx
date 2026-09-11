@@ -121,6 +121,8 @@ export function ClustersPanel({
   style,
   mode: modeProp = undefined,
   setMode: setModeProp = undefined,
+  selectedClusterId: selectedClusterIdProp = undefined,
+  onSelectCluster = undefined,
 }) {
   // Allow parent to lift mode state; fall back to internal state if props not provided
   const [_mode, _setMode] = useState("manual");
@@ -128,7 +130,13 @@ export function ClustersPanel({
   const setMode = setModeProp !== undefined ? setModeProp : _setMode;
 
   const [view, setView] = useState("card");       // "list" | "card"
-  const [selectedClusterId, setSelectedClusterId] = useState(null);
+  // Cluster selection: controlled by the parent (rail mode) when onSelectCluster
+  // is provided — the ClusterRail is then the detail surface. Otherwise falls
+  // back to internal state + the in-panel ClusterDetailPanel slide-in.
+  const railMode = typeof onSelectCluster === "function";
+  const [_selectedClusterId, _setSelectedClusterId] = useState(null);
+  const selectedClusterId = railMode ? (selectedClusterIdProp ?? null) : _selectedClusterId;
+  const setSelectedClusterId = railMode ? onSelectCluster : _setSelectedClusterId;
   const [dropTargetId, setDropTargetId] = useState(null);
   const [dropIsCopy,   setDropIsCopy]   = useState(false);
   const [filterUntitled, setFilterUntitled] = useState(false);
@@ -155,9 +163,10 @@ export function ClustersPanel({
     if (untitledCount === 0) setFilterUntitled(false);
   }, [untitledCount]);
 
-  // Close detail panel on Escape or click outside the clusters panel
+  // Close detail panel on Escape or click outside the clusters panel.
+  // Rail mode owns its own close behaviour (ClusterRail), so skip this there.
   useEffect(() => {
-    if (!selectedClusterId) return;
+    if (railMode || !selectedClusterId) return;
     const onKey = (e) => { if (e.key === "Escape") setSelectedClusterId(null); };
     const onClickOutside = (e) => {
       if (panelRef.current && !panelRef.current.contains(e.target)) {
@@ -170,7 +179,7 @@ export function ClustersPanel({
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onClickOutside);
     };
-  }, [selectedClusterId]);
+  }, [selectedClusterId, railMode, setSelectedClusterId]);
 
   const selectedCluster = clusters.find((cl) => cl.id === selectedClusterId) || null;
 
@@ -474,20 +483,23 @@ export function ClustersPanel({
         />
       )}
 
-      {/* ── Cluster detail panel (slides in from right) ──────── */}
-      <ClusterDetailPanel
-        open={!!selectedClusterId}
-        cluster={selectedCluster}
-        inputs={inputs}
-        onClose={() => setSelectedClusterId(null)}
-        onRemoveInput={removeInputFromCluster}
-        onDelete={(id) => {
-          deleteCluster(id);
-          setSelectedClusterId(null);
-          showToast?.("Cluster deleted", "success");
-        }}
-        updateCluster={updateCluster}
-      />
+      {/* ── Cluster detail panel (slides in from right) ──────────
+          Rail mode replaces this with ClusterRail (rendered by ClusterScreen). */}
+      {!railMode && (
+        <ClusterDetailPanel
+          open={!!selectedClusterId}
+          cluster={selectedCluster}
+          inputs={inputs}
+          onClose={() => setSelectedClusterId(null)}
+          onRemoveInput={removeInputFromCluster}
+          onDelete={(id) => {
+            deleteCluster(id);
+            setSelectedClusterId(null);
+            showToast?.("Cluster deleted", "success");
+          }}
+          updateCluster={updateCluster}
+        />
+      )}
     </div>
   );
 }

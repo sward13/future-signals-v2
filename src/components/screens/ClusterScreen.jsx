@@ -6,6 +6,7 @@ import { HorizTag } from "../shared/Tag.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
 import { ClustersPanel } from "../clusters/ClustersPanel.jsx";
+import { ClusterRail } from "../clusters/ClusterRail.jsx";
 import { DragGhost } from "../clusters/DragGhost.jsx";
 import { STEEPLED } from "../../data/seeds.js";
 
@@ -163,6 +164,8 @@ export default function ClusterScreen({ appState }) {
   const [clusterMode,  setClusterMode]  = useState("manual");
   // Drop zone state for the InputRail drop target
   const [dropOnZone,   setDropOnZone]   = useState(false);
+  // Selected cluster for the read-only ClusterRail (Phase 2). null = rail closed.
+  const [railClusterId, setRailClusterId] = useState(null);
 
   const project = projects.find((p) => p.id === activeProjectId) ?? null;
 
@@ -302,8 +305,15 @@ export default function ClusterScreen({ appState }) {
       : `${dragIds.length} inputs`
     : "";
 
+  const railCluster = projectClusters.find((cl) => cl.id === railClusterId) || null;
+
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-bg">
+    <div className={clsx(
+      "flex flex-col h-screen overflow-hidden bg-bg transition-[padding] duration-[220ms]",
+      // Rail is a fixed 400px right panel; pad content left so it stays usable
+      // on wide viewports. Under 860px the rail overlays instead (no padding).
+      railCluster && "min-[861px]:pr-[400px]",
+    )}>
 
       {/* ── Header ───────────────────────────────────────────────── */}
       <div className="pt-6 px-8 pb-4 shrink-0 border-b border-border-mid">
@@ -344,6 +354,8 @@ export default function ClusterScreen({ appState }) {
           updateCluster={updateCluster}
           mode={clusterMode}
           setMode={setClusterMode}
+          selectedClusterId={railClusterId}
+          onSelectCluster={setRailClusterId}
           style={{ flex: 1, minHeight: 0, width: "100%", minWidth: 0, borderLeft: "none" }}
         />
 
@@ -654,6 +666,17 @@ export default function ClusterScreen({ appState }) {
           )}
         </div>
       </div>
+
+      {/* ── Cluster detail rail (read-only, non-modal) ─────────── */}
+      <ClusterRail
+        open={!!railCluster}
+        cluster={railCluster}
+        inputs={inputs}
+        onClose={() => setRailClusterId(null)}
+        onRemoveInput={removeInputFromCluster}
+        onDelete={(id) => { deleteCluster(id); setRailClusterId(null); }}
+        updateCluster={updateCluster}
+      />
 
       <DragGhost
         active={!!dragIds}
