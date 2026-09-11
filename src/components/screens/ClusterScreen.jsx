@@ -701,6 +701,9 @@ export default function ClusterScreen({ appState }) {
         onViewCluster={(id) => setRailTarget({ kind: "view", id })}
         onDirtyChange={handleDirtyChange}
         guardActive={!!pendingNav}
+        dragIds={dragIds}
+        onClearDrag={() => setDragIds(null)}
+        onDropToCluster={handleDrop}
       />
 
       {/* ── Unsaved-changes guard (phase 5) ────────────────────── */}
