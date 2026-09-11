@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import clsx from "clsx";
 import { CirclePlus } from "lucide-react";
@@ -9,21 +9,6 @@ import { ClustersPanel } from "../clusters/ClustersPanel.jsx";
 import { ClusterRail } from "../clusters/ClusterRail.jsx";
 import { DragGhost } from "../clusters/DragGhost.jsx";
 import { STEEPLED } from "../../data/seeds.js";
-
-// Returns the next available "Untitled" / "Untitled N" name for a project's cluster list.
-// Sequence: "Untitled", "Untitled 2", "Untitled 3", … (gaps are reused, not skipped).
-function nextUntitledName(clusters) {
-  const used = new Set();
-  for (const cl of clusters) {
-    if (cl.name === "Untitled") used.add(0);
-    const m = cl.name?.match(/^Untitled (\d+)$/);
-    if (m) used.add(Number(m[1]));
-  }
-  if (!used.has(0)) return "Untitled";
-  let n = 2;
-  while (used.has(n)) n++;
-  return `Untitled ${n}`;
-}
 
 const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Environmental:"Env", Political:"Pol", Legal:"Leg", Ethical:"Eth", Demographic:"Dem" };
 const COL = { check: 28, type: 70, strength: 55, confidence: 55, steepled: 80, horizon: 50, cluster: 90, menu: 24 };
@@ -164,8 +149,14 @@ export default function ClusterScreen({ appState }) {
   const [clusterMode,  setClusterMode]  = useState("manual");
   // Drop zone state for the InputRail drop target
   const [dropOnZone,   setDropOnZone]   = useState(false);
-  // Selected cluster for the read-only ClusterRail (Phase 2). null = rail closed.
-  const [railClusterId, setRailClusterId] = useState(null);
+  // ClusterRail target: null (closed) | { kind:"view", id } (existing cluster)
+  // | { kind:"create", inputIds, seq } (new-cluster draft — persisted only on
+  // Save, phase 4). seq forces the rail to reset for each fresh create session.
+  const [railTarget, setRailTarget] = useState(null);
+  const createSeqRef = useRef(0);
+  const openCreateRail = (inputIds = []) => setRailTarget({ kind: "create", inputIds, seq: ++createSeqRef.current });
+  // Stable identity: passed to ClustersPanel as onSelectCluster (an effect dep there).
+  const selectViewCluster = useCallback((id) => setRailTarget(id ? { kind: "view", id } : null), []);
 
   const project = projects.find((p) => p.id === activeProjectId) ?? null;
 
@@ -201,14 +192,6 @@ export default function ClusterScreen({ appState }) {
 
   const getInputCluster  = (inputId) => projectClusters.find((cl) => cl.input_ids?.includes(inputId)) || null;
   const getInputClusters = (inputId) => projectClusters.filter((cl) => cl.input_ids?.includes(inputId));
-
-  const createUntitledCluster = (inputIds = []) => {
-    const name = nextUntitledName(projectClusters);
-    addCluster({ name, project_id: project.id, input_ids: inputIds });
-    showToast(inputIds.length > 0
-      ? `"${name}" created with ${inputIds.length} input${inputIds.length !== 1 ? "s" : ""}`
-      : `"${name}" created`);
-  };
 
   const handleAssignToCluster = (inputId, cluster) => {
     assignInputToCluster(inputId, cluster.id);
@@ -296,7 +279,7 @@ export default function ClusterScreen({ appState }) {
   const handleDropToNewCluster = () => {
     const ids = [...(dragIds || [])];
     setDragIds(null);
-    createUntitledCluster(ids);
+    openCreateRail(ids);
   };
 
   const dragLabel = dragIds
@@ -305,14 +288,18 @@ export default function ClusterScreen({ appState }) {
       : `${dragIds.length} inputs`
     : "";
 
-  const railCluster = projectClusters.find((cl) => cl.id === railClusterId) || null;
+  const railCluster = railTarget?.kind === "view"
+    ? (projectClusters.find((cl) => cl.id === railTarget.id) || null)
+    : null;
+  const railCreate = railTarget?.kind === "create" ? railTarget : null;
+  const railOpen = !!(railCluster || railCreate);
 
   return (
     <div className={clsx(
       "flex flex-col h-screen overflow-hidden bg-bg transition-[padding] duration-[220ms]",
       // Rail is a fixed 400px right panel; pad content left so it stays usable
       // on wide viewports. Under 860px the rail overlays instead (no padding).
-      railCluster && "min-[861px]:pr-[400px]",
+      railOpen && "min-[861px]:pr-[400px]",
     )}>
 
       {/* ── Header ───────────────────────────────────────────────── */}
@@ -324,7 +311,7 @@ export default function ClusterScreen({ appState }) {
           <div className="text-[22px] font-medium text-ink font-heading">Cluster</div>
           <div className="flex items-center gap-2 ml-auto">
             <button
-              onClick={() => createUntitledCluster()}
+              onClick={() => openCreateRail()}
               className={clsx(btnSmCls, "inline-flex items-center gap-1.25")}
             >
               <CirclePlus size={13} className="shrink-0" /> New cluster
@@ -341,7 +328,7 @@ export default function ClusterScreen({ appState }) {
           projectId={project.id}
           clusters={projectClusters}
           inputs={inputs}
-          onNewCluster={() => createUntitledCluster()}
+          onNewCluster={() => openCreateRail()}
           removeInputFromCluster={removeInputFromCluster}
           deleteCluster={deleteCluster}
           showToast={showToast}
@@ -354,8 +341,8 @@ export default function ClusterScreen({ appState }) {
           updateCluster={updateCluster}
           mode={clusterMode}
           setMode={setClusterMode}
-          selectedClusterId={railClusterId}
-          onSelectCluster={setRailClusterId}
+          selectedClusterId={railTarget?.kind === "view" ? railTarget.id : null}
+          onSelectCluster={selectViewCluster}
           style={{ flex: 1, minHeight: 0, width: "100%", minWidth: 0, borderLeft: "none" }}
         />
 
@@ -599,7 +586,7 @@ export default function ClusterScreen({ appState }) {
                                   <ClusterAssignMenu
                                     clusters={projectClusters}
                                     onAssign={(cl) => handleAssignToCluster(inp.id, cl)}
-                                    onNewCluster={() => { setAssignPickerFor(null); createUntitledCluster([inp.id]); }}
+                                    onNewCluster={() => { setAssignPickerFor(null); openCreateRail([inp.id]); }}
                                     onClose={() => setAssignPickerFor(null)}
                                     anchorRect={assignPickerAnchorRect}
                                   />
@@ -646,7 +633,7 @@ export default function ClusterScreen({ appState }) {
                         <ClusterAssignMenu
                           clusters={projectClusters}
                           onAssign={handleBatchAssign}
-                          onNewCluster={() => { setBatchPickerOpen(false); createUntitledCluster([...selectedIds]); setSelectedIds(new Set()); setLastCheckedId(null); }}
+                          onNewCluster={() => { setBatchPickerOpen(false); openCreateRail([...selectedIds]); setSelectedIds(new Set()); setLastCheckedId(null); }}
                           onClose={() => setBatchPickerOpen(false)}
                           anchorRect={batchAssignAnchorRect}
                         />
@@ -667,15 +654,24 @@ export default function ClusterScreen({ appState }) {
         </div>
       </div>
 
-      {/* ── Cluster detail rail (read-only, non-modal) ─────────── */}
+      {/* ── Cluster detail / create rail (non-modal) ───────────── */}
       <ClusterRail
-        open={!!railCluster}
+        open={railOpen}
         cluster={railCluster}
+        createInputIds={railCreate ? railCreate.inputIds : null}
+        createSeq={railCreate ? railCreate.seq : 0}
         inputs={inputs}
-        onClose={() => setRailClusterId(null)}
+        onClose={() => setRailTarget(null)}
         onRemoveInput={removeInputFromCluster}
-        onDelete={(id) => { deleteCluster(id); setRailClusterId(null); }}
+        onDelete={(id) => { deleteCluster(id); setRailTarget(null); }}
         updateCluster={updateCluster}
+        onCreate={(fields, inputIds) => {
+          const created = addCluster({ ...fields, project_id: project.id, input_ids: inputIds });
+          showToast(inputIds.length > 0
+            ? `"${fields.name}" created with ${inputIds.length} input${inputIds.length !== 1 ? "s" : ""}`
+            : `"${fields.name}" created`);
+          setRailTarget(created ? { kind: "view", id: created.id } : null);
+        }}
       />
 
       <DragGhost

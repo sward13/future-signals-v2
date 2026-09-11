@@ -1,22 +1,21 @@
 /**
  * ClusterRail — full-viewport-height, right-side, NON-MODAL rail for a cluster.
  *
- * Phase 2 introduced this as a read-only view. Phase 3 moves editing INTO the
- * rail: the "Edit" button now flips the rail body into an inline edit form
- * (name / subtype / horizon / likelihood / description) instead of opening the
- * modal ClusterDrawer. Edits are staged in local draft state and committed only
- * on an explicit "Save changes". There is no unsaved-changes navigate-away
- * guard yet — switching clusters or closing while editing discards the draft
- * (matching prior behaviour); that guard is a later phase.
+ * Modes:
+ *  - view   (cluster, not editing): read-only detail + linked inputs.
+ *  - edit   (cluster, editing): inline form; commit on "Save changes".
+ *  - create (createInputIds != null, no cluster): blank inline form for a NEW
+ *           cluster. The cluster is persisted only on "Create cluster" (phase 4)
+ *           — dropping inputs to create pre-stages them; Cancel/close abandons
+ *           the draft and nothing is written (the inputs stay unassigned).
  *
- * Scope note: this only replaces the Cluster-tab edit flow. System Map's
- * separate ClusterDetailDrawer.jsx is intentionally left untouched — the two
- * were never consolidated and that remains a separate decision.
+ * There is no unsaved-changes navigate-away guard yet — switching clusters or
+ * closing while editing/creating discards the draft. That guard is a later phase.
  *
- * Field markup mirrors ClusterDrawer.jsx so the inline form matches the form it
- * replaces. Read-view rendering mirrors ClusterDetailPanel.jsx.
+ * Scope: this only covers the Cluster-tab flow. System Map's separate
+ * ClusterDetailDrawer.jsx is intentionally left untouched.
  *
- * @param {{ open: boolean, cluster: object|null, inputs: object[], onClose: () => void, onRemoveInput: (inputId, clusterId) => void, onDelete: (id) => void, updateCluster: (id, fields) => void }} props
+ * @param {{ open: boolean, cluster: object|null, createInputIds: string[]|null, createSeq: number, inputs: object[], onClose: () => void, onRemoveInput: (inputId, clusterId) => void, onDelete: (id) => void, updateCluster: (id, fields) => void, onCreate: (fields, inputIds) => void }} props
  */
 import { useState, useEffect, useRef } from "react";
 import clsx from "clsx";
@@ -61,6 +60,22 @@ function LikelihoodTag({ l }) {
   );
 }
 
+function InputRow({ name, onRemove }) {
+  return (
+    <div className="flex items-center gap-1.75 py-1.75 px-2.5 bg-surface-alt rounded-btn border border-border">
+      <span className="text-[8px] text-hint shrink-0">●</span>
+      <span className="text-xs text-ink flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{name}</span>
+      <button
+        onClick={onRemove}
+        className="bg-transparent border-none cursor-pointer text-[11px] text-hint py-0 px-0.5 font-[inherit] shrink-0 leading-none"
+        title="Remove from cluster"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
 function fieldsFromCluster(cluster) {
   return {
     name:        cluster?.name        || "",
@@ -71,23 +86,28 @@ function fieldsFromCluster(cluster) {
   };
 }
 
-export function ClusterRail({ open, cluster, inputs, onClose, onRemoveInput, onDelete, updateCluster }) {
+export function ClusterRail({ open, cluster, createInputIds = null, createSeq = 0, inputs, onClose, onRemoveInput, onDelete, updateCluster, onCreate }) {
   const [editing, setEditing] = useState(false);
   const [fields, setFields] = useState(() => fieldsFromCluster(cluster));
+  const [stagedInputIds, setStagedInputIds] = useState(() => createInputIds || []);
   const [nameError, setNameError] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const closeBtnRef = useRef(null);
   const lastFocusedRef = useRef(null);
 
-  // Reset edit state when the selected cluster changes (swap between clusters
-  // without closing), without an effect — adjust state during render.
-  const [prevClusterId, setPrevClusterId] = useState(cluster?.id);
-  if (cluster?.id !== prevClusterId) {
-    setPrevClusterId(cluster?.id);
+  const isCreate = createInputIds != null && !cluster;
+
+  // Reset state when the rail target changes — a different existing cluster, or a
+  // fresh create session (createSeq bumps per open) — without an effect.
+  const targetKey = cluster ? `v:${cluster.id}` : (createInputIds != null ? `c:${createSeq}` : "none");
+  const [prevKey, setPrevKey] = useState(targetKey);
+  if (targetKey !== prevKey) {
+    setPrevKey(targetKey);
     setEditing(false);
     setNameError(false);
     setConfirmDelete(false);
     setFields(fieldsFromCluster(cluster));
+    setStagedInputIds(isCreate ? createInputIds : []);
   }
 
   const set = (key, val) => setFields((f) => ({ ...f, [key]: val }));
@@ -113,20 +133,33 @@ export function ClusterRail({ open, cluster, inputs, onClose, onRemoveInput, onD
     });
     setEditing(false);
   };
+  const handleCreate = () => {
+    if (!fields.name.trim()) { setNameError(true); return; }
+    onCreate(
+      {
+        name: fields.name.trim(),
+        subtype: fields.subtype,
+        horizon: fields.horizon,
+        likelihood: fields.likelihood,
+        description: fields.description,
+      },
+      stagedInputIds,
+    );
+  };
 
-  // Escape: cancel the edit if editing, otherwise close the rail. The delete
-  // confirm dialog owns Escape while it's open.
+  // Escape: cancel an existing-cluster edit; otherwise (view or create) close
+  // the rail. The delete confirm dialog owns Escape while it's open.
   useEffect(() => {
     if (!open || confirmDelete) return;
     const onKey = (e) => {
       if (e.key !== "Escape") return;
-      if (editing) handleCancel();
+      if (editing && cluster) handleCancel();
       else onClose();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, editing, confirmDelete, onClose]);
+  }, [open, editing, cluster, confirmDelete, onClose]);
 
   // Move focus into the rail on open; return it to the trigger on close.
   useEffect(() => {
@@ -139,14 +172,17 @@ export function ClusterRail({ open, cluster, inputs, onClose, onRemoveInput, onD
     }
   }, [open]);
 
+  const showForm = (cluster && editing) || isCreate;
   const linkedInputs = cluster ? inputs.filter((i) => cluster.input_ids?.includes(i.id)) : [];
+  const stagedInputs = inputs.filter((i) => stagedInputIds.includes(i.id));
+  const eyebrow = isCreate ? "New cluster" : editing ? "Edit cluster" : "Cluster";
 
   return (
     <>
       <aside
         role="dialog"
         aria-modal="false"
-        aria-label={cluster ? `Cluster: ${cluster.name}` : "Cluster detail"}
+        aria-label={cluster ? `Cluster: ${cluster.name}` : isCreate ? "New cluster" : "Cluster detail"}
         aria-hidden={!open}
         className={clsx(
           "fixed top-0 right-0 bottom-0 z-20 flex flex-col bg-white border-l border-border shadow-[-18px_0_34px_-22px_rgba(0,0,0,0.28)] transition-transform duration-[220ms] ease-in-out",
@@ -156,11 +192,9 @@ export function ClusterRail({ open, cluster, inputs, onClose, onRemoveInput, onD
       >
         {/* Header */}
         <div className="pt-5 px-5 pb-3.5 border-b border-border flex items-center justify-between shrink-0">
-          <div className="text-[11px] tracking-[0.02em] text-hint">
-            {editing ? "Edit cluster" : "Cluster"}
-          </div>
+          <div className="text-[11px] tracking-[0.02em] text-hint">{eyebrow}</div>
           <div className="flex items-center gap-2">
-            {!editing && (
+            {cluster && !editing && (
               <button
                 onClick={handleEdit}
                 className="bg-transparent border border-border-strong cursor-pointer font-[inherit] text-[11px] text-muted py-1 px-2.5 rounded-btn"
@@ -181,21 +215,19 @@ export function ClusterRail({ open, cluster, inputs, onClose, onRemoveInput, onD
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto py-4 px-5">
+          {/* ── Read view ── */}
           {cluster && !editing && (
             <>
-              {/* Badges */}
               <div className="flex gap-1.25 mb-2.5 flex-wrap">
                 <SubtypeTag sub={cluster.subtype} />
                 {cluster.horizon && <HorizTag h={cluster.horizon} />}
                 {cluster.likelihood && <LikelihoodTag l={cluster.likelihood} />}
               </div>
 
-              {/* Name */}
               <div className="text-lg font-semibold text-ink mb-2 leading-[1.3]">
                 {cluster.name}
               </div>
 
-              {/* Description */}
               <div className={clsx(
                 "text-xs leading-[1.65] mb-4",
                 cluster.description ? "text-muted not-italic" : "text-hint italic",
@@ -205,7 +237,6 @@ export function ClusterRail({ open, cluster, inputs, onClose, onRemoveInput, onD
 
               <div className="h-px bg-border mb-3" />
 
-              {/* Linked inputs */}
               <div className="text-[11px] tracking-[0.02em] text-hint mb-2">
                 Linked inputs ({linkedInputs.length})
               </div>
@@ -215,26 +246,15 @@ export function ClusterRail({ open, cluster, inputs, onClose, onRemoveInput, onD
               ) : (
                 <div className="flex flex-col gap-1">
                   {linkedInputs.map((inp) => (
-                    <div key={inp.id} className="flex items-center gap-1.75 py-1.75 px-2.5 bg-surface-alt rounded-btn border border-border">
-                      <span className="text-[8px] text-hint shrink-0">●</span>
-                      <span className="text-xs text-ink flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                        {inp.name}
-                      </span>
-                      <button
-                        onClick={() => onRemoveInput(inp.id, cluster.id)}
-                        className="bg-transparent border-none cursor-pointer text-[11px] text-hint py-0 px-0.5 font-[inherit] shrink-0 leading-none"
-                        title="Remove from cluster"
-                      >
-                        ✕
-                      </button>
-                    </div>
+                    <InputRow key={inp.id} name={inp.name} onRemove={() => onRemoveInput(inp.id, cluster.id)} />
                   ))}
                 </div>
               )}
             </>
           )}
 
-          {cluster && editing && (
+          {/* ── Edit / Create form ── */}
+          {showForm && (
             <>
               {/* Name */}
               <div className="mb-4.5">
@@ -318,7 +338,7 @@ export function ClusterRail({ open, cluster, inputs, onClose, onRemoveInput, onD
               </div>
 
               {/* Description */}
-              <div className="mb-2">
+              <div className={isCreate ? "mb-4.5" : "mb-2"}>
                 <div className={flClass}>Description</div>
                 <textarea
                   className={taClass}
@@ -328,12 +348,31 @@ export function ClusterRail({ open, cluster, inputs, onClose, onRemoveInput, onD
                   placeholder="e.g. Diverging national frameworks create compliance complexity across jurisdictions…"
                 />
               </div>
+
+              {/* Staged inputs (create only) */}
+              {isCreate && (
+                <div className="mb-2">
+                  <div className={flClass}>Linked inputs</div>
+                  {stagedInputs.length === 0 ? (
+                    <div className="text-xs text-hint italic">No inputs linked yet — drag inputs onto this draft, or add them after creating.</div>
+                  ) : (
+                    <div className="flex flex-col gap-1">
+                      {stagedInputs.map((inp) => (
+                        <InputRow
+                          key={inp.id}
+                          name={inp.name}
+                          onRemove={() => setStagedInputIds((ids) => ids.filter((x) => x !== inp.id))}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
 
-        {/* Footer — edit mode only: Save/Cancel row, then Danger Zone below a
-            second border (matches ClusterDrawer's convention). */}
+        {/* Footer — edit mode: Save/Cancel + Danger Zone */}
         {cluster && editing && (
           <div className="shrink-0">
             <div className="pt-3.5 px-5 pb-4 border-t border-border flex items-center justify-end gap-2">
@@ -355,6 +394,21 @@ export function ClusterRail({ open, cluster, inputs, onClose, onRemoveInput, onD
                   Delete cluster
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Footer — create mode: Cancel + Create cluster */}
+        {isCreate && (
+          <div className="shrink-0">
+            <div className="pt-3.5 px-5 pb-4 border-t border-border flex items-center justify-end gap-2">
+              <button onClick={onClose} className={btnSecClass}>Cancel</button>
+              <button
+                onClick={handleCreate}
+                className={clsx(btnPClass, fields.name.trim() ? "opacity-100" : "opacity-40")}
+              >
+                Create cluster
+              </button>
             </div>
           </div>
         )}
