@@ -7,6 +7,7 @@ import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
 import { ClustersPanel } from "../clusters/ClustersPanel.jsx";
 import { ClusterRail } from "../clusters/ClusterRail.jsx";
+import { UnsavedChangesDialog } from "../shared/UnsavedChangesDialog.jsx";
 import { DragGhost } from "../clusters/DragGhost.jsx";
 import { STEEPLED } from "../../data/seeds.js";
 
@@ -151,12 +152,31 @@ export default function ClusterScreen({ appState }) {
   const [dropOnZone,   setDropOnZone]   = useState(false);
   // ClusterRail target: null (closed) | { kind:"view", id } (existing cluster)
   // | { kind:"create", inputIds, seq } (new-cluster draft — persisted only on
-  // Save, phase 4). seq forces the rail to reset for each fresh create session.
+  // Save). seq forces the rail to reset for each fresh create session.
   const [railTarget, setRailTarget] = useState(null);
+  // Unsaved-changes guard (phase 5): pendingNav holds the intended next target
+  // while we confirm; railDirtyRef mirrors the rail's dirty state (set via
+  // onDirtyChange) so navigation triggers can read it synchronously; railRef
+  // reaches the rail's imperative commit() for the "Save" choice.
+  const [pendingNav, setPendingNav] = useState(null); // null | { next }
   const createSeqRef = useRef(0);
-  const openCreateRail = (inputIds = []) => setRailTarget({ kind: "create", inputIds, seq: ++createSeqRef.current });
+  const railDirtyRef = useRef(false);
+  const railRef = useRef(null);
+  const handleDirtyChange = useCallback((d) => { railDirtyRef.current = d; }, []);
+  const buildCreateTarget = (inputIds = []) => ({ kind: "create", inputIds, seq: ++createSeqRef.current });
+  // Route every navigate-away through the guard: if the draft is dirty, stash
+  // the intent and confirm; otherwise navigate immediately.
+  const requestNav = (next) => {
+    if (railDirtyRef.current) setPendingNav({ next });
+    else setRailTarget(next);
+  };
+  const openCreateRail = (inputIds = []) => requestNav(buildCreateTarget(inputIds));
   // Stable identity: passed to ClustersPanel as onSelectCluster (an effect dep there).
-  const selectViewCluster = useCallback((id) => setRailTarget(id ? { kind: "view", id } : null), []);
+  const selectViewCluster = useCallback((id) => {
+    const next = id ? { kind: "view", id } : null;
+    if (railDirtyRef.current) setPendingNav({ next });
+    else setRailTarget(next);
+  }, []);
 
   const project = projects.find((p) => p.id === activeProjectId) ?? null;
 
@@ -197,6 +217,17 @@ export default function ClusterScreen({ appState }) {
     assignInputToCluster(inputId, cluster.id);
     showToast(`Input assigned to "${cluster.name}"`);
     setAssignPickerFor(null);
+  };
+
+  // Persist a rail create draft (no navigation). Returns the new cluster so the
+  // caller can decide where to go next (the create button → view it; the guard's
+  // "Save" → continue to the pending target).
+  const createClusterDraft = (fields, inputIds) => {
+    const created = addCluster({ ...fields, project_id: project.id, input_ids: inputIds });
+    showToast(inputIds.length > 0
+      ? `"${fields.name}" created with ${inputIds.length} input${inputIds.length !== 1 ? "s" : ""}`
+      : `"${fields.name}" created`);
+    return created;
   };
 
   // ── Tab / filter derived values ──────────────────────────────────────────────
@@ -656,23 +687,35 @@ export default function ClusterScreen({ appState }) {
 
       {/* ── Cluster detail / create rail (non-modal) ───────────── */}
       <ClusterRail
+        ref={railRef}
         open={railOpen}
         cluster={railCluster}
         createInputIds={railCreate ? railCreate.inputIds : null}
         createSeq={railCreate ? railCreate.seq : 0}
         inputs={inputs}
-        onClose={() => setRailTarget(null)}
+        onClose={() => requestNav(null)}
         onRemoveInput={removeInputFromCluster}
         onDelete={(id) => { deleteCluster(id); setRailTarget(null); }}
         updateCluster={updateCluster}
-        onCreate={(fields, inputIds) => {
-          const created = addCluster({ ...fields, project_id: project.id, input_ids: inputIds });
-          showToast(inputIds.length > 0
-            ? `"${fields.name}" created with ${inputIds.length} input${inputIds.length !== 1 ? "s" : ""}`
-            : `"${fields.name}" created`);
-          setRailTarget(created ? { kind: "view", id: created.id } : null);
-        }}
+        createClusterDraft={createClusterDraft}
+        onViewCluster={(id) => setRailTarget({ kind: "view", id })}
+        onDirtyChange={handleDirtyChange}
+        guardActive={!!pendingNav}
       />
+
+      {/* ── Unsaved-changes guard (phase 5) ────────────────────── */}
+      {pendingNav && (
+        <UnsavedChangesDialog
+          onKeepEditing={() => setPendingNav(null)}
+          onDiscard={() => { setRailTarget(pendingNav.next); setPendingNav(null); }}
+          onSave={() => {
+            const ok = railRef.current?.commit();
+            if (ok === false) { setPendingNav(null); return; } // couldn't save (e.g. no name) — keep the draft open
+            setRailTarget(pendingNav.next);
+            setPendingNav(null);
+          }}
+        />
+      )}
 
       <DragGhost
         active={!!dragIds}
