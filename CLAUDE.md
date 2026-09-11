@@ -312,20 +312,20 @@ CTAs     → "Add from Inbox" + "Add an input" (right-aligned)
 
 ## Clusters panel — structure and rules
 
-The 320px right-hand panel in the Cluster workspace (`ClusterScreen.jsx`). Project metadata lives on Overview; System Map status is visible via the nav item.
+The cluster list/card panel in the Cluster workspace (`ClusterScreen.jsx`) — rendered full-width across the top of the stacked layout (cluster panel on top, input rail below, resizable split), not a fixed 320px column. Project metadata lives on Overview; System Map status is visible via the nav item.
 
 **Panel header:**
 - Single row: Manual/Suggested mode toggle (left) + list/card view toggle (right, hidden in Suggested mode). `pt-4` (16px) top padding from panel top edge to toggle row. The "Clusters" heading has been removed — the panel header contains only the mode/view controls.
 - "+ New cluster" button lives in the ClusterScreen page header (above the panel), not inside ClustersPanel.
 
 **Manual mode** (default):
-- Drop zone strip below header — dashed border, `c.faint` text "⊕ Drop inputs here to create a new cluster". Highlights `c.brand` / `c.brandBg` on drag-over. Drop opens ClusterDrawer with inputs pre-selected.
+- Drop zone strip below header — dashed border, `c.faint` text "⊕ Drop inputs here to create a new cluster". Highlights `c.brand` / `c.brandBg` on drag-over. Drop opens the **ClusterRail in create mode** with those inputs pre-staged (see "Cluster rail" below).
 - Scrollable cluster list — two view modes:
   - **List view:** column header row (Name | Type | H | Likelihood | #); compact rows with `HorizTag` in a 34px column and `LikelihoodTag` in a 74px column. `LikelihoodTag` is a local Tailwind-only component in `ClustersPanel.jsx` — no `tokens.js` import.
   - **Card view:** type badge + horizon badge (header row), name, description (always rendered with `minHeight: 34` to hold 2-line space even when empty), footer pinned via `marginTop: "auto"` (input count left, likelihood right). Cards fill grid cell height via `display:flex; flexDirection:column; height:100%` + CSS Grid default `align-items:stretch`.
 - **Multi-select (card view):** per-card checkboxes fade in on hover or when any card is selected (`anySelected` prop). Shift-click range-selects via `visibleClusters` render order. `selectedClusterIds` Set is shared across list and card view bulk-delete. Sticky action bar at bottom of scroll area shows "{N} selected · Delete N · ✕ Clear" when selection is non-empty; ConfirmDialog before bulk delete.
 - Drag-and-drop targets: move (default) or copy (⌥ Option held). Drop target shows "Move"/"Copy" pill in `c.brand` / green.
-- Cluster detail panel slides in from right on click (translateX, 220ms). Shows badges, name, description, linked inputs with ✕ remove per row, Edit button (opens `ClusterDrawer` in `mode="edit"` — full-field editing of name, subtype, horizon, likelihood, description; linked-inputs section hidden in edit mode), Delete button in footer. Closes on back-click, Escape, or clicking the inputs panel.
+- Clicking a cluster opens the **ClusterRail** (see below) — `ClustersPanel`'s selection is controlled: when `onSelectCluster` is provided (rail mode), the parent (`ClusterScreen`) owns `selectedClusterId` and the old in-panel `ClusterDetailPanel` slide-in is **not** rendered. (`ClusterDetailPanel` still exists for non-rail callers, but the Cluster tab always runs in rail mode, so it's unused here.)
 
 **Suggested mode:**
 - Toolbar: sensitivity toggle (Tight / Balanced / Exploratory) + "✦ Suggest clustering" button.
@@ -335,7 +335,25 @@ The 320px right-hand panel in the Cluster workspace (`ClusterScreen.jsx`). Proje
 - Empty states: "No suggestions yet" before first run; "All suggestions resolved" after all acted on.
 
 **Props ClustersPanel receives from ClusterScreen:**
-`projectId`, `clusters`, `inputs`, `onNewCluster`, `removeInputFromCluster`, `deleteCluster`, `showToast`, `dragIds`, `dragIsCopy`, `onDrop`, `onDropToNewCluster`, `assignInputToCluster`, `addCluster`, `updateCluster`
+`projectId`, `clusters`, `inputs`, `onNewCluster`, `removeInputFromCluster`, `deleteCluster`, `showToast`, `dragIds`, `dragIsCopy`, `onDrop`, `onDropToNewCluster`, `assignInputToCluster`, `addCluster`, `updateCluster`, `selectedClusterId`, `onSelectCluster` (the last two make selection controlled → rail mode)
+
+---
+
+## Cluster rail (`ClusterRail.jsx`) — the cluster view/edit/create surface
+
+The **cluster-workbench redesign** (shipped 2026-09-11, PRs #25–#30) replaced the old modal/slide-in cluster flow with a single, full-viewport-height, **non-modal** right-side rail. It's rendered by `ClusterScreen.jsx` (not inside `ClustersPanel`) as a `position: fixed` panel; while open, the workspace content pads left (`min-[861px]:pr-[400px]`) so the cluster grid + input table stay visible and usable beside it (no backdrop). Under 860px it overlays full-width instead.
+
+`ClusterScreen` owns a single `railTarget`: `null` | `{ kind:"view", id }` | `{ kind:"create", inputIds, seq }`. The rail has three modes:
+
+- **View** (existing cluster): read-only badges / name / description / linked inputs (✕ unlink, instant). An **Edit** button flips it to…
+- **Edit** (existing cluster): inline form (name / subtype / horizon / likelihood / description), committed on **Save changes**; Cancel reverts; a Danger-zone **Delete** (ConfirmDialog) lives here. Field markup mirrors `ClusterDrawer`.
+- **Create** (new-cluster draft): blank inline form; **not persisted until "Create cluster"** (name required). Retires the old auto-`Untitled` naming. Drop-to-create / the header "+ New cluster" / assign-menu "+ New cluster" all open this. Staged inputs show with ✕; on create they link atomically via `addCluster`'s `input_ids`.
+
+**Drop onto the rail:** input rows can be dragged onto the rail (reusing `ClusterScreen`'s native-DnD `dragIds`). In view/edit → assigns to that cluster (instant, `handleDrop`; ⌥ = copy); in create → stages into the draft. A brand drop-hint overlay shows on drag-over.
+
+**Unsaved-changes guard:** navigating away from a *dirty* draft — switching clusters, "+ New cluster", or closing (× / Escape) — routes through a guard in `ClusterScreen` that shows a 3-way `UnsavedChangesDialog` (Keep editing / Discard / Save). The rail reports dirty via `onDirtyChange` and exposes an imperative `commit()` (forwardRef) for the Save path. Dirty = edit fields differ from saved, or a create draft has any field touched **or** any input staged. The explicit Cancel button still reverts in place without prompting.
+
+**Superseded (unused on the Cluster tab):** `ClusterDetailPanel.jsx` (old slide-in) and `ClusterDrawer.jsx`'s edit/create modal — the rail replaces both. They remain in the tree but aren't rendered here. System Map's separate `ClusterDetailDrawer.jsx` was deliberately **not** consolidated and is untouched.
 
 ---
 
@@ -373,7 +391,7 @@ The 320px right-hand panel in the Cluster workspace (`ClusterScreen.jsx`). Proje
 - The Inbox's Scanner Suggestions section has its own search/filter bar, including a Project filter (filters on `metadata.suggested_projects`). It defaults to "All projects" (no filter) on fresh page load and on first navigation to the Inbox. Within a session, the filter persists whatever the user last selected (including cleared).
 - A project's "Review N suggestions" action (Project Detail) sets `appState.inboxProjectFilter` and navigates to the Inbox — the Scanner Suggestions Project filter picks this up as its initial selection (deep-link), pre-filtering Scanner Suggestions to that project on arrival.
 - **Overview is the default project landing screen.** `openProject(id)` navigates to `"project-overview"`, not `"project"` (Inputs). Every entry path to a project — Dashboard card click, Inbox links, sidebar project list, new project creation — lands on Overview first.
-- The System Map is project-scoped and only appears in the sidebar when a project is active. Scan and Cluster are separate screens: `ProjectDetail.jsx` (`"project"`) is inputs-only; `ClusterScreen.jsx` (`"cluster"`) contains the InputRail + ClustersPanel and owns all drag-and-drop state.
+- The System Map is project-scoped and only appears in the sidebar when a project is active. Scan and Cluster are separate screens: `ProjectDetail.jsx` (`"project"`) is inputs-only; `ClusterScreen.jsx` (`"cluster"`) contains the InputRail + ClustersPanel + the `ClusterRail`, and owns all drag-and-drop state and the `railTarget` (see "Cluster rail").
 - At workspace level (Dashboard, Inbox, no active project) the sidebar shows only: Dashboard, Inbox. No project-scoped items.
 - Navigating to Dashboard or Inbox via the sidebar clears the active project context.
 - The Dashboard stats strip shows workspace-level counts only: Projects and Inputs in Inbox. Per-project counts appear on each project card.
@@ -480,7 +498,7 @@ src/
       Inbox.jsx
       ProjectOverview.jsx   ← default project landing: key question, horizons, scanner, phase cards
       ProjectDetail.jsx     ← Scan screen (inputs table only; no clustering; screen key "project")
-      ClusterScreen.jsx     ← Cluster screen (InputRail + ClustersPanel + all drag state; screen key "cluster")
+      ClusterScreen.jsx     ← Cluster screen (InputRail + ClustersPanel + ClusterRail; owns all drag state + railTarget; screen key "cluster")
       Clustering.jsx        ← dead code; no longer imported (legacy file, safe to delete later)
       SystemMap.jsx
       SystemAnalysis.jsx
@@ -491,14 +509,16 @@ src/
       SeededSignalCard.jsx
     clusters/
       ClusterCard.jsx           ← card-view item for cluster in ClustersPanel
-      ClusterDrawer.jsx         ← create/edit cluster slide-over
-      ClusterDetailPanel.jsx    ← sliding detail panel inside ClustersPanel
-      ClustersPanel.jsx         ← 320px right-hand panel (Manual/Suggested modes)
+      ClusterRail.jsx           ← non-modal right rail: cluster view/edit/create + drop target (see "Cluster rail")
+      ClusterDrawer.jsx         ← create/edit cluster modal — SUPERSEDED by ClusterRail on the Cluster tab (still imported by the now-unused ClusterDetailPanel)
+      ClusterDetailPanel.jsx    ← old slide-in detail panel — SUPERSEDED by ClusterRail; not rendered on the Cluster tab
+      ClustersPanel.jsx         ← cluster list/card panel (Manual/Suggested modes); selection controllable → rail mode
       ClusterSuggestions.jsx    ← Suggested mode content: AI suggestion cards
       DragGhost.jsx             ← portal-based custom drag ghost element
     shared/
       Tag.jsx               ← QualityBadge, HorizonTag, SubtypeTag
       EmptyState.jsx
+      UnsavedChangesDialog.jsx ← 3-way (Keep editing / Discard / Save) guard modal; used by ClusterRail via ClusterScreen
       HorizonBar.jsx        ← proportional H1/H2/H3 time horizon band; used by ProjectOverview
       ClusterAssignMenu.jsx ← portal-based cluster picker; used by all "Assign →" buttons
       FilterDropdown.jsx    ← reusable filter pill + dropdown; used by ProjectDetail, Inbox, ClusterScreen
