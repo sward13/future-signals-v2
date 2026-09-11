@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import clsx from "clsx";
 import { CirclePlus } from "lucide-react";
-import { c, btnSec, btnSm, fontHeading, tabCount } from "../../styles/tokens.js";
 import { HorizTag } from "../shared/Tag.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
@@ -28,16 +28,24 @@ const STEEPLED_ABB = { Social:"Soc", Technological:"Tech", Economic:"Eco", Envir
 const COL = { check: 28, type: 70, strength: 55, confidence: 55, steepled: 80, horizon: 50, cluster: 90, menu: 24 };
 const INPUT_TYPE_OPTS = ["signal","issue","projection","plan","obstacle","source"];
 
-const STRENGTH_COLORS = {
-  weak:     [c.rust700, c.rust50, c.rustBorder],
-  moderate: [c.tan700,  c.tan50,  c.tanBorder],
-  strong:   [c.sage700, c.sage50, c.sageBorder],
+// Signal Strength / Source Confidence badge colors — the shared rust/tan/sage
+// three-tier ramp (low→rust, mid→tan, high→sage). Mirrors Tag.jsx's TIER_COLORS.
+const STRENGTH_CLASSES = {
+  weak:     "text-rust-700 bg-rust-50 border-rust-border",
+  moderate: "text-tan-700  bg-tan-50  border-tan-border",
+  strong:   "text-sage-700 bg-sage-50 border-sage-border",
 };
-const CONFIDENCE_COLORS = {
-  low:    [c.rust700, c.rust50, c.rustBorder],
-  medium: [c.tan700,  c.tan50,  c.tanBorder],
-  high:   [c.sage700, c.sage50, c.sageBorder],
+const CONFIDENCE_CLASSES = {
+  low:    "text-rust-700 bg-rust-50 border-rust-border",
+  medium: "text-tan-700  bg-tan-50  border-tan-border",
+  high:   "text-sage-700 bg-sage-50 border-sage-border",
 };
+
+// Shared button primitives, as Tailwind equivalents of tokens.js btnSm / btnSec.
+const btnSmCls  = "py-1.75 px-4 rounded-btn bg-brand text-white border-none text-xs font-medium cursor-pointer font-[inherit]";
+const btnSecCls = "py-2.25 px-4.5 rounded-container bg-transparent text-muted border border-border-strong text-ui cursor-pointer font-[inherit]";
+// Column-header cell base (was the `cell` inline-style object).
+const cellCls = "text-[11px] tracking-[0.02em] text-hint shrink-0";
 
 // ─── Filter tab ────────────────────────────────────────────────────────────────
 
@@ -45,26 +53,17 @@ function FilterTab({ label, count, active, onClick }) {
   return (
     <button
       onClick={onClick}
-      style={{
-        display: "flex", alignItems: "center", gap: 5,
-        padding: "5px 2px", fontSize: 12,
-        cursor: "pointer", fontFamily: "inherit",
-        background: "transparent",
-        color: active ? c.ink : c.muted,
-        border: "none",
-        borderBottom: active ? `2px solid ${c.brand}` : "2px solid transparent",
-        fontWeight: active ? 500 : 400,
-        transition: "color 0.1s, border-color 0.1s",
-        marginRight: 12,
-        marginBottom: -1,
-      }}
+      className={clsx(
+        "flex items-center gap-1.25 py-1.25 px-0.5 text-xs cursor-pointer font-[inherit] bg-transparent border-b-2 mr-3 -mb-px transition-[color,border-color] duration-100",
+        active ? "text-ink border-brand font-medium" : "text-muted border-transparent font-normal",
+      )}
     >
       {label}
-      <span style={{
-        ...tabCount,
-        background: active ? c.brandBg : "rgba(0,0,0,0.06)",
-        color: active ? c.blue700 : c.muted,
-      }}>
+      {/* was tokens.js `tabCount`: 10px / padding 0 4px / radius 6 (no radius token) */}
+      <span className={clsx(
+        "text-[10px] px-1 py-0 rounded-[6px]",
+        active ? "bg-brand-bg text-blue-700" : "bg-black/[0.06] text-muted",
+      )}>
         {count}
       </span>
     </button>
@@ -77,10 +76,7 @@ function InputTypeBadge({ subtype }) {
   if (!subtype) return null;
   const label = subtype.charAt(0).toUpperCase() + subtype.slice(1);
   return (
-    <span style={{
-      fontSize: 10, padding: "2px 6px", borderRadius: 4,
-      background: c.surfaceAlt, color: c.muted, whiteSpace: "nowrap", flexShrink: 0,
-    }}>
+    <span className="text-[10px] py-0.5 px-1.5 rounded-chip bg-surface-alt text-muted whitespace-nowrap shrink-0">
       {label}
     </span>
   );
@@ -183,9 +179,9 @@ export default function ClusterScreen({ appState }) {
 
   if (!project) {
     return (
-      <div style={{ padding: "28px 32px", background: c.bg, minHeight: "100%" }}>
-        <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, marginBottom: 8, fontFamily: fontHeading }}>No project selected</div>
-        <button onClick={() => setActiveScreen("dashboard")} style={{ ...btnSec, marginTop: 8 }}>
+      <div className="py-7 px-8 bg-bg min-h-full">
+        <div className="text-[22px] font-medium text-ink mb-2 font-heading">No project selected</div>
+        <button onClick={() => setActiveScreen("dashboard")} className={clsx(btnSecCls, "mt-2")}>
           ← Back to Dashboard
         </button>
       </div>
@@ -306,34 +302,29 @@ export default function ClusterScreen({ appState }) {
       : `${dragIds.length} inputs`
     : "";
 
-  const cell = { fontSize: 11, letterSpacing: "0.02em", color: c.hint, flexShrink: 0 };
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden", background: c.bg }}>
+    <div className="flex flex-col h-screen overflow-hidden bg-bg">
 
       {/* ── Header ───────────────────────────────────────────────── */}
-      <div style={{ padding: "24px 32px 16px", flexShrink: 0, borderBottom: `1px solid ${c.borderMid}` }}>
-        <div style={{ fontSize: 11, letterSpacing: "0.02em", color: c.hint, marginBottom: 3 }}>
+      <div className="pt-6 px-8 pb-4 shrink-0 border-b border-border-mid">
+        <div className="text-[11px] tracking-[0.02em] text-hint mb-0.75">
           {project.name}
         </div>
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>Cluster</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+        <div className="flex items-center">
+          <div className="text-[22px] font-medium text-ink font-heading">Cluster</div>
+          <div className="flex items-center gap-2 ml-auto">
             <button
               onClick={() => createUntitledCluster()}
-              style={{
-                ...btnSm,
-                display: "inline-flex", alignItems: "center", gap: 5,
-              }}
+              className={clsx(btnSmCls, "inline-flex items-center gap-1.25")}
             >
-              <CirclePlus size={13} style={{ flexShrink: 0 }} /> New cluster
+              <CirclePlus size={13} className="shrink-0" /> New cluster
             </button>
           </div>
         </div>
       </div>
 
       {/* ── Stacked workspace ────────────────────────────────────── */}
-      <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
 
         {/* ── ClustersPanel (top, fills available height) ──────── */}
         <ClustersPanel
@@ -363,42 +354,24 @@ export default function ClusterScreen({ appState }) {
             resizeRef.current = { startY: e.clientY, startHeight: drawerHeight };
             setResizing(true);
           }}
-          style={{
-            height: 7,
-            flexShrink: 0,
-            cursor: "row-resize",
-            background: c.bg,
-            borderTop: `1px solid ${c.borderMid}`,
-            borderBottom: `1px solid ${c.border}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            userSelect: "none",
-          }}
+          className="h-[7px] shrink-0 cursor-row-resize bg-bg border-t border-border-mid border-b border-border flex items-center justify-center select-none"
         >
-          <div style={{ display: "flex", gap: 3 }}>
+          <div className="flex gap-0.75">
             {[0, 1, 2].map((i) => (
-              <div key={i} style={{ width: 3, height: 3, borderRadius: "50%", background: c.faint }} />
+              <div key={i} className="w-0.75 h-0.75 rounded-full bg-faint" />
             ))}
           </div>
         </div>
 
         {/* ── Input rail (bottom, resizable height) ──────────────── */}
-        <div style={{
-          height: drawerHeight, flexShrink: 0,
-          display: "flex", flexDirection: "column",
-          overflow: "hidden",
-          background: c.bg,
-        }}>
+        <div
+          className="shrink-0 flex flex-col overflow-hidden bg-bg"
+          style={{ height: drawerHeight }}
+        >
 
           {/* Fixed: "Inputs" label row */}
-          <div style={{
-            padding: "5px 32px",
-            flexShrink: 0,
-            display: "flex", alignItems: "center",
-            borderBottom: `1px solid ${c.border}`,
-          }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: c.muted }}>Inputs</span>
+          <div className="py-1.25 px-8 shrink-0 flex items-center border-b border-border">
+            <span className="text-[11px] font-semibold text-muted">Inputs</span>
           </div>
 
           {/* Fixed: Drop zone (manual mode only) */}
@@ -407,43 +380,29 @@ export default function ClusterScreen({ appState }) {
               onDragOver={(e) => { e.preventDefault(); setDropOnZone(true); }}
               onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropOnZone(false); }}
               onDrop={(e) => { e.preventDefault(); setDropOnZone(false); handleDropToNewCluster(); }}
-              style={{
-                margin: "6px 32px",
-                padding: "5px 12px",
-                borderRadius: 7,
-                border: `1px dashed ${dropOnZone ? c.brand : c.border}`,
-                background: dropOnZone ? c.brandBg : c.white,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0,
-                transition: "border-color 0.12s, background 0.12s",
-              }}
+              className={clsx(
+                "my-1.5 mx-8 py-1.25 px-3 rounded-btn border border-dashed flex items-center justify-center shrink-0 transition-[border-color,background-color] duration-[120ms]",
+                dropOnZone ? "border-brand bg-brand-bg" : "border-border bg-white",
+              )}
             >
-              <span style={{ fontSize: 11, color: dropOnZone ? c.brand : c.faint }}>
+              <span className={clsx("text-[11px]", dropOnZone ? "text-brand" : "text-faint")}>
                 ⊕ Drop inputs here to create a new cluster
               </span>
             </div>
           )}
 
           {/* Fixed: Tabs row */}
-          <div style={{
-            display: "flex", alignItems: "flex-end",
-            padding: "0 32px",
-            borderBottom: `1px solid ${c.border}`,
-            flexShrink: 0,
-          }}>
+          <div className="flex items-end px-8 border-b border-border shrink-0">
             <FilterTab label="All"        count={projectInputs.length} active={inputTab === "all"}        onClick={() => { setInputTab("all");        setSelectedIds(new Set()); setLastCheckedId(null); }} />
             <FilterTab label="Unassigned" count={unassigned.length}    active={inputTab === "unassigned"} onClick={() => { setInputTab("unassigned"); setSelectedIds(new Set()); setLastCheckedId(null); }} />
             <FilterTab label="Clustered"  count={inCluster.length}     active={inputTab === "incluster"}  onClick={() => { setInputTab("incluster");  setSelectedIds(new Set()); setLastCheckedId(null); }} />
           </div>
 
           {projectInputs.length === 0 ? (
-            <div style={{ flex: 1, overflowY: "auto", padding: "12px 32px 8px" }}>
-              <div style={{
-                background: c.white, border: `1px dashed ${c.border}`,
-                borderRadius: 12, padding: "20px 24px", textAlign: "center",
-              }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: c.muted, marginBottom: 4 }}>No inputs yet</div>
-                <div style={{ fontSize: 12, color: c.hint, lineHeight: 1.5 }}>
+            <div className="flex-1 overflow-y-auto pt-3 px-8 pb-2">
+              <div className="bg-white border border-dashed border-border rounded-[12px] py-5 px-6 text-center">
+                <div className="text-ui font-medium text-muted mb-1">No inputs yet</div>
+                <div className="text-xs text-hint leading-[1.5]">
                   Add inputs on the Scan screen, then drag them to clusters here.
                 </div>
               </div>
@@ -451,16 +410,12 @@ export default function ClusterScreen({ appState }) {
           ) : (
             <>
               {/* Fixed: Search + filter row */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 32px 6px", flexShrink: 0 }}>
+              <div className="flex items-center gap-2 pt-1.25 px-8 pb-1.5 shrink-0">
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search inputs…"
-                  style={{
-                    width: 200, padding: "4px 9px", fontSize: 12,
-                    border: `1px solid ${c.border}`, borderRadius: 6,
-                    background: c.white, color: c.ink, fontFamily: "inherit", outline: "none",
-                  }}
+                  className="w-[200px] py-1 px-2.25 text-xs border border-border rounded-[6px] bg-white text-ink font-[inherit] outline-none"
                 />
                 <FilterDropdown
                   label="Type"
@@ -492,7 +447,7 @@ export default function ClusterScreen({ appState }) {
                 {anyFilterActive && (
                   <button
                     onClick={() => { setSearchQuery(""); setFilterType(null); setFilterHorizon(null); setFilterSteepled(null); }}
-                    style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                    className="text-[11px] text-muted bg-transparent border-none cursor-pointer font-[inherit] whitespace-nowrap"
                   >
                     Clear all
                   </button>
@@ -500,57 +455,38 @@ export default function ClusterScreen({ appState }) {
               </div>
 
               {/* Fixed: Column header strip */}
-              <div style={{ padding: "0 32px", flexShrink: 0 }}>
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "0 14px", height: 30,
-                  background: c.white,
-                  border: `1px solid ${c.border}`,
-                  borderBottom: "0.5px solid rgba(0,0,0,0.09)",
-                  borderRadius: "10px 10px 0 0",
-                }}>
-                  <div style={{ width: COL.check, flexShrink: 0, display: "flex", alignItems: "center" }}>
+              <div className="px-8 shrink-0">
+                <div className="flex items-center gap-2.5 px-3.5 h-[30px] bg-white border border-border border-b-[0.5px] rounded-t-[10px]">
+                  <div className="shrink-0 flex items-center" style={{ width: COL.check }}>
                     <input
                       type="checkbox"
                       checked={allVisibleSelected}
                       onChange={toggleSelectAll}
                       ref={(el) => { if (el) el.indeterminate = someSelected && !allVisibleSelected; }}
-                      style={{ cursor: "pointer", accentColor: c.ink }}
+                      className="cursor-pointer accent-ink"
                       onClick={(e) => e.stopPropagation()}
                     />
                   </div>
-                  <div style={{ flex: 1, minWidth: 0, ...cell }}>Input</div>
-                  <div style={{ width: COL.type,       ...cell }}>Type</div>
-                  <div style={{ width: COL.strength,   ...cell }}>Strength</div>
-                  <div style={{ width: COL.confidence, ...cell }}>Confidence</div>
-                  <div style={{ width: COL.steepled,   ...cell }}>STEEPLED</div>
-                  <div style={{ width: COL.horizon,    ...cell }}>Horizon</div>
-                  <div style={{ width: COL.cluster,    ...cell }}>Cluster</div>
-                  <div style={{ width: COL.menu, flexShrink: 0 }} />
+                  <div className={clsx("grow basis-0 min-w-0", cellCls)}>Input</div>
+                  <div className={cellCls} style={{ width: COL.type }}>Type</div>
+                  <div className={cellCls} style={{ width: COL.strength }}>Strength</div>
+                  <div className={cellCls} style={{ width: COL.confidence }}>Confidence</div>
+                  <div className={cellCls} style={{ width: COL.steepled }}>STEEPLED</div>
+                  <div className={cellCls} style={{ width: COL.horizon }}>Horizon</div>
+                  <div className={cellCls} style={{ width: COL.cluster }}>Cluster</div>
+                  <div className="shrink-0" style={{ width: COL.menu }} />
                 </div>
               </div>
 
               {/* Scrollable: row list */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "0 32px 8px" }}>
+              <div className="flex-1 overflow-y-auto px-8 pb-2">
 
                 {visibleInputs.length === 0 ? (
-                  <div style={{
-                    background: c.white,
-                    border: `1px solid ${c.border}`,
-                    borderTop: "none",
-                    borderRadius: "0 0 10px 10px",
-                    padding: "16px 14px", fontSize: 12, color: c.hint, textAlign: "center",
-                  }}>
+                  <div className="bg-white border border-border border-t-0 rounded-b-[10px] py-4 px-3.5 text-xs text-hint text-center">
                     No inputs match the current filters.
                   </div>
                 ) : (
-                  <div style={{
-                    background: c.white,
-                    border: `1px solid ${c.border}`,
-                    borderTop: "none",
-                    borderRadius: "0 0 10px 10px",
-                    overflow: "hidden",
-                  }}>
+                  <div className="bg-white border border-border border-t-0 rounded-b-[10px] overflow-hidden">
                     {visibleInputs.map((inp) => {
                       const assignedClusters = getInputClusters(inp.id);
                       const isDragging = dragIds?.includes(inp.id);
@@ -571,65 +507,70 @@ export default function ClusterScreen({ appState }) {
                             e.dataTransfer.effectAllowed = "copyMove";
                           }}
                           onDragEnd={() => { setDragIds(null); setDragIsCopy(false); }}
-                          onMouseEnter={(e) => { if (!isDragging && !isSelected) e.currentTarget.style.background = "rgba(0,0,0,0.02)"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? c.brandBg : c.white; }}
+                          onMouseEnter={(e) => { if (!isDragging && !isSelected) e.currentTarget.style.background = "var(--color-surface-hover)"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? "var(--color-brand-bg)" : "var(--color-white)"; }}
+                          className="flex items-center gap-2.5 px-3.5 h-[38px] border-b border-border cursor-grab"
                           style={{
-                            display: "flex", alignItems: "center", gap: 10,
-                            padding: "0 14px", height: 38,
-                            borderBottom: `1px solid ${c.border}`,
-                            cursor: "grab",
-                            background: isSelected ? c.brandBg : c.white,
+                            background: isSelected ? "var(--color-brand-bg)" : "var(--color-white)",
                             opacity: isDragging ? 0.35 : 1,
                             transition: "opacity 0.1s, background 0.08s",
                           }}
                         >
                           {/* Checkbox */}
-                          <div style={{ width: COL.check, flexShrink: 0, display: "flex", alignItems: "center" }}>
+                          <div className="shrink-0 flex items-center" style={{ width: COL.check }}>
                             <input
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => {}}
                               onClick={(e) => { e.stopPropagation(); handleCheckboxClick(inp.id, e); }}
-                              style={{ cursor: "pointer", accentColor: c.ink }}
+                              className="cursor-pointer accent-ink"
                             />
                           </div>
                           {/* Title */}
-                          <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+                          <div className="flex-1 min-w-0 text-ui font-medium text-ink overflow-hidden text-ellipsis whitespace-nowrap">
                             {inp.name}
                           </div>
                           {/* Type */}
-                          <div style={{ width: COL.type, flexShrink: 0 }}>
+                          <div className="shrink-0" style={{ width: COL.type }}>
                             <InputTypeBadge subtype={inp.subtype} />
                           </div>
                           {/* Signal Strength */}
-                          <div style={{ width: COL.strength, flexShrink: 0 }}>
-                            {inp.signal_strength ? (() => {
-                              const [col, bg, brd] = STRENGTH_COLORS[inp.signal_strength] || [c.hint, c.surfaceAlt, c.border];
-                              return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.signal_strength.charAt(0).toUpperCase() + inp.signal_strength.slice(1)}</span>;
-                            })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+                          <div className="shrink-0" style={{ width: COL.strength }}>
+                            {inp.signal_strength ? (
+                              <span className={clsx(
+                                "text-[10px] py-0.5 px-1.75 rounded-pill border whitespace-nowrap inline-block",
+                                STRENGTH_CLASSES[inp.signal_strength] || "text-hint bg-surface-alt border-border",
+                              )}>
+                                {inp.signal_strength.charAt(0).toUpperCase() + inp.signal_strength.slice(1)}
+                              </span>
+                            ) : <span className="text-[10px] text-hint">—</span>}
                           </div>
                           {/* Source Confidence */}
-                          <div style={{ width: COL.confidence, flexShrink: 0 }}>
-                            {inp.source_confidence ? (() => {
-                              const [col, bg, brd] = CONFIDENCE_COLORS[inp.source_confidence] || [c.hint, c.surfaceAlt, c.border];
-                              return <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: bg, color: col, border: `1px solid ${brd}`, whiteSpace: "nowrap", display: "inline-block" }}>{inp.source_confidence.charAt(0).toUpperCase() + inp.source_confidence.slice(1)}</span>;
-                            })() : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+                          <div className="shrink-0" style={{ width: COL.confidence }}>
+                            {inp.source_confidence ? (
+                              <span className={clsx(
+                                "text-[10px] py-0.5 px-1.75 rounded-pill border whitespace-nowrap inline-block",
+                                CONFIDENCE_CLASSES[inp.source_confidence] || "text-hint bg-surface-alt border-border",
+                              )}>
+                                {inp.source_confidence.charAt(0).toUpperCase() + inp.source_confidence.slice(1)}
+                              </span>
+                            ) : <span className="text-[10px] text-hint">—</span>}
                           </div>
                           {/* STEEPLED */}
-                          <div style={{ width: COL.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
+                          <div className="shrink-0 flex items-center gap-0.75" style={{ width: COL.steepled }}>
                             {vis2.map((t) => (
-                              <span key={t} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 10, background: c.surfaceAlt, color: c.muted, border: `1px solid ${c.border}` }}>
+                              <span key={t} className="text-[10px] py-0.5 px-1.75 rounded-pill bg-surface-alt text-muted border border-border">
                                 {STEEPLED_ABB[t] || t}
                               </span>
                             ))}
-                            {overflow > 0 && <span style={{ fontSize: 9, color: c.hint }}>+{overflow}</span>}
+                            {overflow > 0 && <span className="text-[9px] text-hint">+{overflow}</span>}
                           </div>
                           {/* Horizon */}
-                          <div style={{ width: COL.horizon, flexShrink: 0 }}>
-                            {inp.horizon ? <HorizTag h={inp.horizon} /> : <span style={{ fontSize: 10, color: c.hint }}>—</span>}
+                          <div className="shrink-0" style={{ width: COL.horizon }}>
+                            {inp.horizon ? <HorizTag h={inp.horizon} /> : <span className="text-[10px] text-hint">—</span>}
                           </div>
                           {/* Cluster assignment / Assign button */}
-                          <div style={{ width: COL.cluster, flexShrink: 0, display: "flex", alignItems: "center", position: "relative" }}>
+                          <div className="shrink-0 flex items-center relative" style={{ width: COL.cluster }}>
                             {assignedClusters.length === 0 ? (
                               <>
                                 <button
@@ -638,7 +579,7 @@ export default function ClusterScreen({ appState }) {
                                     if (assignPickerFor !== inp.id) setAssignPickerAnchorRect(e.currentTarget.getBoundingClientRect());
                                     setAssignPickerFor(assignPickerFor === inp.id ? null : inp.id);
                                   }}
-                                  style={{ ...btnSm, fontSize: 10, padding: "3px 8px", whiteSpace: "nowrap" }}
+                                  className="py-[3px] px-2 rounded-btn bg-brand text-white border-none text-[10px] font-medium cursor-pointer font-[inherit] whitespace-nowrap"
                                 >
                                   Assign →
                                 </button>
@@ -653,18 +594,18 @@ export default function ClusterScreen({ appState }) {
                                 )}
                               </>
                             ) : assignedClusters.length === 1 ? (
-                              <span style={{ fontSize: 11, color: c.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <span className="text-[11px] text-muted overflow-hidden text-ellipsis whitespace-nowrap">
                                 {assignedClusters[0].name}
                               </span>
                             ) : (
-                              <span style={{ fontSize: 10.5, padding: "2px 6px", borderRadius: 4, background: c.bg, color: c.muted, whiteSpace: "nowrap" }}>
+                              <span className="text-[10.5px] py-0.5 px-1.5 rounded-chip bg-bg text-muted whitespace-nowrap">
                                 {assignedClusters.length} clusters
                               </span>
                             )}
                           </div>
                           {/* Drag grip indicator */}
-                          <div style={{ width: COL.menu, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <span style={{ fontSize: 12, color: c.faint, lineHeight: 1 }}>⠿</span>
+                          <div className="shrink-0 flex items-center justify-center" style={{ width: COL.menu }}>
+                            <span className="text-xs text-faint leading-none">⠿</span>
                           </div>
                         </div>
                       );
@@ -674,24 +615,18 @@ export default function ClusterScreen({ appState }) {
 
                 {/* Multi-select action bar */}
                 {someSelected && (
-                  <div style={{
-                    position: "sticky", bottom: 0,
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "7px 14px",
-                    background: c.bg,
-                    borderTop: `1px solid ${c.border}`,
-                  }}>
-                    <span style={{ fontSize: 12, color: c.muted, flex: 1 }}>
+                  <div className="sticky bottom-0 flex items-center gap-2 py-1.75 px-3.5 bg-bg border-t border-border">
+                    <span className="text-xs text-muted flex-1">
                       {selectedIds.size} selected
                     </span>
-                    <div style={{ position: "relative" }}>
+                    <div className="relative">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           if (!batchPickerOpen) setBatchAssignAnchorRect(e.currentTarget.getBoundingClientRect());
                           setBatchPickerOpen(!batchPickerOpen);
                         }}
-                        style={{ ...btnSm, fontSize: 11, padding: "4px 12px", whiteSpace: "nowrap" }}
+                        className="py-1 px-3 rounded-btn bg-brand text-white border-none text-[11px] font-medium cursor-pointer font-[inherit] whitespace-nowrap"
                       >
                         Assign {selectedIds.size} →
                       </button>
@@ -707,7 +642,7 @@ export default function ClusterScreen({ appState }) {
                     </div>
                     <button
                       onClick={() => { setSelectedIds(new Set()); setLastCheckedId(null); }}
-                      style={{ fontSize: 11, color: c.muted, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                      className="text-[11px] text-muted bg-transparent border-none cursor-pointer font-[inherit]"
                     >
                       ✕ Clear
                     </button>
