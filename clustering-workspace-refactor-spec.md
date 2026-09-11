@@ -1,9 +1,11 @@
 # Future Signals — Clustering Workspace Refactor
 ## Spec v1 · June 2026
 
-> **Status: Complete** — all 8 steps implemented on `workspace-refactor` branch, 2026-06-28.
+> ⚠️ **SUPERSEDED (2026-09-11) — historical only, do not use as a reference.**
+> The cluster detail / edit / create flow described here (in-panel `ClusterDetailPanel` slide-in + modal `ClusterDrawer`, instant `Untitled` creation) was replaced by the **cluster-workbench redesign** (PRs #25–#30): a single non-modal `ClusterRail` for view/edit/create, named-draft creation, drop-to-rail, and an unsaved-changes guard. See CLAUDE.md → "Cluster rail" for the shipped design. The Suggested-mode AI panel and the list/card panel described here are still accurate.
+
+> **Status (v1): Complete** — all 8 steps implemented on `workspace-refactor` branch, 2026-06-28.
 > Steps: (1) layout refactor, (2) cluster detail panel, (3) sidebar cleanup, (4) drop zone, (5) drag-and-drop, (6) multi-select, (7) Suggested mode AI panel, (8) wiring + bug fixes + cleanup.
-> Pending: merge `workspace-refactor` → `master` after alpha review.
 
 ---
 
