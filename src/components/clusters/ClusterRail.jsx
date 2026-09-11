@@ -5,19 +5,24 @@
  *  - view   (cluster, not editing): read-only detail + linked inputs.
  *  - edit   (cluster, editing): inline form; commit on "Save changes".
  *  - create (createInputIds != null, no cluster): blank inline form for a NEW
- *           cluster. The cluster is persisted only on "Create cluster" (phase 4)
- *           — dropping inputs to create pre-stages them; Cancel/close abandons
- *           the draft and nothing is written (the inputs stay unassigned).
+ *           cluster; persisted only on "Create cluster".
  *
- * There is no unsaved-changes navigate-away guard yet — switching clusters or
- * closing while editing/creating discards the draft. That guard is a later phase.
+ * Phase 5 — unsaved-changes safety. The rail reports whether the current draft
+ * is dirty (onDirtyChange) and exposes an imperative commit() (via ref) that
+ * persists the draft without navigating. ClusterScreen owns navigation and, when
+ * a dirty draft would be abandoned (switch cluster / new cluster / close), shows
+ * a 3-way confirm (keep editing / discard / save) and drives the outcome.
+ * While that confirm is up (guardActive), the rail suppresses its own
+ * Escape/close so the dialog is the single source of truth.
  *
- * Scope: this only covers the Cluster-tab flow. System Map's separate
- * ClusterDetailDrawer.jsx is intentionally left untouched.
+ * Scope: only the Cluster-tab flow. System Map's ClusterDetailDrawer.jsx is
+ * intentionally untouched. (The old ClusterDetailPanel/ClusterDrawer slide-in is
+ * no longer rendered on this tab — the rail supersedes it — so its historical
+ * silent-discard-on-switch bug is now unreachable here.)
  *
- * @param {{ open: boolean, cluster: object|null, createInputIds: string[]|null, createSeq: number, inputs: object[], onClose: () => void, onRemoveInput: (inputId, clusterId) => void, onDelete: (id) => void, updateCluster: (id, fields) => void, onCreate: (fields, inputIds) => void }} props
+ * @param {{ open: boolean, cluster: object|null, createInputIds: string[]|null, createSeq: number, inputs: object[], onClose: () => void, onRemoveInput: (inputId, clusterId) => void, onDelete: (id) => void, updateCluster: (id, fields) => void, createClusterDraft: (fields, inputIds) => object|null, onViewCluster: (id) => void, onDirtyChange: (dirty: boolean) => void, guardActive: boolean }} props
  */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useImperativeHandle, forwardRef } from "react";
 import clsx from "clsx";
 import { SubtypeTag, HorizTag } from "../shared/Tag.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
@@ -86,7 +91,13 @@ function fieldsFromCluster(cluster) {
   };
 }
 
-export function ClusterRail({ open, cluster, createInputIds = null, createSeq = 0, inputs, onClose, onRemoveInput, onDelete, updateCluster, onCreate }) {
+const BLANK = fieldsFromCluster(null);
+
+export const ClusterRail = forwardRef(function ClusterRail({
+  open, cluster, createInputIds = null, createSeq = 0, inputs,
+  onClose, onRemoveInput, onDelete, updateCluster,
+  createClusterDraft, onViewCluster, onDirtyChange, guardActive = false,
+}, ref) {
   const [editing, setEditing] = useState(false);
   const [fields, setFields] = useState(() => fieldsFromCluster(cluster));
   const [stagedInputIds, setStagedInputIds] = useState(() => createInputIds || []);
@@ -109,6 +120,32 @@ export function ClusterRail({ open, cluster, createInputIds = null, createSeq = 
     setFields(fieldsFromCluster(cluster));
     setStagedInputIds(isCreate ? createInputIds : []);
   }
+
+  // ── Dirty tracking ──────────────────────────────────────────────────────────
+  const isDirty = useMemo(() => {
+    if (isCreate) {
+      const touched =
+        fields.name.trim() !== "" ||
+        fields.description !== "" ||
+        fields.subtype !== BLANK.subtype ||
+        fields.horizon !== BLANK.horizon ||
+        fields.likelihood !== BLANK.likelihood;
+      return touched || stagedInputIds.length > 0;
+    }
+    if (cluster && editing) {
+      const saved = fieldsFromCluster(cluster);
+      return (
+        fields.name !== saved.name ||
+        fields.subtype !== saved.subtype ||
+        fields.horizon !== saved.horizon ||
+        fields.likelihood !== saved.likelihood ||
+        fields.description !== saved.description
+      );
+    }
+    return false;
+  }, [isCreate, cluster, editing, fields, stagedInputIds]);
+
+  useEffect(() => { onDirtyChange?.(isDirty); }, [isDirty, onDirtyChange]);
 
   const set = (key, val) => setFields((f) => ({ ...f, [key]: val }));
 
@@ -135,31 +172,45 @@ export function ClusterRail({ open, cluster, createInputIds = null, createSeq = 
   };
   const handleCreate = () => {
     if (!fields.name.trim()) { setNameError(true); return; }
-    onCreate(
-      {
-        name: fields.name.trim(),
-        subtype: fields.subtype,
-        horizon: fields.horizon,
-        likelihood: fields.likelihood,
-        description: fields.description,
-      },
+    const created = createClusterDraft(
+      { name: fields.name.trim(), subtype: fields.subtype, horizon: fields.horizon, likelihood: fields.likelihood, description: fields.description },
       stagedInputIds,
     );
+    if (created) onViewCluster(created.id);
   };
 
-  // Escape: cancel an existing-cluster edit; otherwise (view or create) close
-  // the rail. The delete confirm dialog owns Escape while it's open.
+  // Imperative commit() for the unsaved-changes guard: persist the current draft
+  // WITHOUT navigating. Returns false if it couldn't (create/edit with no name),
+  // so the caller can keep the draft open. Uses a latest-ref so the closure
+  // always sees current state.
+  const commitRef = useRef(null);
   useEffect(() => {
-    if (!open || confirmDelete) return;
-    const onKey = (e) => {
-      if (e.key !== "Escape") return;
-      if (editing && cluster) handleCancel();
-      else onClose();
+    commitRef.current = () => {
+      const name = fields.name.trim();
+      if (isCreate) {
+        if (!name) { setNameError(true); return false; }
+        createClusterDraft({ name, subtype: fields.subtype, horizon: fields.horizon, likelihood: fields.likelihood, description: fields.description }, stagedInputIds);
+        return true;
+      }
+      if (cluster && editing) {
+        if (!name) { setNameError(true); return false; }
+        updateCluster(cluster.id, { name, subtype: fields.subtype, horizon: fields.horizon, likelihood: fields.likelihood, description: fields.description });
+        return true;
+      }
+      return true;
     };
+  });
+  useImperativeHandle(ref, () => ({ commit: () => commitRef.current?.() }), []);
+
+  // Escape: close the rail (guarded by ClusterScreen when dirty). Suppressed
+  // while the delete confirm or the unsaved-changes guard dialog is up — those
+  // own Escape.
+  useEffect(() => {
+    if (!open || confirmDelete || guardActive) return;
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, editing, cluster, confirmDelete, onClose]);
+  }, [open, confirmDelete, guardActive, onClose]);
 
   // Move focus into the rail on open; return it to the trigger on close.
   useEffect(() => {
@@ -424,4 +475,4 @@ export function ClusterRail({ open, cluster, createInputIds = null, createSeq = 
       )}
     </>
   );
-}
+});
