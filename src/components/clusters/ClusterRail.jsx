@@ -97,12 +97,14 @@ export const ClusterRail = forwardRef(function ClusterRail({
   open, cluster, createInputIds = null, createSeq = 0, inputs,
   onClose, onRemoveInput, onDelete, updateCluster,
   createClusterDraft, onViewCluster, onDirtyChange, guardActive = false,
+  dragIds = null, onClearDrag, onDropToCluster,
 }, ref) {
   const [editing, setEditing] = useState(false);
   const [fields, setFields] = useState(() => fieldsFromCluster(cluster));
   const [stagedInputIds, setStagedInputIds] = useState(() => createInputIds || []);
   const [nameError, setNameError] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const closeBtnRef = useRef(null);
   const lastFocusedRef = useRef(null);
 
@@ -228,6 +230,23 @@ export const ClusterRail = forwardRef(function ClusterRail({
   const stagedInputs = inputs.filter((i) => stagedInputIds.includes(i.id));
   const eyebrow = isCreate ? "New cluster" : editing ? "Edit cluster" : "Cluster";
 
+  // ── Drop inputs onto the rail ────────────────────────────────────────────────
+  // View/edit: assign the dragged input(s) to this cluster (instant — reuses the
+  // card-drop path). Create: stage them into the draft (persisted on Create).
+  const dropAllowed = open && !!dragIds && (isCreate || !!cluster);
+  const handleRailDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const ids = dragIds || [];
+    if (!ids.length) return;
+    if (isCreate) {
+      setStagedInputIds((prev) => Array.from(new Set([...prev, ...ids])));
+      onClearDrag?.();
+    } else if (cluster) {
+      onDropToCluster?.(cluster.id, e.altKey);
+    }
+  };
+
   return (
     <>
       <aside
@@ -235,12 +254,24 @@ export const ClusterRail = forwardRef(function ClusterRail({
         aria-modal="false"
         aria-label={cluster ? `Cluster: ${cluster.name}` : isCreate ? "New cluster" : "Cluster detail"}
         aria-hidden={!open}
+        onDragOver={dropAllowed ? (e) => { e.preventDefault(); setDragOver(true); } : undefined}
+        onDragLeave={dropAllowed ? (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(false); } : undefined}
+        onDrop={dropAllowed ? handleRailDrop : undefined}
         className={clsx(
           "fixed top-0 right-0 bottom-0 z-20 flex flex-col bg-white border-l border-border shadow-[-18px_0_34px_-22px_rgba(0,0,0,0.28)] transition-transform duration-[220ms] ease-in-out",
           "w-[400px] max-[860px]:left-0 max-[860px]:w-auto",
           open ? "translate-x-0" : "translate-x-full",
         )}
       >
+        {/* Drag-over drop hint (input dragged onto the rail) */}
+        {dragOver && (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-brand-bg/85 border-2 border-dashed border-brand pointer-events-none">
+            <span className="text-ui font-medium text-brand">
+              {isCreate ? "Drop to add to this draft" : "Drop to add to this cluster"}
+            </span>
+          </div>
+        )}
+
         {/* Header */}
         <div className="pt-5 px-5 pb-3.5 border-b border-border flex items-center justify-between shrink-0">
           <div className="text-[11px] tracking-[0.02em] text-hint">{eyebrow}</div>
