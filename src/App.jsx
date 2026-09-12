@@ -195,7 +195,7 @@ export default function App() {
 
   // ── App state ──────────────────────────────────────────────────────────────
   const appState = useAppState(workspaceId, session ?? null, preferences);
-  const { inputDetailId, clusterDetailId, closeInputDetail, closeClusterDetail, updateInput, updateCluster, assignInputToCluster, removeInputFromCluster, deleteInput, deleteCluster, duplicateInputToCluster, inputs, clusters, projects, activeProjectId } = appState;
+  const { inputDetailId, inputDetailStartInEdit, clusterDetailId, closeInputDetail, closeClusterDetail, updateInput, updateCluster, assignInputToCluster, removeInputFromCluster, deleteInput, deleteCluster, duplicateInputToCluster, inputs, clusters, projects, activeProjectId } = appState;
   const projectClusters = activeProjectId ? clusters.filter((cl) => cl.project_id === activeProjectId) : null;
 
   // ── Onboarding handlers ────────────────────────────────────────────────────
@@ -404,6 +404,7 @@ export default function App() {
 
       <InputDetailDrawer
         inputId={inputDetailId}
+        startInEdit={inputDetailStartInEdit}
         inputs={inputs}
         projects={projects}
         clusters={clusters}

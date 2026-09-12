@@ -9,9 +9,14 @@ import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { computeFlipPosition } from "../../lib/panelPosition.js";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 
-// Worst-case height estimate for computeFlipPosition's viewport-collision
-// check on the row context menu (one "Duplicate" row).
-const ROW_MENU_MAX_HEIGHT = 60;
+// Height estimate for computeFlipPosition's viewport-collision check on the
+// row context menu (Edit / Duplicate / Delete). Derived from the menu body's
+// own style below: each item is 12px text with 9px top+bottom padding, so its
+// line box (~16px for 12px text) + 18px padding ≈ 34px per item; plus the
+// container's 1px top+bottom border. 3 × 34 + 2 = 104.
+const ROW_MENU_ITEM_HEIGHT = 34;
+const ROW_MENU_ITEM_COUNT = 3;
+const ROW_MENU_MAX_HEIGHT = ROW_MENU_ITEM_HEIGHT * ROW_MENU_ITEM_COUNT + 2;
 
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { AddFromInboxModal } from "../inputs/AddFromInboxModal.jsx";
@@ -226,8 +231,10 @@ export default function ProjectDetail({ appState }) {
   const [filterHorizon,     setFilterHorizon]     = useState(null);
   const [filterSteepled,    setFilterSteepled]    = useState(null);
   const [openFilterDropdown,setOpenFilterDropdown]= useState(null);
-  // Row context menu hosting the "Duplicate" action
+  // Row context menu hosting the Edit / Duplicate / Delete actions
   const [rowMenu,    setRowMenu]    = useState(null); // null | { inputId, rect }
+  // Single-row delete confirmation (separate from bulk-delete confirmDeleteIds)
+  const [confirmDeleteRowId, setConfirmDeleteRowId] = useState(null); // null | inputId
   // Scanner Suggestions tab state
   const [aiSearchQuery,        setAiSearchQuery]        = useState("");
   const [aiFilterType,         setAiFilterType]         = useState(null);
@@ -452,6 +459,19 @@ export default function ProjectDetail({ appState }) {
     setRowMenu(null);
     const result = await duplicateInputToCluster(inputId);
     if (result) showToast("Input duplicated");
+  };
+
+  const handleEdit = (inputId) => {
+    setRowMenu(null);
+    openInputDetail(inputId, { edit: true });
+  };
+
+  const handleConfirmDeleteRow = () => {
+    if (confirmDeleteRowId) {
+      deleteInput(confirmDeleteRowId);
+      showToast("Input deleted");
+    }
+    setConfirmDeleteRowId(null);
   };
 
   const cell = { fontSize: 11, letterSpacing: "0.02em", color: c.hint, flexShrink: 0 };
@@ -1028,6 +1048,15 @@ export default function ProjectDetail({ appState }) {
         />
       )}
 
+      {confirmDeleteRowId && (
+        <ConfirmDialog
+          title={`Delete "${inputs.find((i) => i.id === confirmDeleteRowId)?.name ?? "input"}"?`}
+          message="This will permanently remove the input and unlink it from any clusters. This cannot be undone."
+          onConfirm={handleConfirmDeleteRow}
+          onClose={() => setConfirmDeleteRowId(null)}
+        />
+      )}
+
       {/* ── Row context menu portal ──────────────────────────── */}
       {rowMenu && createPortal(
         <>
@@ -1041,12 +1070,23 @@ export default function ProjectDetail({ appState }) {
             border: `1px solid ${c.border}`,
             borderRadius: 8,
             boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
-            // Sized to fit its content (a single "Duplicate" item). The 180px
-            // min-width here was left over from when this menu hosted the wider
-            // "Duplicate to cluster" label + cluster picker.
+            // Sized to fit its content (Edit / Duplicate / Delete).
             zIndex: 201,
             overflow: "hidden",
           }}>
+            <button
+              onClick={() => handleEdit(rowMenu.inputId)}
+              style={{
+                display: "block", width: "100%", padding: "9px 14px",
+                background: "transparent", border: "none",
+                textAlign: "left", cursor: "pointer",
+                fontSize: 12, color: c.ink, fontFamily: "inherit",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = c.surfaceAlt; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              Edit
+            </button>
             <button
               onClick={() => handleDuplicate(rowMenu.inputId)}
               style={{
@@ -1059,6 +1099,19 @@ export default function ProjectDetail({ appState }) {
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
             >
               Duplicate
+            </button>
+            <button
+              onClick={() => { const id = rowMenu.inputId; setRowMenu(null); setConfirmDeleteRowId(id); }}
+              style={{
+                display: "block", width: "100%", padding: "9px 14px",
+                background: "transparent", border: "none",
+                textAlign: "left", cursor: "pointer",
+                fontSize: 12, color: c.red800, fontFamily: "inherit",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = c.surfaceAlt; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              Delete
             </button>
           </div>
         </>,

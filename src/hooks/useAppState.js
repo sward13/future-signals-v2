@@ -97,6 +97,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   const [toast, setToast] = useState(null);
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [inputDetailId, setInputDetailId] = useState(null);
+  const [inputDetailStartInEdit, setInputDetailStartInEdit] = useState(false);
   const [clusterDetailId, setClusterDetailId] = useState(null);
   const [scenarioDetailId, setScenarioDetailId] = useState(null);
   const [activeScenarioId, setActiveScenarioId] = useState(null);
@@ -1914,8 +1915,14 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   }, [scenarios, workspaceId, showToast]);
 
   // ── Detail drawers ────────────────────────────────────────────────────────
-  const openInputDetail = useCallback((id) => setInputDetailId(id), []);
-  const closeInputDetail = useCallback(() => setInputDetailId(null), []);
+  const openInputDetail = useCallback((id, { edit = false } = {}) => {
+    setInputDetailStartInEdit(edit);
+    setInputDetailId(id);
+  }, []);
+  const closeInputDetail = useCallback(() => {
+    setInputDetailId(null);
+    setInputDetailStartInEdit(false);
+  }, []);
   const openClusterDetail = useCallback((id) => setClusterDetailId(id), []);
   const closeClusterDetail = useCallback(() => setClusterDetailId(null), []);
   const openScenarioDetail = useCallback((id) => setScenarioDetailId(id), []);
@@ -1958,6 +1965,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     assignInputToCluster,
     removeInputFromCluster,
     inputDetailId,
+    inputDetailStartInEdit,
     clusterDetailId,
     scenarioDetailId,
     openInputDetail,
