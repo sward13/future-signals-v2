@@ -78,7 +78,7 @@ const btnPClass = "py-2.5 px-5.5 rounded-container bg-brand text-white border-no
 const btnSecClass = "py-2.25 px-4.5 rounded-container bg-transparent text-muted border border-border-strong text-ui cursor-pointer font-[inherit]";
 const flClass = "text-xs font-medium text-ink mb-1.25 flex items-center gap-1.5";
 
-export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], onClose, onSave, onDelete, onAccept, onSaveToProject, onDismissSuggested, projectClusters, onAssignToCluster, onOpenCluster, onDuplicateToCluster }) {
+export function InputDetailDrawer({ inputId, startInEdit = false, inputs, projects, clusters = [], onClose, onSave, onDelete, onAccept, onSaveToProject, onDismissSuggested, projectClusters, onAssignToCluster, onOpenCluster, onDuplicateToCluster }) {
   const input = inputs.find((i) => i.id === inputId) || null;
 
   const [editing, setEditing] = useState(false);
@@ -105,7 +105,9 @@ export function InputDetailDrawer({ inputId, inputs, projects, clusters = [], on
       horizon:           input.horizon           || null,
       project_id:        input.project_id        || "",
     } : {});
-    setEditing(false);
+    // Open directly in edit mode when the opener requested it (row-menu "Edit");
+    // otherwise default to read view. Re-evaluated only when the input changes.
+    setEditing(startInEdit);
     setReassigning(false);
     setClusterPickerOpen(false);
   }
