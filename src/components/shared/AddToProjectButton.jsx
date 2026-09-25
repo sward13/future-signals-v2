@@ -112,12 +112,12 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
   // rounded-btn radius with square inner corners; hover is CSS (hover:brightness-90),
   // and the chevron stays darkened while the menu is open.
   const rowTrigger = recommendedProject ? (
-    <div ref={groupRef} role="group" aria-label="Add to project" className="inline-flex rounded-btn overflow-hidden">
+    <div ref={groupRef} role="group" aria-label="Add to project" className="inline-flex h-6 rounded-btn overflow-hidden">
       <button
         onClick={(e) => { e.stopPropagation(); onAdd(recommendedProject.id); }}
         aria-label={`Add to ${recommendedProject.name}`}
         title={`Add to ${recommendedProject.name}`}
-        className={clsx(ROW_ACTION_BASE, "flex items-center px-[9px]")}
+        className={clsx(ROW_ACTION_BASE, "px-[9px]")}
       >
         Add
       </button>
@@ -127,7 +127,7 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
         aria-label="Choose another project"
         aria-haspopup="menu"
         aria-expanded={open}
-        className={clsx(ROW_ACTION_BASE, "flex items-center px-[6px] border-l border-l-white/40", open && "brightness-90")}
+        className={clsx(ROW_ACTION_BASE, "px-[6px] border-l border-l-white/40", open && "brightness-90")}
       >
         <ChevronDown size={11} strokeWidth={2} />
       </button>
@@ -138,7 +138,7 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
       onClick={(e) => { e.stopPropagation(); openMenu(buttonRef.current); }}
       aria-haspopup="menu"
       aria-expanded={open}
-      className={clsx(ROW_ACTION_BASE, "flex items-center gap-1 px-[9px] rounded-btn")}
+      className={clsx(ROW_ACTION_BASE, "gap-1 px-[9px] rounded-btn")}
     >
       Add to project <ChevronDown size={11} strokeWidth={2} />
     </button>
