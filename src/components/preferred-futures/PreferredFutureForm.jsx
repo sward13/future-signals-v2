@@ -217,6 +217,7 @@ export default function PreferredFutureForm({ appState, mode }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Name this preferred future"
+          maxLength={120}
           autoFocus
           className="w-full text-2xl font-medium text-ink border-none bg-transparent outline-none font-[inherit] pb-4 border-b border-border mb-6 box-border"
         />

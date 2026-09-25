@@ -213,6 +213,7 @@ export default function ScenarioForm({ appState, mode }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Name this scenario"
+            maxLength={120}
             autoFocus
             className="w-full text-2xl font-medium text-ink border-none bg-transparent outline-none font-[inherit] pb-4 border-b border-border box-border"
           />

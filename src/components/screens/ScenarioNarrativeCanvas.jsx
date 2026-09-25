@@ -532,6 +532,7 @@ export default function ScenarioNarrativeCanvas({ appState }) {
                 onChange={(e) => setTitleDraft(e.target.value)}
                 onBlur={commitTitle}
                 onKeyDown={handleTitleKey}
+                maxLength={120}
                 style={{
                   fontSize: 13, fontWeight: 500, color: c.ink,
                   background: "transparent",
