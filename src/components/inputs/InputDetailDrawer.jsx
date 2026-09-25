@@ -19,6 +19,8 @@ import clsx from "clsx";
 import { INPUT_TYPES, ThreeCardSelector, SteepleSelector, HorizonSelector, TypeSwitcherChip } from "./InputFormFields.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { AddToProjectButton } from "../shared/AddToProjectButton.jsx";
+import { getRecommendedProject } from "../../lib/recommendedProject.js";
+import { projectDomainLabel } from "../../lib/projectDomains.js";
 import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
 import { sanitizeUrl } from "../../utils/sanitizeUrl.js";
 
@@ -78,7 +80,7 @@ const btnPClass = "py-2.5 px-5.5 rounded-container bg-brand text-white border-no
 const btnSecClass = "py-2.25 px-4.5 rounded-container bg-transparent text-muted border border-border-strong text-ui cursor-pointer font-[inherit]";
 const flClass = "text-xs font-medium text-ink mb-1.25 flex items-center gap-1.5";
 
-export function InputDetailDrawer({ inputId, startInEdit = false, inputs, projects, clusters = [], onClose, onSave, onDelete, onAccept, onSaveToProject, onDismissSuggested, projectClusters, onAssignToCluster, onOpenCluster, onDuplicateToCluster }) {
+export function InputDetailDrawer({ inputId, startInEdit = false, inputs, projects, clusters = [], onClose, onSave, onDelete, onSaveToProject, onDismissSuggested, projectClusters, onAssignToCluster, onOpenCluster, onDuplicateToCluster }) {
   const input = inputs.find((i) => i.id === inputId) || null;
 
   const [editing, setEditing] = useState(false);
@@ -118,6 +120,10 @@ export function InputDetailDrawer({ inputId, startInEdit = false, inputs, projec
   // Once accepted into a project the input is a regular project input and
   // should show the Delete button like any other.
   const isAiSuggested = !!(input.is_seeded && input.metadata?.source === 'scanner' && !input.project_id);
+
+  // The single project "Add" targets — shared with the Inbox rows via
+  // src/lib/recommendedProject.js (highest-scoring suggestion still live).
+  const recommendedProject = getRecommendedProject(input.metadata?.suggested_projects, projects);
 
   const set = (key, val) => setFields((f) => ({ ...f, [key]: val }));
   const toggleSteeple = (cat) => set("steepled", fields.steepled.includes(cat) ? fields.steepled.filter((x) => x !== cat) : [...fields.steepled, cat]);
@@ -177,34 +183,50 @@ export function InputDetailDrawer({ inputId, startInEdit = false, inputs, projec
           <button onClick={onClose} className="bg-transparent border-none cursor-pointer font-[inherit] text-base py-0.5 px-1.5 text-muted rounded-btn">×</button>
         </div>
 
-        {/* Header row 2: scanner action buttons (AI suggested only) */}
+        {/* Header row 2: scanner suggestion + action buttons (AI suggested only) */}
         {!editing && isAiSuggested && (
-          <div className="px-6 pb-3 flex items-center gap-1.5 border-b border-border">
-            {onAccept && (
-              <button
-                onClick={() => { onAccept(input); onClose(); }}
-                className="text-[11px] py-1.25 px-3.5 rounded-container bg-ink text-white border-none cursor-pointer font-[inherit] font-medium"
-              >
-                Accept →
-              </button>
-            )}
-            {onSaveToProject && (
-              <AddToProjectButton
-                projects={projects}
-                recommendedProjectId={input.metadata?.suggested_projects?.[0]?.id}
-                onAdd={(projectId) => onSaveToProject(input.id, projectId)}
-                buttonStyle={{ fontSize: 11, padding: "5px 14px", borderRadius: 8, background: "transparent", color: "var(--color-muted)", border: "1px solid var(--color-border-strong)", cursor: "pointer", fontFamily: "inherit" }}
-                zIndex={OVERLAY_Z_INDEX}
-              />
-            )}
-            {onDismissSuggested && (
-              <button
-                onClick={() => { onDismissSuggested(input); onClose(); }}
-                className="text-[11px] py-1.25 px-3.5 rounded-container bg-transparent text-muted border-none cursor-pointer font-[inherit]"
-              >
-                Dismiss
-              </button>
-            )}
+          <div className="px-6 pb-3 border-b border-border">
+            {/* Suggested project block */}
+            <div className="mb-2.5">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[11px] tracking-[0.02em] text-hint">Suggested project</span>
+                {recommendedProject && (
+                  <span className="text-[9px] font-medium py-px px-1.5 rounded-chip bg-blue-50 text-blue-700 border border-blue-border">
+                    Best match
+                  </span>
+                )}
+              </div>
+              {recommendedProject ? (
+                <>
+                  <div className="text-[13px] font-medium text-ink leading-[1.35] break-words">{recommendedProject.name}</div>
+                  <div className="text-[11px] text-hint mt-0.5">{projectDomainLabel(recommendedProject)}</div>
+                </>
+              ) : (
+                <div className="text-[13px] text-hint">No suggested project</div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-1.5">
+              {onSaveToProject && (
+                <AddToProjectButton
+                  projects={projects}
+                  recommendedProjectId={recommendedProject?.id}
+                  onAdd={(projectId) => onSaveToProject(input.id, projectId)}
+                  buttonStyle={{ fontSize: 12, fontWeight: 500, padding: "6px 14px", borderRadius: 8, background: "var(--color-brand)", color: "var(--color-white)", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                  align="left"
+                  zIndex={OVERLAY_Z_INDEX}
+                />
+              )}
+              {onDismissSuggested && (
+                <button
+                  onClick={() => { onDismissSuggested(input); onClose(); }}
+                  className="text-[11px] py-1.25 px-3.5 rounded-container bg-transparent text-muted border-none cursor-pointer font-[inherit]"
+                >
+                  Dismiss
+                </button>
+              )}
+            </div>
           </div>
         )}
 
