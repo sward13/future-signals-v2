@@ -26,7 +26,7 @@ export const ROW_ACTION_BASE =
  * darken and a keyboard focus ring. Still applied to a <button> element.
  */
 export const ROW_ACTION_LINK =
-  "text-[10px] font-normal leading-none whitespace-nowrap cursor-pointer font-[inherit] " +
+  "text-[11px] font-normal leading-none whitespace-nowrap cursor-pointer font-[inherit] " +
   "bg-transparent text-hint py-[3px] px-1.5 rounded-btn hover:text-muted " +
   "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1";
 

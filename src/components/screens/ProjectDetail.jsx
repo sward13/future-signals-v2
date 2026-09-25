@@ -43,7 +43,7 @@ const CONFIDENCE_COLORS = {
 };
 
 const INPUT_TYPE_OPTS = ["signal","issue","projection","plan","obstacle","source"];
-const COL_AI = { check: 28, type: 70, classif: 88, steepled: 90, date: 50, actions: 114 };
+const COL_AI = { check: 28, type: 70, classif: 88, steepled: 90, date: 50, actions: 121 };
 
 function formatDate(str) {
   if (!str) return "—";
