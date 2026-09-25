@@ -7,7 +7,7 @@
  * @param {{ appState: object }} props
  */
 import { useState, useMemo, useEffect } from "react";
-import { c, inp, btnP, btnSm, btnG, fontHeading, countBadge } from "../../styles/tokens.js";
+import { c, inp, btnP, btnSm, fontHeading, countBadge } from "../../styles/tokens.js";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
 import { CirclePlus, Sparkles } from "lucide-react";
 import { projectDomainLabel } from "../../lib/projectDomains.js";
@@ -16,6 +16,7 @@ import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { HorizTag } from "../shared/Tag.jsx";
 import { AddToProjectButton } from "../shared/AddToProjectButton.jsx";
+import { ROW_ACTION_LINK } from "../shared/RowActionButton.jsx";
 import { getRecommendedProject } from "../../lib/recommendedProject.js";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { STEEPLED } from "../../data/seeds.js";
@@ -268,12 +269,12 @@ function ListRow({ input, isScannerSuggested, recommendedProject, recommendedPro
             projects={projects}
             recommendedProjectId={isScannerSuggested ? recommendedProjectId : undefined}
             onAdd={onAddToProject}
-            buttonStyle={{ ...btnSm, fontSize: 10, padding: "3px 8px" }}
+            variant="row"
           />
           {isScannerSuggested && (
             <button
               onClick={(e) => { e.stopPropagation(); onDismissSuggested(); }}
-              style={{ fontSize: 10, padding: "3px 6px", background: "none", border: "none", color: c.hint, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+              className={ROW_ACTION_LINK}
             >
               Dismiss
             </button>
@@ -373,10 +374,10 @@ function FullCard({ input, isScannerSuggested, recommendedProject, recommendedPr
                     projects={projects}
                     recommendedProjectId={isScannerSuggested ? recommendedProjectId : undefined}
                     onAdd={onAddToProject}
-                    buttonStyle={{ padding: "4px 12px", borderRadius: 7, background: c.brand, color: c.white, border: "none", fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}
+                    variant="row"
                   />
                   {isScannerSuggested && (
-                    <button onClick={(e) => { e.stopPropagation(); onDismissSuggested(); }} style={{ ...btnG, fontSize: 11, padding: "4px 8px", color: c.hint }}>
+                    <button onClick={(e) => { e.stopPropagation(); onDismissSuggested(); }} className={ROW_ACTION_LINK}>
                       Dismiss
                     </button>
                   )}

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import clsx from "clsx";
 import { CirclePlus } from "lucide-react";
 import { HorizTag } from "../shared/Tag.jsx";
+import { RowActionButton } from "../shared/RowActionButton.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
 import { ClustersPanel } from "../clusters/ClustersPanel.jsx";
@@ -603,16 +604,15 @@ export default function ClusterScreen({ appState }) {
                           <div className="shrink-0 flex items-center relative" style={{ width: COL.cluster }}>
                             {assignedClusters.length === 0 ? (
                               <>
-                                <button
+                                <RowActionButton
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     if (assignPickerFor !== inp.id) setAssignPickerAnchorRect(e.currentTarget.getBoundingClientRect());
                                     setAssignPickerFor(assignPickerFor === inp.id ? null : inp.id);
                                   }}
-                                  className="py-[3px] px-2 rounded-btn bg-brand text-white border-none text-[10px] font-medium cursor-pointer font-[inherit] whitespace-nowrap"
                                 >
                                   Assign →
-                                </button>
+                                </RowActionButton>
                                 {assignPickerFor === inp.id && (
                                   <ClusterAssignMenu
                                     clusters={projectClusters}
