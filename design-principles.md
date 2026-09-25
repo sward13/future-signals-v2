@@ -147,6 +147,8 @@ Currently, the only fields that genuinely meet the Quick Start bar:
 - Input: Source URL, Subtype
 - All other entities: Name / Title only (plus one defining field where applicable)
 
+**Character limits.** The required name/title field on each entity carries a `maxLength` as a layout/OG-tag safety rail: 120 for user-authored names (Project, Cluster, Scenario, Preferred Future, Strategic Option), 200 for Input (RSS/scanner-sourced titles run long). Enforced **frontend-only** — scanner imports are written server-side and must not be capped. Do **not** add a DB `CHECK (char_length …)` on these columns: ~3% of legitimate scanner titles exceed the cap and would be rejected, breaking the scanner. Apply the same convention (`maxLength`, no DB check) to any new entity name/title field.
+
 ---
 
 ## Principle 5 — Graceful Re-entry
