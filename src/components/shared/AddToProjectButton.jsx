@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import clsx from "clsx";
 import { c } from "../../styles/tokens.js";
 import { projectDomainLabel } from "../../lib/projectDomains.js";
 import { computeFlipPosition } from "../../lib/panelPosition.js";
+import { ROW_ACTION_BASE } from "./RowActionButton.jsx";
 import { ChevronDown } from "lucide-react";
 
 // Matches the panel's own maxHeight below — used as the worst-case height
@@ -38,7 +40,8 @@ const item = {
  * `zIndex`, panel uses `zIndex + 1`), matching ClusterAssignMenu.jsx's
  * 9998/9999 backdrop/panel pairing convention.
  */
-export function AddToProjectButton({ projects, recommendedProjectId, onAdd, buttonStyle, zIndex = 50, align = "right" }) {
+export function AddToProjectButton({ projects, recommendedProjectId, onAdd, buttonStyle, zIndex = 50, align = "right", variant = "panel" }) {
+  const isRow = variant === "row";
   const [open, setOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState(null);
   const [hoverMain, setHoverMain] = useState(false);
@@ -104,7 +107,46 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
     display: "flex", alignItems: "center", whiteSpace: "nowrap", lineHeight: 1,
   };
 
-  const trigger = recommendedProject ? (
+  // ── Row variant: standard row-action styling via the shared base class ──
+  // (Inbox List/Card). Segments compose ROW_ACTION_BASE; the group owns the
+  // rounded-btn radius with square inner corners; hover is CSS (hover:brightness-90),
+  // and the chevron stays darkened while the menu is open.
+  const rowTrigger = recommendedProject ? (
+    <div ref={groupRef} role="group" aria-label="Add to project" className="inline-flex rounded-btn overflow-hidden">
+      <button
+        onClick={(e) => { e.stopPropagation(); onAdd(recommendedProject.id); }}
+        aria-label={`Add to ${recommendedProject.name}`}
+        title={`Add to ${recommendedProject.name}`}
+        className={clsx(ROW_ACTION_BASE, "flex items-center px-[9px]")}
+      >
+        Add
+      </button>
+      <button
+        ref={chevronRef}
+        onClick={(e) => { e.stopPropagation(); openMenu(groupRef.current); }}
+        aria-label="Choose another project"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={clsx(ROW_ACTION_BASE, "flex items-center px-[6px] border-l border-l-white/40", open && "brightness-90")}
+      >
+        <ChevronDown size={11} strokeWidth={2} />
+      </button>
+    </div>
+  ) : (
+    <button
+      ref={buttonRef}
+      onClick={(e) => { e.stopPropagation(); openMenu(buttonRef.current); }}
+      aria-haspopup="menu"
+      aria-expanded={open}
+      className={clsx(ROW_ACTION_BASE, "flex items-center gap-1 px-[9px] rounded-btn")}
+    >
+      Add to project <ChevronDown size={11} strokeWidth={2} />
+    </button>
+  );
+
+  // ── Panel variant (default): unchanged inline-styled split button, driven
+  // by the caller's buttonStyle. Used by InputDetailDrawer's larger split button.
+  const panelTrigger = recommendedProject ? (
     <div
       ref={groupRef}
       role="group"
@@ -149,6 +191,8 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
       Add to project <ChevronDown size={11} strokeWidth={2} />
     </button>
   );
+
+  const trigger = isRow ? rowTrigger : panelTrigger;
 
   return (
     <div style={{ position: "relative", display: "inline-block" }}>

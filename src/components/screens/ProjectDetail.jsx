@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import clsx from "clsx";
 import { CirclePlus, Settings2, FolderInput } from "lucide-react";
 import { useScannerStatus } from "../../hooks/useScannerStatus.js";
 import { c, inp, btnP, btnSec, fontHeading, tabCount } from "../../styles/tokens.js";
 import { STEEPLED } from "../../data/seeds.js";
 import { HorizTag } from "../shared/Tag.jsx";
+import { RowActionButton, ROW_ACTION_LINK } from "../shared/RowActionButton.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { computeFlipPosition } from "../../lib/panelPosition.js";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
@@ -41,7 +43,7 @@ const CONFIDENCE_COLORS = {
 };
 
 const INPUT_TYPE_OPTS = ["signal","issue","projection","plan","obstacle","source"];
-const COL_AI = { check: 28, type: 70, classif: 88, steepled: 90, date: 50, actions: 132 };
+const COL_AI = { check: 28, type: 70, classif: 88, steepled: 90, date: 50, actions: 114 };
 
 function formatDate(str) {
   if (!str) return "—";
@@ -169,24 +171,15 @@ function AiRow({ inp, selected, onCheck, activeProjectId, onAccept, onDismiss })
         width: COL_AI.actions,
         justifyContent: "flex-start",
       }}>
-        <button
+        <RowActionButton
           onClick={(e) => { e.stopPropagation(); onAccept(inp); }}
-          style={{
-            padding: "3px 9px", borderRadius: 5, fontSize: 11, fontWeight: 500,
-            cursor: "pointer", fontFamily: "inherit", flexShrink: 0, whiteSpace: "nowrap",
-            background: c.brand, color: c.white, border: "none",
-          }}
+          className="shrink-0"
         >
           Accept
-        </button>
+        </RowActionButton>
         <button
           onClick={(e) => { e.stopPropagation(); onDismiss(inp); }}
-          style={{
-            padding: "3px 9px", borderRadius: 5, fontSize: 11,
-            cursor: "pointer", fontFamily: "inherit", flexShrink: 0, whiteSpace: "nowrap",
-            background: "transparent", color: c.muted,
-            border: `1px solid ${c.border}`,
-          }}
+          className={clsx(ROW_ACTION_LINK, "shrink-0")}
         >
           Dismiss
         </button>
