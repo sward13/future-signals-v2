@@ -186,6 +186,14 @@ A cluster summary that articulates a pattern the practitioner felt but couldn't 
 
 ---
 
+## Principle 8 — Actions Are Discoverable
+
+Primary row and item actions (Accept, Dismiss, Add to project, Delete, …) are **persistently visible**, not revealed only on hover. Hover-hidden actions are undiscoverable — a user can't tell the action exists — and are unreachable for keyboard and touch users, or focusable while invisible (a real accessibility bug).
+
+**Implementation rule:** A primary action must be visible without hover or focus. Give it a stable layout slot (e.g. its own fixed-width table column) rather than overlaying the row on hover. Hover may still be used for *secondary selection affordances* — e.g. a row's multi-select checkbox fading in on hover — where the primary action is elsewhere and the row remains fully usable without it.
+
+---
+
 ## Terminology Reference
 
 Use these terms consistently across the product, code, and documentation.
@@ -225,3 +233,5 @@ When making any implementation decision, check against these rules:
 7. **Re-entry surfaces answer "where was I and what's new?"** Dashboard and project headers are not completion trackers.
 
 8. **Terminology is locked.** Use the terminology table above. Don't introduce synonyms.
+
+9. **Primary actions are discoverable.** Row/item actions are persistently visible, never hover-only. Give them a stable layout slot; hover may reveal only secondary selection affordances (e.g. checkboxes).
