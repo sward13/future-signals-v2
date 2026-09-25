@@ -16,6 +16,7 @@ import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { EmptyState } from "../shared/EmptyState.jsx";
 import { HorizTag } from "../shared/Tag.jsx";
 import { AddToProjectButton } from "../shared/AddToProjectButton.jsx";
+import { getRecommendedProject } from "../../lib/recommendedProject.js";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { STEEPLED } from "../../data/seeds.js";
 
@@ -177,7 +178,7 @@ function ListHeader({ checked, indeterminate, onToggleAll }) {
 
 // ─── List row (flat single-row) ────────────────────────────────────────────────
 
-function ListRow({ input, isScannerSuggested, suggestedProjects, recommendedProjectId, projects, onAddToProject, onDismissSuggested, onOpen, selected, onToggle, anySelected, draggable, dragging, onRowClick, onSelect, onDragStart, onDragEnd }) {
+function ListRow({ input, isScannerSuggested, recommendedProject, recommendedProjectId, projects, onAddToProject, onDismissSuggested, onOpen, selected, onToggle, anySelected, draggable, dragging, onRowClick, onSelect, onDragStart, onDragEnd }) {
   const [hovered, setHovered] = useState(false);
   const steepled = input.steepled || [];
   const vis2     = steepled.slice(0, 2);
@@ -210,9 +211,9 @@ function ListRow({ input, isScannerSuggested, suggestedProjects, recommendedProj
         <div style={{ fontSize: 12, fontWeight: 500, color: c.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {input.name}
         </div>
-        {isScannerSuggested && suggestedProjects.length > 0 && (
+        {isScannerSuggested && recommendedProject && (
           <div style={{ fontSize: 11, color: c.hint, marginTop: 2 }}>
-            {suggestedProjects.slice(0, 2).map((p) => p.name).join(", ")}
+            {recommendedProject.name}
           </div>
         )}
       </div>
@@ -285,7 +286,7 @@ function ListRow({ input, isScannerSuggested, suggestedProjects, recommendedProj
 
 // ─── Full card (Card view) ────────────────────────────────────────────────────
 
-function FullCard({ input, isScannerSuggested, suggestedProjects, recommendedProjectId, projects, savedProjectId, onAddToProject, onDismissSuggested, onDismiss, onOpen, selected, onToggle, anySelected, draggable, dragging, onSelect, onDragStart, onDragEnd }) {
+function FullCard({ input, isScannerSuggested, recommendedProject, recommendedProjectId, projects, savedProjectId, onAddToProject, onDismissSuggested, onDismiss, onOpen, selected, onToggle, anySelected, draggable, dragging, onSelect, onDragStart, onDragEnd }) {
   const [hovered, setHovered] = useState(false);
   const project = savedProjectId ? projects.find((p) => p.id === savedProjectId) : null;
 
@@ -331,14 +332,14 @@ function FullCard({ input, isScannerSuggested, suggestedProjects, recommendedPro
 
         <div
           onClick={(e) => { e.stopPropagation(); onToggle(input.id); }}
-          style={{ fontSize: 13, fontWeight: 500, color: c.ink, lineHeight: 1.35, marginBottom: isScannerSuggested && suggestedProjects.length > 0 ? 2 : 5, cursor: "pointer" }}
+          style={{ fontSize: 13, fontWeight: 500, color: c.ink, lineHeight: 1.35, marginBottom: isScannerSuggested && recommendedProject ? 2 : 5, cursor: "pointer" }}
         >
           {input.name}
         </div>
 
-        {isScannerSuggested && suggestedProjects.length > 0 && (
+        {isScannerSuggested && recommendedProject && (
           <div style={{ fontSize: 11, color: c.hint, marginBottom: 8 }}>
-            {suggestedProjects.slice(0, 2).map((p) => p.name).join(", ")}
+            {recommendedProject.name}
           </div>
         )}
 
@@ -750,22 +751,17 @@ export default function Inbox({ appState }) {
 
   // Item props builder — selection context passed per-table
   const itemProps = (inp, selectedIds, onToggle, anyTableSelected, handlers) => {
-    // Cross-reference against currently-active projects — `projects` only
-    // contains live (non-deleted) rows, so this drops references to
-    // projects the user has since deleted.
-    const suggestedProjects = (inp.metadata?.suggested_projects || []).filter((sp) =>
-      projects.some((proj) => proj.id === sp.id)
-    );
-    const recommendedProjectId = suggestedProjects.length > 0
-      ? suggestedProjects.slice().sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0].id
-      : undefined;
+    // Resolve the single project "Add" targets — the highest-scoring
+    // suggestion whose project still exists (deleted ones fall through). Shared
+    // with the detail panel via src/lib/recommendedProject.js.
+    const recommendedProject = getRecommendedProject(inp.metadata?.suggested_projects, projects);
 
     return {
       input: inp,
       isSeeded: !!inp.is_seeded,
       isScannerSuggested: !!(inp.is_seeded && inp.metadata?.source === "scanner"),
-      suggestedProjects,
-      recommendedProjectId,
+      recommendedProject,
+      recommendedProjectId: recommendedProject?.id,
       projects,
       savedProjectId: savedToProject[inp.id],
       onAddToProject: (projectId) => handleAddToProject(inp, projectId),

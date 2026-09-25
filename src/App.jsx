@@ -411,12 +411,6 @@ export default function App() {
         onClose={closeInputDetail}
         onSave={(id, fields) => { updateInput(id, fields); appState.showToast("Input updated"); closeInputDetail(); }}
         onDelete={() => { deleteInput(inputDetailId); appState.showToast("Input deleted"); closeInputDetail(); }}
-        onAccept={(inp) => {
-          const topProject = inp.metadata?.suggested_projects?.[0];
-          if (!topProject) return;
-          appState.saveInputToProject(inp.id, topProject.id);
-          appState.showToast(`Added to "${topProject.name}"`);
-        }}
         onSaveToProject={(id, projectId) => {
           appState.saveInputToProject(id, projectId);
           const project = projects.find((p) => p.id === projectId);

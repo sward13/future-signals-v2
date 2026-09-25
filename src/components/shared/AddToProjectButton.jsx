@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { c } from "../../styles/tokens.js";
 import { projectDomainLabel } from "../../lib/projectDomains.js";
@@ -38,10 +38,14 @@ const item = {
  * `zIndex`, panel uses `zIndex + 1`), matching ClusterAssignMenu.jsx's
  * 9998/9999 backdrop/panel pairing convention.
  */
-export function AddToProjectButton({ projects, recommendedProjectId, onAdd, buttonStyle, zIndex = 50 }) {
+export function AddToProjectButton({ projects, recommendedProjectId, onAdd, buttonStyle, zIndex = 50, align = "right" }) {
   const [open, setOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState(null);
-  const buttonRef = useRef(null);
+  const [hoverMain, setHoverMain] = useState(false);
+  const [hoverChevron, setHoverChevron] = useState(false);
+  const buttonRef = useRef(null);   // fallback single button
+  const groupRef = useRef(null);    // split-button group (menu anchor)
+  const chevronRef = useRef(null);  // split-button chevron (focus target on Escape)
 
   const recommendedProject = recommendedProjectId
     ? projects.find((p) => p.id === recommendedProjectId)
@@ -57,21 +61,98 @@ export function AddToProjectButton({ projects, recommendedProjectId, onAdd, butt
     onAdd(projectId);
   };
 
-  const panelPosition = computeFlipPosition(anchorRect, { panelHeight: PANEL_MAX_HEIGHT, zIndex: zIndex + 1 });
+  // Open the menu, anchoring to the given element's current bounding rect.
+  const openMenu = (el) => {
+    if (!open && el) setAnchorRect(el.getBoundingClientRect());
+    setOpen((o) => !o);
+  };
+
+  // Escape closes the menu and returns focus to the trigger (chevron in split
+  // mode, the single button otherwise). Window-level so it works whether focus
+  // is on the trigger or inside the portaled menu.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        (chevronRef.current || buttonRef.current)?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  const panelPosition = computeFlipPosition(anchorRect, { panelHeight: PANEL_MAX_HEIGHT, zIndex: zIndex + 1, align });
+
+  // ── Split-button segment styling, derived from the surface's buttonStyle ──
+  // (filled brand for every current call site). Outer corners take the surface
+  // radius; inner corners are square (the container clips via overflow).
+  const radius = buttonStyle?.borderRadius ?? 7;
+  const segBg = buttonStyle?.background ?? c.brand;
+  const segColor = buttonStyle?.color ?? c.white;
+  const segFontSize = buttonStyle?.fontSize ?? 12;
+  const segFontWeight = buttonStyle?.fontWeight ?? 500;
+  const pad = String(buttonStyle?.padding ?? "4px 12px").trim().split(/\s+/);
+  const padY = pad[0];
+  const padX = pad[1] ?? pad[0];
+  const chevronPadX = `${Math.max(6, Math.round((parseInt(padX, 10) || 12) * 0.55))}px`;
+
+  const segBase = {
+    border: "none", background: segBg, color: segColor,
+    fontSize: segFontSize, fontWeight: segFontWeight,
+    fontFamily: "inherit", cursor: "pointer",
+    display: "flex", alignItems: "center", whiteSpace: "nowrap", lineHeight: 1,
+  };
+
+  const trigger = recommendedProject ? (
+    <div
+      ref={groupRef}
+      role="group"
+      aria-label="Add to project"
+      style={{ display: "inline-flex", borderRadius: radius, overflow: "hidden" }}
+    >
+      <button
+        onClick={(e) => { e.stopPropagation(); onAdd(recommendedProject.id); }}
+        onMouseEnter={() => setHoverMain(true)}
+        onMouseLeave={() => setHoverMain(false)}
+        aria-label={`Add to ${recommendedProject.name}`}
+        title={`Add to ${recommendedProject.name}`}
+        style={{ ...segBase, padding: `${padY} ${padX}`, filter: hoverMain ? "brightness(0.9)" : "none" }}
+      >
+        Add
+      </button>
+      <button
+        ref={chevronRef}
+        onClick={(e) => { e.stopPropagation(); openMenu(groupRef.current); }}
+        onMouseEnter={() => setHoverChevron(true)}
+        onMouseLeave={() => setHoverChevron(false)}
+        aria-label="Choose another project"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        style={{
+          ...segBase, padding: `${padY} ${chevronPadX}`,
+          borderLeft: "1px solid rgba(255,255,255,0.4)",
+          filter: (hoverChevron || open) ? "brightness(0.9)" : "none",
+        }}
+      >
+        <ChevronDown size={11} strokeWidth={2} />
+      </button>
+    </div>
+  ) : (
+    <button
+      ref={buttonRef}
+      onClick={(e) => { e.stopPropagation(); openMenu(buttonRef.current); }}
+      aria-haspopup="menu"
+      aria-expanded={open}
+      style={{ display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", ...buttonStyle }}
+    >
+      Add to project <ChevronDown size={11} strokeWidth={2} />
+    </button>
+  );
 
   return (
-    <div style={{ position: "relative" }}>
-      <button
-        ref={buttonRef}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (!open) setAnchorRect(buttonRef.current.getBoundingClientRect());
-          setOpen((o) => !o);
-        }}
-        style={{ display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", ...buttonStyle }}
-      >
-        Add to project <ChevronDown size={11} strokeWidth={2} />
-      </button>
+    <div style={{ position: "relative", display: "inline-block" }}>
+      {trigger}
       {open && panelPosition && createPortal(
         <>
           <div onClick={(e) => { e.stopPropagation(); setOpen(false); }} style={{ position: "fixed", inset: 0, zIndex }} />
