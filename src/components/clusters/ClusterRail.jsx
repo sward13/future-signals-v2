@@ -347,6 +347,7 @@ export const ClusterRail = forwardRef(function ClusterRail({
                   value={fields.name}
                   onChange={(e) => { set("name", e.target.value); setNameError(false); }}
                   placeholder="e.g. Regulatory Fragmentation"
+                  maxLength={120}
                   autoFocus
                 />
                 {nameError && <div className="text-[11px] text-red-800 mt-1">Cluster name is required.</div>}

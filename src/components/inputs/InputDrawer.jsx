@@ -361,6 +361,7 @@ export function InputDrawer({ open, onClose, onSave, projects = [], defaultProje
             value={fields.title}
             onChange={(e) => { setField("title", e.target.value); setTitleError(false); titleEditedByUser.current = true; }}
             placeholder={`Name this ${typeData.label.toLowerCase()}…`}
+            maxLength={200}
             autoFocus
           />
           {titleError && (

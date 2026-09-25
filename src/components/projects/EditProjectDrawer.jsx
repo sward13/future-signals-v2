@@ -153,6 +153,7 @@ export function EditProjectDrawer({ project, onClose, onSave, onDelete, scrollTo
               value={name}
               onChange={(e) => { setName(e.target.value); setNameError(false); }}
               placeholder="e.g. Future of Alternative Proteins"
+              maxLength={120}
             />
             {nameError && (
               <div style={{ fontSize: 11, color: c.red800, marginTop: 4 }}>Project name is required.</div>

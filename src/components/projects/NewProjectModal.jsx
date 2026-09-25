@@ -516,6 +516,7 @@ export function NewProjectModal({ open, onClose, onSave, workspaceScanningEnable
               value={name}
               onChange={(e) => { setName(e.target.value); setNameError(false); }}
               placeholder="e.g. Future of Alternative Proteins"
+              maxLength={120}
               autoFocus
             />
             {nameError && <div style={{ fontSize: 11, color: c.red800, marginTop: 4 }}>Project name is required.</div>}
