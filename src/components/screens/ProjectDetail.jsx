@@ -41,7 +41,7 @@ const CONFIDENCE_COLORS = {
 };
 
 const INPUT_TYPE_OPTS = ["signal","issue","projection","plan","obstacle","source"];
-const COL_AI = { check: 28, type: 70, classif: 88, steepled: 90, date: 50 };
+const COL_AI = { check: 28, type: 70, classif: 88, steepled: 90, date: 50, actions: 132 };
 
 function formatDate(str) {
   if (!str) return "—";
@@ -162,20 +162,18 @@ function AiRow({ inp, selected, onCheck, activeProjectId, onAccept, onDismiss })
       <div style={{ width: COL_AI.date, flexShrink: 0, fontSize: 10, color: c.hint }}>
         {formatDate(inp.created_at)}
       </div>
-      {/* Per-row actions — visible on hover */}
+      {/* Per-row actions — always visible in their own fixed-width column */}
       <div style={{
         display: "flex", alignItems: "center", gap: 4,
-        opacity: hov ? 1 : 0,
-        transition: "opacity 0.12s",
         flexShrink: 0,
-        width: 120,
-        justifyContent: "flex-end",
+        width: COL_AI.actions,
+        justifyContent: "flex-start",
       }}>
         <button
           onClick={(e) => { e.stopPropagation(); onAccept(inp); }}
           style={{
             padding: "3px 9px", borderRadius: 5, fontSize: 11, fontWeight: 500,
-            cursor: "pointer", fontFamily: "inherit",
+            cursor: "pointer", fontFamily: "inherit", flexShrink: 0, whiteSpace: "nowrap",
             background: c.brand, color: c.white, border: "none",
           }}
         >
@@ -185,7 +183,7 @@ function AiRow({ inp, selected, onCheck, activeProjectId, onAccept, onDismiss })
           onClick={(e) => { e.stopPropagation(); onDismiss(inp); }}
           style={{
             padding: "3px 9px", borderRadius: 5, fontSize: 11,
-            cursor: "pointer", fontFamily: "inherit",
+            cursor: "pointer", fontFamily: "inherit", flexShrink: 0, whiteSpace: "nowrap",
             background: "transparent", color: c.muted,
             border: `1px solid ${c.border}`,
           }}
@@ -666,6 +664,7 @@ export default function ProjectDetail({ appState }) {
                       <div style={{ width: COL_AI.classif,...cell }}>Signal type</div>
                       <div style={{ width: COL_AI.steepled,...cell }}>STEEPLED</div>
                       <div style={{ width: COL_AI.date,   ...cell }}>Date</div>
+                      <div style={{ width: COL_AI.actions, flexShrink: 0 }} />
                     </div>
 
                     {/* Emerging section */}
