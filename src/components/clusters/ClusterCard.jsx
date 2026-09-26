@@ -27,7 +27,7 @@ function LikelihoodTag({ l }) {
   );
 }
 
-export function ClusterCard({ cluster, selected = false, onClick, isDropTarget = false, dropIsCopy = false, isSelected = false, onCheckboxClick = null, anySelected = false }) {
+export function ClusterCard({ cluster, selected = false, onClick, isDropTarget = false, dropIsCopy = false, dropKind = "input", isSelected = false, onCheckboxClick = null, anySelected = false }) {
   const [hovered, setHovered] = useState(false);
 
   const showCheckbox = hovered || anySelected || isSelected;
@@ -90,9 +90,9 @@ export function ClusterCard({ cluster, selected = false, onClick, isDropTarget =
         {isDropTarget ? (
           <span className={clsx(
             "text-[10px] font-semibold py-px px-1.75 rounded text-white",
-            dropIsCopy ? "bg-green-600" : "bg-brand",
+            dropKind === "merge" ? "bg-brand" : dropIsCopy ? "bg-green-600" : "bg-brand",
           )}>
-            {dropIsCopy ? "Copy" : "Move"}
+            {dropKind === "merge" ? "Merge here" : dropIsCopy ? "Copy" : "Move"}
           </span>
         ) : (
           <span className="text-[11px] text-hint">

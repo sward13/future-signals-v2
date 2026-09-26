@@ -43,11 +43,14 @@ function LikelihoodTag({ l }) {
   );
 }
 
-function ClusterListRow({ cluster, selected, onClick, isDropTarget, dropIsCopy, onDragOver, onDragLeave, onDrop }) {
+function ClusterListRow({ cluster, selected, onClick, isDropTarget, dropIsCopy, dropKind = "input", draggable, onDragStart, onDragEnd, onDragOver, onDragLeave, onDrop }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
       onClick={onClick}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onDragOver={onDragOver}
@@ -87,10 +90,10 @@ function ClusterListRow({ cluster, selected, onClick, isDropTarget, dropIsCopy, 
       {/* Input count or Move/Copy pill */}
       {isDropTarget ? (
         <span className={clsx(
-          'text-[10px] font-semibold shrink-0 py-px px-1.75 rounded',
-          dropIsCopy ? 'bg-green-600 text-white' : 'bg-brand text-white',
+          'text-[10px] font-semibold shrink-0 py-px px-1.75 rounded text-white',
+          dropKind === "merge" ? 'bg-brand' : dropIsCopy ? 'bg-green-600' : 'bg-brand',
         )}>
-          {dropIsCopy ? "Copy" : "Move"}
+          {dropKind === "merge" ? "Merge here" : dropIsCopy ? "Copy" : "Move"}
         </span>
       ) : (
         <span className="text-[10px] text-hint shrink-0 min-w-6 text-right">
@@ -115,6 +118,10 @@ export function ClustersPanel({
   dragIsCopy = false,
   onDrop,
   onDropToNewCluster,
+  draggedClusterId = null,
+  onClusterDragStart,
+  onClusterDragEnd,
+  onClusterDrop,
   assignInputToCluster,
   addCluster,
   updateCluster,
@@ -212,6 +219,41 @@ export function ClustersPanel({
     .filter((cl) => !clusterFilterType      || cl.subtype   === clusterFilterType)
     .filter((cl) => !clusterFilterHorizon   || cl.horizon   === clusterFilterHorizon)
     .filter((cl) => !clusterFilterLikelihood|| cl.likelihood === clusterFilterLikelihood);
+
+  // ── Drag/drop wiring: a cluster row/card is both a drag source (to merge into
+  // another cluster) and a drop target (for input drags AND cluster-merge drags).
+  const clusterDragActive = !!draggedClusterId;
+  const isClusterDropTarget = (cl) =>
+    dropTargetId === cl.id && (!!dragIds || (clusterDragActive && draggedClusterId !== cl.id));
+  const clusterDropKind = (cl) =>
+    (!dragIds && clusterDragActive && draggedClusterId !== cl.id) ? "merge" : "input";
+
+  const dragSourceHandlers = (cl) => ({
+    draggable: true,
+    onDragStart: (e) => {
+      // Don't start a cluster drag from the checkbox — that's for multi-select.
+      if (e.target.closest("button") || e.target.type === "checkbox") { e.preventDefault(); return; }
+      onClusterDragStart?.(cl.id);
+      e.dataTransfer.effectAllowed = "move";
+    },
+    onDragEnd: () => onClusterDragEnd?.(),
+  });
+  const dropTargetHandlers = (cl) => ({
+    onDragOver: (e) => {
+      e.preventDefault();
+      if (dragIds) { setDropTargetId(cl.id); setDropIsCopy(e.altKey); }
+      else if (clusterDragActive && draggedClusterId !== cl.id) { setDropTargetId(cl.id); setDropIsCopy(false); }
+    },
+    onDragLeave: (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropTargetId(null); },
+    onDrop: (e) => {
+      e.preventDefault();
+      const isAlt = e.altKey;
+      const wasClusterMerge = !dragIds && clusterDragActive && draggedClusterId !== cl.id;
+      setDropTargetId(null);
+      if (dragIds) onDrop?.(cl.id, isAlt);
+      else if (wasClusterMerge) onClusterDrop?.(cl.id);
+    },
+  });
 
   return (
     <div
@@ -368,23 +410,11 @@ export function ClustersPanel({
                   cluster={cl}
                   selected={selectedClusterId === cl.id}
                   onClick={() => setSelectedClusterId(cl.id)}
-                  isDropTarget={!!dragIds && dropTargetId === cl.id}
+                  isDropTarget={isClusterDropTarget(cl)}
                   dropIsCopy={dropIsCopy}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    if (!dragIds) return;
-                    setDropTargetId(cl.id);
-                    setDropIsCopy(e.altKey);
-                  }}
-                  onDragLeave={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget)) setDropTargetId(null);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const isAlt = e.altKey;
-                    setDropTargetId(null);
-                    onDrop?.(cl.id, isAlt);
-                  }}
+                  dropKind={clusterDropKind(cl)}
+                  {...dragSourceHandlers(cl)}
+                  {...dropTargetHandlers(cl)}
                 />
               ))}
             </div>
@@ -398,28 +428,16 @@ export function ClustersPanel({
               {visibleClusters.map((cl) => (
                 <div
                   key={cl.id}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    if (!dragIds) return;
-                    setDropTargetId(cl.id);
-                    setDropIsCopy(e.altKey);
-                  }}
-                  onDragLeave={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget)) setDropTargetId(null);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const isAlt = e.altKey;
-                    setDropTargetId(null);
-                    onDrop?.(cl.id, isAlt);
-                  }}
+                  {...dragSourceHandlers(cl)}
+                  {...dropTargetHandlers(cl)}
                 >
                   <ClusterCard
                     cluster={cl}
                     selected={selectedClusterId === cl.id}
                     onClick={() => setSelectedClusterId(cl.id)}
-                    isDropTarget={!!dragIds && dropTargetId === cl.id}
+                    isDropTarget={isClusterDropTarget(cl)}
                     dropIsCopy={dropIsCopy}
+                    dropKind={clusterDropKind(cl)}
                     isSelected={selectedClusterIds.has(cl.id)}
                     onCheckboxClick={(e) => handleClusterCheckboxClick(cl.id, e)}
                     anySelected={selectedClusterIds.size > 0}

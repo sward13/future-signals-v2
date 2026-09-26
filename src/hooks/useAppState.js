@@ -12,6 +12,7 @@
  */
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "../lib/supabase.js";
+import { computeClusterMerge } from "../lib/clusterMerge.js";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -1055,6 +1056,48 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     }
   }, [workspaceId, showToast]);
 
+  /**
+   * Merge the source cluster into the target: target inherits the source's
+   * inputs (deduped), scenario/edge references repoint to the target, the source
+   * is deleted. Server side runs atomically via the merge_clusters RPC (all FKs
+   * to clusters cascade, so the RPC moves everything worth keeping before
+   * deleting the source); the optimistic local update mirrors it via
+   * computeClusterMerge. Target wins on all fields; source's are discarded.
+   */
+  const mergeClusters = useCallback((sourceId, targetId) => {
+    if (!sourceId || !targetId || sourceId === targetId) return;
+
+    // Pre-merge snapshots (closure = current committed state) for rollback.
+    const snapshot = { clusters, scenarios, relationships, canvasNodes, connections };
+    const next = computeClusterMerge(snapshot, sourceId, targetId);
+    if (!next.merged) return;
+
+    setClusters(next.clusters);
+    setScenarios(next.scenarios);
+    setRelationships(next.relationships);
+    setCanvasNodes(next.canvasNodes);
+    setConnections(next.connections);
+    touchProjectLocal(next.target.project_id);
+    showToast(`Merged "${next.source.name}" into "${next.target.name}"`);
+
+    if (workspaceId) {
+      (async () => {
+        try {
+          const { error } = await supabase.rpc("merge_clusters", { p_source: sourceId, p_target: targetId });
+          if (error) throw error;
+        } catch {
+          // Roll every affected array back to its pre-merge state.
+          setClusters(snapshot.clusters);
+          setScenarios(snapshot.scenarios);
+          setRelationships(snapshot.relationships);
+          setCanvasNodes(snapshot.canvasNodes);
+          setConnections(snapshot.connections);
+          showToast("Failed to merge clusters", "error");
+        }
+      })();
+    }
+  }, [clusters, scenarios, relationships, canvasNodes, connections, workspaceId, showToast, touchProjectLocal]);
+
   // ── Scenarios ─────────────────────────────────────────────────────────────
 
   const addScenario = useCallback((fields) => {
@@ -2032,6 +2075,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     duplicateInputToCluster,
     deleteInput,
     deleteCluster,
+    mergeClusters,
     deleteSystemMap,
     deleteAnalysis,
     deleteProject,
