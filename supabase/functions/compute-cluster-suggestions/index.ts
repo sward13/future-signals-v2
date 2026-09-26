@@ -14,6 +14,8 @@
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+// Pure dedupe decision logic — shared with node:test (see server-lib/clusterSuggestionDedup.test.js).
+import { planNewClusterDedup } from "../../../server-lib/clusterSuggestionDedup.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -33,6 +35,15 @@ const SENSITIVITY_THRESHOLDS: Record<string, number> = {
 
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_MODEL   = "gpt-4o-mini";
+const OPENAI_EMBED_URL   = "https://api.openai.com/v1/embeddings";
+const OPENAI_EMBED_MODEL = "text-embedding-3-small";
+
+// Cosine threshold (on name+description embeddings) above which two new-cluster
+// proposals are treated as the same concept — collapsed into one, or routed to an
+// existing cluster. Name+description embeddings catch "same idea, different source
+// articles" that member centroids miss. Deliberately conservative; tune after
+// reviewing real runs.
+const NEAR_DUP_THRESHOLD = 0.86;
 
 // Max in-flight OpenAI calls when naming groups / generating rationales. A
 // fully-embedded project can yield 20+ groups in one run; naming them
@@ -674,7 +685,100 @@ async function runNewClusterPass(
     });
   }
 
-  return { assignmentRows, newClusterRows, errors };
+  // Phase A dedupe: collapse near-identical proposals and route proposals that
+  // duplicate an existing cluster to assignment suggestions.
+  const deduped = await dedupeNewClusterProposals(newClusterRows, allClusters, projectId, workspaceId);
+  return {
+    assignmentRows: [...assignmentRows, ...deduped.extraAssignmentRows],
+    newClusterRows: deduped.newClusterRows,
+    errors,
+  };
+}
+
+// ─── New-cluster dedupe (Phase A) ─────────────────────────────────────────────
+// After naming, the parallel pass can emit several near-identical new-cluster
+// proposals (parallelizing naming lost the cross-group name awareness the old
+// sequential loop had). This collapses proposals that are the same concept — using
+// name+description embeddings, which catch "same idea, different source articles"
+// that member centroids miss — and routes a proposal that duplicates an EXISTING
+// cluster to an assignment suggestion instead of creating a duplicate. Operates
+// only on un-persisted proposals; the practitioner still reviews/accepts every row.
+
+async function embedTexts(texts: string[]): Promise<number[][]> {
+  const res = await fetch(OPENAI_EMBED_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
+    },
+    body: JSON.stringify({ model: OPENAI_EMBED_MODEL, input: texts }),
+  });
+  if (!res.ok) throw new Error(`OpenAI embeddings ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  return (data.data as Array<{ index: number; embedding: number[] }>)
+    .sort((a, b) => a.index - b.index)
+    .map((d) => d.embedding);
+}
+
+async function dedupeNewClusterProposals(
+  newClusterRows: Array<Record<string, unknown>>,
+  existingClusters: ClusterMeta[],
+  projectId: string,
+  workspaceId: string,
+): Promise<{ newClusterRows: Array<Record<string, unknown>>; extraAssignmentRows: object[] }> {
+  const extraAssignmentRows: object[] = [];
+  if (newClusterRows.length === 0) return { newClusterRows, extraAssignmentRows };
+
+  const clusterText = (name: unknown, description: unknown) =>
+    `${String(name ?? "")}. ${String(description ?? "")}`.trim();
+
+  const proposalTexts = newClusterRows.map((r) => clusterText(r.name, r.description));
+  const existingTexts = existingClusters.map((c) => clusterText(c.name, c.description));
+
+  let embeddings: number[][];
+  try {
+    embeddings = await embedTexts([...proposalTexts, ...existingTexts]);
+  } catch (err) {
+    // Non-fatal — if embedding fails, return proposals unchanged rather than blocking the run.
+    console.error("[dedupe] embedding failed, skipping:", err instanceof Error ? err.message : String(err));
+    return { newClusterRows, extraAssignmentRows };
+  }
+
+  const P = newClusterRows.length;
+  const proposalEmb = embeddings.slice(0, P);
+  const existingEmb = embeddings.slice(P);
+
+  const plan = planNewClusterDedup(
+    proposalEmb,
+    newClusterRows.map((r) => r.input_ids as string[]),
+    existingEmb,
+    NEAR_DUP_THRESHOLD,
+  );
+
+  // Survivors kept as new clusters, with their (possibly merged) input sets.
+  const finalNewRows = plan.survivors.map((s) => ({ ...newClusterRows[s.index], input_ids: s.inputIds }));
+
+  // Proposals that duplicate an existing cluster become assignment suggestions.
+  for (const route of plan.routes) {
+    const existing = existingClusters[route.existingIndex];
+    console.log(`[dedupe] route "${newClusterRows[route.index].name}" → existing "${existing.name}"`);
+    for (const inputId of route.inputIds) {
+      extraAssignmentRows.push({
+        project_id: projectId,
+        workspace_id: workspaceId,
+        type: "assignment",
+        name: existing.name,
+        target_cluster_id: existing.id,
+        input_ids: [inputId],
+        confidence: null,
+        rationale: null,
+        relevance: "core",
+        status: "pending",
+      });
+    }
+  }
+
+  return { newClusterRows: finalNewRows, extraAssignmentRows };
 }
 
 // ─── OpenAI naming ────────────────────────────────────────────────────────────
