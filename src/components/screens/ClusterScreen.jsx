@@ -8,6 +8,7 @@ import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
 import { ClustersPanel } from "../clusters/ClustersPanel.jsx";
 import { ClusterRail } from "../clusters/ClusterRail.jsx";
+import { MergeClusterDialog } from "../clusters/MergeClusterDialog.jsx";
 import { UnsavedChangesDialog } from "../shared/UnsavedChangesDialog.jsx";
 import { DragGhost } from "../clusters/DragGhost.jsx";
 import { STEEPLED } from "../../data/seeds.js";
@@ -78,7 +79,7 @@ export default function ClusterScreen({ appState }) {
     showToast, setActiveScreen,
     addCluster, updateCluster,
     assignInputToCluster, removeInputFromCluster,
-    duplicateInputToCluster, deleteCluster,
+    duplicateInputToCluster, deleteCluster, mergeClusters,
     setBulkBarActive,
   } = appState;
 
@@ -86,6 +87,12 @@ export default function ClusterScreen({ appState }) {
   const [dragIds,    setDragIds]    = useState(null);       // null | string[]
   const [dragPos,    setDragPos]    = useState({ x: 0, y: 0 });
   const [dragIsCopy, setDragIsCopy] = useState(false);
+
+  // Cluster-merge state: which cluster is being dragged (source), a pending
+  // merge awaiting confirm, and the rail's non-DnD "Merge into…" target picker.
+  const [draggedClusterId, setDraggedClusterId] = useState(null);
+  const [mergeReq,   setMergeReq]   = useState(null);       // null | { sourceId, targetId }
+  const [mergePicker, setMergePicker] = useState(null);     // null | { sourceId, anchorRect }
 
   // Input drawer resize state
   const [drawerHeight, setDrawerHeight] = useState(() => {
@@ -311,7 +318,27 @@ export default function ClusterScreen({ appState }) {
   const handleDropToNewCluster = () => {
     const ids = [...(dragIds || [])];
     setDragIds(null);
+    if (ids.length === 0) return;   // e.g. a cluster (not inputs) was dropped here — ignore
     openCreateRail(ids);
+  };
+
+  // ── Cluster-merge (drag one cluster onto another) ────────────────────────────
+  const onClusterDragStart = (id) => { setDragIds(null); setDraggedClusterId(id); };
+  const onClusterDragEnd   = () => setDraggedClusterId(null);
+  const onClusterDrop = (targetId) => {
+    const sourceId = draggedClusterId;
+    setDraggedClusterId(null);
+    if (sourceId && sourceId !== targetId) setMergeReq({ sourceId, targetId });
+  };
+  // Non-DnD path: the rail's "Merge into…" opens a target picker.
+  const requestMergePicker = (sourceId, anchorRect) => setMergePicker({ sourceId, anchorRect });
+  const doMerge = () => {
+    if (!mergeReq) return;
+    const { sourceId, targetId } = mergeReq;
+    mergeClusters(sourceId, targetId);
+    // If the rail is viewing the merged-away source, follow it to the survivor.
+    setRailTarget((rt) => (rt?.kind === "view" && rt.id === sourceId ? { kind: "view", id: targetId } : rt));
+    setMergeReq(null);
   };
 
   const dragLabel = dragIds
@@ -368,6 +395,10 @@ export default function ClusterScreen({ appState }) {
           dragIsCopy={dragIsCopy}
           onDrop={handleDrop}
           onDropToNewCluster={handleDropToNewCluster}
+          draggedClusterId={draggedClusterId}
+          onClusterDragStart={onClusterDragStart}
+          onClusterDragEnd={onClusterDragEnd}
+          onClusterDrop={onClusterDrop}
           assignInputToCluster={assignInputToCluster}
           addCluster={addCluster}
           updateCluster={updateCluster}
@@ -704,6 +735,8 @@ export default function ClusterScreen({ appState }) {
         dragIds={dragIds}
         onClearDrag={() => setDragIds(null)}
         onDropToCluster={handleDrop}
+        onRequestMerge={requestMergePicker}
+        canMerge={projectClusters.length > 1}
       />
 
       {/* ── Unsaved-changes guard (phase 5) ────────────────────── */}
@@ -719,6 +752,32 @@ export default function ClusterScreen({ appState }) {
           }}
         />
       )}
+
+      {/* ── Merge: non-DnD target picker (from the rail's "Merge into…") ─────── */}
+      {mergePicker && (
+        <ClusterAssignMenu
+          clusters={projectClusters.filter((cl) => cl.id !== mergePicker.sourceId)}
+          onAssign={(target) => { setMergeReq({ sourceId: mergePicker.sourceId, targetId: target.id }); setMergePicker(null); }}
+          onClose={() => setMergePicker(null)}
+          anchorRect={mergePicker.anchorRect}
+        />
+      )}
+
+      {/* ── Merge: confirm dialog (drag-to-merge and picker both land here) ───── */}
+      {mergeReq && (() => {
+        const source = projectClusters.find((cl) => cl.id === mergeReq.sourceId);
+        const target = projectClusters.find((cl) => cl.id === mergeReq.targetId);
+        if (!source || !target) return null;
+        return (
+          <MergeClusterDialog
+            source={source}
+            target={target}
+            onSwap={() => setMergeReq({ sourceId: mergeReq.targetId, targetId: mergeReq.sourceId })}
+            onConfirm={doMerge}
+            onClose={() => setMergeReq(null)}
+          />
+        );
+      })()}
 
       <DragGhost
         active={!!dragIds}
