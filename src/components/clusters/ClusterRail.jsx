@@ -277,15 +277,6 @@ export const ClusterRail = forwardRef(function ClusterRail({
         <div className="pt-5 px-5 pb-3.5 border-b border-border flex items-center justify-between shrink-0">
           <div className="text-[11px] tracking-[0.02em] text-hint">{eyebrow}</div>
           <div className="flex items-center gap-2">
-            {cluster && !editing && canMerge && onRequestMerge && (
-              <button
-                onClick={(e) => onRequestMerge(cluster.id, e.currentTarget.getBoundingClientRect())}
-                className="bg-transparent border border-border-strong cursor-pointer font-[inherit] text-[11px] text-muted py-1 px-2.5 rounded-btn"
-                title="Merge this cluster into another"
-              >
-                Merge…
-              </button>
-            )}
             {cluster && !editing && (
               <button
                 onClick={handleEdit}
@@ -480,12 +471,23 @@ export const ClusterRail = forwardRef(function ClusterRail({
             <div className="px-5 pb-4 border-t border-border">
               <div className="pt-3.5 flex items-center justify-between">
                 <div className="text-[11px] text-hint">Danger zone</div>
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  className="text-[11px] py-1 px-3 rounded-btn border border-red-border bg-transparent text-red-800 cursor-pointer font-[inherit]"
-                >
-                  Delete cluster
-                </button>
+                <div className="flex items-center gap-2">
+                  {canMerge && onRequestMerge && (
+                    <button
+                      onClick={(e) => onRequestMerge(cluster.id, e.currentTarget.getBoundingClientRect())}
+                      className="text-[11px] py-1 px-3 rounded-btn border border-border-strong bg-transparent text-muted cursor-pointer font-[inherit]"
+                      title="Merge this cluster into another"
+                    >
+                      Merge into…
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="text-[11px] py-1 px-3 rounded-btn border border-red-border bg-transparent text-red-800 cursor-pointer font-[inherit]"
+                  >
+                    Delete cluster
+                  </button>
+                </div>
               </div>
             </div>
           </div>
