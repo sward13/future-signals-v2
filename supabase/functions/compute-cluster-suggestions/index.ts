@@ -41,9 +41,15 @@ const OPENAI_EMBED_MODEL = "text-embedding-3-small";
 // Cosine threshold (on name+description embeddings) above which two new-cluster
 // proposals are treated as the same concept — collapsed into one, or routed to an
 // existing cluster. Name+description embeddings catch "same idea, different source
-// articles" that member centroids miss. Deliberately conservative; tune after
-// reviewing real runs.
-const NEAR_DUP_THRESHOLD = 0.86;
+// articles" that member centroids miss.
+//
+// Calibrated 2026-09-26 against real runs: the data-centers community trio (known
+// dupes) scored 0.72–0.81 pairwise, while genuinely-distinct proposals on a young
+// project topped out at ~0.61 — a clean gap. 0.70 catches the trio and clears the
+// distinct ceiling. NOTE: a fixed threshold is fragile across projects with
+// different domain-baseline inflation; a relative/per-run threshold (Phase A.2 in
+// docs/cluster-merge-spec.md) would be more robust if this proves finicky.
+const NEAR_DUP_THRESHOLD = 0.70;
 
 // Max in-flight OpenAI calls when naming groups / generating rationales. A
 // fully-embedded project can yield 20+ groups in one run; naming them
