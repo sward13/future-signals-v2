@@ -148,6 +148,12 @@ This is the higher-value half and the reason merge is worth building as a shared
 
 The detector's scoring logic should be extracted as a **pure, unit-tested module** (mirroring `src/publish/*.js`), consumed by both the edge function and any client-side "possible duplicate" hinting.
 
+> **SHIPPED — v2 Phase A (2026-09-26):** generation-side dedup is live (collapse near-identical proposals + route proposals that duplicate an existing cluster to an assignment). Pure logic in `server-lib/clusterSuggestionDedup.js` (imported by the Deno edge function AND node-tested), collapse behavior chosen for within-batch dupes. Uses a **fixed** `NEAR_DUP_THRESHOLD` on name+description embeddings.
+>
+> **Threshold calibration (real data, 2026-09-26):** the known data-centers community trio scored **0.72–0.81** pairwise; genuinely-distinct proposals on a young project (Solo Aging) topped out at **~0.61** — a clean gap. Threshold set to **0.70** (initial 0.86 guess would have *missed* the trio). Route-to-existing and against-existing flagging were not separately verified live (mature projects' assignment pass consumes those inputs first).
+>
+> **Phase A.2 (not yet built) — relative threshold.** The fixed 0.70 is fragile across projects with different domain-baseline inflation (same issue as centroids). Replace with a per-run relative threshold (z-score / percentile against the run's own name-embedding distribution, with an absolute floor) if the fixed value proves finicky in practice.
+
 ### 2. Multi-select merge
 
 Card view already supports multi-select (`selectedClusterIds`). Natural extensions:
