@@ -35,6 +35,8 @@ const CONFIDENCE_CLASSES = {
 // Shared button primitives, as Tailwind equivalents of tokens.js btnSm / btnSec.
 const btnSmCls  = "py-1.75 px-4 rounded-btn bg-brand text-white border-none text-xs font-medium cursor-pointer font-[inherit]";
 const btnSecCls = "py-2.25 px-4.5 rounded-container bg-transparent text-muted border border-border-strong text-ui cursor-pointer font-[inherit]";
+// Small secondary — matches btnSmCls dimensions (py-1.75 px-4 rounded-btn text-xs) for header actions sitting beside the primary button.
+const btnSmSecCls = "py-1.75 px-4 rounded-btn bg-transparent text-muted border border-border-strong text-xs font-medium cursor-pointer font-[inherit]";
 // Column-header cell base (was the `cell` inline-style object).
 const cellCls = "text-[11px] tracking-[0.02em] text-hint shrink-0";
 
@@ -400,7 +402,7 @@ export default function ClusterScreen({ appState }) {
             <button
               onClick={findDuplicates}
               disabled={projectClusters.length < 2}
-              className={clsx(btnSecCls, "inline-flex items-center gap-1.25", projectClusters.length < 2 && "opacity-40 cursor-not-allowed")}
+              className={clsx(btnSmSecCls, "inline-flex items-center gap-1.25", projectClusters.length < 2 && "opacity-40 cursor-not-allowed")}
               title={projectClusters.length < 2 ? "Need at least two clusters to compare" : "Scan clusters for likely duplicates"}
             >
               Find duplicates
