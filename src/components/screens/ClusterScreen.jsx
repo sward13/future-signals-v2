@@ -9,6 +9,8 @@ import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
 import { ClustersPanel } from "../clusters/ClustersPanel.jsx";
 import { ClusterRail } from "../clusters/ClusterRail.jsx";
 import { MergeClusterDialog } from "../clusters/MergeClusterDialog.jsx";
+import { DuplicateReviewModal } from "../clusters/DuplicateReviewModal.jsx";
+import { supabase } from "../../lib/supabase.js";
 import { UnsavedChangesDialog } from "../shared/UnsavedChangesDialog.jsx";
 import { DragGhost } from "../clusters/DragGhost.jsx";
 import { STEEPLED } from "../../data/seeds.js";
@@ -93,6 +95,12 @@ export default function ClusterScreen({ appState }) {
   const [draggedClusterId, setDraggedClusterId] = useState(null);
   const [mergeReq,   setMergeReq]   = useState(null);       // null | { sourceId, targetId }
   const [mergePicker, setMergePicker] = useState(null);     // null | { sourceId, anchorRect }
+
+  // "Find duplicates" review (Phase B): on-demand scan of existing clusters.
+  const [dupOpen,    setDupOpen]    = useState(false);
+  const [dupLoading, setDupLoading] = useState(false);
+  const [dupError,   setDupError]   = useState(null);
+  const [dupPairs,   setDupPairs]   = useState([]);
 
   // Input drawer resize state
   const [drawerHeight, setDrawerHeight] = useState(() => {
@@ -341,6 +349,26 @@ export default function ClusterScreen({ appState }) {
     setMergeReq(null);
   };
 
+  // Find duplicates: scan all clusters in the project for similar pairs to review.
+  const findDuplicates = async () => {
+    setDupOpen(true);
+    setDupLoading(true);
+    setDupError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("detect-cluster-overlaps", {
+        body: { project_id: project.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setDupPairs(data?.pairs || []);
+    } catch (err) {
+      setDupError(err?.message || "Something went wrong");
+      setDupPairs([]);
+    } finally {
+      setDupLoading(false);
+    }
+  };
+
   const dragLabel = dragIds
     ? dragIds.length === 1
       ? (projectInputs.find((i) => i.id === dragIds[0])?.name || "1 input")
@@ -369,6 +397,14 @@ export default function ClusterScreen({ appState }) {
         <div className="flex items-center">
           <div className="text-[22px] font-medium text-ink font-heading">Cluster</div>
           <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={findDuplicates}
+              disabled={projectClusters.length < 2}
+              className={clsx(btnSecCls, "inline-flex items-center gap-1.25", projectClusters.length < 2 && "opacity-40 cursor-not-allowed")}
+              title={projectClusters.length < 2 ? "Need at least two clusters to compare" : "Scan clusters for likely duplicates"}
+            >
+              Find duplicates
+            </button>
             <button
               onClick={() => openCreateRail()}
               className={clsx(btnSmCls, "inline-flex items-center gap-1.25")}
@@ -760,6 +796,18 @@ export default function ClusterScreen({ appState }) {
           onAssign={(target) => { setMergeReq({ sourceId: mergePicker.sourceId, targetId: target.id }); setMergePicker(null); }}
           onClose={() => setMergePicker(null)}
           anchorRect={mergePicker.anchorRect}
+        />
+      )}
+
+      {/* ── Find duplicates: review modal (Merge routes into the confirm dialog) ─ */}
+      {dupOpen && (
+        <DuplicateReviewModal
+          pairs={dupPairs}
+          clusters={projectClusters}
+          loading={dupLoading}
+          error={dupError}
+          onMerge={(sourceId, targetId) => setMergeReq({ sourceId, targetId })}
+          onClose={() => setDupOpen(false)}
         />
       )}
 
