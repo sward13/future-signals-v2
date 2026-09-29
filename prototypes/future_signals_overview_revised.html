@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Future Signals — Overview (revised)</title>
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --white: #ffffff;
+    --ink: #111111;
+    --muted: #666666;
+    --hint: #999999;
+    --border: rgba(0,0,0,0.12);
+    --border-strong: rgba(0,0,0,0.22);
+
+    --green-50: #EAF3DE; --green-700: #3B6D11; --green-border: #C0DD97;
+    --blue-50:  #E6F1FB; --blue-700:  #185FA5; --blue-border:  #B5D4F4;
+    --amber-50: #FAEEDA; --amber-700: #854F0B; --amber-border: #FAC775;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 28px 80px;
+  }
+
+  .top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .eyebrow {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  h1 {
+    font-size: 30px;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .icon {
+    width: 22px;
+    height: 22px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 0.5px solid var(--border-strong);
+    background: var(--white);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  button:hover { background: #fafaf8; }
+
+  .card {
+    background: var(--white);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 16px;
+  }
+
+  .label {
+    font-size: 12px;
+    color: var(--hint);
+    text-transform: none;
+    margin-bottom: 4px;
+  }
+
+  .label-accent {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--blue-700);
+    margin-bottom: 6px;
+  }
+
+  .key-question {
+    font-family: Georgia, "Times New Roman", serif;
+    font-style: italic;
+    font-size: 19px;
+    line-height: 1.5;
+  }
+
+  .context-top {
+    display: grid;
+    grid-template-columns: minmax(0,2fr) minmax(0,1fr) minmax(0,1fr);
+    gap: 32px;
+  }
+
+  .context-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px 32px;
+    border-top: 0.5px solid var(--border);
+    margin-top: 20px;
+    padding-top: 20px;
+  }
+
+  .field-value { font-size: 14px; }
+  .field-empty { font-size: 14px; color: var(--hint); font-style: italic; }
+
+  .tag {
+    display: inline-block;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+  .tag-in { background: var(--green-50); color: var(--green-700); }
+  .tag-out { background: #f2f1ec; color: var(--muted); }
+
+  .horizon-bar {
+    display: flex;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 0.5px solid var(--border);
+  }
+  .horizon-seg {
+    padding: 12px 16px;
+    text-align: center;
+  }
+  .horizon-seg .h-label { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .horizon-seg .h-range { font-size: 12px; }
+  .h1-seg { flex: 1.2; background: var(--green-50); }
+  .h1-seg .h-label, .h1-seg .h-range { color: var(--green-700); }
+  .h2-seg { flex: 2;   background: var(--blue-50); }
+  .h2-seg .h-label, .h2-seg .h-range { color: var(--blue-700); }
+  .h3-seg { flex: 1.5; background: var(--amber-50); }
+  .h3-seg .h-label, .h3-seg .h-range { color: var(--amber-700); }
+
+  .scanner-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 28px;
+  }
+  .scanner-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .scanner-sub { font-size: 13px; color: var(--hint); }
+
+  .workflow-label {
+    font-size: 12px;
+    color: var(--hint);
+    margin: 24px 0 10px;
+  }
+
+  .workflow-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0,1fr));
+    gap: 14px;
+  }
+
+  .wf-card {
+    background: var(--white);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .wf-card.active {
+    border: 0.5px solid var(--blue-border);
+    border-left: 3px solid var(--blue-700);
+  }
+
+  .wf-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .wf-name { font-size: 14px; font-weight: 600; }
+  .wf-pill {
+    background: var(--blue-50);
+    color: var(--blue-700);
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 20px;
+  }
+  .wf-metric-label { font-size: 12px; color: var(--hint); }
+  .wf-metric-value { font-size: 22px; font-weight: 600; margin: 2px 0 10px; }
+  .wf-note { font-size: 12px; color: var(--hint); }
+
+  @media (max-width: 1000px) {
+    .context-top { grid-template-columns: 1fr; }
+    .workflow-row { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="top">
+    <div>
+      <div class="eyebrow">EV adoption in the US</div>
+      <div class="title-row">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M15 9l-2 6-6 2 2-6z" fill="currentColor" stroke="none"/>
+        </svg>
+        <h1>Overview</h1>
+      </div>
+    </div>
+    <button>Project settings</button>
+  </div>
+
+  <div class="card">
+    <div class="context-top">
+      <div>
+        <div class="label-accent">Key question</div>
+        <div class="key-question">What are the key forces driving and inhibiting the widespread adoption of EVs in the USA?</div>
+      </div>
+      <div>
+        <div class="label">Domain</div>
+        <div class="field-value">Technology and AI</div>
+      </div>
+      <div>
+        <div class="label">Geography</div>
+        <div class="field-value">USA</div>
+      </div>
+    </div>
+
+    <div class="context-grid">
+      <div>
+        <div class="label">Focus</div>
+        <div class="field-value">Consumer electric vehicles</div>
+      </div>
+      <div>
+        <div class="label">Audience</div>
+        <div class="field-empty">Not set</div>
+      </div>
+      <div>
+        <div class="label">Stakeholders</div>
+        <div class="field-empty">Not set</div>
+      </div>
+      <div>
+        <div class="label">Assumptions</div>
+        <div class="field-empty">Not set</div>
+      </div>
+      <div>
+        <div class="label" style="margin-bottom:6px;">In scope</div>
+        <span class="tag tag-in">Consumer sentiment, political and economic forces, climate and energy forces</span>
+      </div>
+      <div>
+        <div class="label" style="margin-bottom:6px;">Out of scope</div>
+        <span class="tag tag-out">Commercial adoption</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="label" style="margin-bottom:12px;">Time horizons</div>
+    <div class="horizon-bar">
+      <div class="horizon-seg h1-seg">
+        <div class="h-label">H1</div>
+        <div class="h-range">2026-2030</div>
+      </div>
+      <div class="horizon-seg h2-seg">
+        <div class="h-label">H2</div>
+        <div class="h-range">2030-2035</div>
+      </div>
+      <div class="horizon-seg h3-seg">
+        <div class="h-label">H3</div>
+        <div class="h-range">2035-2041</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card scanner-row">
+    <div>
+      <div class="scanner-title">No new signals since your last visit</div>
+      <div class="scanner-sub">No sources active</div>
+    </div>
+    <button>Manage sources</button>
+  </div>
+
+  <div class="workflow-label">Workflow</div>
+  <div class="workflow-row">
+
+    <div class="wf-card active">
+      <div class="wf-head">
+        <span class="wf-name">Scan</span>
+        <span class="wf-pill">Continue here</span>
+      </div>
+      <div class="wf-metric-label">Inputs</div>
+      <div class="wf-metric-value">72</div>
+      <div class="wf-note">3 days ago</div>
+    </div>
+
+    <div class="wf-card">
+      <div class="wf-head"><span class="wf-name">Cluster</span></div>
+      <div class="wf-metric-label">Clusters</div>
+      <div class="wf-metric-value">0</div>
+      <div class="wf-note">Not started</div>
+    </div>
+
+    <div class="wf-card">
+      <div class="wf-head"><span class="wf-name">System map</span></div>
+      <div class="wf-metric-label">Nodes</div>
+      <div class="wf-metric-value">0</div>
+      <div class="wf-note">Needs clusters first</div>
+    </div>
+
+    <div class="wf-card">
+      <div class="wf-head"><span class="wf-name">System analysis</span></div>
+      <div class="wf-metric-label">Sections complete</div>
+      <div class="wf-metric-value">0/5</div>
+      <div class="wf-note">Needs a system map first</div>
+    </div>
+
+    <div class="wf-card">
+      <div class="wf-head"><span class="wf-name">Future models</span></div>
+      <div class="wf-metric-label">Scenarios</div>
+      <div class="wf-metric-value">0</div>
+      <div class="wf-note">Needs analysis first</div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>
