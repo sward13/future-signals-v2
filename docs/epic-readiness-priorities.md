@@ -3,7 +3,7 @@
 **Status:** Active planning — for Sam + John
 **Context:** Presenting Future Signals at EPIC People (Chicago), ~1 month out (late Oct 2026)
 **Last updated:** 29 September 2026
-**Related:** `FutureSignals_Roadmap_Timeline` (Google Sheet), `design-principles.md`
+**Related:** `access-promo-codes-spec.md`, `FutureSignals_Roadmap_Timeline` (Google Sheet), `design-principles.md`
 
 ---
 
@@ -29,52 +29,57 @@ The roadmap slots "EPIC 2026 (October)" under *Public Launch (Week 14–16)*, bu
 
 ---
 
-## Access decision (made 2026-09-29): open registration
+## Access model (decided 2026-09-29): invite-only via access codes
 
-Current "manual provisioning" is really just: users go to `futuresignals.io` → Log in → flip to Sign Up. The plan is to **relabel the marketing site's "Request Access" button to "Sign up" and link it to `https://app.futuresignals.io/sign-up`** — i.e., move to **open registration**.
+Evolution of the decision:
+1. **Shipped:** the marketing site's "Request access" (mailto) button was relabeled to **"Sign up"** → `https://app.futuresignals.io/sign-up` and deployed live. `/sign-up` already deep-links to the signup form (`src/lib/authRedirect.test.js`). This made registration **open** — anyone could sign up.
+2. **Decided:** rather than leave it fully open (which exposes the signup + AI endpoints to the whole internet), gate it with a **shared/channel access code** — invisible friction for the EPIC crowd (the code rides in the QR link), opaque to everyone else. Full design in **`access-promo-codes-spec.md`**.
 
-- **Rationale:** at a conference, the "try it tonight while excited" moment beats the control a gate would give. Framing it as a *prototype* keeps expectations calibrated.
-- **App side is already ready:** `/sign-up` (and `/signup`) deep-link straight to the signup form; URL stays in sync; covered by `src/lib/authRedirect.test.js`. Nothing to build in the app for the link itself.
-- **The button lives in the separate marketing site** (`futuresignals.io`), *not* this app repo — that edit happens there.
-- **Consequence:** with no gate to hide behind, the readiness items below (esp. error handling + scanner cost guard) move from "nice" to "must."
+**EPIC cut of the code gate:** email/password + access code, validated **at account creation**, with **email confirmation ON** (a legitimacy/security signal for a real-work tool; fits the async "sign up at the booth, dig in later" pattern). **Google SSO is deferred** to a post-EPIC fast-follow. A single, gated signup path is already true invite-only for EPIC, and it gates onboarding/AI spend — which is why the cost/rate-limit work drops to a fast-follow.
 
 ---
 
 ## Prioritized readiness shortlist (in order)
 
-1. **Google Sign-on** — the single biggest friction reducer for a walk-up crowd; email/password on a phone at a booth loses people. Roadmap lists it as unblocked by the `app.futuresignals.io` migration. *(Roadmap: Closed Beta, P2, Not started → promote.)*
-2. **Error handling for edge cases** — a stranger's *first* session cannot crash: scanner timeout, clustering with no inputs, graceful failures. No gate to catch them. *(Roadmap: Closed Beta, P1, Not started.)*
-3. **Scanner cost / rate-limit guard** — the item most likely to *bite financially*. Every new project may kick off signal scanning → OpenAI spend + cron load; a signup burst from a conference room could spike cost or trip rate limits. Add a cap/throttle before opening the tap. *(Not explicitly on the roadmap; surfaced here.)*
-4. **Decide email confirmation** — signup currently shows a "check your email"-style confirmation screen, implying Supabase email-confirm is ON. That means signup → leave → find email → confirm → *then* get in: a real conference drop-off point. Decide consciously (it does filter junk). *(Confirm exact current behavior.)*
-5. **Cluster recommendations visible by default** — an unguided user won't find the AI assist behind the Suggested-mode toggle; surfacing it is how a solo user discovers the value. *(Roadmap: Closed Beta, P1, Not started.)*
-6. **Stage-transition readiness signals** ("Ready to map?") — the method's guide-rail for someone with no one narrating it. *(Roadmap: Closed Beta, P1, Not started.)*
-7. **Activation instrumentation (lightweight GA4 funnel)** — the talk literally asks "is this valuable? does structure improve thinking?" If we recruit a cohort and don't instrument the funnel, we're guessing. Turns EPIC into the learning event the talk promises. *(Roadmap: Open Beta, P1, Not started → pull earlier, lightweight.)*
+1. **Access & promo code gate** — the front door. Turns the now-open registration into invite-only, and (because the gate blocks onboarding before any AI fires) removes the runaway-cost exposure. The biggest EPIC build; fully specced in `access-promo-codes-spec.md`. One prerequisite: locate the live `handle_new_user` definition (predates the migrations dir) before extending it.
+2. **Error handling for edge cases** — a stranger's *first* session cannot crash: scanner timeout, clustering with no inputs, graceful failures. *(Roadmap: Closed Beta, P1, Not started.)*
+3. **Cluster recommendations visible by default** — an unguided user won't find the AI assist behind the Suggested-mode toggle; surfacing it is how a solo user discovers the value. *(Roadmap: Closed Beta, P1, Not started.)*
+4. **Stage-transition readiness signals** ("Ready to map?") — the method's guide-rail for someone with no one narrating it. *(Roadmap: Closed Beta, P1, Not started.)*
+5. **Activation instrumentation (lightweight GA4 funnel)** — the talk literally asks "is this valuable? does structure improve thinking?" If we recruit a cohort and don't instrument the funnel, we're guessing. Turns EPIC into the learning event the talk promises. Per-channel access codes double as attribution and feed this. *(Roadmap: Open Beta, P1, Not started → pull earlier, lightweight.)*
+
+**Resolved (was on this list):**
+- **Email confirmation** → decided **ON** (see Access model).
+- **Google SSO** → **deferred** to a post-EPIC fast-follow (see below). It was the top item when the plan was fully-open registration; the code gate makes it optional for EPIC, and it adds the trickiest plumbing (code carried through the OAuth redirect + activation model) to the critical path. Not worth the risk for a marginal convenience gain at a research conference.
+- **Scanner cost / rate-limit guard** → **deferred** to a fast-follow. The code gate blocks onboarding/AI before it fires on un-activated accounts, so there's no ungated path to abuse.
 
 ## Already shipped — assets that help the funnel
 
+- **Landing-page "Sign up" button** (shipped 2026-09-29) → `app.futuresignals.io/sign-up`. Live now (currently open until the code gate lands).
 - **Sample project clone** (Done) — every new user immediately sees a *completed* foresight pass instead of a blank screen. The best cold-start asset we have; make sure it fires reliably for each new signup.
 - **Cluster merge + generation-side dedup + "Find duplicates"** (shipped Sep 2026) — backs the talk's "clustering to make new connections / get you off the ground quicker" claim.
 - **Web Publish** (`/p/{slug}`) — a user who publishes a shareable page becomes an organic channel; consider raising its prominence.
 - **Loom walkthrough** (Alpha version Done) — the async guide for people who sign up at the booth and try it later.
 
-## Explicitly deferred past EPIC
+## Explicitly deferred past EPIC (fast-follows)
 
-Stripe / paid tier · full security sprint (beyond a data-isolation spot-check) · React Query · marketing-site rebuild · UMAP embedding viz · multi-domain example projects · CSV import robustness · help-text polish. Real work, no recruitment payoff in this window.
+- **Google SSO + activation-flag model** (gate both paths) — see `access-promo-codes-spec.md`.
+- **AI-endpoint rate-limit / cost guard** — softened by the code gate; harden when access widens.
+- Stripe / paid tier · full security sprint (beyond a data-isolation spot-check) · React Query · marketing-site rebuild · UMAP embedding viz · multi-domain example projects · CSV import robustness · help-text polish.
 
 ---
 
-## Operational risk (open registration + conference spike)
+## Operational risk
 
-Going from ~3–5 hand-provisioned users to a conference crowd stresses three things at once:
+The code gate greatly reduces the "conference spike" exposure (no ungated path triggers AI spend), but two things still warrant care:
+
+- **The access code is now load-bearing for *all* signups.** If it's typo'd, expired, or cap-hit, nobody can sign up at the booth. Before EPIC: test the live code end-to-end, set a generous `max_uses` + a comfortable `expires_at`, and keep a backup code.
+- **Email-confirmation deliverability.** A confirmation email that lands in spam (or never arrives) is a dead signup and inverts the security signal. Verify it reaches the inbox; consider a branded, from-domain sender (Resend is already wired for other mail).
 - **Data isolation** between strangers (light RLS audit Done ✓; do one deliberate two-account check).
-- **Scanner cost/load** (see #3 above).
-- **Support burden** (mitigated by prototype framing + the Loom walkthrough).
 
 ## Open decisions / questions
 
-- **Where is the marketing site hosted?** (separate Git repo vs a builder like Framer/Webflow/Carrd) — determines how the button relabel gets done.
-- **Email confirmation on or off** for the booth flow? (see #4)
-- **Scope the top three** (Google SSO, error-handling, scanner guard) into concrete work against this repo — next step once the above are settled.
+- **Resolved:** marketing-site location (found + button shipped), email confirmation (ON), Google SSO for EPIC (deferred), access model (invite-only via codes).
+- **Next:** write the remaining EPIC specs (error-handling hardening, GA4 activation funnel), then build — starting with the access-code gate (prereq: locate `handle_new_user`).
 
 ## Notes for the talk (secondary — content, not build)
 
