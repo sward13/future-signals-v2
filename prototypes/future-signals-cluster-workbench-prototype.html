@@ -1,0 +1,1069 @@
+<title>Cluster Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{
+    --bg:#F5F2EA;
+    --surface:#FFFFFF;
+    --surface-2:#FBF9F4;
+    --border:#E1DACB;
+    --border-strong:#CFC6B2;
+    --text:#221F19;
+    --text-muted:#736B5B;
+    --accent:#3452D0;
+    --accent-strong:#26399E;
+    --accent-ink:#FFFFFF;
+    --accent-soft:#E9EDFB;
+    --danger:#B0342B;
+    --danger-soft:#FBEAEA;
+    --success:#2E7D5B;
+    --tag-trend-bg:#EFEAF8; --tag-trend-ink:#5B4B95;
+    --tag-tension-bg:#FBEAEA; --tag-tension-ink:#A6362B;
+    --tag-driver-bg:#E7F3EF; --tag-driver-ink:#2A7A63;
+    --tag-horizon-bg:#E9F3E1; --tag-horizon-ink:#4C7A34;
+    --tag-like-bg:#E5F0FA; --tag-like-ink:#2C6FA8;
+    --tag-steepled-bg:#F0EEE7; --tag-steepled-ink:#6B6455;
+    --shadow: 0 10px 30px -12px rgba(34,31,25,0.25);
+    --rail-shadow: -18px 0 34px -22px rgba(34,31,25,0.32);
+    --radius-card: 10px;
+    --radius-pill: 999px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1B1815;
+      --surface:#242019;
+      --surface-2:#211D17;
+      --border:#3A342A;
+      --border-strong:#4A4234;
+      --text:#F3EFE6;
+      --text-muted:#B4AB98;
+      --accent:#8C9FF5;
+      --accent-strong:#AAB9F7;
+      --accent-ink:#12162E;
+      --accent-soft:#252B4A;
+      --danger:#E08277;
+      --danger-soft:#3A2422;
+      --success:#7FC7A4;
+      --tag-trend-bg:#332C4A; --tag-trend-ink:#CFC6F2;
+      --tag-tension-bg:#4A2A28; --tag-tension-ink:#F0B3AC;
+      --tag-driver-bg:#20362F; --tag-driver-ink:#9BD9C3;
+      --tag-horizon-bg:#2C3823; --tag-horizon-ink:#BEE39F;
+      --tag-like-bg:#22344A; --tag-like-ink:#B3D2F2;
+      --tag-steepled-bg:#2E2A22; --tag-steepled-ink:#CFC7B3;
+      --shadow: 0 10px 30px -12px rgba(0,0,0,0.6);
+      --rail-shadow: -18px 0 34px -22px rgba(0,0,0,0.65);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1B1815;
+    --surface:#242019;
+    --surface-2:#211D17;
+    --border:#3A342A;
+    --border-strong:#4A4234;
+    --text:#F3EFE6;
+    --text-muted:#B4AB98;
+    --accent:#8C9FF5;
+    --accent-strong:#AAB9F7;
+    --accent-ink:#12162E;
+    --accent-soft:#252B4A;
+    --danger:#E08277;
+    --danger-soft:#3A2422;
+    --success:#7FC7A4;
+    --tag-trend-bg:#332C4A; --tag-trend-ink:#CFC6F2;
+    --tag-tension-bg:#4A2A28; --tag-tension-ink:#F0B3AC;
+    --tag-driver-bg:#20362F; --tag-driver-ink:#9BD9C3;
+    --tag-horizon-bg:#2C3823; --tag-horizon-ink:#BEE39F;
+    --tag-like-bg:#22344A; --tag-like-ink:#B3D2F2;
+    --tag-steepled-bg:#2E2A22; --tag-steepled-ink:#CFC7B3;
+    --shadow: 0 10px 30px -12px rgba(0,0,0,0.6);
+    --rail-shadow: -18px 0 34px -22px rgba(0,0,0,0.65);
+  }
+
+  *{ box-sizing:border-box; }
+  body{ background:var(--bg); color:var(--text); }
+  h1,h2,h3{ font-family:"Archivo","Helvetica Neue",Arial,sans-serif; text-wrap:balance; margin:0; }
+  .mono{ font-family:"JetBrains Mono","SF Mono",Consolas,monospace; }
+
+  /* ---- app shell: persistent sidebar ---- */
+  .shell{ display:flex; min-height:100vh; background:var(--bg); }
+  .sidebar{
+    position:fixed; left:0; top:0; bottom:0; width:224px; background:var(--surface);
+    border-right:1px solid var(--border); display:flex; flex-direction:column; overflow-y:auto; z-index:12;
+  }
+  .sidebar-logo{ display:flex; align-items:center; gap:10px; padding:20px 18px 14px; }
+  .logo-mark{ width:28px; height:28px; border-radius:50%; background:var(--danger); flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
+  .logo-word{ font-family:"Archivo",sans-serif; font-weight:800; font-size:12.5px; line-height:1.15; color:var(--text); letter-spacing:.01em; }
+  .sidebar-nav{ display:flex; flex-direction:column; gap:2px; padding:8px 12px; flex:1; }
+  .nav-item{
+    display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; font-size:13.5px; font-weight:500;
+    color:var(--text-muted); text-decoration:none; cursor:pointer; background:none; border:none; text-align:left; width:100%;
+    font-family:"Inter",sans-serif;
+  }
+  .nav-item:hover{ background:var(--surface-2); color:var(--text); }
+  .nav-item svg{ width:17px; height:17px; flex:0 0 auto; }
+  .nav-item .nav-label{ flex:1; }
+  .nav-badge{ font-family:"JetBrains Mono",monospace; font-size:10.5px; color:var(--text-muted); }
+  .nav-item.active{ background:var(--accent-soft); color:var(--accent-strong); font-weight:700; }
+  .nav-item.active .nav-badge{ color:var(--accent-strong); }
+  .nav-divider{ height:1px; background:var(--border); margin:8px 6px; }
+  .sidebar-bottom{ padding:6px 12px 16px; }
+  .sidebar-user{ display:flex; align-items:center; gap:8px; padding:8px 10px; }
+  .avatar{
+    width:24px; height:24px; border-radius:50%; background:var(--accent); color:var(--accent-ink);
+    display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex:0 0 auto; font-family:"Archivo",sans-serif;
+  }
+  .user-email{ font-size:12px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  @media (max-width:700px){
+    .sidebar{ display:none; }
+    .app{ margin-left:0 !important; }
+  }
+
+  .app{
+    font-family:"Inter",system-ui,-apple-system,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    margin-left:224px;
+    padding:20px 20px 96px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    transition:padding-right .18s ease;
+    flex:1;
+    min-width:0;
+  }
+  .app.rail-open{ padding-right:calc(392px + 40px); }
+  @media (max-width:860px){
+    .app.rail-open{ padding-right:20px; }
+  }
+
+  /* ---- header ---- */
+  .topbar{
+    display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    border-bottom:1px solid var(--border); padding-bottom:16px;
+  }
+  .eyebrow{ font-size:12px; color:var(--text-muted); margin:0 0 4px; }
+  .titlerow{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .titlerow h1{ font-size:26px; font-weight:800; letter-spacing:-0.01em; }
+  .proto-badge{
+    font-family:"JetBrains Mono",monospace; font-size:10.5px; font-weight:600; letter-spacing:0.06em;
+    text-transform:uppercase; color:var(--accent-strong); background:var(--accent-soft);
+    border:1px solid var(--accent); border-radius:var(--radius-pill); padding:3px 9px;
+  }
+  .sub{ font-size:13px; color:var(--text-muted); margin-top:4px; max-width:60ch; }
+  .topbar-actions{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .notes-toggle{ display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-muted); user-select:none; cursor:pointer; }
+  .notes-toggle input{ accent-color:var(--accent); width:14px; height:14px; }
+  .btn{
+    font-family:"Inter",sans-serif; font-size:13.5px; font-weight:600; border-radius:8px; padding:9px 14px;
+    border:1px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+    transition:background .12s ease, border-color .12s ease, transform .05s ease;
+  }
+  .btn:active{ transform:translateY(1px); }
+  .btn-primary{ background:var(--accent); color:var(--accent-ink); }
+  .btn-primary:hover{ background:var(--accent-strong); }
+  .btn-ghost{ background:transparent; color:var(--text); border-color:var(--border-strong); }
+  .btn-ghost:hover{ background:var(--surface-2); }
+  .btn-quiet{ background:var(--surface-2); color:var(--text); border-color:var(--border); }
+  .btn-quiet:hover{ background:var(--surface); }
+  .btn-danger{ background:var(--danger-soft); color:var(--danger); border-color:var(--danger); }
+  .btn-sm{ font-size:12px; padding:5px 10px; border-radius:6px; }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+
+  /* ---- view tabs + decorative filter chrome (static, matches the live app's page) ---- */
+  .view-tabs{ display:flex; gap:4px; }
+  .view-tab{
+    font-family:"Inter",sans-serif; font-size:13px; font-weight:600; padding:7px 14px; border-radius:8px;
+    border:none; cursor:pointer; background:transparent; color:var(--text-muted);
+  }
+  .view-tab.active{ background:var(--accent); color:var(--accent-ink); }
+  .view-tab:disabled{ opacity:.5; cursor:not-allowed; }
+  .chrome-bar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .chrome-search{
+    flex:1; min-width:160px; font-family:"Inter",sans-serif; font-size:13px; color:var(--text);
+    background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 11px;
+  }
+  .chrome-search::placeholder{ color:var(--text-muted); }
+  .chrome-search:disabled{ opacity:.5; cursor:not-allowed; }
+  .chrome-chip{
+    font-family:"Inter",sans-serif; font-size:12.5px; font-weight:600; color:var(--text-muted); background:var(--surface);
+    border:1px solid var(--border-strong); border-radius:8px; padding:8px 12px; cursor:not-allowed; opacity:.55; white-space:nowrap;
+  }
+  .chrome-view-toggle{ display:flex; gap:2px; border:1px solid var(--border-strong); border-radius:8px; padding:2px; opacity:.55; }
+  .chrome-view-toggle button{ border:none; background:transparent; padding:5px 8px; border-radius:6px; cursor:not-allowed; color:var(--text-muted); }
+  .chrome-view-toggle button.active{ background:var(--surface-2); color:var(--text); }
+
+  .input-tabs{ display:flex; gap:18px; padding:0 14px; border-bottom:1px solid var(--border); }
+  .itab{
+    font-family:"Inter",sans-serif; font-size:13px; font-weight:600; color:var(--text-muted); background:none; border:none;
+    cursor:pointer; padding:11px 0; border-bottom:2px solid transparent; display:flex; align-items:center; gap:6px;
+  }
+  .itab .itab-count{ font-family:"JetBrains Mono",monospace; font-size:11px; color:var(--text-muted); }
+  .itab.active{ color:var(--text); border-bottom-color:var(--accent); }
+  .itab.active .itab-count{ color:var(--accent-strong); }
+  .table-filters{ display:flex; align-items:center; gap:8px; padding:10px 14px; flex-wrap:wrap; }
+
+  /* ---- cluster strip ---- */
+  .strip{ display:flex; gap:12px; overflow-x:auto; padding:2px 2px 10px; }
+  .card{
+    flex:0 0 230px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card);
+    padding:14px; display:flex; flex-direction:column; gap:8px; cursor:pointer; text-align:left;
+    transition:border-color .12s ease, box-shadow .12s ease, background .12s ease;
+  }
+  .card:hover{ border-color:var(--border-strong); }
+  .card.active{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+  .card.drop-hover{ border-color:var(--accent); background:var(--accent-soft); }
+  .card-badges{ display:flex; gap:6px; flex-wrap:wrap; }
+  .pill{ font-size:11px; font-weight:600; border-radius:var(--radius-pill); padding:3px 9px; white-space:nowrap; }
+  .pill-trend{ background:var(--tag-trend-bg); color:var(--tag-trend-ink); }
+  .pill-tension{ background:var(--tag-tension-bg); color:var(--tag-tension-ink); }
+  .pill-driver{ background:var(--tag-driver-bg); color:var(--tag-driver-ink); }
+  .pill-horizon{ background:var(--tag-horizon-bg); color:var(--tag-horizon-ink); font-family:"JetBrains Mono",monospace; }
+  .pill-like{ background:var(--tag-like-bg); color:var(--tag-like-ink); }
+  .pill-steepled{ background:var(--tag-steepled-bg); color:var(--tag-steepled-ink); }
+  .card-title{ font-size:14px; font-weight:700; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .card-title.empty{ color:var(--text-muted); font-weight:600; font-style:italic; }
+  .card-desc{ font-size:12px; color:var(--text-muted); line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:17px; }
+  .card-foot{ display:flex; align-items:center; justify-content:space-between; font-size:11.5px; color:var(--text-muted); margin-top:auto; padding-top:6px; border-top:1px solid var(--border); }
+  .card-foot .count{ font-family:"JetBrains Mono",monospace; font-variant-numeric:tabular-nums; }
+  .editing-flag{ color:var(--accent-strong); font-weight:700; }
+  .new-card{
+    flex:0 0 150px; border:1.5px dashed var(--border-strong); border-radius:var(--radius-card);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    color:var(--text-muted); background:var(--bg); cursor:pointer; font-size:12.5px; font-weight:600;
+    position:sticky; left:0; z-index:2;
+  }
+  .new-card:hover, .new-card.drop-hover{ border-color:var(--accent); color:var(--accent-strong); background:var(--accent-soft); }
+  .new-card .plus{ font-size:20px; line-height:1; }
+  .new-card .hint{ font-size:10.5px; font-weight:500; color:var(--text-muted); }
+
+  /* ---- table pane ---- */
+  .table-pane{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card); overflow:hidden; }
+  .table-pane-head{ display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--border); }
+  .table-pane-head h2{ font-size:14px; font-weight:700; }
+  .count-chip{ font-family:"JetBrains Mono",monospace; font-size:11.5px; color:var(--text-muted); }
+  .table-scroll{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; min-width:640px; }
+  thead th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted);
+    font-weight:600; padding:9px 10px; border-bottom:1px solid var(--border); background:var(--surface-2); white-space:nowrap;
+  }
+  tbody td{ padding:10px; border-bottom:1px solid var(--border); vertical-align:top; font-size:13px; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr.dragging{ opacity:.4; }
+  tbody tr:hover{ background:var(--surface-2); }
+  .row-check{ accent-color:var(--accent); width:15px; height:15px; margin-top:2px; }
+  .drag-handle{ cursor:grab; color:var(--text-muted); font-size:13px; letter-spacing:-2px; user-select:none; }
+  .drag-handle:active{ cursor:grabbing; }
+  .input-title{ font-weight:500; line-height:1.35; max-width:34ch; }
+  .steepled-cell{ display:flex; gap:4px; flex-wrap:wrap; }
+  .cluster-cell{ display:flex; gap:4px; flex-wrap:wrap; max-width:16ch; }
+  .cluster-chip{ font-size:10.5px; font-weight:600; background:var(--tag-like-bg); color:var(--tag-like-ink); border-radius:var(--radius-pill); padding:2px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:14ch; }
+  .unassigned{ font-size:12px; color:var(--text-muted); font-style:italic; }
+  select.assign-select{
+    font-family:"Inter",sans-serif; font-size:12.5px; font-weight:600; color:var(--text); background:var(--surface);
+    border:1px solid var(--border-strong); border-radius:6px; padding:6px 8px; max-width:150px;
+  }
+
+  /* ---- rail: full-height right panel, non-modal ---- */
+  .rail{
+    background:var(--surface); border-left:1px solid var(--border);
+    box-shadow:var(--rail-shadow); padding:22px 20px; display:flex; flex-direction:column; gap:14px;
+    position:fixed; top:0; right:0; bottom:0; width:392px; overflow-y:auto;
+    animation:railIn .18s ease; z-index:15;
+  }
+  @media (prefers-reduced-motion: reduce){ .rail{ animation:none; } .app{ transition:none; } }
+  @keyframes railIn{ from{ opacity:0; transform:translateX(10px); } to{ opacity:1; transform:translateX(0); } }
+  @media (max-width:860px){
+    .rail{
+      position:fixed; left:12px; right:12px; top:auto; bottom:12px; width:auto; height:auto; max-height:76vh;
+      border-left:none; border:1px solid var(--border); border-radius:var(--radius-card); box-shadow:var(--shadow);
+    }
+  }
+  .rail-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+  .rail-eyebrow{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); font-weight:600; }
+  .rail-close{ background:none; border:none; color:var(--text-muted); font-size:18px; line-height:1; cursor:pointer; padding:2px 6px; border-radius:6px; }
+  .rail-close:hover{ background:var(--surface-2); color:var(--text); }
+  .rail-title{
+    font-family:"Archivo",sans-serif; font-size:19px; font-weight:800; color:var(--text); background:transparent;
+    border:none; border-bottom:1.5px solid transparent; padding:2px 0 6px; width:100%; line-height:1.28;
+    resize:none; overflow:hidden; display:block;
+  }
+  .rail-title:focus{ outline:none; border-bottom-color:var(--accent); }
+  .rail-title::placeholder{ color:var(--text-muted); font-weight:600; }
+  .field-label{ font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); font-weight:600; margin-bottom:6px; }
+  .pill-group{ display:flex; gap:6px; flex-wrap:wrap; }
+  .pill-btn{
+    font-size:12px; font-weight:600; border-radius:var(--radius-pill); padding:5px 11px; border:1px solid var(--border-strong);
+    background:var(--surface); color:var(--text-muted); cursor:pointer;
+  }
+  .pill-btn:hover{ border-color:var(--accent); }
+  .pill-btn.selected{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+  .rail-desc{
+    width:100%; min-height:64px; resize:vertical; font-family:"Inter",sans-serif; font-size:13px; color:var(--text);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:9px 10px; line-height:1.45;
+  }
+  .rail-desc:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  .rail-desc::placeholder{ color:var(--text-muted); }
+  .divider{ height:1px; background:var(--border); border:none; margin:0; }
+  .linked-head{ display:flex; align-items:baseline; justify-content:space-between; }
+  .linked-zone{
+    border:1.5px dashed var(--border); border-radius:8px; min-height:56px; padding:8px; display:flex;
+    flex-direction:column; gap:6px; transition:border-color .12s ease, background .12s ease;
+  }
+  .linked-zone.drop-hover{ border-color:var(--accent); background:var(--accent-soft); }
+  .linked-empty{ font-size:12px; color:var(--text-muted); text-align:center; padding:10px 6px; }
+  .linked-item{
+    display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--surface-2);
+    border:1px solid var(--border); border-radius:7px; padding:6px 8px; font-size:12.5px;
+  }
+  .linked-item .li-title{ line-height:1.3; }
+  .li-remove{ background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:0 2px; flex:0 0 auto; }
+  .li-remove:hover{ color:var(--danger); }
+  .save-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .save-row-btns{ display:flex; gap:8px; }
+  .dirty-flag{ font-size:11.5px; color:var(--text-muted); font-weight:600; }
+  .rail-foot{ display:flex; align-items:center; justify-content:space-between; padding-top:2px; }
+  .danger-zone-label{ font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); font-weight:600; }
+  .danger-link{ background:none; border:none; color:var(--danger); font-size:12.5px; font-weight:600; cursor:pointer; padding:0; }
+  .danger-confirm{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-muted); }
+
+  /* ---- tips ---- */
+  .tip{
+    font-size:11.5px; color:var(--accent-strong); background:var(--accent-soft); border:1px solid var(--accent);
+    border-radius:7px; padding:6px 9px; line-height:1.35; margin-top:6px; max-width:34ch;
+  }
+  .app[data-notes="off"] .tip{ display:none; }
+  .tip-num{ font-family:"JetBrains Mono",monospace; font-weight:700; margin-right:4px; }
+
+  /* ---- bulk bar ---- */
+  .bulk-bar{
+    position:fixed; left:calc(50% + 112px); bottom:20px; transform:translateX(-50%); z-index:30;
+    background:var(--text); color:var(--bg); border-radius:12px; box-shadow:var(--shadow);
+    padding:10px 12px 10px 16px; display:flex; align-items:center; gap:12px; font-size:13px;
+  }
+  @media (max-width:700px){ .bulk-bar{ left:50%; } }
+  .bulk-bar .count{ font-weight:700; font-family:"JetBrains Mono",monospace; }
+  .bulk-bar .btn-primary{ background:var(--accent); }
+  .bulk-clear{ background:none; border:none; color:inherit; opacity:.7; cursor:pointer; font-size:13px; }
+  .bulk-clear:hover{ opacity:1; }
+
+  /* ---- unsaved-changes modal ---- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(20,18,14,.42); display:flex; align-items:center; justify-content:center;
+    z-index:50; padding:20px;
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .modal-overlay{ background:rgba(0,0,0,.6); } }
+  :root[data-theme="dark"] .modal-overlay{ background:rgba(0,0,0,.6); }
+  .modal-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card);
+    box-shadow:var(--shadow); padding:20px; max-width:360px; width:100%; display:flex; flex-direction:column; gap:10px;
+  }
+  .modal-card h3{ font-size:16px; font-weight:800; }
+  .modal-text{ font-size:13px; color:var(--text-muted); line-height:1.5; margin:0; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:6px; flex-wrap:wrap; }
+
+  .rail[hidden], .modal-overlay[hidden]{ display:none !important; }
+
+  ::selection{ background:var(--accent-soft); color:var(--accent-strong); }
+  :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+</style>
+
+<div class="shell">
+<nav class="sidebar" aria-label="Future Signals">
+  <div class="sidebar-logo">
+    <div class="logo-mark"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"><path d="M10 2v4M10 14v4M2 10h4M14 10h4M4.5 4.5l2.8 2.8M15.5 4.5l-2.8 2.8M4.5 15.5l2.8-2.8M15.5 15.5l-2.8-2.8"/></svg></div>
+    <div class="logo-word">FUTURE<br>SIGNALS</div>
+  </div>
+  <div class="sidebar-nav">
+    <button class="nav-item" type="button" title="Not part of this prototype">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 10 3l7 6.5"/><path d="M5 8.5V17h10V8.5"/></svg>
+      <span class="nav-label">Dashboard</span>
+    </button>
+    <button class="nav-item" type="button" title="Not part of this prototype">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h14v10H3z"/><path d="M3 11h4l1.5 2h3L13 11h4"/></svg>
+      <span class="nav-label">Inbox</span>
+      <span class="nav-badge">262</span>
+    </button>
+    <div class="nav-divider"></div>
+    <button class="nav-item" type="button" title="Not part of this prototype">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg>
+      <span class="nav-label">Overview</span>
+    </button>
+    <button class="nav-item" type="button" title="Not part of this prototype">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 10h6"/><path d="M10.5 7l3 3-3 3"/></svg>
+      <span class="nav-label">Scan</span>
+      <span class="nav-badge">88</span>
+    </button>
+    <button class="nav-item active" type="button" title="This prototype">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="5" r="2"/><circle cx="5" cy="14.5" r="2"/><circle cx="15" cy="14.5" r="2"/><path d="M9 6.7 6 12.6M11 6.7l3 5.9"/></svg>
+      <span class="nav-label">Cluster</span>
+      <span class="nav-badge" id="navClusterCount">4</span>
+    </button>
+    <button class="nav-item" type="button" title="Not part of this prototype">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="4" cy="5" r="1.6"/><circle cx="16" cy="5" r="1.6"/><circle cx="10" cy="15" r="1.6"/><path d="M5.5 6 8.8 13.4M14.5 6 11.2 13.4M5.6 5h8.8"/></svg>
+      <span class="nav-label">System Map</span>
+      <span class="nav-badge">1</span>
+    </button>
+    <button class="nav-item" type="button" title="Not part of this prototype">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="9" height="9" rx="1"/><rect x="8" y="8" width="9" height="9" rx="1"/></svg>
+      <span class="nav-label">System Analysis</span>
+    </button>
+    <button class="nav-item" type="button" title="Not part of this prototype">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l4.5-5 3 3L17 5"/><path d="M13 5h4v4"/></svg>
+      <span class="nav-label">Future Models</span>
+    </button>
+  </div>
+  <div class="sidebar-bottom">
+    <div class="nav-divider"></div>
+    <button class="nav-item" type="button" title="Not part of this prototype">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9"/><path d="M6.5 8.5 10 12l3.5-3.5"/><path d="M4 15h12"/></svg>
+      <span class="nav-label">Export</span>
+    </button>
+    <div class="sidebar-user">
+      <span class="avatar">S</span>
+      <span class="user-email">sam@aldermanandw…</span>
+    </div>
+  </div>
+</nav>
+
+<div class="app" id="app" data-notes="on">
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">GLP-1's impact on American longevity</p>
+      <div class="titlerow">
+        <h1>Cluster</h1>
+        <span class="proto-badge">Prototype · proposed flow</span>
+      </div>
+      <p class="sub">One continuous surface for browsing signals, collecting them into a pattern, and naming what the pattern means &mdash; instead of moving between a card, an edit sheet, and the table.</p>
+    </div>
+    <div class="topbar-actions">
+      <label class="notes-toggle">
+        <input type="checkbox" id="notesToggle" checked>
+        Show what changed
+      </label>
+      <button class="btn btn-primary" id="newClusterBtn">+ New cluster</button>
+    </div>
+  </header>
+
+  <div class="chrome-bar">
+    <div class="view-tabs">
+      <button class="view-tab active" type="button" title="This prototype">Manual</button>
+      <button class="view-tab" type="button" disabled title="Not part of this prototype">Suggested</button>
+    </div>
+  </div>
+  <div class="chrome-bar">
+    <input class="chrome-search" type="text" placeholder="Search clusters…" disabled title="Not part of this prototype">
+    <button class="chrome-chip" type="button">Type</button>
+    <button class="chrome-chip" type="button">Horizon</button>
+    <button class="chrome-chip" type="button">Likelihood</button>
+    <div class="chrome-view-toggle">
+      <button type="button" title="List view">☰</button>
+      <button type="button" class="active" title="Grid view">▦</button>
+    </div>
+  </div>
+
+  <section class="strip" id="clusterStrip" aria-label="Clusters"></section>
+
+  <div class="workspace" id="workspace">
+    <section class="table-pane" id="tablePane">
+      <div class="input-tabs" id="inputTabs">
+        <button class="itab active" data-filter="all" type="button">All <span class="itab-count" id="tabAllCount"></span></button>
+        <button class="itab" data-filter="unassigned" type="button">Unassigned <span class="itab-count" id="tabUnassignedCount"></span></button>
+        <button class="itab" data-filter="clustered" type="button">Clustered <span class="itab-count" id="tabClusteredCount"></span></button>
+      </div>
+      <div class="table-filters">
+        <input class="chrome-search" type="text" id="inputSearch" placeholder="Search inputs…">
+        <button class="chrome-chip" type="button">Type</button>
+        <button class="chrome-chip" type="button">Horizon</button>
+        <button class="chrome-chip" type="button">STEEPLED</button>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th></th>
+              <th>Input</th>
+              <th>Type</th>
+              <th>STEEPLED</th>
+              <th>Cluster</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="rail" id="rail" hidden></aside>
+
+  <div class="bulk-bar" id="bulkBar" hidden></div>
+
+  <div class="modal-overlay" id="unsavedModal" hidden>
+    <div class="modal-card" role="alertdialog" aria-modal="true" aria-labelledby="unsavedModalTitle">
+      <h3 id="unsavedModalTitle">Unsaved changes</h3>
+      <p class="modal-text" id="unsavedModalText"></p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost btn-sm" id="unsavedKeepBtn">Keep editing</button>
+        <button class="btn btn-quiet btn-sm" id="unsavedDiscardBtn">Discard</button>
+        <button class="btn btn-primary btn-sm" id="unsavedSaveBtn">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+(function(){
+  var clusters = [
+    { id:'c1', title:'Personalized medicine is redefining obesity and diabetes treatment', subtype:'Trend', horizon:'H1', likelihood:'Plausible', description:'Diagnostics and dosing are being tailored to individual metabolic profiles rather than one protocol for everyone.', linked:['i5','i9'], everSaved:true },
+    { id:'c2', title:'Investment in obesity treatments is reshaping healthcare paradigms', subtype:'Trend', horizon:'H1', likelihood:'Plausible', description:'Capital is shifting from acute care toward long-horizon metabolic health.', linked:['i1','i3'], everSaved:true },
+    { id:'c3', title:'Health tech is pivoting toward peptide innovation', subtype:'Trend', horizon:'H1', likelihood:'Plausible', description:'', linked:[], everSaved:true },
+    { id:'c4', title:'Pharmaceutical competition is escalating in obesity treatment innovations', subtype:'Tension', horizon:'H1', likelihood:'Plausible', description:'Established players and generics are racing on price and delivery format at the same time.', linked:['i4'], everSaved:true }
+  ];
+
+  var inputs = [
+    { id:'i1', title:"STAT+: Pharmalittle: We're reading about a $10.6 billion GSK deal, an AstraZeneca obesity pill, and more", type:'Signal', steepled:['Eco','Tech'] },
+    { id:'i2', title:'What Causes Lightning? The Answer Keeps Getting More Interesting.', type:'Signal', steepled:[] },
+    { id:'i3', title:'[World Report] Are India and China ready for a "chaotic surge" of generic obesity drugs?', type:'Signal', steepled:['Soc','Eco'] },
+    { id:'i4', title:'Gilead ends a Phase 2/3 trial of long-acting HIV pills', type:'Signal', steepled:['Tech','Medical'] },
+    { id:'i5', title:'Obesity medicines as disruptive innovation', type:'Signal', steepled:['Tech','Eco'] },
+    { id:'i6', title:'Can Ozempic prevent cancer? A doctor explains why the headlines are easy to misread', type:'Signal', steepled:[] },
+    { id:'i7', title:'[Comment] Treatment potential of oral small-molecule GLP-1 receptor agonists', type:'Signal', steepled:['Soc','Tech'] },
+    { id:'i8', title:"Longevity medicine's do-or-die moment", type:'Signal', steepled:['Tech','Dem'] },
+    { id:'i9', title:'Your body already has a built-in weight loss system that works like Wegovy, Ozempic and Mounjaro', type:'Signal', steepled:['Soc'] },
+    { id:'i10', title:"Ads for GLP-1 drugs are flooding the internet – here's how to know if it's safe to buy them online", type:'Signal', steepled:['Soc'] }
+  ];
+
+  var state = { activeId:null, selected:new Set(), tableFilter:'all', tableSearch:'' };
+  var draft = null; /* {id,title,subtype,horizon,likelihood,description} — staged edits, committed only on Save */
+  var pendingAction = null; /* queued navigation, run once the unsaved-changes modal is resolved */
+
+  var els = {
+    app: document.getElementById('app'),
+    strip: document.getElementById('clusterStrip'),
+    tableBody: document.getElementById('tableBody'),
+    rail: document.getElementById('rail'),
+    bulkBar: document.getElementById('bulkBar'),
+    notesToggle: document.getElementById('notesToggle'),
+    newClusterBtn: document.getElementById('newClusterBtn'),
+    inputSearch: document.getElementById('inputSearch'),
+    navClusterCount: document.getElementById('navClusterCount')
+  };
+
+  function setText(id, val){
+    var el = document.getElementById(id);
+    if(el) el.textContent = val;
+  }
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function pillClass(subtype){
+    if(subtype==='Tension') return 'pill-tension';
+    if(subtype==='Driver') return 'pill-driver';
+    return 'pill-trend';
+  }
+
+  function clusterById(id){ return clusters.find(function(c){ return c.id===id; }); }
+  function inputById(id){ return inputs.find(function(i){ return i.id===id; }); }
+  function clustersForInput(id){ return clusters.filter(function(c){ return c.linked.indexOf(id) !== -1; }); }
+  function activeCluster(){ return state.activeId ? clusterById(state.activeId) : null; }
+
+  function tip(num, text){
+    return '<p class="tip"><span class="tip-num">' + num + '</span>' + text + '</p>';
+  }
+
+  function startDraft(c){
+    draft = { id:c.id, title:c.title, subtype:c.subtype, horizon:c.horizon, likelihood:c.likelihood, description:c.description };
+  }
+
+  function isDirty(){
+    if(!draft) return false;
+    var c = clusterById(draft.id);
+    if(!c) return false;
+    var metaChanged = draft.title !== c.title || draft.subtype !== c.subtype || draft.horizon !== c.horizon ||
+      draft.likelihood !== c.likelihood || draft.description !== c.description;
+    /* a cluster that has never been saved but has gained its first (or another) linked input
+       is treated as dirty too — dropping evidence onto an untitled cluster is real work,
+       and Save is also what confirms the cluster itself, not only its text fields. */
+    var unconfirmedButPopulated = !c.everSaved && c.linked.length > 0;
+    return metaChanged || unconfirmedButPopulated;
+  }
+
+  /* ---------- rendering ---------- */
+
+  function renderAll(){
+    renderStrip();
+    renderTable();
+    renderRail();
+    renderBulkBar();
+    els.app.classList.toggle('rail-open', !!state.activeId);
+    if(els.navClusterCount) els.navClusterCount.textContent = clusters.length;
+  }
+
+  function renderStrip(){
+    var newTip = state.activeId===null ? tip(1, 'The header button is the reliable click-path. This tile is where a drag lands.') : '';
+    var html = '<button class="new-card" id="newCardTile">' +
+      '<span class="plus">+</span>New cluster<span class="hint">or drop a signal here</span>' + newTip +
+      '</button>';
+    clusters.forEach(function(c){
+      var active = c.id === state.activeId;
+      var titleHtml = c.title ? esc(c.title) : '<span class="card-title empty">Untitled — click to name it</span>';
+      html += '<button class="card' + (active ? ' active' : '') + '" data-cluster="' + c.id + '">' +
+        '<div class="card-badges">' +
+          '<span class="pill ' + pillClass(c.subtype) + '">' + c.subtype + '</span>' +
+          '<span class="pill pill-horizon">' + c.horizon + '</span>' +
+        '</div>' +
+        (c.title ? '<div class="card-title">' + esc(c.title) + '</div>' : titleHtml) +
+        '<div class="card-desc">' + (c.description ? esc(c.description) : 'No description yet') + '</div>' +
+        '<div class="card-foot"><span>' + (active ? '<span class="editing-flag">Editing now</span>' : c.likelihood) + '</span>' +
+          '<span class="count">' + c.linked.length + ' linked</span></div>' +
+      '</button>';
+    });
+    els.strip.innerHTML = html;
+
+    var tile = document.getElementById('newCardTile');
+    tile.addEventListener('click', function(){ createCluster([]); });
+    tile.addEventListener('dragover', function(e){ e.preventDefault(); tile.classList.add('drop-hover'); });
+    tile.addEventListener('dragleave', function(){ tile.classList.remove('drop-hover'); });
+    tile.addEventListener('drop', function(e){
+      e.preventDefault(); tile.classList.remove('drop-hover');
+      var id = e.dataTransfer.getData('text/plain');
+      if(id) createCluster([id]);
+    });
+
+    els.strip.querySelectorAll('.card').forEach(function(card){
+      var id = card.getAttribute('data-cluster');
+      card.addEventListener('click', function(){ selectCluster(id); });
+      card.addEventListener('dragover', function(e){ e.preventDefault(); card.classList.add('drop-hover'); });
+      card.addEventListener('dragleave', function(){ card.classList.remove('drop-hover'); });
+      card.addEventListener('drop', function(e){
+        e.preventDefault(); card.classList.remove('drop-hover');
+        var inputId = e.dataTransfer.getData('text/plain');
+        if(inputId) addInputToCluster(inputId, id);
+      });
+    });
+  }
+
+  function renderTable(){
+    var unassignedCount = inputs.filter(function(i){ return clustersForInput(i.id).length===0; }).length;
+    var clusteredCount = inputs.length - unassignedCount;
+    setText('tabAllCount', inputs.length);
+    setText('tabUnassignedCount', unassignedCount);
+    setText('tabClusteredCount', clusteredCount);
+    document.querySelectorAll('#inputTabs .itab').forEach(function(tabBtn){
+      tabBtn.classList.toggle('active', tabBtn.getAttribute('data-filter') === state.tableFilter);
+    });
+
+    var q = state.tableSearch.trim().toLowerCase();
+    var visible = inputs.filter(function(i){
+      if(state.tableFilter === 'unassigned' && clustersForInput(i.id).length > 0) return false;
+      if(state.tableFilter === 'clustered' && clustersForInput(i.id).length === 0) return false;
+      if(q && i.title.toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+
+    var rows = '';
+    visible.forEach(function(inp, idx){
+      var memberships = clustersForInput(inp.id);
+      var clusterCell;
+      if(memberships.length){
+        clusterCell = memberships.map(function(m){ return '<span class="cluster-chip" title="' + esc(m.title || 'Untitled') + '">' + esc(m.title ? m.title : 'Untitled') + '</span>'; }).join('');
+      } else {
+        clusterCell = '<span class="unassigned">Unclustered</span>';
+      }
+
+      var action;
+      var ac = activeCluster();
+      if(ac){
+        var inThis = ac.linked.indexOf(inp.id) !== -1;
+        if(inThis){
+          action = '<button class="btn btn-quiet btn-sm" data-remove-from-active="' + inp.id + '">✓ In cluster</button>';
+        } else {
+          action = '<button class="btn btn-primary btn-sm" data-add-to-active="' + inp.id + '">+ Add</button>';
+        }
+      } else {
+        var opts = '<option value="">Assign…</option>';
+        clusters.forEach(function(c){ opts += '<option value="' + c.id + '">' + esc(c.title ? c.title : 'Untitled') + '</option>'; });
+        opts += '<option value="__new__">+ New cluster</option>';
+        action = '<select class="assign-select" data-assign="' + inp.id + '">' + opts + '</select>';
+      }
+
+      var firstRowTip = (idx===0 && !ac) ? tip(2, 'Drag a row onto a cluster, or check a few and add them together.') : '';
+
+      rows += '<tr draggable="true" data-input="' + inp.id + '">' +
+        '<td><input type="checkbox" class="row-check" data-select="' + inp.id + '" ' + (state.selected.has(inp.id) ? 'checked' : '') + '></td>' +
+        '<td><span class="drag-handle" title="Drag to a cluster">⋮⋮</span></td>' +
+        '<td><div class="input-title">' + esc(inp.title) + '</div>' + firstRowTip + '</td>' +
+        '<td>' + inp.type + '</td>' +
+        '<td><div class="steepled-cell">' + inp.steepled.map(function(t){ return '<span class="pill pill-steepled">' + t + '</span>'; }).join('') + '</div></td>' +
+        '<td><div class="cluster-cell">' + clusterCell + '</div></td>' +
+        '<td>' + action + '</td>' +
+      '</tr>';
+    });
+    els.tableBody.innerHTML = rows || '<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">No inputs match.</td></tr>';
+
+    els.tableBody.querySelectorAll('tr').forEach(function(tr){
+      var id = tr.getAttribute('data-input');
+      tr.addEventListener('dragstart', function(e){
+        e.dataTransfer.setData('text/plain', id);
+        e.dataTransfer.effectAllowed = 'copy';
+        tr.classList.add('dragging');
+      });
+      tr.addEventListener('dragend', function(){ tr.classList.remove('dragging'); });
+    });
+    els.tableBody.querySelectorAll('[data-select]').forEach(function(box){
+      box.addEventListener('change', function(){
+        var id = box.getAttribute('data-select');
+        if(box.checked) state.selected.add(id); else state.selected.delete(id);
+        renderTable(); renderBulkBar();
+      });
+    });
+    els.tableBody.querySelectorAll('[data-add-to-active]').forEach(function(btn){
+      btn.addEventListener('click', function(){ addInputToCluster(btn.getAttribute('data-add-to-active'), state.activeId); });
+    });
+    els.tableBody.querySelectorAll('[data-remove-from-active]').forEach(function(btn){
+      btn.addEventListener('click', function(){ removeInputFromCluster(btn.getAttribute('data-remove-from-active'), state.activeId); });
+    });
+    els.tableBody.querySelectorAll('[data-assign]').forEach(function(sel){
+      sel.addEventListener('change', function(){
+        var inputId = sel.getAttribute('data-assign');
+        var val = sel.value;
+        if(val === '__new__'){ createCluster([inputId]); }
+        else if(val){ addInputToCluster(inputId, val); }
+      });
+    });
+  }
+
+  function renderRail(){
+    var c = activeCluster();
+    if(!c){ els.rail.hidden = true; els.rail.innerHTML=''; return; }
+    els.rail.hidden = false;
+    buildRailInner(c);
+  }
+
+  function buildRailInner(c){
+    var subtypes = ['Trend','Driver','Tension'];
+    var horizons = ['H1','H2','H3'];
+    var likelihoods = ['Possible','Plausible','Probable'];
+    var dirty = isDirty();
+
+    var linkedHtml;
+    if(c.linked.length){
+      linkedHtml = c.linked.map(function(id){
+        var inp = inputById(id);
+        if(!inp) return '';
+        return '<div class="linked-item"><span class="li-title">' + esc(inp.title) + '</span>' +
+          '<button class="li-remove" data-unlink="' + id + '" title="Remove from cluster">×</button></div>';
+      }).join('');
+    } else {
+      linkedHtml = '<div class="linked-empty">No inputs linked yet. Drag a row here, or use Add in the table.</div>';
+    }
+
+    els.rail.innerHTML =
+      '<div class="rail-head"><span class="rail-eyebrow">' + (c.everSaved ? 'Cluster' : 'New cluster') + '</span><button class="rail-close" id="railCloseBtn" title="Close">×</button></div>' +
+      '<textarea id="railTitle" class="rail-title" placeholder="Name this cluster…" rows="1">' + esc(draft.title) + '</textarea>' +
+      '<div><div class="field-label">Type</div><div class="pill-group">' +
+        subtypes.map(function(s){ return '<button class="pill-btn' + (draft.subtype===s?' selected':'') + '" data-subtype="' + s + '">' + s + '</button>'; }).join('') +
+      '</div></div>' +
+      '<div><div class="field-label">Horizon</div><div class="pill-group">' +
+        horizons.map(function(h){ return '<button class="pill-btn' + (draft.horizon===h?' selected':'') + '" data-horizon="' + h + '">' + h + '</button>'; }).join('') +
+      '</div></div>' +
+      '<div><div class="field-label">Likelihood</div><div class="pill-group">' +
+        likelihoods.map(function(l){ return '<button class="pill-btn' + (draft.likelihood===l?' selected':'') + '" data-like="' + l + '">' + l + '</button>'; }).join('') +
+      '</div></div>' +
+      '<div><div class="field-label">Description</div><textarea id="railDesc" class="rail-desc" placeholder="What does this cluster represent? What\'s driving it?">' + esc(draft.description) + '</textarea></div>' +
+      '<hr class="divider">' +
+      '<div class="linked-head"><div class="field-label" style="margin-bottom:0">Linked inputs (' + c.linked.length + ')</div></div>' +
+      '<div class="linked-zone" id="linkedZone">' + linkedHtml + '</div>' +
+      (c.linked.length===0 ? tip(4, 'This is the same table you were just scanning. Assigning here is instant.') : '') +
+      '<hr class="divider">' +
+      '<div class="save-row">' +
+        '<span class="dirty-flag" id="dirtyFlag" style="visibility:' + (dirty ? 'visible' : 'hidden') + '">Unsaved changes</span>' +
+        '<span class="save-row-btns">' +
+          '<button class="btn btn-ghost btn-sm" id="cancelDraftBtn">Cancel</button>' +
+          '<button class="btn btn-primary btn-sm" id="saveDraftBtn"' + (dirty ? '' : ' disabled') + '>Save changes</button>' +
+        '</span>' +
+      '</div>' +
+      tip(3, 'Assigning inputs above is instant. Naming and describing wait for Save, so nothing sticks until you choose.') +
+      '<hr class="divider">' +
+      '<div class="rail-foot">' +
+        '<span class="danger-zone-label">Danger zone</span>' +
+        '<button class="danger-link" id="deleteClusterBtn">Delete cluster</button>' +
+      '</div>';
+
+    document.getElementById('railCloseBtn').addEventListener('click', closeRail);
+
+    var titleInput = document.getElementById('railTitle');
+    autosizeTitle(titleInput);
+    titleInput.addEventListener('input', function(){
+      draft.title = titleInput.value;
+      autosizeTitle(titleInput);
+      updateSaveState();
+    });
+
+    var descInput = document.getElementById('railDesc');
+    descInput.addEventListener('input', function(){
+      draft.description = descInput.value;
+      updateSaveState();
+    });
+
+    els.rail.querySelectorAll('[data-subtype]').forEach(function(btn){
+      btn.addEventListener('click', function(){ draft.subtype = btn.getAttribute('data-subtype'); renderRail(); });
+    });
+    els.rail.querySelectorAll('[data-horizon]').forEach(function(btn){
+      btn.addEventListener('click', function(){ draft.horizon = btn.getAttribute('data-horizon'); renderRail(); });
+    });
+    els.rail.querySelectorAll('[data-like]').forEach(function(btn){
+      btn.addEventListener('click', function(){ draft.likelihood = btn.getAttribute('data-like'); renderRail(); });
+    });
+
+    document.getElementById('cancelDraftBtn').addEventListener('click', cancelDraft);
+    document.getElementById('saveDraftBtn').addEventListener('click', saveDraft);
+
+    var zone = document.getElementById('linkedZone');
+    zone.addEventListener('dragover', function(e){ e.preventDefault(); zone.classList.add('drop-hover'); });
+    zone.addEventListener('dragleave', function(){ zone.classList.remove('drop-hover'); });
+    zone.addEventListener('drop', function(e){
+      e.preventDefault(); zone.classList.remove('drop-hover');
+      var id = e.dataTransfer.getData('text/plain');
+      if(id) addInputToCluster(id, c.id);
+    });
+    els.rail.querySelectorAll('[data-unlink]').forEach(function(btn){
+      btn.addEventListener('click', function(){ removeInputFromCluster(btn.getAttribute('data-unlink'), c.id); });
+    });
+
+    document.getElementById('deleteClusterBtn').addEventListener('click', function(){
+      var foot = els.rail.querySelector('.rail-foot');
+      foot.innerHTML = '<span class="danger-confirm">Delete this cluster?' +
+        '<button class="btn btn-danger btn-sm" id="confirmDelete">Delete</button>' +
+        '<button class="btn btn-ghost btn-sm" id="cancelDelete">Cancel</button></span>';
+      document.getElementById('confirmDelete').addEventListener('click', function(){ deleteCluster(c.id); });
+      document.getElementById('cancelDelete').addEventListener('click', renderRail);
+    });
+  }
+
+  function updateSaveState(){
+    var dirty = isDirty();
+    var btn = document.getElementById('saveDraftBtn');
+    var flag = document.getElementById('dirtyFlag');
+    if(btn) btn.disabled = !dirty;
+    if(flag) flag.style.visibility = dirty ? 'visible' : 'hidden';
+  }
+
+  function autosizeTitle(el){
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }
+
+  function renderBulkBar(){
+    var n = state.selected.size;
+    if(n === 0){ els.bulkBar.hidden = true; els.bulkBar.innerHTML=''; return; }
+    els.bulkBar.hidden = false;
+    var ac = activeCluster();
+    els.bulkBar.innerHTML =
+      '<span><span class="count">' + n + '</span> selected</span>' +
+      '<button class="btn btn-primary btn-sm" id="bulkAddActive"' + (ac ? '' : ' disabled') + '>' +
+        (ac ? 'Add to “' + esc(ac.title || 'Untitled') + '”' : 'Add to open cluster') +
+      '</button>' +
+      '<button class="btn btn-ghost btn-sm" id="bulkNewCluster">New cluster from selection</button>' +
+      '<button class="bulk-clear" id="bulkClear">Clear</button>';
+    document.getElementById('bulkAddActive').addEventListener('click', function(){
+      if(!ac) return;
+      state.selected.forEach(function(id){ if(ac.linked.indexOf(id)===-1) ac.linked.push(id); });
+      state.selected.clear();
+      renderAll();
+    });
+    document.getElementById('bulkNewCluster').addEventListener('click', function(){
+      var ids = Array.from(state.selected);
+      state.selected.clear();
+      createCluster(ids);
+    });
+    document.getElementById('bulkClear').addEventListener('click', function(){
+      state.selected.clear();
+      renderAll();
+    });
+  }
+
+  /* ---------- actions ---------- */
+
+  function discardIfUnsavedAndEmpty(c){
+    if(c && !c.everSaved && c.linked.length===0){
+      clusters = clusters.filter(function(x){ return x.id !== c.id; });
+      return true;
+    }
+    return false;
+  }
+
+  /* Any navigation away from the cluster currently open in the rail (opening another
+     cluster, starting a new one, or closing the rail) funnels through here so an
+     in-progress, unsaved edit can never be silently thrown away. */
+  function requestLeaveActiveCluster(proceed){
+    var c = draft ? clusterById(draft.id) : null;
+    if(!c){ proceed(); return; }
+    if(isDirty()){
+      pendingAction = proceed;
+      openUnsavedModal(c);
+      return;
+    }
+    discardIfUnsavedAndEmpty(c);
+    proceed();
+  }
+
+  function openUnsavedModal(c){
+    var t = (draft.title || '').trim();
+    var label = t ? ('“' + t + '”') : 'this new cluster';
+    document.getElementById('unsavedModalText').textContent = 'You have unsaved changes to ' + label + '. What would you like to do?';
+    document.getElementById('unsavedModal').hidden = false;
+    document.getElementById('unsavedKeepBtn').focus();
+  }
+
+  function closeUnsavedModal(){
+    document.getElementById('unsavedModal').hidden = true;
+    pendingAction = null;
+  }
+
+  function createCluster(prefillIds){
+    requestLeaveActiveCluster(function(){
+      var c = { id:'c'+Date.now(), title:'', subtype:'Trend', horizon:'H1', likelihood:'Plausible', description:'', linked:prefillIds.slice(), everSaved:false };
+      clusters.push(c);
+      state.activeId = c.id;
+      startDraft(c);
+      renderAll();
+      requestAnimationFrame(function(){
+        var el = document.getElementById('railTitle');
+        if(el) el.focus();
+      });
+    });
+  }
+
+  function selectCluster(id){
+    if(state.activeId === id){ closeRail(); return; }
+    requestLeaveActiveCluster(function(){
+      state.activeId = id;
+      var c = clusterById(id);
+      if(c) startDraft(c);
+      renderAll();
+    });
+  }
+
+  function closeRail(){
+    requestLeaveActiveCluster(function(){
+      state.activeId = null;
+      draft = null;
+      renderAll();
+    });
+  }
+
+  function commitDraft(){
+    if(!draft) return;
+    var c = clusterById(draft.id);
+    if(!c) return;
+    c.title = draft.title;
+    c.subtype = draft.subtype;
+    c.horizon = draft.horizon;
+    c.likelihood = draft.likelihood;
+    c.description = draft.description;
+    c.everSaved = true;
+  }
+
+  function saveDraft(){
+    commitDraft();
+    renderAll();
+    var btn = document.getElementById('saveDraftBtn');
+    if(btn){
+      btn.textContent = '✓ Saved';
+      setTimeout(function(){
+        var b = document.getElementById('saveDraftBtn');
+        if(b) b.textContent = 'Save changes';
+      }, 900);
+    }
+  }
+
+  function cancelDraft(){
+    if(!draft) return;
+    var c = clusterById(draft.id);
+    if(!c) return;
+    if(discardIfUnsavedAndEmpty(c)){
+      state.activeId = null;
+      draft = null;
+      renderAll();
+      return;
+    }
+    startDraft(c);
+    renderRail();
+  }
+
+  function deleteCluster(id){
+    clusters = clusters.filter(function(c){ return c.id !== id; });
+    if(state.activeId === id){ state.activeId = null; draft = null; }
+    renderAll();
+  }
+
+  function addInputToCluster(inputId, clusterId){
+    var c = clusterById(clusterId);
+    if(!c) return;
+    if(c.linked.indexOf(inputId) === -1) c.linked.push(inputId);
+    renderAll();
+  }
+
+  function removeInputFromCluster(inputId, clusterId){
+    var c = clusterById(clusterId);
+    if(!c) return;
+    c.linked = c.linked.filter(function(id){ return id !== inputId; });
+    renderAll();
+  }
+
+  /* ---------- global wiring ---------- */
+
+  els.newClusterBtn.addEventListener('click', function(){ createCluster([]); });
+
+  document.querySelectorAll('#inputTabs .itab').forEach(function(tabBtn){
+    tabBtn.addEventListener('click', function(){
+      state.tableFilter = tabBtn.getAttribute('data-filter');
+      renderTable();
+    });
+  });
+
+  if(els.inputSearch){
+    els.inputSearch.addEventListener('input', function(){
+      state.tableSearch = els.inputSearch.value;
+      renderTable();
+    });
+  }
+
+  els.notesToggle.addEventListener('change', function(){
+    els.app.setAttribute('data-notes', els.notesToggle.checked ? 'on' : 'off');
+  });
+
+  var unsavedModal = document.getElementById('unsavedModal');
+  document.getElementById('unsavedKeepBtn').addEventListener('click', closeUnsavedModal);
+  document.getElementById('unsavedDiscardBtn').addEventListener('click', function(){
+    var run = pendingAction;
+    var c = draft ? clusterById(draft.id) : null;
+    if(c) discardIfUnsavedAndEmpty(c);
+    closeUnsavedModal();
+    if(run) run();
+  });
+  document.getElementById('unsavedSaveBtn').addEventListener('click', function(){
+    var run = pendingAction;
+    commitDraft();
+    closeUnsavedModal();
+    if(run) run();
+  });
+  unsavedModal.addEventListener('click', function(e){
+    if(e.target === unsavedModal) closeUnsavedModal();
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && !unsavedModal.hidden) closeUnsavedModal();
+  });
+
+  renderAll();
+})();
+</script>
