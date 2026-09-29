@@ -77,7 +77,18 @@ Why:
    - **0 rows returned → `raise exception 'invalid or expired access code'`**, which fails the signup transaction; the client surfaces the error. The atomic `update … where uses_count < max_uses … returning` enforces the cap race-safely (no check-then-increment gap).
    - 1 row → stamp `access_code` + `label` onto the new workspace for attribution.
 
-> **Prerequisite:** locate the live `handle_new_user` definition first (it predates the tracked migrations — see CLAUDE.md's "undocumented-schema-change pattern"). Capture it into a migration, then extend it. Do not assume the migrations dir has it.
+> **Prerequisite — LOCATED (2026-09-29).** `handle_new_user` is identical on staging and prod (`md5 0418d91f…`), fired by trigger `on_auth_user_created` **AFTER INSERT ON auth.users FOR EACH ROW**. Current body (`SECURITY DEFINER`, `search_path=public`):
+> ```sql
+> begin
+>   insert into public.workspaces (user_id) values (new.id)
+>     returning id into new_workspace_id;
+>   insert into public.workspace_settings (workspace_id) values (new_workspace_id);
+>   return new;
+> end;
+> ```
+> It predates the migrations dir (CLAUDE.md's "undocumented-schema-change pattern"). **First capture the current body verbatim into a new migration** (so the ledger is truthful), then extend it with the code check below.
+>
+> **Because the trigger is AFTER INSERT in the same transaction, a `raise exception` here rolls back the `auth.users` insert** — exactly the block we want. One quirk to handle client-side: GoTrue surfaces a trigger exception as a generic *"Database error saving new user"* (HTTP 500), not our message string — so the client should map a failed signup to a friendly "invalid or expired access code" rather than relying on the DB message text. Workspace columns today: `id, user_id, created_at, experience_level, onboarding_completed` — add `access_code text` + `code_label text` for the redemption stamp.
 
 ### Fast-follow (post-EPIC): Google SSO + gating both paths
 
