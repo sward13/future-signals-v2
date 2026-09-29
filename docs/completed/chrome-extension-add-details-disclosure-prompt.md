@@ -1,0 +1,19 @@
+Context: STEEPLED category, Signal strength, Source confidence, and Time horizon were all rendering flat and always-visible in the extension's capture form (added across `1d5749f` and a follow-up commit). Sam and Claude (in a separate session) prototyped an alternative before touching code: collapse all four behind a "+ Add details" disclosure, matching two things that already existed on paper — the original `future-signals-chrome-extension-requirements.md` (section 6) explicitly specified a "Fast capture" default mode (Project/Title/Description/Source URL only) with an "Expanded mode: Add details" for exactly these fields, and `CLAUDE.md`'s locked design principles say Enhanced-tier fields "live behind a `+ Add more detail` toggle. Never open by default." The prototype was iterated in a visual mockup tool first (not real code) until the interaction and layout were confirmed: a plain toggle row (no bordered box, no divider lines above or below it), and the four fields rendering directly below with no wrapping container when expanded. A "N set" badge was tried in the prototype and in the first implementation pass, then deliberately removed after review — the toggle now has no badge or count of any kind, just the label and chevron.
+
+The fix has already been implemented (not by you) in `extension/src/sidepanel/CaptureForm.tsx` only — no other files touched:
+- New state: `detailsExpanded` (boolean, defaults to `false`)
+- On draft restore, `detailsExpanded` is set to `true` if the restored draft already has any of `steepled.length > 0`, `signal_strength`, `source_confidence`, or `horizon` set — so a returning user doesn't lose sight of a classification they already made
+- `detailsExpanded` resets to `false` in both `startOver` and `captureAnother`, alongside the field resets that were already there
+- A new toggle button renders where the four fields used to render inline: "+ Add details" plain text, no border, no background, no badge, just a chevron that rotates on expand
+- `SteepleSelector`, both `ThreeCardSelector` instances, and the `ToggleOptionRow` for Time horizon are now wrapped in `{detailsExpanded && (...)}` instead of always rendering
+
+`npx tsc --noEmit` was run in a sandboxed environment and shows no new errors beyond the same pre-existing warnings from every prior pass (implicit-any on `tokens.js` imports, one `metadata` Json-type mismatch on an untouched line). The real `npm run build` could not be run in that sandbox. Not built or manually verified yet.
+
+Task (read the diff first, do not re-architect anything):
+
+1. Review the diff on `CaptureForm.tsx`. Confirm the toggle has no border, background, or divider lines around it — it should look like a plain row, not a boxed accordion or card.
+2. Run `npm run build` inside `extension/`. Fix only actual build failures — do not touch auth, `manifest.json` permissions, or `metadata.capture_source`.
+3. Load the built `extension/dist` unpacked in Chrome and manually verify: the four fields are collapsed by default on a fresh capture; clicking "+ Add details" expands them directly below with no visible box or divider around the section, and no badge or count appears anywhere on the toggle; collapsing and reopening the side panel on a page where you'd already made a selection shows the section auto-expanded (not collapsed) so the prior selection is still visible without an extra click; a saved input still has the correct values for all four fields in Supabase.
+4. Commit with a conventional commit message. Do not push until you've told me the build and manual check both passed.
+
+Do not touch: auth flow, `manifest.json` permissions, `metadata.capture_source` naming, the type-description banner / "Type fields" divider gap (still open, separate item), or the visual styling of the four field components themselves (`ThreeCardSelector.tsx`, `SteepleSelector.tsx`, `ToggleOptionRow.tsx`) — this pass is only about the disclosure wrapper around them.

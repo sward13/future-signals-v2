@@ -402,7 +402,7 @@ The **cluster-workbench redesign** (shipped 2026-09-11, PRs #25–#30) replaced 
 
 ## Sample project cloning
 
-Every new user finishes onboarding with a second project alongside their own: a full, working clone of a canonical template project, so they see a completed methodology pass (Signal → Cluster → System Map → Analysis → Scenario) rather than inferring it from empty states. See `Sample_Project_Onboarding_PRD.md` for the full spec.
+Every new user finishes onboarding with a second project alongside their own: a full, working clone of a canonical template project, so they see a completed methodology pass (Signal → Cluster → System Map → Analysis → Scenario) rather than inferring it from empty states. See `docs/completed/Sample_Project_Onboarding_PRD.md` for the full spec.
 
 - **`server-lib/clone-project.js`** — `cloneProject(sourceProjectId, destWorkspaceId, options)` and `rollback(projectId, clonedInputIds)`. Service-role only (RLS blocks a client session from reading another workspace's data, and there's no reason to trust a client-supplied destination workspace). Walks all 13 project-scoped tables (`inputs`, `clusters`, `cluster_inputs`, `scenarios`, `scenario_clusters`, `relationships`, `canvas_nodes`, `canvas_text_nodes`, `analyses`, `preferred_futures`, `strategic_options`, `cluster_suggestions`, `project_negative_pool`), generating a new id per row and remapping every FK reference — including the non-FK-enforced jsonb/array id references (`preferred_futures.scenario_ids`, `strategic_options.scenario_ids`, `cluster_suggestions.input_ids`), which get filtered (dropping anything that doesn't resolve) rather than erroring.
 - **`project_candidates` is never cloned**, by either path — it's derived scanner data (Layer 3 relevance scores against a specific project's key question at a point in time) that goes stale the moment scanning is re-enabled on a clone. This was a deliberate exclusion added 2026-07-09 after the fact; if a clone predates that fix, its stale `project_candidates` rows need a one-off cleanup (`delete from project_candidates where project_id = '<clone-id>'`).
@@ -418,7 +418,7 @@ Every new user finishes onboarding with a second project alongside their own: a 
 
 ## Web Publish (shipped 2026-07-16 on `workspace-refactor`)
 
-Publish a project to a live, hosted, public single-page site at a stable `/p/{slug}` link (for stakeholder sharing + social promotion). Full spec: `web-export-spec.md`. Publishes the whole project by default, or a curated subset via the section picker. Pipeline of pure, composable pieces, each unit-tested (see "Testing"):
+Publish a project to a live, hosted, public single-page site at a stable `/p/{slug}` link (for stakeholder sharing + social promotion). Full spec: `docs/completed/web-export-spec.md`. Publishes the whole project by default, or a curated subset via the section picker. Pipeline of pure, composable pieces, each unit-tested (see "Testing"):
 
 - **`server-lib/resolve-references.js`** — shared, pure ID→name resolution layer (clusters, relationships, scenario driving forces, `scenario_ids`). Consumed by both Report Export (`src/components/projects/buildMarkdown.js`) and Publish. Dangling references degrade to a fallback, never throw. `resolveRelationship()` phrases edges as sentences.
 - **`src/publish/sections.js`** — per-section static-HTML-string builders (Hero, Overview, System Analysis, Scenario/Preferred Future/Strategic Option, Appendix). Pure, HTML-escaped, `sanitizeUrl` on source links. Reads the live schema, not the prototype.
@@ -617,7 +617,7 @@ All tables carry `workspace_id` and (where applicable) `project_id`. `workspace_
   last_reviewed_at: string|null,         // Inbox inactivity detection
   last_visited_at: string|null,          // stamped fire-and-forget in openProject(); used by ProjectOverview for "N new signals since your last visit"
   key_question_embedding: number[]|null, // internal — cached embedding of `question` only; api/score.js builds a richer in-memory embedding (question + focus) at scoring time but never overwrites this cache
-  is_sample_template: boolean,           // added 2026-07-09 — true only for the one canonical templates-account copy (see Sample_Project_Onboarding_PRD.md); false on every per-user clone and every normal project
+  is_sample_template: boolean,           // added 2026-07-09 — true only for the one canonical templates-account copy (see docs/completed/Sample_Project_Onboarding_PRD.md); false on every per-user clone and every normal project
   source_template_id: string|null,       // added 2026-07-09 — self-referencing FK to projects(id); set to the templates-account project's id on a per-user clone, null otherwise. Non-null is what the Dashboard checks to render the "[Sample] " name prefix (computed at render time — project.name itself is never modified)
   created_at: string,
   updated_at: string,                    // added 2026-07-21 (migration 20260721120000) — real "last activity" timestamp; the Dashboard card's "Updated" date reads `updated_at || created_at`. Kept current by DB triggers (see Known database gotchas), NOT written by the app except an optimistic local bump in useAppState's touchProjectLocal()
@@ -717,11 +717,11 @@ Key decisions already made:
 | Spec | When to read |
 |---|---|
 | `design-principles.md` | Before any UX, form, AI output, nudge, or navigation decision |
-| `signal-scanner-spec.md` | Any work touching the scanner, candidate ingestion, scoring, or onboarding seeding |
-| `FutureSignals_Onboarding_ProgressiveDisclosure_Spec.md` | Any work touching the onboarding flow, project creation, or first-session experience. Its sample-project section (read-only project + structural-only "promote") is superseded by `Sample_Project_Onboarding_PRD.md`'s clone-based model — that section of this spec has not yet been formally retired/updated, don't treat it as current for sample-project behavior |
-| `Sample_Project_Onboarding_PRD.md` | Any work touching sample-project cloning, `cloneProject()`, `is_sample_template`/`source_template_id`, or the per-user clone triggered at onboarding completion — see also "Sample project cloning" above |
-| `web-export-spec.md` | Any work touching Web Publish — the pipeline, `/p/{slug}` serving, section templates, System Map SVG, or `project_publications` — see also "Web Publish" above |
-| `docs/system-map-background-templates-spec.md` | Any work touching System Map background templates — `system_map_templates`, `project_system_map_background`, the `system-map-templates` Storage bucket, or the canvas's `BackgroundTemplateNode`. As of 2026-08-20: Pass 2 (canvas rendering + PNG export + curated seed data) and Pass 3 (Web Publish integration) have both shipped; the user-upload stretch goal is still not built. Two of the original six launch templates (Causal Layered Analysis, Impact/Uncertainty Grid) remain inactive — no artwork produced for them yet |
+| `docs/completed/signal-scanner-spec.md` | Any work touching the scanner, candidate ingestion, scoring, or onboarding seeding |
+| `docs/completed/FutureSignals_Onboarding_ProgressiveDisclosure_Spec.md` | Any work touching the onboarding flow, project creation, or first-session experience. Its sample-project section (read-only project + structural-only "promote") is superseded by `docs/completed/Sample_Project_Onboarding_PRD.md`'s clone-based model — that section of this spec has not yet been formally retired/updated, don't treat it as current for sample-project behavior |
+| `docs/completed/Sample_Project_Onboarding_PRD.md` | Any work touching sample-project cloning, `cloneProject()`, `is_sample_template`/`source_template_id`, or the per-user clone triggered at onboarding completion — see also "Sample project cloning" above |
+| `docs/completed/web-export-spec.md` | Any work touching Web Publish — the pipeline, `/p/{slug}` serving, section templates, System Map SVG, or `project_publications` — see also "Web Publish" above |
+| `docs/completed/system-map-background-templates-spec.md` | Any work touching System Map background templates — `system_map_templates`, `project_system_map_background`, the `system-map-templates` Storage bucket, or the canvas's `BackgroundTemplateNode`. As of 2026-08-20: Pass 2 (canvas rendering + PNG export + curated seed data) and Pass 3 (Web Publish integration) have both shipped; the user-upload stretch goal is still not built. Two of the original six launch templates (Causal Layered Analysis, Impact/Uncertainty Grid) remain inactive — no artwork produced for them yet |
 
 ---
 
