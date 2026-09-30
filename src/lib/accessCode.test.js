@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { accessCodeFromUrl, signupErrorMessage, ACCESS_CODE_PARAM } from "./accessCode.js";
+import { accessCodeFromUrl, signupErrorMessage, isAccessCodeError, ACCESS_CODE_PARAM } from "./accessCode.js";
 
 test("accessCodeFromUrl reads the invite param", () => {
   assert.equal(accessCodeFromUrl("?invite=EPIC2026"), "EPIC2026");
@@ -37,4 +37,14 @@ test("signupErrorMessage passes through unrelated errors", () => {
 
 test("signupErrorMessage handles null", () => {
   assert.equal(signupErrorMessage(null), null);
+});
+
+test("isAccessCodeError detects the GoTrue trigger-block and explicit messages", () => {
+  assert.equal(isAccessCodeError({ message: "Database error saving new user" }), true);
+  assert.equal(isAccessCodeError({ message: "invalid or expired access code" }), true);
+});
+
+test("isAccessCodeError is false for unrelated errors", () => {
+  assert.equal(isAccessCodeError({ message: "User already registered" }), false);
+  assert.equal(isAccessCodeError(null), false);
 });
