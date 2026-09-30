@@ -7,7 +7,8 @@
 import { useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { SIGNUP_URL, LOGIN_URL } from "../../lib/authRedirect.js";
-import { accessCodeFromUrl, signupErrorMessage } from "../../lib/accessCode.js";
+import { accessCodeFromUrl, signupErrorMessage, isAccessCodeError } from "../../lib/accessCode.js";
+import { track } from "../../lib/analytics.js";
 import { c, inp, btnP } from "../../styles/tokens.js";
 import logoLight from "../../assets/logo_light.svg";
 import { Eye, EyeOff } from "lucide-react";
@@ -70,14 +71,21 @@ export function AuthScreen({ initialMode = "signin" }) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError(error.message);
     } else {
+      const trimmedCode = accessCode.trim();
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { access_code: accessCode.trim() } },
+        options: { data: { access_code: trimmedCode } },
       });
       if (error) {
+        // GA: the gate rejecting is friction worth measuring separately from
+        // other signup failures (e.g. "already registered").
+        if (isAccessCodeError(error)) track("sign_up_blocked", { reason: "invalid_or_expired_code" });
         setError(signupErrorMessage(error));
       } else {
+        // GA: fires at submission (pre email-confirmation) — see the
+        // email-confirmation gap in docs/ga4-activation-tracking-spec.md.
+        track("sign_up", { method: "password", access_code: trimmedCode });
         setSignupConfirmed(true);
       }
     }

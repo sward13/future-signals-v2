@@ -10,7 +10,8 @@ import { ClustersPanel } from "../clusters/ClustersPanel.jsx";
 import { ClusterRail } from "../clusters/ClusterRail.jsx";
 import { MergeClusterDialog } from "../clusters/MergeClusterDialog.jsx";
 import { DuplicateReviewModal } from "../clusters/DuplicateReviewModal.jsx";
-import { supabase } from "../../lib/supabase.js";
+import { invokeEdge } from "../../lib/invokeEdge.js";
+import { track } from "../../lib/analytics.js";
 import { UnsavedChangesDialog } from "../shared/UnsavedChangesDialog.jsx";
 import { DragGhost } from "../clusters/DragGhost.jsx";
 import { STEEPLED } from "../../data/seeds.js";
@@ -241,6 +242,7 @@ export default function ClusterScreen({ appState }) {
   // caller can decide where to go next (the create button → view it; the guard's
   // "Save" → continue to the pending target).
   const createClusterDraft = (fields, inputIds) => {
+    track("cluster_created", { source: "manual" });
     const created = addCluster({ ...fields, project_id: project.id, input_ids: inputIds });
     showToast(inputIds.length > 0
       ? `"${fields.name}" created with ${inputIds.length} input${inputIds.length !== 1 ? "s" : ""}`
@@ -353,22 +355,18 @@ export default function ClusterScreen({ appState }) {
 
   // Find duplicates: scan all clusters in the project for similar pairs to review.
   const findDuplicates = async () => {
+    track("find_duplicates_run");
     setDupOpen(true);
     setDupLoading(true);
     setDupError(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("detect-cluster-overlaps", {
-        body: { project_id: project.id },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setDupPairs(data?.pairs || []);
-    } catch (err) {
-      setDupError(err?.message || "Something went wrong");
-      setDupPairs([]);
-    } finally {
-      setDupLoading(false);
-    }
+    const { data, error } = await invokeEdge("detect-cluster-overlaps", {
+      body: { project_id: project.id },
+      timeoutMs: 30000,
+      fallbackMessage: "Couldn't check for duplicates.",
+    });
+    if (error) { setDupError(error.message); setDupPairs([]); }
+    else setDupPairs(data?.pairs || []);
+    setDupLoading(false);
   };
 
   const dragLabel = dragIds

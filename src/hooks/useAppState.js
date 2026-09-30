@@ -13,6 +13,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "../lib/supabase.js";
 import { computeClusterMerge } from "../lib/clusterMerge.js";
+import { track } from "../lib/analytics.js";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -675,6 +676,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   // ── Inputs ────────────────────────────────────────────────────────────────
 
   const addInput = useCallback((fields) => {
+    track("input_added");
     const id = newId();
     const now = new Date().toISOString();
     const newInput = {
@@ -745,6 +747,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   }, [workspaceId, showToast]);
 
   const saveInputToProject = useCallback((id, projectId) => {
+    // GA: broad — also covers manual inbox "add to project", not only scanner accepts.
+    track("scanner_input_accepted", { count: 1 });
     setInputs((prev) =>
       prev.map((inp) => inp.id === id ? { ...inp, project_id: projectId } : inp)
     );
@@ -773,6 +777,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   }, [workspaceId, showToast, touchProjectLocal]);
 
   const saveInputsToProject = useCallback((ids, projectId) => {
+    track("scanner_input_accepted", { count: ids.length });
     const idSet = new Set(ids);
     setInputs((prev) =>
       prev.map((inp) => idSet.has(inp.id) ? { ...inp, project_id: projectId } : inp)
@@ -799,6 +804,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   }, []);
 
   const dismissSuggestedInput = useCallback(async (input) => {
+    track("scanner_input_dismissed");
     setInputs((prev) => prev.map((i) =>
       i.id === input.id ? { ...i, metadata: { ...i.metadata, dismissed: true } } : i
     ));
@@ -1071,6 +1077,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     const snapshot = { clusters, scenarios, relationships, canvasNodes, connections };
     const next = computeClusterMerge(snapshot, sourceId, targetId);
     if (!next.merged) return;
+    track("clusters_merged");
 
     setClusters(next.clusters);
     setScenarios(next.scenarios);
@@ -1123,6 +1130,7 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
       created_at: now,
     };
 
+    track("scenario_created");
     setScenarios((prev) => [newScenario, ...prev]);
 
     if (workspaceId) {
