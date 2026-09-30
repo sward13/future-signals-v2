@@ -12,6 +12,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { WandSparkles } from "lucide-react";
 import { supabase } from "../../lib/supabase.js";
+import { invokeEdge } from "../../lib/invokeEdge.js";
 import { c, btnSm, btnG, inp, ta } from "../../styles/tokens.js";
 import { SubtypeTag } from "../shared/Tag.jsx";
 
@@ -367,20 +368,21 @@ export function ClusterSuggestions({
     if (!projectId || running) return;
     setRunning(true);
     setError(null);
-    try {
-      const { error } = await supabase.functions.invoke("compute-cluster-suggestions", {
-        body: { project_id: projectId, mode: "combined", clustering_sensitivity: tightness },
-      });
-      if (error) throw new Error(error.message);
-      setDismissed([]);
-      const loaded = await loadSuggestions();
-      setHasRun(true);
-      setLastRunEmpty(loaded.length === 0);
-    } catch (err) {
-      setError(err.message || "Failed to generate suggestions.");
-    } finally {
+    const { error } = await invokeEdge("compute-cluster-suggestions", {
+      body: { project_id: projectId, mode: "combined", clustering_sensitivity: tightness },
+      timeoutMs: 60000,
+      fallbackMessage: "Failed to generate suggestions.",
+    });
+    if (error) {
+      setError(error.message);
       setRunning(false);
+      return;
     }
+    setDismissed([]);
+    const loaded = await loadSuggestions();
+    setHasRun(true);
+    setLastRunEmpty(loaded.length === 0);
+    setRunning(false);
   };
 
   // ── Assignment handlers ──────────────────────────────────────────────────────

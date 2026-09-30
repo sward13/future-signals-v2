@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { invokeEdge } from "../../lib/invokeEdge.js";
 import { c, btnP } from "../../styles/tokens.js";
 import { SubtypeTag } from "../shared/Tag.jsx";
 import logoLight from "../../assets/logo_light.svg";
@@ -565,16 +566,14 @@ export function ClusteringResultsStep({
         await waitForEmbeddings(promotedInputIds, EMBED_TIMEOUT_MS);
 
         // Trigger clustering
-        const { error: fnError } = await supabase.functions.invoke(
-          "compute-cluster-suggestions",
-          {
-            body: {
-              project_id:             projectId,
-              mode:                   "new_clusters",
-              clustering_sensitivity: "balanced",
-            },
-          }
-        );
+        const { error: fnError } = await invokeEdge("compute-cluster-suggestions", {
+          body: {
+            project_id:             projectId,
+            mode:                   "new_clusters",
+            clustering_sensitivity: "balanced",
+          },
+          timeoutMs: 60000,
+        });
         if (fnError) {
           console.error("[onboarding] clustering invocation failed:", fnError);
           return { clusters: [] as ClusterSuggestion[], inputNameMap: {} as Record<string, string> };
