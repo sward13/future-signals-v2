@@ -11,6 +11,7 @@ import { AuthScreen } from "./components/auth/AuthScreen.jsx";
 import { OnboardingShell } from "./components/onboarding/OnboardingShell.tsx";
 import { AppShell } from "./components/layout/AppShell.jsx";
 import { Toast } from "./components/layout/Toast.jsx";
+import { ErrorBoundary, ScreenErrorFallback } from "./components/shared/ErrorBoundary.jsx";
 import { NewProjectModal } from "./components/projects/NewProjectModal.jsx";
 import { ExportModal } from "./components/projects/ExportModal.jsx";
 import { InputDetailDrawer } from "./components/inputs/InputDetailDrawer.jsx";
@@ -385,7 +386,12 @@ export default function App() {
       WebkitFontSmoothing: "antialiased",
     }}>
       <AppShell appState={appState} onSignOut={handleSignOut} onExport={() => setExportModalOpen(true)} scroll={!["scenarios", "scenario_canvas", "analysis", "project", "project-overview", "cluster"].includes(appState.activeScreen)}>
-        <ActiveScreen appState={appState} onSignOut={handleSignOut} />
+        {/* Screen-level boundary: a crashing screen (incl. the React Flow canvases)
+            fails to a content-area panel while the sidebar stays usable. key by
+            activeScreen so navigating away remounts it and clears the error. */}
+        <ErrorBoundary key={appState.activeScreen} label={appState.activeScreen} fallback={({ reset }) => <ScreenErrorFallback reset={reset} />}>
+          <ActiveScreen appState={appState} onSignOut={handleSignOut} />
+        </ErrorBoundary>
       </AppShell>
 
       <NewProjectModal
