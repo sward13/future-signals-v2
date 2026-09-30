@@ -14,6 +14,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase.js";
+import { track } from "../../lib/analytics.js";
 
 // ── QA step-jump ──────────────────────────────────────────────────────────────
 // Only active when VITE_ENABLE_QA_TOOLS=true. Completely inert in production.
@@ -61,6 +62,10 @@ export function OnboardingShell({ workspaceId, onProjectCreate, onComplete }: Pr
   // Preserved state for back navigation
   const [savedProjectFields,  setSavedProjectFields]  = useState<Record<string, unknown> | null>(null);
   const [savedSelectionIds,   setSavedSelectionIds]   = useState<Set<string>>(new Set());
+
+  // GA: onboarding funnel — started once, plus each step transition (shows drop-out).
+  useEffect(() => { track("onboarding_started"); }, []);
+  useEffect(() => { track("onboarding_step", { step }); }, [step]);
 
   // Advance to scanner inbox when the seed resolves while we were waiting
   useEffect(() => {
@@ -207,6 +212,7 @@ export function OnboardingShell({ workspaceId, onProjectCreate, onComplete }: Pr
   };
 
   const handleClusteringComplete = () => {
+    track("onboarding_completed");
     onComplete(pendingProject?.id ?? null);
   };
 

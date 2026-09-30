@@ -19,6 +19,7 @@ import { useState, useEffect } from "react";
 import { c } from "../../styles/tokens.js";
 import { supabase } from "../../lib/supabase.js";
 import { doFirstPublish, doRepublish, doCustomize } from "../../publish/publishActions.js";
+import { track } from "../../lib/analytics.js";
 import { SectionPickerModal } from "./SectionPickerModal.jsx";
 
 async function bearer() {
@@ -206,13 +207,13 @@ export function PublishSection({ project, appState, showToast }) {
             {everPublished ? (
               // Once published (even if since unpublished), Republish resends the
               // last curated selection — never omit, never reset to everything.
-              <button onClick={() => runAction(() => doRepublish({ getStatus, postPublish }), "Project republished.")} disabled={busy} style={primaryBtn}>
+              <button onClick={() => { track("project_published", { kind: "republish" }); runAction(() => doRepublish({ getStatus, postPublish }), "Project republished."); }} disabled={busy} style={primaryBtn}>
                 {busy ? "Working…" : "Republish"}
               </button>
             ) : (
               // True first publish: omit the selection → backend defaults to the
               // whole project.
-              <button onClick={() => runAction(() => doFirstPublish({ postPublish }), "Project published.")} disabled={busy} style={primaryBtn}>
+              <button onClick={() => { track("project_published", { kind: "first" }); runAction(() => doFirstPublish({ postPublish }), "Project published."); }} disabled={busy} style={primaryBtn}>
                 {busy ? "Publishing…" : "Publish"}
               </button>
             )}

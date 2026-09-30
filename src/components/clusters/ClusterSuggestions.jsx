@@ -13,6 +13,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { WandSparkles } from "lucide-react";
 import { supabase } from "../../lib/supabase.js";
 import { invokeEdge } from "../../lib/invokeEdge.js";
+import { track } from "../../lib/analytics.js";
 import { c, btnSm, btnG, inp, ta } from "../../styles/tokens.js";
 import { SubtypeTag } from "../shared/Tag.jsx";
 
@@ -368,6 +369,7 @@ export function ClusterSuggestions({
     if (!projectId || running) return;
     setRunning(true);
     setError(null);
+    track("suggest_clustering_run", { sensitivity: tightness });
     const { error } = await invokeEdge("compute-cluster-suggestions", {
       body: { project_id: projectId, mode: "combined", clustering_sensitivity: tightness },
       timeoutMs: 60000,
@@ -398,10 +400,12 @@ export function ClusterSuggestions({
     setAssignSugs((prev) => prev.filter((s) => s.target_cluster_id !== targetClusterId));
     const cl = projectClusters.find((c) => c.id === targetClusterId);
     const n = pending.reduce((acc, s) => acc + (s.input_ids || []).length, 0);
+    track("cluster_suggestion_accepted", { type: "assignment", count: n });
     showToast?.(`${n} input${n !== 1 ? "s" : ""} assigned to "${cl?.name || "cluster"}"`);
   };
 
   const handleDismissAssignment = (id) => {
+    track("cluster_suggestion_dismissed", { type: "assignment" });
     setAssignFading((prev) => new Set([...prev, id]));
     setTimeout(() => {
       setAssignSugs((prev) => prev.filter((s) => s.id !== id));
@@ -415,6 +419,7 @@ export function ClusterSuggestions({
   // ── New cluster handlers ─────────────────────────────────────────────────────
 
   const handleAcceptNewCluster = (sug, name, desc, inputIds) => {
+    track("cluster_suggestion_accepted", { type: "new_cluster" });
     const finalName = name?.trim() || sug.name;
     const subtype   = sug.subtype ? sug.subtype.charAt(0).toUpperCase() + sug.subtype.slice(1) : "Trend";
     onCreateCluster?.({
@@ -430,6 +435,7 @@ export function ClusterSuggestions({
   };
 
   const handleDismissNewCluster = (id) => {
+    track("cluster_suggestion_dismissed", { type: "new_cluster" });
     const sug = newSugs.find((s) => s.id === id);
     if (sug) setDismissed((prev) => [...prev, { id: sug.id, input_ids: sug.input_ids || [] }]);
     setNewFading((prev) => new Set([...prev, id]));

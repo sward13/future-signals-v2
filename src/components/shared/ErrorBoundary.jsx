@@ -13,6 +13,7 @@
  */
 import { Component } from "react";
 import { c, btnP, btnSec } from "../../styles/tokens.js";
+import { track } from "../../lib/analytics.js";
 
 export class ErrorBoundary extends Component {
   state = { error: null };
@@ -22,8 +23,8 @@ export class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // Log for now; hook to GA / error tracking once instrumented (see GA4 spec).
     console.error(`[ErrorBoundary${this.props.label ? ` · ${this.props.label}` : ""}]`, error, info?.componentStack);
+    track("app_error", { boundary: this.props.label || "root", message: String(error?.message || error).slice(0, 200) });
     this.props.onError?.(error, info);
   }
 
