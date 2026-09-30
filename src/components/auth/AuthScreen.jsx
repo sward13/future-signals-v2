@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { SIGNUP_URL, LOGIN_URL } from "../../lib/authRedirect.js";
+import { track } from "../../lib/analytics.js";
 import { c, inp, btnP } from "../../styles/tokens.js";
 import logoLight from "../../assets/logo_light.svg";
 import { Eye, EyeOff } from "lucide-react";
@@ -70,6 +71,9 @@ export function AuthScreen({ initialMode = "signin" }) {
       if (error) {
         setError(error.message);
       } else {
+        // GA: fires at submission (pre email-confirmation). When the access-code
+        // gate lands, enrich with access_code and add sign_up_blocked on rejection.
+        track("sign_up", { method: "password" });
         setSignupConfirmed(true);
       }
     }

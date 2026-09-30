@@ -12,6 +12,7 @@ import { OnboardingShell } from "./components/onboarding/OnboardingShell.tsx";
 import { AppShell } from "./components/layout/AppShell.jsx";
 import { Toast } from "./components/layout/Toast.jsx";
 import { ErrorBoundary, ScreenErrorFallback } from "./components/shared/ErrorBoundary.jsx";
+import { pageView } from "./lib/analytics.js";
 import { NewProjectModal } from "./components/projects/NewProjectModal.jsx";
 import { ExportModal } from "./components/projects/ExportModal.jsx";
 import { InputDetailDrawer } from "./components/inputs/InputDetailDrawer.jsx";
@@ -274,6 +275,11 @@ export default function App() {
   // Also clears leftover auth paths (the /onboarding gate URL, and the
   // /reset-password redirect target) so a completed reset lands on a clean root
   // rather than sticking on /reset-password.
+  // GA: manual page_view on screen changes (state-driven nav, no router).
+  useEffect(() => {
+    if (appState.activeScreen) pageView(appState.activeScreen);
+  }, [appState.activeScreen]);
+
   useEffect(() => {
     const target = postAuthRedirectPath({
       pathname: window.location.pathname,

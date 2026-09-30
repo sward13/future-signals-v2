@@ -13,6 +13,7 @@
 import { useState } from "react";
 import { c, btnSec, btnG } from "../../styles/tokens.js";
 import { buildMarkdown } from "./buildMarkdown.js";
+import { track } from "../../lib/analytics.js";
 
 // ─── CSV builder ─────────────────────────────────────────────────────────────
 
@@ -141,6 +142,9 @@ export function ExportModal({ appState, onClose }) {
       if (onSystemMap && checked.png) {
         await systemMapExportRef?.current?.exportAsPng();
       }
+      track("report_exported", {
+        format: [checked.md && "md", checked.csv && "csv", checked.svg && "svg", (onSystemMap && checked.png) && "png"].filter(Boolean).join(","),
+      });
       onClose();
     } catch (err) {
       console.error("[ExportModal] export failed:", err);

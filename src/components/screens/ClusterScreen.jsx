@@ -11,6 +11,7 @@ import { ClusterRail } from "../clusters/ClusterRail.jsx";
 import { MergeClusterDialog } from "../clusters/MergeClusterDialog.jsx";
 import { DuplicateReviewModal } from "../clusters/DuplicateReviewModal.jsx";
 import { invokeEdge } from "../../lib/invokeEdge.js";
+import { track } from "../../lib/analytics.js";
 import { UnsavedChangesDialog } from "../shared/UnsavedChangesDialog.jsx";
 import { DragGhost } from "../clusters/DragGhost.jsx";
 import { STEEPLED } from "../../data/seeds.js";
@@ -241,6 +242,7 @@ export default function ClusterScreen({ appState }) {
   // caller can decide where to go next (the create button → view it; the guard's
   // "Save" → continue to the pending target).
   const createClusterDraft = (fields, inputIds) => {
+    track("cluster_created", { source: "manual" });
     const created = addCluster({ ...fields, project_id: project.id, input_ids: inputIds });
     showToast(inputIds.length > 0
       ? `"${fields.name}" created with ${inputIds.length} input${inputIds.length !== 1 ? "s" : ""}`
@@ -353,6 +355,7 @@ export default function ClusterScreen({ appState }) {
 
   // Find duplicates: scan all clusters in the project for similar pairs to review.
   const findDuplicates = async () => {
+    track("find_duplicates_run");
     setDupOpen(true);
     setDupLoading(true);
     setDupError(null);
