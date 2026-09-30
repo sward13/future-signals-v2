@@ -24,7 +24,7 @@ import { useState } from "react";
 import clsx from "clsx";
 import { SubtypeTag, HorizTag, Tag } from "../shared/Tag.jsx";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
-import { supabase } from "../../lib/supabase.js";
+import { invokeEdge } from "../../lib/invokeEdge.js";
 
 const SUBTYPES = ["Trend", "Driver", "Tension"];
 const HORIZONS  = ["H1", "H2", "H3"];
@@ -143,18 +143,13 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
     setLoadingRelated(true);
     setRelatedError(null);
     setDismissedIds(new Set());
-    try {
-      const { data, error } = await supabase.functions.invoke("find-related-inputs", {
-        body: { cluster_id: cluster.id, project_id: cluster.project_id },
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-      setRelatedResults(data);
-    } catch (err) {
-      setRelatedError(err.message || "Failed to find related inputs.");
-    } finally {
-      setLoadingRelated(false);
-    }
+    const { data, error } = await invokeEdge("find-related-inputs", {
+      body: { cluster_id: cluster.id, project_id: cluster.project_id },
+      fallbackMessage: "Failed to find related inputs.",
+    });
+    if (error) setRelatedError(error.message);
+    else setRelatedResults(data);
+    setLoadingRelated(false);
   };
 
   const handleAddFromRelated = (result) => {

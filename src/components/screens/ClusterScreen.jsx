@@ -10,7 +10,7 @@ import { ClustersPanel } from "../clusters/ClustersPanel.jsx";
 import { ClusterRail } from "../clusters/ClusterRail.jsx";
 import { MergeClusterDialog } from "../clusters/MergeClusterDialog.jsx";
 import { DuplicateReviewModal } from "../clusters/DuplicateReviewModal.jsx";
-import { supabase } from "../../lib/supabase.js";
+import { invokeEdge } from "../../lib/invokeEdge.js";
 import { UnsavedChangesDialog } from "../shared/UnsavedChangesDialog.jsx";
 import { DragGhost } from "../clusters/DragGhost.jsx";
 import { STEEPLED } from "../../data/seeds.js";
@@ -356,19 +356,13 @@ export default function ClusterScreen({ appState }) {
     setDupOpen(true);
     setDupLoading(true);
     setDupError(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("detect-cluster-overlaps", {
-        body: { project_id: project.id },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setDupPairs(data?.pairs || []);
-    } catch (err) {
-      setDupError(err?.message || "Something went wrong");
-      setDupPairs([]);
-    } finally {
-      setDupLoading(false);
-    }
+    const { data, error } = await invokeEdge("detect-cluster-overlaps", {
+      body: { project_id: project.id },
+      fallbackMessage: "Couldn't check for duplicates.",
+    });
+    if (error) { setDupError(error.message); setDupPairs([]); }
+    else setDupPairs(data?.pairs || []);
+    setDupLoading(false);
   };
 
   const dragLabel = dragIds
