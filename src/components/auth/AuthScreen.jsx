@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { SIGNUP_URL, LOGIN_URL } from "../../lib/authRedirect.js";
+import { accessCodeFromUrl, signupErrorMessage, isAccessCodeError } from "../../lib/accessCode.js";
 import { track } from "../../lib/analytics.js";
 import { c, inp, btnP } from "../../styles/tokens.js";
 import logoLight from "../../assets/logo_light.svg";
@@ -29,6 +30,9 @@ export function AuthScreen({ initialMode = "signin" }) {
   const [email,           setEmail]           = useState("");
   const [password,        setPassword]        = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  // Invite/access code — prefilled from the ?invite= link (the EPIC QR carries it),
+  // otherwise typed. Required to register (server enforces via handle_new_user).
+  const [accessCode,      setAccessCode]      = useState(() => accessCodeFromUrl(window.location.search));
   const [error,           setError]           = useState(null);
   const [info,            setInfo]            = useState(null);
   const [loading,         setLoading]         = useState(false);
@@ -67,13 +71,21 @@ export function AuthScreen({ initialMode = "signin" }) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError(error.message);
     } else {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const trimmedCode = accessCode.trim();
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { access_code: trimmedCode } },
+      });
       if (error) {
-        setError(error.message);
+        // GA: the gate rejecting is friction worth measuring separately from
+        // other signup failures (e.g. "already registered").
+        if (isAccessCodeError(error)) track("sign_up_blocked", { reason: "invalid_or_expired_code" });
+        setError(signupErrorMessage(error));
       } else {
-        // GA: fires at submission (pre email-confirmation). When the access-code
-        // gate lands, enrich with access_code and add sign_up_blocked on rejection.
-        track("sign_up", { method: "password" });
+        // GA: fires at submission (pre email-confirmation) — see the
+        // email-confirmation gap in docs/ga4-activation-tracking-spec.md.
+        track("sign_up", { method: "password", access_code: trimmedCode });
         setSignupConfirmed(true);
       }
     }
@@ -271,6 +283,27 @@ export function AuthScreen({ initialMode = "signin" }) {
                 </button>
               </div>
             </div>
+
+            {/* Access code — sign up only (prefilled from the ?invite= link) */}
+            {mode === "signup" && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 11, fontWeight: 500, color: c.ink, marginBottom: 5 }}>Access code</div>
+                <input
+                  type="text"
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value)}
+                  placeholder="Your invite code"
+                  required
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  style={{ ...inp, fontSize: 13 }}
+                />
+                <div style={{ fontSize: 11, color: c.muted, marginTop: 5, lineHeight: 1.5 }}>
+                  Future Signals is invite-only while in beta.
+                </div>
+              </div>
+            )}
 
             {/* Forgot password link — sign in only */}
             {mode === "signin" && (
