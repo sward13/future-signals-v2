@@ -572,6 +572,7 @@ export function ClusteringResultsStep({
             mode:                   "new_clusters",
             clustering_sensitivity: "balanced",
           },
+          timeoutMs: 60000,
         });
         if (fnError) {
           console.error("[onboarding] clustering invocation failed:", fnError);

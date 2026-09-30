@@ -358,6 +358,7 @@ export default function ClusterScreen({ appState }) {
     setDupError(null);
     const { data, error } = await invokeEdge("detect-cluster-overlaps", {
       body: { project_id: project.id },
+      timeoutMs: 30000,
       fallbackMessage: "Couldn't check for duplicates.",
     });
     if (error) { setDupError(error.message); setDupPairs([]); }

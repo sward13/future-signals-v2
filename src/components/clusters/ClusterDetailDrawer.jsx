@@ -145,6 +145,7 @@ export function ClusterDetailDrawer({ clusterId, clusters, inputs, onClose, onSa
     setDismissedIds(new Set());
     const { data, error } = await invokeEdge("find-related-inputs", {
       body: { cluster_id: cluster.id, project_id: cluster.project_id },
+      timeoutMs: 30000,
       fallbackMessage: "Failed to find related inputs.",
     });
     if (error) setRelatedError(error.message);

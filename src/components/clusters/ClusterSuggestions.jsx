@@ -370,6 +370,7 @@ export function ClusterSuggestions({
     setError(null);
     const { error } = await invokeEdge("compute-cluster-suggestions", {
       body: { project_id: projectId, mode: "combined", clustering_sensitivity: tightness },
+      timeoutMs: 60000,
       fallbackMessage: "Failed to generate suggestions.",
     });
     if (error) {
