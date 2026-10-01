@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { HorizonBar } from "../shared/HorizonBar.jsx";
 import { analysisHasCont } from "./SystemAnalysisCanvas.jsx";
 import { EditProjectDrawer } from "../projects/EditProjectDrawer.jsx";
+import { Button } from "../shared/Button.jsx";
 import { projectDomainLabel } from "../../lib/projectDomains.js";
 
 // ─── Analysis panel spec (minimal — full spec lives in SystemAnalysisCanvas) ──
@@ -225,12 +226,9 @@ export default function ProjectOverview({ appState }) {
           <div className="text-[11px] text-faint mb-1">{project.name}</div>
           <div className="flex items-center justify-between">
             <h1 className="text-[22px] font-medium text-ink m-0 font-heading">Overview</h1>
-            <button
-              onClick={() => setEditDrawerOpen(true)}
-              className="flex items-center gap-1.5 py-2.5 px-5.5 rounded-container bg-transparent text-muted border border-border-strong text-ui cursor-pointer [font-family:inherit]"
-            >
+            <Button variant="secondary" onClick={() => setEditDrawerOpen(true)}>
               <SquarePen size={13} className="shrink-0" /> Project settings
-            </button>
+            </Button>
           </div>
         </div>
 

@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { CirclePlus } from "lucide-react";
 import { HorizTag } from "../shared/Tag.jsx";
 import { RowActionButton } from "../shared/RowActionButton.jsx";
+import { Button } from "../shared/Button.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { ClusterAssignMenu } from "../shared/ClusterAssignMenu.jsx";
 import { ClustersPanel } from "../clusters/ClustersPanel.jsx";
@@ -33,11 +34,9 @@ const CONFIDENCE_CLASSES = {
   high:   "text-sage-700 bg-sage-50 border-sage-border",
 };
 
-// Shared button primitives, as Tailwind equivalents of tokens.js btnSm / btnSec.
-const btnSmCls  = "py-1.75 px-4 rounded-btn bg-brand text-white border-none text-xs font-medium cursor-pointer font-[inherit]";
+// Shared button primitive, as the Tailwind equivalent of tokens.js btnSec. Used only
+// by the project-not-found fallback below — the page-header buttons use shared/Button.jsx.
 const btnSecCls = "py-2.25 px-4.5 rounded-container bg-transparent text-muted border border-border-strong text-ui cursor-pointer font-[inherit]";
-// Small secondary — matches btnSmCls dimensions (py-1.75 px-4 rounded-btn text-xs) for header actions sitting beside the primary button.
-const btnSmSecCls = "py-1.75 px-4 rounded-btn bg-transparent text-muted border border-border-strong text-xs font-medium cursor-pointer font-[inherit]";
 // Column-header cell base (was the `cell` inline-style object).
 const cellCls = "text-[11px] tracking-[0.02em] text-hint shrink-0";
 
@@ -405,20 +404,17 @@ export default function ClusterScreen({ appState }) {
         <div className="flex items-center">
           <div className="text-[22px] font-medium text-ink font-heading">Cluster</div>
           <div className="flex items-center gap-2 ml-auto">
-            <button
+            <Button
+              variant="secondary"
               onClick={findDuplicates}
               disabled={projectClusters.length < 2}
-              className={clsx(btnSmSecCls, "inline-flex items-center gap-1.25", projectClusters.length < 2 && "opacity-40 cursor-not-allowed")}
               title={projectClusters.length < 2 ? "Need at least two clusters to compare" : "Scan clusters for likely duplicates"}
             >
               Find duplicates
-            </button>
-            <button
-              onClick={() => openCreateRail()}
-              className={clsx(btnSmCls, "inline-flex items-center gap-1.25")}
-            >
+            </Button>
+            <Button variant="primary" onClick={() => openCreateRail()}>
               <CirclePlus size={13} className="shrink-0" /> New cluster
-            </button>
+            </Button>
           </div>
         </div>
       </div>

@@ -2,9 +2,10 @@
  * Dashboard screen — workspace overview with stats, projects list, and recent inputs.
  */
 import { useState } from "react";
-import { c, btnP, btnSec, btnG, fontHeading } from "../../styles/tokens.js";
+import { c, fontHeading } from "../../styles/tokens.js";
 import { LayoutGrid, List, CirclePlus, Loader2 } from "lucide-react";
 import { EmptyState } from "../shared/EmptyState.jsx";
+import { Button } from "../shared/Button.jsx";
 import { ViewToggle } from "../ViewToggle.jsx";
 import { InputDrawer } from "../inputs/InputDrawer.jsx";
 import { projectDomainLabel } from "../../lib/projectDomains.js";
@@ -330,8 +331,8 @@ export default function Dashboard({ appState }) {
             <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>Dashboard</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button onClick={() => setInputDrawerOpen(true)} style={btnSec}>Add an input</button>
-            <button onClick={openProjectModal} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}><CirclePlus size={14} />New project</button>
+            <Button variant="secondary" onClick={() => setInputDrawerOpen(true)}>Add an input</Button>
+            <Button variant="primary" onClick={openProjectModal}><CirclePlus size={13} className="shrink-0" />New project</Button>
           </div>
         </div>
 
