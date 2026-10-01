@@ -2,19 +2,22 @@ import { forwardRef } from "react";
 import clsx from "clsx";
 
 /**
- * Shared styling for panel-level primary/secondary action buttons (Create,
- * Accept, Edit, …) — the tier above row actions (RowActionButton.jsx).
- * Sourced from ClusterDrawer.jsx's btnPClass/btnSecClass (the only
- * primary/secondary panel-button pair found across the migrated Cluster
- * components), normalized so variants share identical box geometry.
+ * Shared styling for compact action buttons (Create cluster, Accept, Edit, …)
+ * that sit in the same dense list context as row actions — e.g. the
+ * "Assign →" button (RowActionButton.jsx), used right below these cards in
+ * the same Cluster screen. Matches that h-6/11px/rounded-btn geometry rather
+ * than ClusterDrawer's larger drawer-footer scale, which reads oversized next
+ * to Assign at this density (confirmed in production — the drawer scale was
+ * the wrong reference).
  *
- * Primary carries a transparent border of the same width as secondary's
- * so both variants compute to the same height from shared padding —
- * fill, border color, and text color are the only differences.
+ * Primary carries a transparent border of the same width as secondary's;
+ * both also pin a fixed h-6, so neither border presence nor absence can
+ * shift total height — fill, border color, and text color are the only
+ * differences.
  */
 const PANEL_BUTTON_BASE =
-  "inline-flex items-center justify-center whitespace-nowrap cursor-pointer font-[inherit] " +
-  "py-2.25 px-4.5 rounded-container text-ui font-medium border " +
+  "text-[11px] font-medium whitespace-nowrap cursor-pointer font-[inherit] " +
+  "h-6 inline-flex items-center justify-center px-[9px] rounded-btn border " +
   "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 " +
   "disabled:opacity-50 disabled:cursor-not-allowed";
 
