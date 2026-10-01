@@ -115,6 +115,10 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
   // Cross-screen signal: ClusterScreen's InputRail sets this true while its sticky
   // multi-select bar is visible, so the global Toast can lift above it and avoid overlap.
   const [bulkBarActive, setBulkBarActive] = useState(false);
+  // Cluster screen's Manual/Suggested toggle, keyed by project id, so it survives
+  // navigating away (ClusterScreen unmounts on screen switch) and back. A project
+  // with no entry defaults to "manual". Session-only — not persisted to localStorage.
+  const [clusterModeByProject, setClusterModeByProject] = useState({});
   // True while the onboarding sample-project clone is in flight. Drives an
   // optimistic "Setting up your sample project…" placeholder card on the
   // Dashboard so the ~1–3s server-side clone doesn't read as a blank gap
@@ -1999,6 +2003,8 @@ export function useAppState(workspaceId = null, session = null, preferences = {}
     toast,
     bulkBarActive,
     setBulkBarActive,
+    clusterModeByProject,
+    setClusterModeByProject,
     sampleCloneInProgress,
     setSampleCloneInProgress,
     projectModalOpen,

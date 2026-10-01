@@ -86,6 +86,7 @@ export default function ClusterScreen({ appState }) {
     assignInputToCluster, removeInputFromCluster,
     duplicateInputToCluster, deleteCluster, mergeClusters,
     setBulkBarActive,
+    clusterModeByProject, setClusterModeByProject,
   } = appState;
 
   // Drag-and-drop state
@@ -165,8 +166,15 @@ export default function ClusterScreen({ appState }) {
     return () => setBulkBarActive(false);
   }, [selectedIds, setBulkBarActive]);
 
-  // Cluster mode lifted to this level so the header Suggested CTA can switch it
-  const [clusterMode,  setClusterMode]  = useState("manual");
+  // Cluster mode lifted to appState (keyed by project) so the header Suggested
+  // CTA can switch it and it survives navigating away and back — ClusterScreen
+  // unmounts on screen switch, which would otherwise reset local state. A
+  // project with no entry yet (e.g. newly created) defaults to "manual".
+  const clusterMode = clusterModeByProject[activeProjectId] || "manual";
+  const setClusterMode = useCallback(
+    (mode) => setClusterModeByProject((prev) => ({ ...prev, [activeProjectId]: mode })),
+    [activeProjectId, setClusterModeByProject],
+  );
   // Drop zone state for the InputRail drop target
   const [dropOnZone,   setDropOnZone]   = useState(false);
   // ClusterRail target: null (closed) | { kind:"view", id } (existing cluster)
