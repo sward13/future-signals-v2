@@ -14,8 +14,10 @@ import { WandSparkles } from "lucide-react";
 import { supabase } from "../../lib/supabase.js";
 import { invokeEdge } from "../../lib/invokeEdge.js";
 import { track } from "../../lib/analytics.js";
-import { c, btnSm, btnG, inp, ta } from "../../styles/tokens.js";
+import { c, btnG, inp, ta } from "../../styles/tokens.js";
 import { SubtypeTag } from "../shared/Tag.jsx";
+import { PanelButton } from "../shared/PanelButton.jsx";
+import { ROW_ACTION_LINK } from "../shared/RowActionButton.jsx";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -98,15 +100,12 @@ function AssignCard({ group, inputs, fadingIds, onAcceptAll, onDismissOne }) {
 
       {/* Footer */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 12px 10px" }}>
-        <button
-          onClick={() => onAcceptAll(targetClusterId)}
-          style={{ ...btnSm, fontSize: 11, padding: "4px 10px" }}
-        >
+        <PanelButton variant="primary" onClick={() => onAcceptAll(targetClusterId)}>
           Accept
-        </button>
+        </PanelButton>
         <button
           onClick={() => visibleSugs.forEach((s) => onDismissOne(s.id))}
-          style={{ ...btnG, fontSize: 11 }}
+          className={ROW_ACTION_LINK}
         >
           Dismiss
         </button>
@@ -205,7 +204,7 @@ function NewClusterCard({ sug, inputs, isFading, onAccept, onDismiss }) {
               }}
             >
               <span style={{ fontSize: 9 }}>{showRationale ? "▾" : "▸"}</span>
-              · {isLowRelevance ? "Why low relevance?" : "Why this cluster?"}
+              {isLowRelevance ? "Why low relevance?" : "Why this cluster?"}
             </button>
             {showRationale && (
               <div style={{
@@ -253,13 +252,13 @@ function NewClusterCard({ sug, inputs, isFading, onAccept, onDismiss }) {
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {editMode ? (
             <>
-              <button
+              <PanelButton
+                variant="primary"
                 onClick={() => onAccept(sug, editName.trim() || sug.name, editDesc, localIds)}
                 disabled={noInputs}
-                style={{ ...btnSm, fontSize: 11, padding: "4px 10px", ...(noInputs ? { opacity: 0.5, cursor: "default" } : {}) }}
               >
                 Create cluster
-              </button>
+              </PanelButton>
               <button
                 onClick={handleCancel}
                 style={{
@@ -273,24 +272,17 @@ function NewClusterCard({ sug, inputs, isFading, onAccept, onDismiss }) {
             </>
           ) : (
             <>
-              <button
+              <PanelButton
+                variant="primary"
                 onClick={() => onAccept(sug, sug.name, sug.description || "", localIds)}
                 disabled={noInputs}
-                style={{ ...btnSm, fontSize: 11, padding: "4px 10px", ...(noInputs ? { opacity: 0.5, cursor: "default" } : {}) }}
               >
                 Create cluster
-              </button>
-              <button
-                onClick={() => setEditMode(true)}
-                style={{
-                  background: "none", border: `1px solid ${c.borderStrong}`,
-                  cursor: "pointer", fontFamily: "inherit",
-                  fontSize: 11, color: c.muted, padding: "4px 10px", borderRadius: 6,
-                }}
-              >
+              </PanelButton>
+              <PanelButton variant="secondary" onClick={() => setEditMode(true)}>
                 Edit
-              </button>
-              <button onClick={() => onDismiss(sug.id)} style={{ ...btnG, fontSize: 11 }}>
+              </PanelButton>
+              <button onClick={() => onDismiss(sug.id)} className={ROW_ACTION_LINK}>
                 Dismiss
               </button>
             </>
