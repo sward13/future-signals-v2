@@ -7,8 +7,9 @@
  * @param {{ appState: object }} props
  */
 import { useState, useMemo, useEffect } from "react";
-import { c, inp, btnP, btnSm, fontHeading, countBadge } from "../../styles/tokens.js";
+import { c, inp, btnSm, fontHeading, countBadge } from "../../styles/tokens.js";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
+import { Button } from "../shared/Button.jsx";
 import { CirclePlus, Sparkles } from "lucide-react";
 import { projectDomainLabel } from "../../lib/projectDomains.js";
 import { DragGhost } from "../clusters/DragGhost.jsx";
@@ -854,7 +855,7 @@ export default function Inbox({ appState }) {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            <button onClick={() => setDrawerOpen(true)} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}><CirclePlus size={14} />Add an input</button>
+            <Button variant="primary" onClick={() => setDrawerOpen(true)}><CirclePlus size={13} className="shrink-0" />Add an input</Button>
           </div>
         </div>
 

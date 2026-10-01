@@ -7,6 +7,7 @@ import { c, inp, btnP, btnSec, fontHeading, tabCount } from "../../styles/tokens
 import { STEEPLED } from "../../data/seeds.js";
 import { HorizTag } from "../shared/Tag.jsx";
 import { RowActionButton, ROW_ACTION_LINK } from "../shared/RowActionButton.jsx";
+import { Button } from "../shared/Button.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { computeFlipPosition } from "../../lib/panelPosition.js";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
@@ -547,13 +548,13 @@ export default function ProjectDetail({ appState }) {
             <div style={{ fontSize: 22, fontWeight: 500, color: c.ink, fontFamily: fontHeading }}>Scan</div>
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            <button onClick={() => setScanPrefOpen(true)} style={{ ...btnSec, fontSize: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 6 }}>
-              <Settings2 size={14} />Scanning preferences
-            </button>
-            <button onClick={() => setInboxModalOpen(true)} style={{ ...btnSec, fontSize: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 6 }}>
-              <FolderInput size={14} />Add from Inbox
-            </button>
-            <button onClick={() => setDrawerOpen(true)} style={{ ...btnP, display: "flex", alignItems: "center", gap: 6 }}><CirclePlus size={14} />Add an input</button>
+            <Button variant="secondary" onClick={() => setScanPrefOpen(true)}>
+              <Settings2 size={13} className="shrink-0" />Scanning preferences
+            </Button>
+            <Button variant="secondary" onClick={() => setInboxModalOpen(true)}>
+              <FolderInput size={13} className="shrink-0" />Add from Inbox
+            </Button>
+            <Button variant="primary" onClick={() => setDrawerOpen(true)}><CirclePlus size={13} className="shrink-0" />Add an input</Button>
           </div>
         </div>
 
