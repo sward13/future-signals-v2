@@ -44,10 +44,17 @@ const CONF_STYLE = {
 
 // ── Assignment card — "Add to existing cluster" ───────────────────────────────
 
+const MATCH_COL_WIDTH = 84;
+
 function AssignCard({ group, inputs, fadingIds, onAcceptAll, onDismissOne }) {
   const { targetClusterId, clusterName, sugs } = group;
   const visibleSugs = sugs.filter((s) => !fadingIds.has(s.id));
+  const [expanded, setExpanded] = useState(false);
   if (visibleSugs.length === 0) return null;
+
+  const totalCount = sugs.length;
+  const remaining = totalCount - 3;
+  const displayedSugs = expanded ? sugs : sugs.slice(0, 3);
 
   return (
     <div style={{
@@ -55,27 +62,43 @@ function AssignCard({ group, inputs, fadingIds, onAcceptAll, onDismissOne }) {
       overflow: "hidden", marginBottom: 8,
     }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px 6px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px 6px" }}>
         <span style={{ fontSize: 12, fontWeight: 500, color: c.ink }}>
           Add to <span style={{ color: c.brand }}>{clusterName}</span>
+        </span>
+        <span style={{ fontSize: 12, color: c.muted }}>
+          {totalCount} input{totalCount !== 1 ? "s" : ""}
         </span>
         {visibleSugs.length > 1 && (
           <button
             onClick={() => onAcceptAll(targetClusterId)}
-            style={{ ...btnG, fontSize: 11, color: c.brand, padding: "2px 4px" }}
+            style={{ ...btnG, fontSize: 11, color: c.brand, padding: "2px 4px", marginLeft: "auto" }}
           >
             Accept all
           </button>
         )}
       </div>
 
+      {/* Column headers */}
+      <div aria-hidden="true" style={{ display: "flex", alignItems: "center", gap: 5, padding: "0 12px 3px" }}>
+        <span style={{ width: 9, flexShrink: 0 }} />
+        <span style={{ flex: 1, fontSize: 11.5, color: c.hint }}>Input</span>
+        <span
+          style={{ width: MATCH_COL_WIDTH, flexShrink: 0, fontSize: 11.5, color: c.hint }}
+          title="How closely this input matches the cluster"
+        >
+          Match
+        </span>
+      </div>
+
       {/* Input rows */}
       <div style={{ padding: "2px 12px 8px", display: "flex", flexDirection: "column", gap: 3 }}>
-        {sugs.map((sug) => {
+        {displayedSugs.map((sug) => {
           const inputId = (sug.input_ids || [])[0];
           const input = inputs.find((i) => i.id === inputId);
           if (!input) return null;
           const conf = sug.confidence ? CONF_STYLE[sug.confidence] : null;
+          const confLabel = sug.confidence === "high" ? "High" : sug.confidence === "moderate" ? "Moderate" : null;
           return (
             <div
               key={sug.id}
@@ -85,18 +108,29 @@ function AssignCard({ group, inputs, fadingIds, onAcceptAll, onDismissOne }) {
                 opacity: fadingIds.has(sug.id) ? 0 : 1, transition: "opacity 0.25s",
               }}
             >
-              <span style={{ color: c.hint, fontSize: 9, flexShrink: 0 }}>•</span>
-              <span style={{
-                flex: 1, fontSize: 11, color: c.ink,
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}>
+              <span style={{ color: c.hint, fontSize: 9, flexShrink: 0, alignSelf: "flex-start", marginTop: 3 }}>•</span>
+              <span style={{ flex: 1, fontSize: 11, color: c.ink, lineHeight: 1.4 }}>
                 {input.name}
               </span>
-              {conf && (
-                <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 500, flexShrink: 0, ...conf }}>
-                  {sug.confidence === "high" ? "High" : "Moderate"}
-                </span>
-              )}
+              <span style={{ width: MATCH_COL_WIDTH, flexShrink: 0 }}>
+                {confLabel === "High" && (
+                  <>
+                    <span aria-hidden="true" style={{ fontSize: 11, color: c.muted }}>High</span>
+                    <span className="sr-only">Match: High</span>
+                  </>
+                )}
+                {confLabel === "Moderate" && (
+                  <>
+                    <span
+                      aria-hidden="true"
+                      style={{ fontSize: 9, padding: "1px 5px", borderRadius: 3, fontWeight: 500, display: "inline-block", ...conf }}
+                    >
+                      Moderate
+                    </span>
+                    <span className="sr-only">Match: Moderate</span>
+                  </>
+                )}
+              </span>
               <button
                 onClick={() => onDismissOne(sug.id)}
                 style={{ ...btnG, fontSize: 10, padding: "0 3px", flexShrink: 0, color: c.hint }}
@@ -106,6 +140,16 @@ function AssignCard({ group, inputs, fadingIds, onAcceptAll, onDismissOne }) {
             </div>
           );
         })}
+        {remaining > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            aria-expanded={expanded}
+            className="text-[11px] text-muted bg-transparent border-none cursor-pointer font-[inherit] p-0 self-start hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 rounded-btn"
+          >
+            {expanded ? "Show fewer" : `Show ${remaining} more`}
+          </button>
+        )}
       </div>
 
       {/* Footer */}
@@ -136,10 +180,13 @@ function NewClusterCard({ sug, inputs, isFading, onAccept, onDismiss }) {
   // explanation of *why* this was deprioritized, so it shouldn't be hidden
   // behind an extra click.
   const [showRationale, setShowRationale] = useState(isLowRelevance);
+  const [expanded,      setExpanded]      = useState(false);
 
   const subtype      = sug.subtype ? sug.subtype.charAt(0).toUpperCase() + sug.subtype.slice(1) : "Trend";
   const visibleInputs = localIds.map((id) => inputs.find((i) => i.id === id)).filter(Boolean);
   const noInputs      = visibleInputs.length === 0;
+  const remaining     = visibleInputs.length - 3;
+  const displayedInputs = expanded ? visibleInputs : visibleInputs.slice(0, 3);
 
   const handleCancel = () => {
     setEditMode(false);
@@ -193,7 +240,7 @@ function NewClusterCard({ sug, inputs, isFading, onAccept, onDismiss }) {
             style={{ ...ta, fontSize: 11, marginBottom: 8, resize: "vertical" }}
           />
         ) : sug.description ? (
-          <div style={{
+          <div className="max-w-[68ch]" style={{
             fontSize: 11, color: c.muted, lineHeight: 1.55, marginBottom: 8,
             display: "-webkit-box", WebkitLineClamp: 2,
             WebkitBoxOrient: "vertical", overflow: "hidden",
@@ -217,7 +264,7 @@ function NewClusterCard({ sug, inputs, isFading, onAccept, onDismiss }) {
               {isLowRelevance ? "Why low relevance?" : "Why this cluster?"}
             </button>
             {showRationale && (
-              <div style={{
+              <div className="max-w-[68ch]" style={{
                 marginTop: 6, padding: "7px 10px",
                 background: c.surfaceAlt, border: `1px solid ${c.border}`,
                 borderRadius: 5, fontSize: 11, color: c.muted,
@@ -231,31 +278,46 @@ function NewClusterCard({ sug, inputs, isFading, onAccept, onDismiss }) {
 
         {/* Input list */}
         {visibleInputs.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 10 }}>
-            {visibleInputs.map((input) => (
-              <div
-                key={input.id}
-                style={{
-                  display: "flex", alignItems: "center", gap: 5,
-                  padding: "4px 8px", background: c.surfaceAlt, borderRadius: 5,
-                }}
-              >
-                <span style={{ color: c.hint, fontSize: 9, flexShrink: 0 }}>•</span>
-                <span style={{
-                  flex: 1, fontSize: 11, color: c.ink,
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>
-                  {input.name}
-                </span>
-                <button
-                  onClick={() => setLocalIds((prev) => prev.filter((x) => x !== input.id))}
-                  style={{ ...btnG, fontSize: 10, padding: "0 3px", flexShrink: 0, color: c.hint }}
+          <>
+            <div style={{ fontSize: 12, color: c.muted, marginBottom: 4 }}>
+              {visibleInputs.length} input{visibleInputs.length !== 1 ? "s" : ""}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 10 }}>
+              {displayedInputs.map((input) => (
+                <div
+                  key={input.id}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 5,
+                    padding: "4px 8px", background: c.surfaceAlt, borderRadius: 5,
+                  }}
                 >
-                  ✕
+                  <span style={{ color: c.hint, fontSize: 9, flexShrink: 0 }}>•</span>
+                  <span style={{
+                    flex: 1, fontSize: 11, color: c.ink,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {input.name}
+                  </span>
+                  <button
+                    onClick={() => setLocalIds((prev) => prev.filter((x) => x !== input.id))}
+                    style={{ ...btnG, fontSize: 10, padding: "0 3px", flexShrink: 0, color: c.hint }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              {remaining > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setExpanded((e) => !e)}
+                  aria-expanded={expanded}
+                  className="text-[11px] text-muted bg-transparent border-none cursor-pointer font-[inherit] p-0 self-start hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 rounded-btn"
+                >
+                  {expanded ? "Show fewer" : `Show ${remaining} more`}
                 </button>
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+          </>
         )}
 
         {/* Footer */}
@@ -515,7 +577,7 @@ export function ClusterSuggestions({
         borderBottom: `1px solid ${c.border}`,
         background: c.white,
       }}>
-        <div className="border-[0.5px] border-border bg-white rounded-container py-3.5 px-4">
+        <div className="max-w-3xl border-[0.5px] border-border bg-white rounded-container py-3.5 px-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             {/* Sensitivity toggle — compact padding so "Exploratory" fits at 320px */}
             <div className="flex flex-col gap-1">
@@ -573,6 +635,7 @@ export function ClusterSuggestions({
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px" }}>
+      <div className="max-w-3xl">
 
         {error && (
           <div style={{
@@ -702,6 +765,7 @@ export function ClusterSuggestions({
             )}
           </>
         )}
+      </div>
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
