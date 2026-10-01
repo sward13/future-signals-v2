@@ -10,7 +10,7 @@
  *   showToast       — (msg) => void
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { WandSparkles } from "lucide-react";
+import { WandSparkles, Info } from "lucide-react";
 import { supabase } from "../../lib/supabase.js";
 import { invokeEdge } from "../../lib/invokeEdge.js";
 import { track } from "../../lib/analytics.js";
@@ -18,6 +18,16 @@ import { c, btnG, inp, ta } from "../../styles/tokens.js";
 import { SubtypeTag } from "../shared/Tag.jsx";
 import { PanelButton } from "../shared/PanelButton.jsx";
 import { ROW_ACTION_LINK } from "../shared/RowActionButton.jsx";
+
+// Copy shown under the Grouping sensitivity control, keyed by the sensitivity
+// value sent to compute-cluster-suggestions (see SENSITIVITY_THRESHOLDS in
+// that edge function: tight=0.75 similarity/more+smaller clusters, exploratory
+// =0.50/fewer+broader clusters). Edit freely — this is the only place the copy lives.
+const SENSITIVITY_DESCRIPTIONS = {
+  tight: "Requires strong similarity between inputs — produces more, smaller clusters with higher confidence.",
+  balanced: "A balanced similarity threshold — the default for most projects.",
+  exploratory: "Allows looser similarity between inputs — produces fewer, broader clusters that can surface weaker patterns.",
+};
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -308,6 +318,12 @@ export function ClusterSuggestions({
   const [running,     setRunning]     = useState(false);
   const [error,       setError]       = useState(null);
   const [hasRun,      setHasRun]      = useState(false);
+  // The sensitivity that produced the suggestions currently on screen. Only
+  // known once a run completes in this session — cluster_suggestions rows
+  // loaded from a prior session don't record which sensitivity made them, so
+  // this stays null until a fresh run, and the stale-settings message below
+  // is intentionally suppressed until then (see isStale).
+  const [lastRunSensitivity, setLastRunSensitivity] = useState(null);
 
   const [assignSugs,  setAssignSugs]  = useState([]);
   const [assignFading,setAssignFading]= useState(new Set());
@@ -376,6 +392,7 @@ export function ClusterSuggestions({
     const loaded = await loadSuggestions();
     setHasRun(true);
     setLastRunEmpty(loaded.length === 0);
+    setLastRunSensitivity(tightness);
     setRunning(false);
   };
 
@@ -479,68 +496,79 @@ export function ClusterSuggestions({
 
   const hasAnything = assignGroups.length > 0 || visibleNewSugs.length > 0;
 
+  // Suggestions on screen were produced by a different sensitivity than the one
+  // currently selected. Only flagged once lastRunSensitivity is known (see its
+  // declaration above) — never on suggestions carried over from a prior session.
+  const isStale = hasAnything && lastRunSensitivity !== null && tightness !== lastRunSensitivity;
+  const sensitivityDescription = isStale
+    ? "Settings changed. Run again to update."
+    : SENSITIVITY_DESCRIPTIONS[tightness];
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-      {/* Toolbar */}
+      {/* Toolbar — Grouping sensitivity + Suggest clustering, grouped into one settings card */}
       <div style={{
         padding: "8px 12px", flexShrink: 0,
         borderBottom: `1px solid ${c.border}`,
-        display: "flex", alignItems: "center", gap: 4,
         background: c.white,
       }}>
-        {/* Sensitivity toggle — compact padding so "Exploratory" fits at 320px */}
-        <div style={{ display: "inline-flex", flexShrink: 0, border: `1px solid ${c.borderStrong}`, borderRadius: 6, overflow: "hidden" }}>
-          {[["tight", "Tight"], ["balanced", "Balanced"], ["exploratory", "Exploratory"]].map(([key, label], idx) => (
-            <button
-              key={key}
-              onClick={() => setTightness(key)}
-              style={{
-                padding: "3px 5px", fontSize: 10, fontFamily: "inherit",
-                cursor: "pointer", border: "none",
-                borderLeft: idx > 0 ? `1px solid ${c.borderStrong}` : "none",
-                background: tightness === key ? c.ink : "transparent",
-                color: tightness === key ? c.white : c.muted,
-                fontWeight: tightness === key ? 500 : 400,
-                transition: "background 0.12s, color 0.12s",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <div className="border-[0.5px] border-border bg-white rounded-container py-3.5 px-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* Sensitivity toggle — compact padding so "Exploratory" fits at 320px */}
+            <div className="flex flex-col gap-1">
+              <span className="text-[12px] text-muted">Grouping</span>
+              <div
+                role="group"
+                aria-label="Grouping sensitivity"
+                style={{ display: "inline-flex", border: `1px solid ${c.borderStrong}`, borderRadius: 6, overflow: "hidden" }}
+              >
+                {[["tight", "Tight"], ["balanced", "Balanced"], ["exploratory", "Exploratory"]].map(([key, label], idx) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={tightness === key}
+                    onClick={() => setTightness(key)}
+                    style={{
+                      padding: "3px 5px", fontSize: 10, fontFamily: "inherit",
+                      cursor: "pointer", border: "none",
+                      borderLeft: idx > 0 ? `1px solid ${c.borderStrong}` : "none",
+                      background: tightness === key ? c.ink : "transparent",
+                      color: tightness === key ? c.white : c.muted,
+                      fontWeight: tightness === key ? 500 : 400,
+                      transition: "background 0.12s, color 0.12s",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        {/* Suggest button */}
-        <button
-          onClick={handleRun}
-          disabled={running || !projectId}
-          style={{
-            flexShrink: 0,
-            display: "flex", alignItems: "center", gap: 5,
-            padding: "4px 9px", borderRadius: 6,
-            border: `1px solid ${c.borderStrong}`,
-            background: "transparent",
-            color: running || !projectId ? c.muted : c.ink,
-            opacity: !projectId ? 0.5 : 1,
-            fontSize: 11, fontWeight: 500,
-            cursor: running || !projectId ? "default" : "pointer",
-            fontFamily: "inherit", whiteSpace: "nowrap",
-          }}
-        >
-          {running ? (
-            <>
-              <span style={{
-                display: "inline-block", width: 9, height: 9, borderRadius: "50%",
-                border: `1.5px solid ${c.border}`, borderTopColor: c.muted,
-                animation: "spin 0.7s linear infinite",
-              }} />
-              Suggesting…
-            </>
-          ) : <><WandSparkles size={11} strokeWidth={1.75} /> Suggest clustering</>}
-        </button>
+            {/* Suggest button */}
+            <PanelButton variant="secondary" onClick={handleRun} disabled={running || !projectId} className="gap-1.5">
+              {running ? (
+                <>
+                  <span style={{
+                    display: "inline-block", width: 9, height: 9, borderRadius: "50%",
+                    border: `1.5px solid ${c.border}`, borderTopColor: c.muted,
+                    animation: "spin 0.7s linear infinite",
+                  }} />
+                  Suggesting…
+                </>
+              ) : <><WandSparkles size={11} strokeWidth={1.75} /> Suggest clustering</>}
+            </PanelButton>
+          </div>
+
+          {/* Live description of the selected sensitivity, or a stale-settings notice */}
+          <div className="flex items-start gap-1.5 mt-2.5" aria-live="polite">
+            <Info size={16} className="shrink-0 text-hint" />
+            <span className="text-[13px] text-muted leading-[1.4]">{sensitivityDescription}</span>
+          </div>
+        </div>
       </div>
 
       {/* Content */}
