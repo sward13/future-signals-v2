@@ -251,8 +251,17 @@ export async function cloneProject(sourceProjectId, destWorkspaceId, options = {
 
     const newScenarios = (sourceScenarios ?? []).map((row) =>
       // cluster_ids intentionally left as-is: legacy column, superseded by
-      // scenario_clusters, not read anywhere (see CLAUDE.md).
-      cloneRow(row, scenarioIdMap, { workspace_id: destWorkspaceId, project_id: newProjectId })
+      // scenario_clusters, not read anywhere (see CLAUDE.md). driving_forces /
+      // suppressed_forces, by contrast, ARE actively read (ScenarioRead.jsx,
+      // FutureModels.jsx) and must be remapped through clusterIdMap like any
+      // other cluster-id reference, or they dangle against the source
+      // project's cluster ids post-clone.
+      cloneRow(row, scenarioIdMap, {
+        workspace_id: destWorkspaceId,
+        project_id: newProjectId,
+        driving_forces: remapIdArray(row.driving_forces, clusterIdMap),
+        suppressed_forces: remapIdArray(row.suppressed_forces, clusterIdMap),
+      })
     );
     await insertMany('scenarios', newScenarios);
 
