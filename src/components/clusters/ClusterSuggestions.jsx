@@ -10,7 +10,7 @@
  *   showToast       — (msg) => void
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { WandSparkles, Info } from "lucide-react";
+import { Group, Info } from "lucide-react";
 import { supabase } from "../../lib/supabase.js";
 import { invokeEdge } from "../../lib/invokeEdge.js";
 import { track } from "../../lib/analytics.js";
@@ -621,7 +621,7 @@ export function ClusterSuggestions({
                   }} />
                   Suggesting…
                 </>
-              ) : <><WandSparkles size={11} strokeWidth={1.75} /> Suggest clustering</>}
+              ) : <><Group size={11} strokeWidth={1.75} /> Suggest clustering</>}
             </PanelButton>
           </div>
 
@@ -677,7 +677,7 @@ export function ClusterSuggestions({
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 12px", textAlign: "center", gap: 6 }}>
             <div style={{ fontSize: 13, fontWeight: 500, color: c.muted }}>No suggestions yet</div>
             <div style={{ fontSize: 11, color: c.hint, lineHeight: 1.6 }}>
-              Click "✦ Suggest clustering" to check for patterns.
+              Click "Suggest clustering" to check for patterns.
             </div>
           </div>
 
@@ -693,7 +693,7 @@ export function ClusterSuggestions({
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 12px", textAlign: "center", gap: 6 }}>
             <div style={{ fontSize: 13, fontWeight: 500, color: c.muted }}>All suggestions resolved</div>
             <div style={{ fontSize: 11, color: c.hint, lineHeight: 1.6 }}>
-              Run "✦ Suggest clustering" again for fresh recommendations.
+              Run "Suggest clustering" again for fresh recommendations.
             </div>
           </div>
 
