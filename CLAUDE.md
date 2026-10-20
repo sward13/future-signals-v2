@@ -765,15 +765,16 @@ Two patterns are in use, depending on the table's key column:
 - A second function, `get_user_workspace_id()`, also exists in the database but has no usages in any tracked migration — confirm its purpose before relying on it.
 
 ### Grants for new tables
-- **New tables require explicit grants** — Supabase will not auto-grant public schema access from **October 2026** onward. Every `CREATE TABLE` migration must include:
-```sql
-  grant select on public.<table> to anon;
-  grant select, insert, update, delete on public.<table> to authenticated;
-  grant select, insert, update, delete on public.<table> to service_role;
-  alter table public.<table> enable row level security;
-```
+- **New tables require explicit grants** — Supabase will not auto-grant public schema access from **October 2026** onward. Every `CREATE TABLE` migration in `public` must work through this checklist, in order:
+  1. `alter table public.<table> enable row level security;`
+  2. Policies for each role that needs access (see "RLS patterns" above).
+  3. Grants for `authenticated` and `service_role`, **limited to what the table actually needs** — don't copy a four-line boilerplate onto every table by habit. Check who really calls it: a table only ever touched by `api/*.js`/`server-lib/*.js`/Edge Functions needs `service_role` only, not `authenticated` too.
+  4. **No `anon` grant, unless a logged-out browser screen reads the table directly** (none do today — the SPA never fetches data before login, and the one public surface, `/p/{slug}` Publish pages, is served through `service_role` specifically because `anon` has no workspace to scope through; see `docs/supabase-grants-audit-report.md` Section 4/5 for the full audit this was derived from).
+  5. Test the migration against a local replay (`schema.sql` first, then `supabase/migrations/` in filename order — see `docs/project-negative-pool-migration-closeout.md` for how to stand this up with Docker, since `supabase db reset` can't run as-is: no `supabase/config.toml` exists, and the CLI only knows about the migrations directory, not `schema.sql`), then regenerate types.
+
   Run migrations manually in Supabase before handing off implementation prompts.
-- Several existing tables (`cluster_suggestions`, `preferred_futures`, `strategic_options`, `source_health`, etc.) were created before this requirement was identified and have no explicit grants in their migration files. If a permissions error appears on one of these ahead of the October 2026 deadline, add the missing grants in a follow-up migration rather than widening access ad hoc.
+- **Every pre-existing table's grants were brought up to this standard in `20261020130000_explicit_grants_public_tables.sql`** (all 27 tables except `access_codes`, which is deliberately `service_role`-only by design). If a permissions error appears on a table created before that migration, it means that migration's matrix missed something — fix it there, in a follow-up migration, rather than widening access ad hoc. Full derivation (per-table role matrix, what was left out and why, verification) is in `docs/supabase-grants-migration-closeout.md`.
+- **Function `EXECUTE` is a separate, non-obvious gotcha**: Postgres grants `EXECUTE` to `PUBLIC` on new functions by default — the opposite of tables, which default closed. The two client-callable `SECURITY DEFINER` RPC functions that write data (`duplicate_input_to_cluster`, `merge_clusters`) are safe only because they check `auth.uid()` against the target workspace internally and `raise exception` otherwise — not because of their grants, which are still PUBLIC-executable live. **Every new RPC function must do the same internal check, or explicitly `revoke execute on function public.<fn>(...) from public, anon;`** (a schema-scoped `alter default privileges ... in schema public revoke execute on functions from public` does **not** work for this — it's a documented Postgres/Supabase limitation; revoke per-function instead, the way `get_seeding_candidates` already does).
 
 ### Environment variable conventions
 - **Frontend (`src/`)**: only `VITE_`-prefixed vars are available to the client bundle — `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_ENABLE_QA_TOOLS`.
