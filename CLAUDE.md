@@ -762,7 +762,7 @@ On 2026-08-20, `supabase db push`/`supabase link` against staging repeatedly fai
 Two patterns are in use, depending on the table's key column:
 - Tables with a `workspace_id` column (the vast majority): `FOR ALL USING (workspace_id = get_workspace_id())`, where `get_workspace_id()` is a `SECURITY DEFINER` SQL function resolving `auth.uid()` to the caller's `workspaces.id`. Used by `cluster_suggestions`, `preferred_futures`, `strategic_options` — default to this for new project/workspace-scoped tables.
 - Tables keyed directly by `auth.users.id` (e.g. `user_preferences`): `USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)`.
-- A second function, `get_user_workspace_id()`, also exists in the database but has no usages in any tracked migration — confirm its purpose before relying on it.
+- A second function, `get_user_workspace_id()`, is actively used — live RLS policies on `ai_usage_log`, `clusters`, `cluster_inputs`, `inputs`, `projects`, `scenarios`, and `workspace_settings` all reference it (confirmed via `pg_depend`; see `docs/get-user-workspace-id-migration-closeout.md` for the full table/policy list). It's documented in `supabase/migrations/20260905195000_document_get_user_workspace_id.sql` — it predates the migrations directory, same as `get_workspace_id()` in `schema.sql`, and is **not** byte-identical to `get_workspace_id()` (no `set search_path = public`) despite the similar name and purpose — don't assume they're interchangeable.
 
 ### Grants for new tables
 - **New tables require explicit grants** — Supabase will not auto-grant public schema access from **October 2026** onward. Every `CREATE TABLE` migration in `public` must work through this checklist, in order:
