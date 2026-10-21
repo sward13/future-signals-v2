@@ -97,11 +97,11 @@ export function App() {
   }
 
   if (passwordRecovery) {
-    return <AuthView supabase={supabase} initialMode="reset" />;
+    return <AuthView supabase={supabase} appOrigin={env.appOrigin} initialMode="reset" />;
   }
 
   if (!session) {
-    return <AuthView supabase={supabase} />;
+    return <AuthView supabase={supabase} appOrigin={env.appOrigin} />;
   }
 
   if (loadError) {

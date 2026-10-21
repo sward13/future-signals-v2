@@ -15,10 +15,10 @@ const mutedLink = {
   textDecoration: "underline",
 } as const;
 
-type Mode = "signin" | "signup" | "forgot" | "reset";
-type Props = { supabase: SupabaseClient<Database>; initialMode?: Mode };
+type Mode = "signin" | "forgot" | "reset";
+type Props = { supabase: SupabaseClient<Database>; appOrigin: string; initialMode?: Mode };
 
-export function AuthView({ supabase, initialMode = "signin" }: Props) {
+export function AuthView({ supabase, appOrigin, initialMode = "signin" }: Props) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,10 +36,6 @@ export function AuthView({ supabase, initialMode = "signin" }: Props) {
     if (mode === "signin") {
       const { error: er } = await supabase.auth.signInWithPassword({ email, password });
       if (er) setError(er.message);
-    } else if (mode === "signup") {
-      const { error: er } = await supabase.auth.signUp({ email, password });
-      if (er) setError(er.message);
-      else setInfo("Check your inbox to confirm your email, then sign in.");
     }
 
     setLoading(false);
@@ -95,33 +91,6 @@ export function AuthView({ supabase, initialMode = "signin" }: Props) {
       <Topbar />
 
       <div style={{ padding: "20px 16px", flex: 1, overflowY: "auto" }}>
-
-        {/* Mode tabs — hidden during forgot/reset, which are their own flows */}
-        {mode === "signin" || mode === "signup" ? (
-          <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
-            {(["signin", "signup"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => { setMode(m); setError(null); setInfo(null); }}
-                style={{
-                  fontSize: 12,
-                  padding: "6px 14px",
-                  borderRadius: 6,
-                  border: `1px solid ${mode === m ? c.brand : c.borderMid}`,
-                  background: mode === m ? "#EFF6FF" : c.white,
-                  color: mode === m ? c.brand : c.muted,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  fontWeight: mode === m ? 500 : 400,
-                  transition: "background 0.15s, border-color 0.15s",
-                }}
-              >
-                {m === "signin" ? "Sign in" : "Sign up"}
-              </button>
-            ))}
-          </div>
-        ) : null}
 
         {mode === "reset" ? (
           <form onSubmit={handleReset}>
@@ -215,22 +184,32 @@ export function AuthView({ supabase, initialMode = "signin" }: Props) {
                 style={{ ...btnP, width: "100%", opacity: loading ? 0.7 : 1 }}
                 disabled={loading}
               >
-                {mode === "signin"
-                  ? (loading ? "Signing in…"      : "Sign in")
-                  : (loading ? "Creating account…" : "Create account")}
+                {loading ? "Signing in…" : "Sign in"}
               </button>
-              {mode === "signin" ? (
-                <button
-                  type="button"
-                  style={mutedLink}
-                  onClick={() => { setMode("forgot"); setError(null); setInfo(null); }}
-                >
-                  Forgot password?
-                </button>
-              ) : null}
+              <button
+                type="button"
+                style={mutedLink}
+                onClick={() => { setMode("forgot"); setError(null); setInfo(null); }}
+              >
+                Forgot password?
+              </button>
             </div>
           </form>
         )}
+
+        {mode === "signin" ? (
+          <div style={{ marginTop: 20, fontSize: 12, color: c.muted, textAlign: "center" }}>
+            New to Future Signals? Create your account in the app, then sign in here.{" "}
+            <a
+              href={`${appOrigin}/?ref=extension`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ ...mutedLink, display: "inline" }}
+            >
+              Create an account
+            </a>
+          </div>
+        ) : null}
       </div>
     </div>
   );
