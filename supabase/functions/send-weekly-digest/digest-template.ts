@@ -6,9 +6,9 @@ const c = {
   white: "#ffffff",
   ink: "#1A1A1A",
   muted: "#6B7280",
-  faint: "#9CA3AF",
+  faint: "#6B7280",
   border: "rgba(0,0,0,0.09)",
-  brand: "#3B82F6",
+  brand: "#2563EB",
   brandBg: "#EFF6FF",
 };
 
@@ -16,6 +16,10 @@ const FONT_HEADING = "Roboto, -apple-system, BlinkMacSystemFont, 'Helvetica Neue
 const FONT_BODY = "'Open Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif";
 
 const APP_URL = "https://app.futuresignals.io";
+
+// CAN-SPAM requires a valid postal address in every commercial email.
+// Sam may replace this with a registered mailbox — keep it in one place.
+const MAILING_ADDRESS = "Alderman+Ward, 1181 55th St., Oakland, CA 94608";
 
 export interface DigestSignal {
   candidate_id: string;
@@ -102,9 +106,12 @@ export function generateDigestEmail(signals: DigestSignal[], meta: DigestMeta): 
             </tr>
             <tr>
               <td style="padding:16px 32px 28px 32px; border-top:1px solid ${c.border};">
-                <div style="font-family:${FONT_BODY}; font-size:11px; color:${c.faint}; line-height:1.6;">
+                <div style="font-family:${FONT_BODY}; font-size:12px; color:${c.faint}; line-height:1.6;">
                   You're receiving this because scanning is enabled for your workspace.
-                  <a href="${escapeHtml(meta.unsubscribeUrl)}" style="color:${c.faint}; text-decoration:underline;">Unsubscribe from weekly signals</a>.
+                  <a href="${escapeHtml(meta.unsubscribeUrl)}" style="color:${c.brand}; text-decoration:underline;">Unsubscribe from weekly signals</a>.
+                </div>
+                <div style="font-family:${FONT_BODY}; font-size:12px; color:${c.faint}; line-height:1.6; margin-top:6px;">
+                  ${escapeHtml(MAILING_ADDRESS)}
                 </div>
               </td>
             </tr>
