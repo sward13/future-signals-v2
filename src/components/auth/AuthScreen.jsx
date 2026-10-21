@@ -8,6 +8,7 @@ import { useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { SIGNUP_URL, LOGIN_URL } from "../../lib/authRedirect.js";
 import { accessCodeFromUrl, signupErrorMessage, isAccessCodeError } from "../../lib/accessCode.js";
+import { TERMS_URL, PRIVACY_URL, buildSignupMetadata, assentError } from "../../lib/termsAssent.js";
 import { track } from "../../lib/analytics.js";
 import { c, inp, btnP } from "../../styles/tokens.js";
 import logoLight from "../../assets/logo_light.svg";
@@ -33,6 +34,7 @@ export function AuthScreen({ initialMode = "signin" }) {
   // Invite/access code — prefilled from the ?invite= link (the EPIC QR carries it),
   // otherwise typed. Required to register (server enforces via handle_new_user).
   const [accessCode,      setAccessCode]      = useState(() => accessCodeFromUrl(window.location.search));
+  const [acceptedTerms,   setAcceptedTerms]   = useState(false);
   const [error,           setError]           = useState(null);
   const [info,            setInfo]            = useState(null);
   const [loading,         setLoading]         = useState(false);
@@ -46,6 +48,7 @@ export function AuthScreen({ initialMode = "signin" }) {
     setMode(next);
     setError(null);
     setInfo(null);
+    setAcceptedTerms(false);
   };
 
   // Toggle between the two URL-addressable modes and keep the address bar in
@@ -71,11 +74,18 @@ export function AuthScreen({ initialMode = "signin" }) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError(error.message);
     } else {
+      const assentMessage = assentError(acceptedTerms);
+      if (assentMessage) {
+        setError(assentMessage);
+        setLoading(false);
+        return;
+      }
+
       const trimmedCode = accessCode.trim();
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { access_code: trimmedCode } },
+        options: { data: buildSignupMetadata({ accessCode: trimmedCode }) },
       });
       if (error) {
         // GA: the gate rejecting is friction worth measuring separately from
@@ -231,7 +241,7 @@ export function AuthScreen({ initialMode = "signin" }) {
 
         {/* Error banner */}
         {error && (
-          <div style={{
+          <div role="alert" style={{
             padding: "10px 14px", marginBottom: 16, borderRadius: 7,
             background: "#FCEBEB", border: `1px solid ${c.redBorder}`,
             fontSize: 12, color: c.red800, lineHeight: 1.5,
@@ -302,6 +312,32 @@ export function AuthScreen({ initialMode = "signin" }) {
                 <div style={{ fontSize: 11, color: c.muted, marginTop: 5, lineHeight: 1.5 }}>
                   Future Signals is invite-only while in beta.
                 </div>
+              </div>
+            )}
+
+            {/* Terms / privacy / age assent — sign up only */}
+            {mode === "signup" && (
+              <div style={{ marginBottom: 24, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <input
+                  type="checkbox"
+                  id="accept-terms"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  style={{ marginTop: 2 }}
+                />
+                <label
+                  htmlFor="accept-terms"
+                  style={{ fontSize: 11, color: c.muted, lineHeight: 1.5 }}
+                >
+                  I am 16 or older and agree to the{" "}
+                  <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" style={{ color: c.ink }}>
+                    Terms of Service
+                  </a>{" "}
+                  and{" "}
+                  <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" style={{ color: c.ink }}>
+                    Privacy Policy
+                  </a>.
+                </label>
               </div>
             )}
 
