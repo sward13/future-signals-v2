@@ -27,12 +27,14 @@ type HealthStatus = "healthy" | "degraded" | "dead" | "noisy";
 interface SourceRow {
   id: string;
   name: string;
+  url: string | null;
   last_fetched_at: string | null;
 }
 
 interface HealthRow {
   source_id: string;
   source_name: string;
+  source_url: string | null;
   status: HealthStatus;
   consecutive_failures: number;
   items_last_fetch: number;
@@ -74,7 +76,7 @@ async function runHealthCheck() {
   // 1. Active sources
   const { data: sources, error: srcErr } = await supabase
     .from("sources")
-    .select("id, name, last_fetched_at")
+    .select("id, name, url, last_fetched_at")
     .eq("active", true);
   if (srcErr) throw srcErr;
   if (!sources?.length) return { sources_checked: 0 };
@@ -201,6 +203,7 @@ async function runHealthCheck() {
     return {
       source_id:                src.id,
       source_name:              src.name,
+      source_url:               src.url ?? null,
       status,
       consecutive_failures:     consecutiveFailures,
       items_last_fetch:         itemsLastFetch,
@@ -244,6 +247,22 @@ async function runHealthCheck() {
 
 // ── Email digest ────────────────────────────────────────────────────────────
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// Renders a source name, linked to its source URL when one is on file.
+function sourceLabel(name: string, url: string | null): string {
+  const safeName = escapeHtml(name);
+  if (!url) return safeName;
+  return `<a href="${escapeHtml(url)}">${safeName}</a>`;
+}
+
 async function sendDigest(rows: HealthRow[], now: Date): Promise<void> {
   const ADMIN_EMAIL        = Deno.env.get("ADMIN_EMAIL");
   const EMAIL_RELAY_SECRET = Deno.env.get("EMAIL_RELAY_SECRET");
@@ -281,10 +300,11 @@ async function sendDigest(rows: HealthRow[], now: Date): Promise<void> {
         const failNote = r.consecutive_failures > 1
           ? ` (${r.consecutive_failures} consecutive failures)`
           : "";
+        const label = sourceLabel(r.source_name, r.source_url);
         lines.push(
           days != null
-            ? `- ${r.source_name} — no new items in ${days} days${failNote}`
-            : `- ${r.source_name} — never fetched successfully${failNote}`,
+            ? `- ${label} — no new items in ${days} days${failNote}`
+            : `- ${label} — never fetched successfully${failNote}`,
         );
       }
       lines.push("");
@@ -293,7 +313,7 @@ async function sendDigest(rows: HealthRow[], now: Date): Promise<void> {
     if (degraded.length > 0) {
       lines.push(`🟡 DEGRADED (${degraded.length}):`);
       for (const r of degraded) {
-        lines.push(`- ${r.source_name} — thin descriptions (avg ${r.avg_summary_length} chars)`);
+        lines.push(`- ${sourceLabel(r.source_name, r.source_url)} — thin descriptions (avg ${r.avg_summary_length} chars)`);
       }
       lines.push("");
     }
@@ -301,7 +321,7 @@ async function sendDigest(rows: HealthRow[], now: Date): Promise<void> {
     if (noisy.length > 0) {
       lines.push(`🟡 NOISY (${noisy.length}):`);
       for (const r of noisy) {
-        lines.push(`- ${r.source_name} — ${r.items_last_fetch} items in last fetch`);
+        lines.push(`- ${sourceLabel(r.source_name, r.source_url)} — ${r.items_last_fetch} items in last fetch`);
       }
       lines.push("");
     }
@@ -318,7 +338,7 @@ async function sendDigest(rows: HealthRow[], now: Date): Promise<void> {
     if (withRate.length > 0) {
       lines.push("📊 Lowest promotion rates (bottom 3):");
       for (const r of withRate) {
-        lines.push(`- ${r.source_name}: ${Math.round((r.promotion_rate ?? 0) * 100)}% (last 30 days)`);
+        lines.push(`- ${sourceLabel(r.source_name, r.source_url)}: ${Math.round((r.promotion_rate ?? 0) * 100)}% (last 30 days)`);
       }
       lines.push("");
     }
@@ -327,7 +347,7 @@ async function sendDigest(rows: HealthRow[], now: Date): Promise<void> {
   const html = `<pre style="font-family:sans-serif;font-size:14px;line-height:1.6">${lines.join("\n")}</pre>`;
 
   const res = await fetch(
-    `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-email`,
+    "https://tbxjudpxzovbasuomekq.supabase.co/functions/v1/send-email",
     {
       method: "POST",
       headers: {
