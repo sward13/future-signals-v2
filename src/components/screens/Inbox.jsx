@@ -710,10 +710,17 @@ export default function Inbox({ appState }) {
   const handleBulkAcceptAi = () => {
     const selectedInputs = aiInputs.filter((i) => selectedAiIds.includes(i.id));
     selectedInputs.forEach((inp) => {
-      const topProject = inp.metadata?.suggested_projects?.[0];
-      if (!topProject) return;
-      saveInputToProject(inp.id, topProject.id);
-      setSavedToProject((prev) => ({ ...prev, [inp.id]: topProject.id }));
+      // Same filter-honoring logic as the per-row Add button (see itemProps):
+      // if a project filter is active, a selected row is only in the list
+      // because it matched that project, so Accept should target it rather
+      // than the input's single globally-highest-scoring suggestion.
+      const filteredProject = aiFilterProject
+        ? projects.find((p) => p.id === aiFilterProject && (inp.metadata?.suggested_projects || []).some((sp) => sp?.id === aiFilterProject))
+        : null;
+      const targetProject = filteredProject || getRecommendedProject(inp.metadata?.suggested_projects, projects);
+      if (!targetProject) return;
+      saveInputToProject(inp.id, targetProject.id);
+      setSavedToProject((prev) => ({ ...prev, [inp.id]: targetProject.id }));
     });
     const n = selectedInputs.length;
     showToast(`${n} signal${n !== 1 ? "s" : ""} accepted`);
@@ -752,11 +759,19 @@ export default function Inbox({ appState }) {
   };
 
   // Item props builder — selection context passed per-table
-  const itemProps = (inp, selectedIds, onToggle, anyTableSelected, handlers) => {
-    // Resolve the single project "Add" targets — the highest-scoring
-    // suggestion whose project still exists (deleted ones fall through). Shared
-    // with the detail panel via src/lib/recommendedProject.js.
-    const recommendedProject = getRecommendedProject(inp.metadata?.suggested_projects, projects);
+  const itemProps = (inp, selectedIds, onToggle, anyTableSelected, handlers, filterProjectId) => {
+    // Resolve the single project "Add" targets. When a Scanner Suggestions
+    // project filter is active, honor it: a row is only showing because it
+    // matched that project, so Add should target that project — not the
+    // input's single globally-highest-scoring suggestion, which can be a
+    // different project entirely and would otherwise silently add the row
+    // somewhere other than where the list says it belongs. Falls back to the
+    // top-scoring live suggestion (shared with the detail panel via
+    // src/lib/recommendedProject.js) when no filter is active.
+    const filteredProject = filterProjectId
+      ? projects.find((p) => p.id === filterProjectId && (inp.metadata?.suggested_projects || []).some((sp) => sp?.id === filterProjectId))
+      : null;
+    const recommendedProject = filteredProject || getRecommendedProject(inp.metadata?.suggested_projects, projects);
 
     return {
       input: inp,
@@ -804,7 +819,7 @@ export default function Inbox({ appState }) {
   const aiHandlers     = makeTableHandlers(visibleAI,      selectedAiIds,     setSelectedAiIds,     aiLastChecked,     setAiLastChecked);
 
   const manualGetProps = (inp) => itemProps(inp, selectedManualIds, toggleSelectManual, selectedManualIds.length > 0, manualHandlers);
-  const aiGetProps     = (inp) => itemProps(inp, selectedAiIds,     toggleSelectAi,     selectedAiIds.length > 0,     aiHandlers);
+  const aiGetProps     = (inp) => itemProps(inp, selectedAiIds,     toggleSelectAi,     selectedAiIds.length > 0,     aiHandlers, aiFilterProject || null);
 
   // Empty state content for the My Inputs section — rendered inside the table body
   const manualEmptyContent = manualInputs.length === 0 && hasAnyManualInputs ? (
