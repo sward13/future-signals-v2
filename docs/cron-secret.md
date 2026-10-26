@@ -18,8 +18,11 @@ Supabase Edge Functions:
 
 **Supabase Edge Functions** (`Deno.env.get("CRON_SECRET")`):
 
-- `check-scanner-health` — called by `api/run-health-check.js` and `api/score.js`
-  with the **Vercel** copy forwarded as `x-cron-secret`
+- `check-scanner-health` — called by `api/run-health-check.js` only, with the
+  **Vercel** copy forwarded as `x-cron-secret`. (`api/score.js` used to also
+  fire-and-forget a call here on every invocation, including ad-hoc
+  client-triggered scoring via `api/trigger-score.js` — removed 2026-10-26
+  after it caused up to 3 duplicate "Scanner Health Report" emails a day.)
 - `send-weekly-digest` — called **directly** by cron-job.org
 
 **External senders (cron-job.org):**
