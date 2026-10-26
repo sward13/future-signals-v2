@@ -1,7 +1,14 @@
 /**
  * check-scanner-health — nightly diagnostics for the RSS scanner pipeline.
- * Runs after scoring completes. Queries existing tables (no API calls), computes
- * per-source health metrics, upserts into source_health, then emails an admin digest.
+ * Triggered solely by api/run-health-check.js's dedicated cron (0 4 * * *),
+ * which runs after the 0 3 * * * scoring cron completes. Queries existing
+ * tables (no API calls), computes per-source health metrics, upserts into
+ * source_health, then emails an admin digest.
+ *
+ * api/score.js used to also fire-and-forget a call here on every invocation —
+ * including ad-hoc client-triggered scoring via api/trigger-score.js (e.g.
+ * after creating a project) — causing up to 3 duplicate "Scanner Health
+ * Report" emails a day. Removed 2026-10-26; this is now the only trigger.
  *
  * Required secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET,
  *                   RESEND_API_KEY, ADMIN_EMAIL, EMAIL_RELAY_SECRET
