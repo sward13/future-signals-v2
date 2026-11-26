@@ -6,6 +6,7 @@ import {
   blendRelevanceScore, applyScopeOutPenalty, applyNegativePoolPenalty,
 } from '../server-lib/scoring.js';
 import { cronSecretOk, bearerToken } from '../server-lib/cron-auth.js';
+import { workspaceHasCandidate } from '../server-lib/promotion-dedup.js';
 
 export const config = {
   maxDuration: 120,
@@ -387,14 +388,6 @@ export default async function handler(req, res) {
     // ── Promote high-scoring candidates to Inbox ──────────────────────────────
     for (const [candidateId, { candidate, projects: scoredProjects }] of Object.entries(candidateProjectScores)) {
       try {
-        const { data: existing } = await supabase
-          .from('inputs')
-          .select('id')
-          .eq('source_url', candidate.url)
-          .single();
-
-        if (existing) continue;
-
         const topProject = scoredProjects.sort((a, b) => b.score - a.score)[0];
         const { data: project } = await supabase
           .from('projects')
@@ -403,6 +396,15 @@ export default async function handler(req, res) {
           .single();
 
         if (!project) continue;
+
+        // Dedup within the DESTINATION workspace only (by source_url or
+        // candidate_id). Throws on query error → caught below, promotion
+        // skipped rather than risking a duplicate. See server-lib/promotion-dedup.js.
+        if (await workspaceHasCandidate(supabase, {
+          workspaceId: project.workspace_id,
+          sourceUrl: candidate.url,
+          candidateId,
+        })) continue;
 
         const { data: source } = await supabase
           .from('sources')
