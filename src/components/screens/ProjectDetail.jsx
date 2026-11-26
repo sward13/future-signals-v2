@@ -11,6 +11,7 @@ import { Button } from "../shared/Button.jsx";
 import { FilterDropdown } from "../shared/FilterDropdown.jsx";
 import { computeFlipPosition } from "../../lib/panelPosition.js";
 import { ConfirmDialog } from "../shared/ConfirmDialog.jsx";
+import { groupScannerSuggestions, suggestionClassification, MIN_INPUTS_FOR_GROUPING } from "../../lib/scannerSuggestionGroups.js";
 
 // Height estimate for computeFlipPosition's viewport-collision check on the
 // row context menu (Edit / Duplicate / Delete). Derived from the menu body's
@@ -100,15 +101,16 @@ function InputTypeBadge({ subtype }) {
 
 // ─── Scanner Suggestions row ───────────────────────────────────────────────────
 
+// classification = similarity to the project's INPUTS at scoring time (not
+// clusters) — see src/lib/scannerSuggestionGroups.js.
 const CLASSIF_STYLE = {
-  emerging:    { bg: "#FEF3C7", text: "#92400E", label: "Emerging" },
-  reinforcing: { bg: "#DBEAFE", text: "#1E40AF", label: "Reinforcing" },
+  emerging:    { bg: c.amber50, text: c.amber700, label: "Emerging",    hint: "Unlike your inputs" },
+  reinforcing: { bg: c.blue50,  text: c.blue700,  label: "Reinforcing", hint: "Similar to your inputs" },
 };
 
-function AiRow({ inp, selected, onCheck, activeProjectId, onAccept, onDismiss }) {
+function AiRow({ inp, selected, onCheck, activeProjectId, onAccept, onDismiss, showClassif = true }) {
   const [hov, setHov] = useState(false);
-  const projectEntry = (inp.metadata?.suggested_projects || []).find(p => p.id === activeProjectId);
-  const classif = projectEntry?.classification;
+  const classif = suggestionClassification(inp, activeProjectId);
   const cs = CLASSIF_STYLE[classif] || { bg: c.surfaceAlt, text: c.muted, label: classif || "—" };
   const allProjects = (inp.metadata?.suggested_projects || []).map(p => p.name).filter(Boolean);
   const steepled = inp.steepled || [];
@@ -150,9 +152,11 @@ function AiRow({ inp, selected, onCheck, activeProjectId, onAccept, onDismiss })
         <InputTypeBadge subtype={inp.subtype} />
       </div>
       <div style={{ width: COL_AI.classif, flexShrink: 0 }}>
-        <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: cs.bg, color: cs.text, whiteSpace: "nowrap" }}>
-          {cs.label}
-        </span>
+        {showClassif && (
+          <span title={cs.hint} style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, background: cs.bg, color: cs.text, whiteSpace: "nowrap" }}>
+            {cs.label}
+          </span>
+        )}
       </div>
       <div style={{ width: COL_AI.steepled, flexShrink: 0, display: "flex", gap: 3, alignItems: "center" }}>
         {steepledVis2.map((t) => (
@@ -350,11 +354,9 @@ export default function ProjectDetail({ appState }) {
     .filter((i) => !aiFilterType     || i.subtype === aiFilterType)
     .filter((i) => !aiFilterSteepled || (i.steepled || []).includes(aiFilterSteepled));
 
-  const getAiClass = (i) =>
-    (i.metadata?.suggested_projects || []).find(p => p.id === activeProjectId)?.classification;
-
-  const emergingInputs    = filteredAiInputs.filter(i => getAiClass(i) === "emerging");
-  const reinforcingInputs = filteredAiInputs.filter(i => getAiClass(i) === "reinforcing");
+  // Grouping is only meaningful once the project has enough inputs for the
+  // scanner's similarity comparison to say something — see scannerSuggestionGroups.js.
+  const aiGroups = groupScannerSuggestions(filteredAiInputs, activeProjectId, projectInputs.length);
 
   const anyAiFilterActive = !!(aiSearchQuery || aiFilterType || aiFilterSteepled);
   const allAiSelected = filteredAiInputs.length > 0 && filteredAiInputs.every(i => aiSelectedIds.has(i.id));
@@ -655,57 +657,56 @@ export default function ProjectDetail({ appState }) {
                       </div>
                       <div style={{ flex: 1, minWidth: 0, ...cell }}>Signal</div>
                       <div style={{ width: COL_AI.type,   ...cell }}>Type</div>
-                      <div style={{ width: COL_AI.classif,...cell }}>Signal type</div>
+                      <div style={{ width: COL_AI.classif,...cell }}>{aiGroups.grouped ? "Similarity" : ""}</div>
                       <div style={{ width: COL_AI.steepled,...cell }}>STEEPLED</div>
                       <div style={{ width: COL_AI.date,   ...cell }}>Date</div>
                       <div style={{ width: COL_AI.actions, flexShrink: 0 }} />
                     </div>
 
-                    {/* Emerging section */}
-                    {emergingInputs.length > 0 && (() => {
-                      const SectionHdr = ({ first }) => (
-                        <div style={{
-                          display: "flex", alignItems: "center", gap: 7,
-                          padding: "6px 14px 5px",
-                          background: c.surfaceAlt,
-                          borderTop: first ? "none" : `1px solid ${c.border}`,
-                          borderBottom: `1px solid ${c.border}`,
-                        }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: c.ink }}>Emerging</span>
-                          <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 10, background: c.amber50, color: c.amber700, fontWeight: 500 }}>Novel signals</span>
-                          <span style={{ fontSize: 10, color: c.hint, marginLeft: 2 }}>{emergingInputs.length}</span>
+                    {(() => {
+                      const renderRows = (list) => list.map(i => (
+                        <AiRow key={i.id} inp={i} selected={aiSelectedIds.has(i.id)} onCheck={handleAiCheckboxClick} activeProjectId={activeProjectId} onAccept={handleAiAcceptOne} onDismiss={handleAiDismissOne} showClassif={aiGroups.grouped} />
+                      ));
+                      const sectionHdrStyle = (first) => ({
+                        display: "flex", alignItems: "center", gap: 7,
+                        padding: "6px 14px 5px",
+                        background: c.surfaceAlt,
+                        borderTop: first ? "none" : `1px solid ${c.border}`,
+                        borderBottom: `1px solid ${c.border}`,
+                      });
+
+                      // Small project: the scanner's similarity split was based on
+                      // too few inputs to mean anything — one list, no badges.
+                      if (!aiGroups.grouped) {
+                        return (
+                          <>
+                            <div style={{ ...sectionHdrStyle(true), fontSize: 11, color: c.muted }}>
+                              Suggestions are grouped by similarity once this project has {MIN_INPUTS_FOR_GROUPING} inputs.
+                            </div>
+                            {renderRows(aiGroups.other)}
+                          </>
+                        );
+                      }
+
+                      const sections = [
+                        { key: "emerging",    list: aiGroups.emerging,    ...CLASSIF_STYLE.emerging },
+                        { key: "reinforcing", list: aiGroups.reinforcing, ...CLASSIF_STYLE.reinforcing },
+                        { key: "other",       list: aiGroups.other,       label: "Other" },
+                      ].filter(s => s.list.length > 0);
+
+                      return sections.map((s, idx) => (
+                        <div key={s.key}>
+                          <div style={sectionHdrStyle(idx === 0)}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: c.ink }}>{s.label}</span>
+                            {s.hint && (
+                              <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 10, background: s.bg, color: s.text, fontWeight: 500 }}>{s.hint}</span>
+                            )}
+                            <span style={{ fontSize: 10, color: c.hint, marginLeft: 2 }}>{s.list.length}</span>
+                          </div>
+                          {renderRows(s.list)}
                         </div>
-                      );
-                      return (
-                        <>
-                          <SectionHdr first={true} />
-                          {emergingInputs.map(i => <AiRow key={i.id} inp={i} selected={aiSelectedIds.has(i.id)} onCheck={handleAiCheckboxClick} activeProjectId={activeProjectId} onAccept={handleAiAcceptOne} onDismiss={handleAiDismissOne} />)}
-                        </>
-                      );
+                      ));
                     })()}
-
-                    {/* Reinforcing section */}
-                    {reinforcingInputs.length > 0 && (
-                      <>
-                        <div style={{
-                          display: "flex", alignItems: "center", gap: 7,
-                          padding: "6px 14px 5px",
-                          background: c.surfaceAlt,
-                          borderTop: `1px solid ${c.border}`,
-                          borderBottom: `1px solid ${c.border}`,
-                        }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: c.ink }}>Reinforcing</span>
-                          <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 10, background: c.blue50, color: c.blue700, fontWeight: 500 }}>Confirms existing clusters</span>
-                          <span style={{ fontSize: 10, color: c.hint, marginLeft: 2 }}>{reinforcingInputs.length}</span>
-                        </div>
-                        {reinforcingInputs.map(i => <AiRow key={i.id} inp={i} selected={aiSelectedIds.has(i.id)} onCheck={handleAiCheckboxClick} activeProjectId={activeProjectId} onAccept={handleAiAcceptOne} onDismiss={handleAiDismissOne} />)}
-                      </>
-                    )}
-
-                    {/* Fallback: candidates with unknown classification (edge case) */}
-                    {emergingInputs.length === 0 && reinforcingInputs.length === 0 && (
-                      filteredAiInputs.map(i => <AiRow key={i.id} inp={i} selected={aiSelectedIds.has(i.id)} onCheck={handleAiCheckboxClick} activeProjectId={activeProjectId} onAccept={handleAiAcceptOne} onDismiss={handleAiDismissOne} />)
-                    )}
                   </div>
                 )}
 
