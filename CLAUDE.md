@@ -445,6 +445,30 @@ There is now a test runner (added with Publish): `npm test` runs Node's built-in
 
 ---
 
+## Change workflow — before a PR merges
+
+A deliberately lightweight process (adopted 2026-11-25 instead of a full Define/Plan/Build audit workflow). Merging to `master` deploys to production, so these checks happen **before** merge.
+
+**Classify the change first:**
+- **Simple** — changes no runtime behavior: copy/wording, docs, comments, test names, PR descriptions. Run the affected tests and merge. Nothing below applies.
+- **Behavioral** — everything else, including any change to `api/`, `server-lib/`, Edge Functions, migrations, or app logic.
+
+**For a behavioral change:**
+1. **Bugs get a reproduction test first.** Before fixing, write a test that reproduces the actual failure (from the real prod data shape where possible) and watch it fail. Root-cause first; don't patch symptoms. Where the logic lives in a component, extract it into a testable module (see "Testing").
+2. **Independent review before merge.** Run `/code-review` on the PR and act on its findings. The session that wrote the change doesn't count as its reviewer. Record what the review found and what changed in the PR description.
+3. **Security review when a trust boundary moves.** Also run `/security-review` for changes to RLS policies or grants, `SECURITY DEFINER` functions, service-role code paths (`api/*.js`, `server-lib/*.js`, Edge Functions), auth/access codes, or anything public/unauthenticated (Publish `/p/{slug}`, unsubscribe).
+4. **UI changes are viewed before merge.** Check the change on the PR's Vercel preview deployment and say so in the PR. Previews use the **staging** database, so test on a staging project with the data the change needs; prod-only data can't be checked there. If it genuinely can't be checked, say so in the PR and let the owner decide.
+5. **Production follow-up.** When a change's real effect only shows after a scheduled job (scanner, digest, health check), note in the PR what to verify on prod and when.
+
+**What only the project owner (Sam) decides — ask, don't assume:**
+- Merging a PR, unless asked to merge it.
+- Merging over an unresolved review finding, or ruling a finding is not a real defect.
+- Accepting a known risk, including skipping step 4.
+- Changing behavior a spec, `design-principles.md`, or an earlier ruling already settled.
+- Any production data change (writes, deletes, backfills) — trace and report first, change only on request.
+
+---
+
 ## App architecture
 
 ### State
